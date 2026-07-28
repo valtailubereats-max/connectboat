@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mercado Luso - Classificados & IA Copilot</title>
+  
+  <!-- Fontes do Google Fonts correspondentes ao seu projeto original -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Fredoka:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS via CDN para que corra instantaneamente em qualquer lado -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Configurações de tema idênticas às do seu projeto principal -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            brand: ['Fredoka', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            pt: {
+              green: '#046a38',
+              greenHover: '#03522b',
+              red: '#da291c',
+              redHover: '#b52116',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Ícones do Lucide via CDN, iguais aos lucide-react do seu projeto -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- CSS Customizado para Background SVG do Mercado Luso e efeito de Scroll -->
+  <style>
+    body {
+      background-color: #f8fafc;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23046a38' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 30V15a1 1 0 0 0-1-1H1a1 1 0 0 0-1 1v15a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1zm-3 0H1V15h2v15zM10 0h18c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H10c-1.1 0-2-2-2-2V2c0-1.1.9-2 2-2zm0 2v18h18V2H10zm3 3h12v2H13V5zm0 4h12v2H13V9zm0 4h12v2H13v-2zm3 3h6v2h-6v-2zM45 20c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zM7 40c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zM54 0c-1.1 0-2 .9-2 2v4H48c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h4v4c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-4h4c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-4V2c0-1.1-.9-2-2-2h-4zM54 2v4h4V2h-4zM48 8v4h4V8h-4zm10 0v4h4V8h-4zM54 14v4h4v-4h-4zM31 12c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #046a38;
+    }
+    
+    /* Efeito de fade/transição */
+    .fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col font-sans selection:bg-pt-green/10">
+
+  <!-- TOAST NOTIFICATION SYSTEM -->
+  <div id="toast-wrapper" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- HEADER ORIGINAL COM LOGOTIPO MERCADO LUSO -->
+  <nav class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm transition-all animate-in fade-in duration-500">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Logótipo Principal com Cores de Portugal -->
+        <a href="#" class="flex items-center gap-3 group">
+          <div class="w-9 h-9 bg-pt-green rounded-xl flex items-center justify-center text-white group-hover:bg-pt-greenHover transition-colors shadow-sm">
+            <i data-lucide="tag" class="w-5 h-5 text-white"></i>
+          </div>
+          <span class="font-brand text-lg font-bold tracking-tight">
+            <span class="text-pt-green">Mercado</span><span class="text-slate-700">Luso</span>
+            <span class="text-xs bg-emerald-50 text-pt-green px-1.5 py-0.5 rounded-md font-sans font-semibold border border-emerald-200 ml-1.5 align-middle">Portal Geral</span>
+          </span>
+        </a>
+
+        <!-- Botões de Ações e Chave API -->
+        <div class="flex items-center gap-3">
+          <div id="api-status-badge" class="flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full border">
+            <span class="w-2 h-2 rounded-full bg-slate-400" id="api-indicator"></span>
+            <span id="api-text">Sem Chave IA</span>
+          </div>
+
+          <button onclick="toggleSettingsModal(true)" class="p-2 border border-slate-200 text-slate-600 rounded-xl bg-white hover:bg-slate-50 transition-all flex items-center gap-1.5 text-sm font-medium shadow-sm">
+            <i data-lucide="settings" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Configurar IA</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </nav>
+
+  <!-- CONTEÚDO PRINCIPAL (DASHBOARD RESPONSIVO) -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- COLUNA DA ESQUERDA: CATÁLOGO DE CLASSIFICADOS & GERADOR DE ANÚNCIO (7 de 12 colunas) -->
+    <div class="lg:col-span-7 flex flex-col gap-6">
+      
+      <!-- HERO BANNER SIMILAR AO DO PORTAL DE PORTUGAL -->
+      <section class="relative bg-pt-green rounded-2xl p-6 md:p-8 overflow-hidden shadow-xl shadow-pt-green/10 text-white">
+        <div class="absolute top-0 right-0 w-1/2 h-full bg-white/5 skew-x-[-20deg] translate-x-1/4"></div>
+        <div class="relative z-10 max-w-lg">
+          <span class="bg-white/20 text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">Mercado Luso Copilot</span>
+          <h1 class="text-2xl md:text-3xl font-brand font-bold mt-2 leading-tight">
+            Classificados com <span class="text-amber-300">Inteligência Artificial</span>
+          </h1>
+          <p class="mt-1 text-emerald-100 text-sm font-medium">
+            Gere copys infalíveis de anúncios, avalie preços do mercado em Portugal e tire dúvidas instantaneamente com auxílio do Gemini.
+          </p>
+        </div>
+      </section>
+
+      <!-- SECCÃO DE FILTROS RÁPIDOS -->
+      <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3">
+        <div class="flex-1 relative">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-3.5 text-slate-400"></i>
+          <input type="text" id="search-input" placeholder="Pesquisar por título ou palavra-chave..." oninput="filterAds()"
+            class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 focus:outline-none focus:border-pt-green rounded-xl text-xs font-bold text-pt-green placeholder:text-pt-green/55">
+        </div>
+        <div class="w-full sm:w-44">
+          <select id="filter-category" onchange="filterAds()"
+            class="w-full px-3 py-2.5 border border-slate-200 bg-slate-50 focus:outline-none focus:border-pt-green rounded-xl text-xs font-bold text-slate-600">
+            <option value="Todas">Todas as Categorias</option>
+            <option value="Imóveis">Imóveis</option>
+            <option value="Carros, motos e barcos">Veículos</option>
+            <option value="Tecnologia">Tecnologia</option>
+            <option value="Casa e Jardim">Casa e Jardim</option>
+            <option value="Moda e Acessórios">Moda e Acessórios</option>
+            <option value="Lazer e Desporto">Lazer e Desporto</option>
+            <option value="Imigração">Apoio & Imigração</option>
+            <option value="Outros">Outros</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- CATÁLOGO DE ANÚNCIOS ATIVOS -->
+      <section class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <header class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <div class="p-2 bg-orange-50 text-orange-600 rounded-lg">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="font-bold text-slate-800 text-sm md:text-base">Classificados do Portal</h2>
+              <p class="text-xs text-slate-400 font-medium font-sans">Selecione para análise da IA ou copia rápida</p>
+            </div>
+          </div>
+          <span class="text-xs bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded-lg border uppercase" id="ad-counter">4 anúncios</span>
+        </header>
+
+        <!-- Lista dinâmica de anúncios -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="ads-listings">
+          <!-- Injetado dinamicamente por JS -->
+        </div>
+      </section>
+
+      <!-- FORMULÁRIO COMPLETO PARA GERAR TEXTO DE ANÚNCIO (Criar Anúncio com IA) -->
+      <section class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3">
+          <div class="p-2 bg-emerald-50 text-emerald-700 rounded-lg">
+            <i data-lucide="plus-circle" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="font-bold text-slate-800">Criar Classificado com Copiloto IA</h2>
+            <p class="text-xs text-slate-400">Preencha as especificações básicas para obter uma copy otimizada e cativante</p>
+          </div>
+        </div>
+
+        <form id="ad-generator-form" onsubmit="generateAdDescription(event)" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Título do Classificado ou Produto</label>
+              <input type="text" id="ad-title" placeholder="Ex: Apartamento T2 Totalmente Remodelado ou iPhone 15 Pro Max" required
+                class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-pt-green font-medium">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Categoria</label>
+              <select id="ad-category" required
+                class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-pt-green font-semibold bg-white text-slate-600">
+                <option value="Imóveis">Imóveis</option>
+                <option value="Carros, motos e barcos">Carros, motos e barcos</option>
+                <option value="Tecnologia">Tecnologia</option>
+                <option value="Casa e Jardim">Casa e Jardim</option>
+                <option value="Moda e Acessórios">Moda e Acessórios</option>
+                <option value="Lazer e Desporto">Lazer e Desporto</option>
+                <option value="Imigração">Serviços / Imigração</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Localização (Cidade)</label>
+              <select id="ad-city" required
+                class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-pt-green font-semibold bg-white text-slate-600">
+                <option value="Lisboa">Lisboa</option>
+                <option value="Porto">Porto</option>
+                <option value="Braga">Braga</option>
+                <option value="Coimbra" selected>Coimbra</option>
+                <option value="Faro">Faro</option>
+                <option value="Setúbal">Setúbal</option>
+                <option value="Aveiro">Aveiro</option>
+                <option value="Viseu">Viseu</option>
+                <option value="Leiria">Leiria</option>
+                <option value="Funchal">Funchal</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Preço Desejado (€)</label>
+              <input type="number" id="ad-price" placeholder="Ex: 850" min="0" required
+                class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-pt-green font-medium">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Estado / Condição</label>
+              <select id="ad-condition" required
+                class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-pt-green font-semibold bg-white text-slate-600">
+                <option value="Novo">Novo (Na caixa / Selado)</option>
+                <option value="Como Novo">Como Novo (Sem marcas de uso)</option>
+                <option value="Usado - Bom Estado">Usado (Bom Estado)</option>
+                <option value="Para Recuperar / Peças">Para Recuperar / Peças</option>
+                <option value="Não Aplicável">Não Aplicável (Serviços/Imóvel)</option>
+              </select>
+            </div>
+
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Caraterísticas extra, Notas e Link de contacto</label>
+            <textarea id="ad-details" rows="3" placeholder="Ex: Mobilado, cozinha semi-equipada, aceita fiador, faturas incluídas. Para tecnologia: fatura e garantia da Fnac de 12 meses..."
+              class="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-pt-green font-medium" required></textarea>
+          </div>
+
+          <div class="flex items-center justify-between gap-3 pt-2">
+            <!-- Chave/Estado Alerta -->
+            <div id="ai-form-warning" class="text-xs text-amber-600 font-semibold flex items-center gap-1.5 hidden">
+              <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0"></i>
+              Configurar chave API do Gemini primeiro!
+            </div>
+            <div></div>
+
+            <button type="submit" id="submit-ad-btn"
+              class="bg-pt-green text-white hover:bg-pt-greenHover px-6 py-3 rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+              <i data-lucide="wand-2" class="w-4 h-4"></i>
+              <span>Gerar Anúncio Profissional</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+    </div>
+
+    <!-- COLUNA DA DIREITA: CO-PILOT CHAT ASSISTANT (5 de 12 colunas) -->
+    <div class="lg:col-span-5 flex flex-col gap-6 lg:sticky lg:top-24 h-fit max-h-[85vh]">
+      
+      <!-- ASSISTENTE DE COPILOTO INTELIGENTE (CHATAREA) -->
+      <section class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden h-[540px] md:h-[620px]">
+        
+        <!-- Topo do Chat -->
+        <header class="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 bg-gradient-to-tr from-pt-green to-emerald-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-pt-green/10">
+              <i data-lucide="bot" class="w-5 h-5 text-white animate-pulse"></i>
+            </div>
+            <div>
+              <h3 class="font-brand font-bold text-slate-800 text-sm md:text-base">Mercado Luso Copilot</h3>
+              <p class="text-[10px] text-emerald-600 font-bold uppercase tracking-widest flex items-center gap-1">
+                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+                Gemini Engine
+              </p>
+            </div>
+          </div>
+          
+          <button onclick="clearChat()" class="p-1.5 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-lg transition-colors" title="Limpar conversa">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </header>
+
+        <!-- Container de Alerta de Chave API se não estiver definida -->
+        <div id="chat-api-warning-banner" class="bg-amber-50 border-b border-amber-100 text-amber-800 p-3 text-xs flex items-center gap-2 hidden">
+          <i data-lucide="key" class="w-4 h-4 text-amber-600 shrink-0"></i>
+          <span class="font-medium">IA em modo de simulação. Clique em <button onclick="toggleSettingsModal(true)" class="underline font-bold hover:text-amber-950">Configurações</button> para inserir uma chave API do Gemini.</span>
+        </div>
+
+        <!-- Histórico do Chat -->
+        <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+          <!-- Mensagem de Boas-Vindas da IA -->
+          <div class="flex items-start gap-2.5">
+            <div class="w-7 h-7 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg flex items-center justify-center shrink-0">
+              <i data-lucide="bot" class="w-4 h-4"></i>
+            </div>
+            <div class="bg-slate-100 text-slate-800 rounded-2xl rounded-tl-none p-3.5 text-xs font-medium leading-relaxed max-w-[85%]">
+              Olá! Sou o <strong>Mercado Luso Copilot</strong>. 🇵🇹
+              <br><br>
+              Posso ajudá-lo a:
+              <br>• Estimar e auditar valores de imóveis, telemóveis, computadores, serviços de imigração ou outros artigos em Portugal.
+              <br>• Melhorar a sua descrição para aumentar as visualizações do seu anúncio generalizado.
+              <br>• Traduzir e otimizar anúncios para a comunidade imigrante ou investidores.
+              <br><br>
+              Como posso ser útil hoje? Pode selecionar um anúncio ao lado ou colocar a sua pergunta!
+            </div>
+          </div>
+        </div>
+
+        <!-- Chips Rápidos de Sugestões de Prompt -->
+        <div class="px-4 py-2 bg-slate-50/50 border-t border-slate-100 overflow-x-auto flex gap-2 whitespace-nowrap scrollbar-none" id="prompt-chips">
+          <button onclick="sendQuickPrompt('Dicas Imobiliario')" class="text-[11px] font-bold bg-white hover:bg-emerald-50 border text-slate-600 hover:text-pt-green px-3 py-1.5 rounded-full transition-all">
+            🏠 Aluguer Seguro
+          </button>
+          <button onclick="sendQuickPrompt('Avaliar Preco')" class="text-[11px] font-bold bg-white hover:bg-emerald-50 border text-slate-600 hover:text-pt-green px-3 py-1.5 rounded-full transition-all">
+            💎 Dicas de Venda Rápida
+          </button>
+          <button onclick="sendQuickPrompt('Garantias')" class="text-[11px] font-bold bg-white hover:bg-emerald-50 border text-slate-600 hover:text-pt-green px-3 py-1.5 rounded-full transition-all">
+            🛡️ Dicas de Segurança
+          </button>
+        </div>
+
+        <!-- Input do Chat -->
+        <div class="p-3 border-t bg-white border-slate-100">
+          <form onsubmit="handleChatSubmit(event)" class="flex items-center gap-2">
+            <input type="text" id="chat-input" placeholder="Pergunte-me algo ou peça dicas ao Copilot..." autocomplete="off"
+              class="flex-1 px-4 py-2.5 border border-slate-200 focus:outline-none focus:border-pt-green rounded-xl text-xs font-semibold text-slate-700">
+            <button type="submit" id="chat-send-btn"
+              class="w-10 h-10 bg-pt-green hover:bg-pt-greenHover text-white rounded-xl shadow-md flex items-center justify-center hover:scale-105 transition-all shrink-0">
+              <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL DE CONFIGURAÇÕES PARA CONFIGURAR A API KEY LOCALMENTE -->
+  <div id="settings-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 items-center justify-center flex hidden">
+    <div class="bg-white w-[90%] max-w-md rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-300">
+      
+      <!-- Cabeçalho do Modal -->
+      <header class="bg-slate-50 border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-2 text-slate-800">
+          <i data-lucide="settings" class="w-5 h-5 text-pt-green"></i>
+          <span class="font-brand font-bold text-base">Configurações de IA</span>
+        </div>
+        <button onclick="toggleSettingsModal(false)" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </header>
+      
+      <!-- Corpo das Configurações -->
+      <div class="p-6 space-y-4">
+        <p class="text-xs text-slate-500 leading-relaxed">
+          Para que o assistente funcione com inteligência em tempo real, forneça a sua chave de API do Gemini da Google. A chave é guardada diretamente no seu browser (LocalStorage) por segurança e nunca é enviada para servidores terceiros.
+        </p>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1.5 uppercase">Chave de API do Gemini</label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="key" class="w-4 h-4"></i>
+            </div>
+            <input type="password" id="gemini-api-key" placeholder="AIzaSy..."
+              class="w-full pl-9 pr-10 py-2.5 border border-slate-200 focus:outline-none focus:border-pt-green rounded-xl text-sm font-semibold tracking-wider">
+            <button onclick="toggleKeyVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+              <i data-lucide="eye" class="w-4 h-4" id="eye-icon"></i>
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-400 italic mt-1.5 flex items-center gap-1.5">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-500"></i>
+            Armazenamento totalmente local e seguro.
+          </p>
+        </div>
+
+        <div class="bg-emerald-50 border border-emerald-100 text-emerald-800 text-[11px] p-3 rounded-lg leading-relaxed">
+          <strong>Não tem uma chave grátis?</strong> Vá à plataforma do <a href="https://aistudio.google.com/" target="_blank" class="underline font-bold text-emerald-950 hover:text-emerald-900">Google AI Studio</a>, clique em "Get API Key" e copie a sua chave em menos de 1 minuto!
+        </div>
+      </div>
+      
+      <!-- Rodapé do Modal -->
+      <footer class="bg-slate-50 border-t border-slate-100 px-6 py-4 flex items-center justify-end gap-3">
+        <button onclick="toggleSettingsModal(false)" class="px-4 py-2 border text-slate-600 hover:bg-slate-100 rounded-xl text-sm font-semibold transition-colors">
+          Fechar
+        </button>
+        <button onclick="saveApiKey()" class="px-5 py-2.5 bg-pt-green hover:bg-pt-greenHover text-white rounded-xl text-sm font-bold shadow-md shadow-pt-green/15 transition-all flex items-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          Salvar Configurações
+        </button>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- RODAPÉ CLEAN -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500 font-medium">
+    <div class="max-w-7xl mx-auto px-4 font-sans">
+      <p>© 2026 Mercado Luso Inteligente. Desenvolvido para funcionar 100% de forma estática no GitHub e na Vercel.</p>
+      <p class="mt-1 text-slate-400">Layout de alta fidelidade e de rápido carregamento otimizado para navegação móvel e desktop.</p>
+    </div>
+  </footer>
+
+  <!-- SCRIPT ENGINE COM DADOS DE TESTES, GERADORES DE ANÚNCIOS E API DO GEMINI -->
+  <script>
+    // -------------------------------------------------------------
+    // 1. CONSTANTES E DADOS DO PROJETO EM PORTUGAL (GERAL)
+    // -------------------------------------------------------------
+    
+    // Anúncios Diversificados do Mercado Luso
+    let adsData = [
+      {
+        id: "ad-1",
+        title: "Apartamento T2 Remodelado no Lumiar",
+        category: "Imóveis",
+        city: "Lisboa",
+        price: 1350,
+        condition: "Muito Bom",
+        image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80",
+        details: "Excelente T2 com cozinha equipada com placa, forno e exaustor. Quartos com roupeiros embutidos, varanda solarenga e excelente proximidade com o metro do Lumiar. Despesas de energia não incluídas."
+      },
+      {
+        id: "ad-2",
+        title: "iPhone 15 Pro 256GB Titanium",
+        category: "Tecnologia",
+        city: "Porto",
+        price: 980,
+        condition: "Como Novo",
+        image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80",
+        details: "Venda por upgrade. Telemóvel sempre usado com película de vidro temperado e capa protetora. Saúde de bateria em 98%, fatura de compra incluída e garantia Fnac válida até final do próximo ano."
+      },
+      {
+        id: "ad-3",
+        title: "Apoio a Processos de Manifestação de Interesse (AIMA)",
+        category: "Imigração",
+        city: "Braga",
+        price: 120,
+        condition: "Não Aplicável",
+        image: "https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=600&q=80",
+        details: "Assessoria documental completa para agendamentos, revisão de contratos de trabalho, obtenção de NIF/NISS e submissão certificada no portal da AIMA com rapidez e total garantia de conformidade legal."
+      },
+      {
+        id: "ad-4",
+        title: "BMW Série 1 116d Pack M",
+        category: "Carros, motos e barcos",
+        city: "Coimbra",
+        price: 21900,
+        condition: "Usado - Bom Estado",
+        image: "https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=600&q=80",
+        details: "Pack desportivo M exterior e interior completo de fábrica. Estofos desportivos alcantara, ecrã profissional com GPS, jantes de liga leve exclusivas e revisões completas na marca. Sem sinistros."
+      }
+    ];
+
+    let currentFiltered = [...adsData];
+
+    // -------------------------------------------------------------
+    // 2. INICIALIZAÇÃO DE VARIÁVEIS DO BROWSER E STORAGE
+    // -------------------------------------------------------------
+    let geminiKey = localStorage.getItem("gemini_vercel_api_key") || "";
+
+    // Carregar UI Inicial
+    window.addEventListener("DOMContentLoaded", () => {
+      renderAds();
+      checkApiStatus();
+      lucide.createIcons();
+    });
+
+    // -------------------------------------------------------------
+    // 3. RENDERIZADORES E FILTROS DO PORTAL
+    // -------------------------------------------------------------
+    function renderAds() {
+      const parent = document.getElementById("ads-listings");
+      if (!parent) return;
+
+      if (currentFiltered.length === 0) {
+        parent.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-400 font-semibold text-xs flex flex-col items-center justify-center gap-2">
+            <i data-lucide="alert-circle" class="w-8 h-8 text-slate-300"></i>
+            Nenhum anúncio corresponde aos seus filtros de busca.
+          </div>
+        `;
+        document.getElementById("ad-counter").innerText = `0 anúncios`;
+        lucide.createIcons();
+        return;
+      }
+
+      parent.innerHTML = currentFiltered.map(ad => `
+        <div class="border border-slate-150 rounded-xl bg-slate-50/50 p-3 h-full flex flex-col justify-between hover:border-pt-green hover:shadow-md transition-all duration-300 group">
+          <div>
+            <div class="relative w-full h-32 rounded-lg overflow-hidden bg-slate-200 mb-2.5">
+              <img src="${ad.image}" alt="${ad.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" referrerPolicy="no-referrer">
+              <span class="absolute top-2 right-2 bg-white/95 backdrop-blur-sm text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-md shadow-sm border border-slate-100">
+                ${ad.city}
+              </span>
+              <span class="absolute bottom-2 left-2 bg-pt-green text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm">
+                ${ad.category}
+              </span>
+            </div>
+
+            <div class="flex items-start justify-between gap-1.5 mb-1.5">
+              <h3 class="font-extrabold text-slate-900 group-hover:text-pt-green transition-colors text-xs sm:text-sm tracking-tight leading-snug line-clamp-2 flex-1">${ad.title}</h3>
+              <span class="text-pt-green font-black text-xs sm:text-sm shrink-0">${ad.price.toLocaleString('pt-PT')}€</span>
+            </div>
+
+            <div class="flex flex-wrap gap-x-2 gap-y-1 text-[9px] text-slate-500 font-bold mb-2">
+              <span class="bg-white px-1.5 py-0.5 rounded border leading-none">${ad.condition}</span>
+            </div>
+
+            <p class="text-[11px] text-slate-400 line-clamp-2 leading-relaxed mb-3">${ad.details}</p>
+          </div>
+
+          <div class="flex items-center gap-1.5 border-t border-slate-100 pt-2 bg-transparent">
+            <button onclick="analyzeAdWithIA('${ad.id}')" class="flex-1 text-[10px] sm:text-xs font-bold py-1.5 bg-emerald-50 text-pt-green rounded-lg hover:bg-pt-green hover:text-white transition-all flex items-center justify-center gap-1">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+              <span>Análise IA</span>
+            </button>
+            <button onclick="copyToClipboard('${ad.id}')" class="p-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-lg transition-colors" title="Copiar Detalhes">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+      `).join('');
+      
+      document.getElementById("ad-counter").innerText = `${currentFiltered.length} Classificados`;
+      lucide.createIcons();
+    }
+
+    function filterAds() {
+      const search = document.getElementById("search-input").value.toLowerCase();
+      const cat = document.getElementById("filter-category").value;
+
+      currentFiltered = adsData.filter(ad => {
+        const matchesSearch = ad.title.toLowerCase().includes(search) || ad.details.toLowerCase().includes(search);
+        const matchesCat = (cat === "Todas" || ad.category === cat);
+        return matchesSearch && matchesCat;
+      });
+
+      renderAds();
+    }
+
+    // Modal Manager
+    function toggleSettingsModal(show) {
+      const modal = document.getElementById("settings-modal");
+      if (show) {
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+        document.getElementById("gemini-api-key").value = geminiKey;
+      } else {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+    }
+
+    function toggleKeyVisibility() {
+      const input = document.getElementById("gemini-api-key");
+      const icon = document.getElementById("eye-icon");
+      if (input.type === "password") {
+        input.type = "text";
+        icon.setAttribute("data-lucide", "eye-off");
+      } else {
+        input.type = "password";
+        icon.setAttribute("data-lucide", "eye");
+      }
+      lucide.createIcons();
+    }
+
+    // Salvar Chave localmente
+    function saveApiKey() {
+      const keyVal = document.getElementById("gemini-api-key").value.trim();
+      geminiKey = keyVal;
+      localStorage.setItem("gemini_vercel_api_key", keyVal);
+      
+      checkApiStatus();
+      toggleSettingsModal(false);
+      showToast("Configuração salva com sucesso!", "success");
+      
+      if (geminiKey) {
+        addChatMessage("system", "Ligação com o Gemini concluída! O seu Luso AutoCopilot está agora operacional e inteligente de verdade.");
+      }
+    }
+
+    function checkApiStatus() {
+      const badge = document.getElementById("api-status-badge");
+      const indicator = document.getElementById("api-indicator");
+      const text = document.getElementById("api-text");
+      const banner = document.getElementById("chat-api-warning-banner");
+      const formWarning = document.getElementById("ai-form-warning");
+
+      if (geminiKey) {
+        indicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+        text.innerText = "Gemini Ativo";
+        text.className = "text-emerald-700 font-bold";
+        badge.className = "flex items-center gap-1.5 text-xs bg-emerald-50 border-emerald-200 text-emerald-800 px-3 py-1.5 rounded-full border shadow-sm shadow-emerald-50";
+        banner.classList.add("hidden");
+        formWarning.classList.add("hidden");
+      } else {
+        indicator.className = "w-2 h-2 rounded-full bg-amber-400";
+        text.innerText = "Sem Chave IA";
+        text.className = "text-slate-500 font-medium";
+        badge.className = "flex items-center gap-1.5 text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full border";
+        banner.classList.remove("hidden");
+        formWarning.classList.remove("hidden");
+      }
+    }
+
+    // Toast System
+    function showToast(message, type = "success") {
+      const wrapper = document.getElementById("toast-wrapper");
+      if (!wrapper) return;
+
+      const toast = document.createElement("div");
+      toast.className = `p-3.5 rounded-xl border shadow-lg bg-white text-xs font-semibold flex items-center gap-2.5 pointer-events-auto transition-all transform duration-300 translate-y-2 opacity-0 select-none`;
+      
+      let iconColor = "text-emerald-500";
+      let iconName = "check-circle";
+
+      if (type === "error") {
+        iconColor = "text-red-500";
+        iconName = "alert-circle";
+      } else if (type === "info") {
+        iconColor = "text-sky-500";
+        iconName = "info";
+      }
+
+      toast.innerHTML = `
+        <i data-lucide="${iconName}" class="w-4 h-4 ${iconColor} shrink-0"></i>
+        <span class="text-slate-700">${message}</span>
+      `;
+
+      wrapper.appendChild(toast);
+      lucide.createIcons();
+
+      // Show
+      setTimeout(() => {
+        toast.classList.remove("opacity-0", "translate-y-2");
+      }, 50);
+
+      // Remove after 3.5s
+      setTimeout(() => {
+        toast.classList.add("opacity-0", "translate-y-2");
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Copiar para a área de transferência
+    function copyToClipboard(id) {
+      const ad = adsData.find(a => a.id === id);
+      if (!ad) return;
+
+      const text = `${ad.title}\nCategoria: ${ad.category} | Condição: ${ad.condition}\nLocalização: ${ad.city} | Preço: ${ad.price.toLocaleString('pt-PT')}€\n\nDetalhes:\n${ad.details}\n--- Publicado originalmente através do Mercado Luso ---`;
+      
+      navigator.clipboard.writeText(text)
+        .then(() => showToast("Dados copiados para a área de transferência!"))
+        .catch(err => showToast("Erro ao copiar texto.", "error"));
+    }
+
+    // -------------------------------------------------------------
+    // 4. INTEGRAÇÃO REAL DA API DO GEMINI
+    // -------------------------------------------------------------
+    async function fetchGeminiAPI(systemPrompt, userQuery) {
+      if (!geminiKey) {
+        // Mock fallback simpático se não houver chave de API configurada
+        return new Promise((resolve) => {
+          setTimeout(() => {
+            resolve(`⚠️ [IA no Modo de Simulação]\nPara obter respostas inteligentes e personalidades reais da IA, por favor introduza a sua chave de API segura do Gemini clicando no botão "Configurar IA" no canto superior direito.\n\nContudo, aqui tem uma auditoria simulada padrão para este tipo de classificado:\n"Este classificado apresenta excelente potencial de venda no mercado de usados em Portugal. Imóveis ou bens tecnológicos com faturas originais vendem-se, em média, até 25% mais rápido no Mercado Luso. Recomendamos fotos iluminadas de múltiplos ângulos."`);
+          }, 800);
+        });
+      }
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+      
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: systemPrompt + "\n\nInstrução do Utilizador:\n" + userQuery }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              topP: 0.95,
+              maxOutputTokens: 1024
+            }
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error?.message || "Ocorreu um problema de comunicação com o Gemini API.");
+        }
+
+        const data = await response.json();
+        const outputText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!outputText) {
+          throw new Error("O Gemini retornou uma resposta sem texto.");
+        }
+        return outputText;
+      } catch (err) {
+        console.error("Erro na Chamada do Gemini:", err);
+        showToast(err.message || "Erro ao consultar a API do Gemini.", "error");
+        return `❌ **Erro na Chamada à API**: ${err.message}\nVerifique se a sua chave do Gemini está correta ou se possui saldo na conta gratuita da Google AI Studio nas configurações.`;
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 5. CHAT ENGINE (MENSAGENS E CHIPS RÁPIDOS)
+    // -------------------------------------------------------------
+    function addChatMessage(role, text) {
+      const container = document.getElementById("chat-messages-container");
+      if (!container) return;
+
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "flex items-start gap-2.5 fade-in";
+
+      let iconHtml = "";
+      let bgStyle = "";
+      if (role === "user") {
+        iconHtml = `<div class="w-7 h-7 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg flex items-center justify-center shrink-0"><i data-lucide="user" class="w-4 h-4"></i></div>`;
+        bgStyle = "bg-indigo-600 text-white rounded-2xl rounded-tr-none p-3.5 text-xs font-semibold max-w-[85%] ml-auto shadow-sm";
+      } else if (role === "system") {
+        iconHtml = `<div class="w-7 h-7 bg-amber-50 text-amber-700 border border-amber-100 rounded-lg flex items-center justify-center shrink-0"><i data-lucide="shield-alert" class="w-4 h-4"></i></div>`;
+        bgStyle = "bg-amber-50 text-amber-900 rounded-xl p-3 border border-amber-200 text-xs font-medium max-w-[90%]";
+      } else {
+        iconHtml = `<div class="w-7 h-7 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg flex items-center justify-center shrink-0"><i data-lucide="bot" class="w-4 h-4"></i></div>`;
+        bgStyle = "bg-slate-100/90 border border-slate-150 text-slate-800 rounded-2xl rounded-tl-none p-3.5 text-xs font-medium leading-relaxed max-w-[85%]";
+      }
+
+      // Se for do user, invertemos a ordenação das colunas para colocar à direita
+      if (role === "user") {
+        msgDiv.className = "flex items-start justify-end gap-2.5 fade-in";
+        msgDiv.innerHTML = `
+          <div class="${bgStyle}">
+            ${formatMarkdownSymbols(text)}
+          </div>
+          ${iconHtml}
+        `;
+      } else {
+        msgDiv.innerHTML = `
+          ${iconHtml}
+          <div class="${bgStyle}">
+            ${formatMarkdownSymbols(text)}
+          </div>
+        `;
+      }
+
+      container.appendChild(msgDiv);
+      lucide.createIcons();
+      
+      // Auto-scroll
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Formatador simples para markdown nos diálogos do chat
+    function formatMarkdownSymbols(text) {
+      if (!text) return "";
+      // Substitui negrito **text** por strong
+      let f = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      // Linhas por quebra de linha
+      f = f.replace(/\n/g, '<br>');
+      return f;
+    }
+
+    function clearChat() {
+      const container = document.getElementById("chat-messages-container");
+      container.innerHTML = `
+        <div class="flex items-start gap-2.5">
+          <div class="w-7 h-7 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-lg flex items-center justify-center shrink-0">
+            <i data-lucide="bot" class="w-4 h-4"></i>
+          </div>
+          <div class="bg-slate-100 text-slate-800 rounded-2xl rounded-tl-none p-3.5 text-xs font-medium leading-relaxed max-w-[85%]">
+            Conversa limpa. Coloque as suas novas dúvidas ou selecione classificados para análise imediata.
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+      showToast("Conversa com a IA reiniciada.");
+    }
+
+    // Submeter chat manual
+    async function handleChatSubmit(event) {
+      if (event) event.preventDefault();
+      const input = document.getElementById("chat-input");
+      if (!input) return;
+
+      const query = input.value.trim();
+      if (!query) return;
+
+      input.value = "";
+      addChatMessage("user", query);
+
+      // Loading bubble
+      const container = document.getElementById("chat-messages-container");
+      const loadingDiv = document.createElement("div");
+      loadingDiv.className = "flex items-start gap-2.5 fade-in";
+      loadingDiv.id = "chat-loading-bubble";
+      loadingDiv.innerHTML = `
+        <div class="w-7 h-7 bg-slate-50 text-slate-500 rounded-lg flex items-center justify-center shrink-0">
+          <i data-lucide="bot" class="w-4 h-4 animate-spin text-pt-green"></i>
+        </div>
+        <div class="bg-slate-50 text-slate-400 rounded-2xl rounded-tl-none px-4 py-3.5 text-xs font-bold flex items-center gap-1.5 animate-pulse">
+          Luso Copilot está a elaborar resposta...
+        </div>
+      `;
+      container.appendChild(loadingDiv);
+      lucide.createIcons();
+      container.scrollTop = container.scrollHeight;
+
+      // System prompt de contexto
+      const systemPrompt = `Você é o Mercado Luso Copilot, assistente inteligente do Mercado Luso de Classificados em Portugal.
+As cidades disponíveis são: Lisboa, Porto, Braga, Coimbra, Faro, Setúbal, Aveiro, Viseu, Leiria, Guarda, Castelo Branco, etc.
+Você ajuda compradores e vendedores com dúvidas de imóveis (contratos de arrendamento, caução, fiador), tecnologia (garantias, faturas, saúde da bateria), legislação de serviços e imigração (manifestação de interesse, agendamento no AIMA, atribuição de NIF), ou de escrita de anúncios cativantes de venda de bens gerais. Use estritamente o português de Portugal (ex: telemóvel, arrendamento, caução, ecrã, quilómetros, etc.). Seja simpático, objetivo e profissional.`;
+
+      const response = await fetchGeminiAPI(systemPrompt, query);
+      
+      // Remover bubble e meter resposta real
+      loadingDiv.remove();
+      addChatMessage("bot", response);
+    }
+
+    // Chamadas a partir de Chips rápidos
+    function sendQuickPrompt(type) {
+      let prompt = "";
+      if (type === "Dicas Imobiliario") {
+        prompt = "Quais os documentos necessários para alugar um apartamento de forma legal em Portugal? O senhorio pode pedir mais do que duas rendas de fiança?";
+      } else if (type === "Avaliar Preco") {
+        prompt = "Gostava de algumas dicas de marketing fáceis para que os meus bens tecnológicos e produtos usados se vendam em tempo recorde no Mercado Luso.";
+      } else if (type === "Garantias") {
+        prompt = "Se eu comprar um telemóvel ou computador usado de um particular em Portugal, como funciona a lei das garantias para transações entre indivíduos?";
+      }
+
+      const input = document.getElementById("chat-input");
+      input.value = prompt;
+      input.focus();
+    }
+
+    // -------------------------------------------------------------
+    // 6. DETALHES DE ANÚNCIO INDIVIDUAL PARA IA ANALISAR / CRIAR ANÚNCIOS
+    // -------------------------------------------------------------
+    async function analyzeAdWithIA(id) {
+      const ad = adsData.find(a => a.id === id);
+      if (!ad) return;
+
+      addChatMessage("user", `Por favor, faça uma auditoria rápida a este anúncio: "${ad.title}" em ${ad.city} por ${ad.price}€`);
+
+      // Bubble
+      const container = document.getElementById("chat-messages-container");
+      const loadingDiv = document.createElement("div");
+      loadingDiv.className = "flex items-start gap-2.5 fade-in";
+      loadingDiv.id = "chat-loading-bubble";
+      loadingDiv.innerHTML = `
+        <div class="w-7 h-7 bg-slate-50 text-slate-500 rounded-lg flex items-center justify-center shrink-0">
+          <i data-lucide="bot" class="w-4 h-4 animate-spin text-pt-green"></i>
+        </div>
+        <div class="bg-slate-50 text-slate-400 rounded-2xl rounded-tl-none px-4 py-3.5 text-xs font-bold flex items-center gap-1.5 animate-pulse">
+          O Luso Copilot está a analisar o anúncio no mercado atual...
+        </div>
+      `;
+      container.appendChild(loadingDiv);
+      lucide.createIcons();
+      container.scrollTop = container.scrollHeight;
+
+      const systemPrompt = `Você é um analista experiente do mercado de usados e transações de anúncios em Portugal.
+Diga:
+1. Se o valor pedido parece justo para a região e condição descrita.
+2. 3 conselhos práticos de segurança para os compradores ao realizarem o negócio físico ou remoto em Portugal (ex: preferir entrega em mãos na esquadra, evitar pagamentos antecipados por MBWay suspeito).
+3. Uma sugestão rápida para o vendedor destacar ainda mais este item.`;
+
+      const queryText = `Título: ${ad.title} (Categoria: ${ad.category})
+Condição: ${ad.condition}
+Preço: ${ad.price}€
+Cidade: ${ad.city}
+Detalhes do Anúncio: ${ad.details}`;
+
+      const response = await fetchGeminiAPI(systemPrompt, queryText);
+      loadingDiv.remove();
+      addChatMessage("bot", response);
+    }
+
+    // -------------------------------------------------------------
+    // 7. GERADOR DE COPIES DE ANÚNCIOS COM GEMINI CO-PILOT
+    // -------------------------------------------------------------
+    async function generateAdDescription(event) {
+      event.preventDefault();
+
+      const title = document.getElementById("ad-title").value.trim();
+      const category = document.getElementById("ad-category").value;
+      const city = document.getElementById("ad-city").value;
+      const price = parseInt(document.getElementById("ad-price").value);
+      const condition = document.getElementById("ad-condition").value;
+      const details = document.getElementById("ad-details").value.trim();
+
+      const submitBtn = document.getElementById("submit-ad-btn");
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>A Otimizar com Gemini...</span>`;
+      lucide.createIcons();
+
+      const systemPrompt = `Você é um redator de anúncios publicitários focado em taxas de atração e cliques de alta conversão para o portal Mercado Luso em Portugal.
+Elabore uma descrição cativante de venda para este classificado.
+A sua resposta deve conter:
+- Um título refinado com poder de conversão comercial.
+- Uma tabela ou lista de características/extras limpa e amigável.
+- Um parágrafo persuasivo curto realçando as principais vantagens do item em Portugal.
+- Um rodapé de apelo para contacto urgente ou agendamento de visita/venda.
+Escreva tudo em excelente Português de Portugal.`;
+
+      const userText = `Nome do Produto/Serviço: ${title}
+Categoria: ${category}
+Cidade correspondente: ${city}
+Valor estipulado: ${price}€
+Estado de conservação: ${condition}
+Características adicionadas: ${details}`;
+
+      const aiDescription = await fetchGeminiAPI(systemPrompt, userText);
+
+      // Reset botão
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i data-lucide="wand-2" class="w-4 h-4"></i><span>Gerar Anúncio Profissional</span>`;
+      lucide.createIcons();
+
+      if (aiDescription.startsWith("❌")) {
+        showToast("Ocorreu um erro técnico. Por favor, confirme as configurações de Chave do Gemini.", "error");
+        return;
+      }
+
+      // Adicionar este classificado gerado ao catálogo dinamicamente para o utilizador ver em tempo real!
+      const randomId = "ad-gen-" + Math.floor(Math.random() * 1000);
+      
+      const illustrations = {
+        "Imóveis": "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=600&q=80",
+        "Carros, motos e barcos": "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=600&q=80",
+        "Tecnologia": "https://images.unsplash.com/photo-1468436139062-f60a71c5c892?auto=format&fit=crop&w=600&q=80",
+        "Casa e Jardim": "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=600&q=80",
+        "Moda e Acessórios": "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80",
+        "Lazer e Desporto": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=600&q=80",
+        "Imigração": "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80",
+        "Outros": "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80"
+      };
+
+      const randomIllustration = illustrations[category] || "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=600&q=80";
+
+      const newAd = {
+        id: randomId,
+        title: title,
+        category: category,
+        city: city,
+        price: price,
+        condition: condition,
+        image: randomIllustration,
+        details: aiDescription.substring(0, 160) + "..."
+      };
+
+      adsData.unshift(newAd);
+      currentFiltered = [...adsData];
+      renderAds();
+
+      // Mandar cópia para o painel de Copilot
+      addChatMessage("user", `Mostre-me os resultados gerados sobre o meu anúncio: "${title}"`);
+      addChatMessage("bot", `### ✨ Anúncio Gerado: ${title} ✨\n\n${aiDescription}\n\n*Nota: O anúncio gerado foi instantaneamente anexado ao topo do catálogo do portal! Pode copiá-lo para a área de transferência usando o botão no cartão.*`);
+      
+      // Limpar formulário
+      document.getElementById("ad-generator-form").reset();
+      showToast("Sucesso! Anúncio gerado e inserido no catálogo local!", "success");
+    }
+  </script>
+</body>
+</html>

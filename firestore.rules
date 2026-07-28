@@ -1,0 +1,533 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          request.auth.token.email == "valtailubereats@gmail.com" ||
+          request.auth.token.email == "valtail@gmail.com" ||
+          request.auth.token.email == "generalsales2021@gmail.com" ||
+          (
+            exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin'
+          )
+        );
+    }
+
+    function isModerator() {
+      return isAuthenticated() &&
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'moderator'
+        );
+    }
+
+    function isContentCreator() {
+      return isAuthenticated() &&
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'content_creator'
+        );
+    }
+
+    function isValidUser(data, userId) {
+      return (!('uid' in data) || data.uid == userId) &&
+             (!('name' in data) || (data.name is string && data.name.size() > 0 && data.name.size() < 100)) &&
+             (!('email' in data) || data.email is string) &&
+             (!('role' in data) || data.role in ['user', 'admin', 'moderator', 'content_creator']) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('acceptedTerms' in data) || data.acceptedTerms is bool) &&
+             (!('acceptedTermsAt' in data) || data.acceptedTermsAt is timestamp || data.acceptedTermsAt is string) &&
+             (!('referralCredits' in data) || data.referralCredits is number) &&
+             (!('pointsFromAds' in data) || data.pointsFromAds is number) &&
+             (!('referredUsersCount' in data) || data.referredUsersCount is number) &&
+             (!('referralCode' in data) || data.referralCode is string);
+    }
+
+    function isValidAd(data) {
+      return data.keys().hasAll(['id', 'title', 'description', 'imageUrl', 'city', 'category', 'sellerId', 'sellerPhone', 'sellerName', 'status', 'createdAt']) &&
+             data.id is string &&
+             data.title is string &&
+             data.description is string &&
+             data.imageUrl is string &&
+             data.city is string &&
+             data.category is string &&
+             data.sellerId == request.auth.uid &&
+             data.sellerPhone is string &&
+             data.sellerName is string &&
+             data.status in ['pending', 'approved', 'rejected', 'expired', 'archived', 'sold'] &&
+             (!('adStatus' in data) || data.adStatus in ['active', 'near_expiration', 'expired', 'archived', 'sold']) &&
+             (!('listingType' in data) || data.listingType in ['normal', 'informativo']) &&
+             (!('listingType' in data) || data.listingType == 'normal' || isAdmin()) &&
+             (!('targetUrl' in data) || data.targetUrl == '' || data.targetUrl == null || isAdmin()) &&
+             (!('serviceCoverage' in data) || data.serviceCoverage in ['city', 'radius20', 'radius50', 'county', 'uk', 'portugal', 'online']) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidAdImagesAndPlan(data) {
+      let isFeaturedAd = data.get('isFeatured', false) == true || data.get('plan', 'free') in ['featured', 'highlight', 'local', 'national', 'intermediate', 'premium'];
+      let imagesList = data.get('images', []);
+      return imagesList is list &&
+             (isFeaturedAd ? (imagesList.size() <= 10) : (imagesList.size() <= 6));
+    }
+
+    function isValidSettings(data) {
+      return data.keys().hasAll(['id', 'planDurations', 'expirationAction', 'warningDays']) &&
+             data.planDurations is map &&
+             data.expirationAction in ['archive', 'delete'] &&
+             data.warningDays is number;
+    }
+
+    function isValidAdCounterUpdate() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return affected.hasOnly(['views', 'whatsappClicks', 'businessViews']) &&
+             (!affected.hasAny(['views']) || request.resource.data.views == resource.data.get('views', 0) + 1) &&
+             (!affected.hasAny(['whatsappClicks']) || request.resource.data.whatsappClicks == resource.data.get('whatsappClicks', 0) + 1) &&
+             (!affected.hasAny(['businessViews']) || request.resource.data.businessViews == resource.data.get('businessViews', 0) + 1);
+    }
+
+    function isValidBusinessClaimRequest(data, requestId) {
+      return data.keys().hasAll(['id', 'adId', 'adTitle', 'userId', 'name', 'phone', 'email', 'status', 'createdAt']) &&
+             (data.id == requestId || data.id == "") &&
+             data.adId is string && data.adId != "" &&
+             data.adTitle is string && data.adTitle != "" &&
+             data.userId == request.auth.uid &&
+             data.name is string && data.name != "" &&
+             data.phone is string && data.phone != "" &&
+             data.email is string && data.email != "" &&
+             data.status == 'pending' &&
+             (!('message' in data) || data.message is string) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll(['id', 'adId', 'adTitle', 'sellerId', 'buyerName', 'rating', 'comment', 'success', 'createdAt', 'buyerId', 'reviewerId', 'revieweeId']) &&
+             data.id is string &&
+             data.adId is string &&
+             data.adTitle is string &&
+             (!('adCategory' in data) || data.adCategory is string) &&
+             data.sellerId is string &&
+             data.buyerId is string &&
+             data.buyerName is string &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() <= 1000 &&
+             data.success is bool &&
+             data.reviewerId is string &&
+             data.revieweeId is string &&
+             data.sellerId != data.buyerId &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidRatingUpdate() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return affected.hasOnly(['ratingAverage', 'ratingCount']) &&
+             request.resource.data.ratingCount == resource.data.get('ratingCount', 0) + 1;
+    }
+
+    function isValidSuggestion(data) {
+      return data.keys().hasAll(['name', 'email', 'message', 'status', 'createdAt']) &&
+             data.name is string &&
+             data.email is string &&
+             data.message is string &&
+             data.status == 'new' &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidPhotoStoreItem(data) {
+      return data.keys().hasAll(['title', 'description', 'price', 'imageUrl', 'active', 'createdAt', 'createdBy']) &&
+             data.title is string && data.title.size() > 0 &&
+             data.description is string &&
+             data.price is number &&
+             data.imageUrl is string &&
+             data.active is bool &&
+             data.createdAt is timestamp &&
+             data.createdBy is string;
+    }
+
+    function isValidSellerPublicProfile(data) {
+      return data.keys().hasAll(['displayName', 'country', 'createdAt', 'updatedAt']) &&
+             data.displayName is string &&
+             data.country is string &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp &&
+             (!('showcasePlan' in data) || data.showcasePlan in ['basic', 'premium', 'showcase']) &&
+             (!('productsCount' in data) || data.productsCount is number);
+    }
+
+    function isValidShowcaseProduct(data) {
+      return data.keys().hasAll(['id', 'userId', 'name', 'description', 'images', 'active', 'order', 'createdAt']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.name is string && data.name.size() > 0 &&
+             data.description is string &&
+             data.images is list &&
+             data.active is bool &&
+             data.order is number &&
+             data.createdAt is timestamp &&
+             (!('price' in data) || data.price == null || data.price is number);
+    }
+
+    function isValidShowcaseProductInterest(data) {
+      return data.get('sellerId', '') is string && data.get('sellerId', '').size() > 0 &&
+             data.get('showcaseSlug', '') is string && data.get('showcaseSlug', '').size() > 0 &&
+             data.get('productId', '') is string && data.get('productId', '').size() > 0 &&
+             data.get('productName', '') is string && data.get('productName', '').size() > 0 &&
+             data.get('source', '') == 'whatsapp' &&
+             data.get('createdAt', request.time) == request.time;
+    }
+
+    function isValidInvitationVisit(data) {
+      return data.keys().hasAll(['id', 'action', 'createdAt']) &&
+             data.id is string &&
+             data.action in ['visit', 'register_click', 'login_click'] &&
+             data.createdAt is timestamp &&
+             (!('campaign' in data) || data.campaign is string) &&
+             (!('userAgent' in data) || data.userAgent is string) &&
+             (!('country' in data) || data.country is string);
+    }
+
+    function isValidGiveaway(data) {
+      return data.keys().hasAll(['id', 'title', 'description', 'prizeImage', 'country', 'startDate', 'endDate', 'rules', 'winnersCount', 'status', 'createdAt', 'createdBy']) &&
+             data.id is string &&
+             data.title is string && data.title.size() > 0 &&
+             data.description is string &&
+             data.prizeImage is string &&
+             data.country in ['Portugal', 'Reino Unido', 'Ambos'] &&
+             data.rules is string &&
+             data.winnersCount is number &&
+             data.status in ['Ativo', 'Encerrado', 'Finalizado'] &&
+             data.createdBy is string;
+    }
+
+    function isValidParticipation(data) {
+      return data.keys().hasAll(['id', 'giveawayId', 'userId', 'userName', 'userEmail', 'sharesCount', 'ticketsCount', 'createdAt', 'updatedAt']) &&
+             data.id is string &&
+             data.giveawayId is string &&
+             data.userId == request.auth.uid &&
+             data.userName is string && data.userName.size() > 0 &&
+             data.userEmail is string &&
+             data.sharesCount is number &&
+             data.ticketsCount is number &&
+             (!('lastShareAt' in data) || data.lastShareAt is timestamp) &&
+             (!('lastShareChannel' in data) || data.lastShareChannel is string);
+    }
+
+    function isValidShare(data) {
+      return data.keys().hasAll(['giveawayId', 'userId', 'channel', 'createdAt']) &&
+             data.giveawayId is string &&
+             data.userId == request.auth.uid &&
+             data.channel is string;
+    }
+
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow write: if isAdmin() && (
+        (settingsId == 'global' && isValidSettings(request.resource.data)) ||
+        (settingsId in ['health_last_run', 'health_email_tracker'])
+      );
+    }
+
+    match /users/{userId} {
+      allow get: if isAuthenticated();
+      allow list: if request.query.limit == 0 || isAdmin() || isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if
+        (
+          isOwner(userId) && 
+          isValidUser(request.resource.data, userId) && 
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) &&
+          (!('showcaseApproved' in request.resource.data) || request.resource.data.showcaseApproved == resource.data.get('showcaseApproved', false))
+        ) ||
+        (isAuthenticated() && isValidRatingUpdate()) ||
+        isAdmin() ||
+        isModerator();
+    }
+
+    match /sellerPublicProfiles/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId) && isValidSellerPublicProfile(request.resource.data);
+      allow update: if (isOwner(userId) && isValidSellerPublicProfile(request.resource.data) && (!('showcaseApproved' in request.resource.data) || request.resource.data.showcaseApproved == resource.data.get('showcaseApproved', false))) || isAdmin() || isModerator();
+
+      match /products/{productId} {
+        allow read: if true;
+        allow create: if isOwner(userId) && isValidShowcaseProduct(request.resource.data) && request.resource.data.userId == userId &&
+                      (
+                        request.resource.data.active == false ||
+                        get(/databases/$(database)/documents/sellerPublicProfiles/$(userId)).data.get('productsCount', 0) < 6
+                      );
+        allow update: if isOwner(userId) && isValidShowcaseProduct(request.resource.data) && request.resource.data.userId == userId &&
+                      (
+                        request.resource.data.active == false ||
+                        resource.data.active == true ||
+                        get(/databases/$(database)/documents/sellerPublicProfiles/$(userId)).data.get('productsCount', 0) < 6
+                      );
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+                    request.resource.data.userId is string &&
+                    request.resource.data.read == false;
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.read == true
+      );
+      allow delete: if isAdmin();
+    }
+
+    match /ads/{adId} {
+      allow read: if true;
+
+      allow create: if isAuthenticated() &&
+                    (
+                      isAdmin() ||
+                      isModerator() ||
+                      (
+                        isValidAd(request.resource.data) &&
+                        isValidAdImagesAndPlan(request.resource.data) &&
+                        request.resource.data.status == 'pending' &&
+                        request.resource.data.category != 'Trabalho/Empregos' &&
+                        !('invitationStatus' in request.resource.data) &&
+                        !('invitationSentAt' in request.resource.data) &&
+                        !('invitationLastMessage' in request.resource.data) &&
+                        !('invitationCount' in request.resource.data)
+                      )
+                    );
+
+      allow update: if (
+        (
+          isAuthenticated() &&
+          resource.data.sellerId == request.auth.uid &&
+          isValidAd(request.resource.data) &&
+          isValidAdImagesAndPlan(request.resource.data) &&
+          request.resource.data.status == 'pending' &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isClaimableBusiness', 'claimStatus', 'claimedBy', 'claimedAt', 'sellerEmail', 'invitationStatus', 'invitationSentAt', 'invitationLastMessage', 'invitationCount']))
+        ) ||
+
+        (resource.data.status == 'approved' && isValidAdCounterUpdate()) ||
+
+        (
+          isAuthenticated() &&
+          resource.data.sellerId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'adStatus', 'buyerId', 'buyerName', 'soldAt', 'updatedAt']) &&
+          request.resource.data.status == 'approved' &&
+          request.resource.data.adStatus == 'sold' &&
+          request.resource.data.buyerId is string &&
+          request.resource.data.buyerName is string &&
+          request.resource.data.soldAt is timestamp &&
+          request.resource.data.updatedAt is timestamp
+        ) ||
+
+        (
+          isAuthenticated() &&
+          resource.data.sellerId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'adStatus', 'soldOutsidePlatform', 'soldAt', 'updatedAt']) &&
+          request.resource.data.status == 'approved' &&
+          request.resource.data.adStatus == 'sold' &&
+          request.resource.data.soldOutsidePlatform == true &&
+          request.resource.data.soldAt is timestamp &&
+          request.resource.data.updatedAt is timestamp
+        ) ||
+
+        (
+          isAuthenticated() &&
+          resource.data.sellerId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'adStatus', 'updatedAt']) &&
+          request.resource.data.status == 'approved' &&
+          request.resource.data.adStatus == 'active'
+        ) ||
+
+        (
+          isAuthenticated() &&
+          resource.data.sellerId == request.auth.uid &&
+          resource.data.status == 'approved' &&
+          (!('adStatus' in resource.data) || resource.data.adStatus == 'active') &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['isFeatured', 'featuredUntil', 'updatedAt']) &&
+          request.resource.data.isFeatured == true &&
+          request.resource.data.featuredUntil is timestamp &&
+          (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt is timestamp)
+        ) ||
+
+        isAdmin() ||
+        isModerator()
+      );
+
+      allow delete: if isAuthenticated() &&
+                    (
+                      (resource.data.get('sellerId', '') is string && resource.data.get('sellerId', '').trim() == request.auth.uid) ||
+                      isAdmin() ||
+                      isModerator()
+                    );
+    }
+
+    match /favorites/{favoriteId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /metrics/{metricId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /referrals/{referralId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.referredUserId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /adInterests/{interestId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+                    isValidReview(request.resource.data) &&
+                    request.resource.data.reviewerId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /suggestions/{suggestionId} {
+      allow read: if isAdmin();
+      allow create: if isValidSuggestion(request.resource.data);
+      allow update: if request.resource.data.status in ['new', 'reviewed', 'archived'] &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                    isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /photoStoreItems/{itemId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidPhotoStoreItem(request.resource.data);
+      allow update: if isAdmin() && isValidPhotoStoreItem(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /marketing_materials/{materialId} {
+      allow read: if true;
+      allow create, update: if isAdmin() || isModerator();
+      allow delete: if isAdmin();
+    }
+
+    match /marketing_categories/{categoryId} {
+      allow read: if true;
+      allow create, update: if isAdmin() || isModerator();
+      allow delete: if isAdmin();
+    }
+
+    match /showcaseStats/{sellerId} {
+      allow get: if true;
+      allow create, update: if true;
+
+      match /dailyStats/{dateStr} {
+        allow get: if true;
+        allow read: if isOwner(sellerId) || isAdmin();
+        allow create, update: if true;
+      }
+    }
+
+    match /showcaseProductInterests/{interestId} {
+      allow create: if isValidShowcaseProductInterest(request.resource.data);
+      allow read: if isAuthenticated() && (resource.data.sellerId == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if isAuthenticated() && (resource.data.sellerId == request.auth.uid || isAdmin());
+    }
+
+    match /invitationVisits/{visitId} {
+      allow read: if isAdmin();
+      allow create: if isValidInvitationVisit(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /giveaways/{giveawayId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /participations/{participationId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidParticipation(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.userId == request.auth.uid && isValidParticipation(request.resource.data));
+      allow delete: if isAdmin();
+    }
+
+    match /shares/{shareId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidShare(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /draw_history/{drawId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /system_health_alerts/{alertId} {
+      allow read, write: if isAdmin() || isModerator();
+    }
+
+    match /system_health_events/{eventId} {
+      allow read, write, create: if true;
+    }
+
+    match /businessClaimRequests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || isModerator() || (
+        isAuthenticated() &&
+        request.auth.uid == resource.data.userId &&
+        request.resource.data.verificationStatus == 'confirmed' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['verificationStatus', 'verificationConfirmedAt'])
+      );
+      allow delete: if isAdmin() || isModerator();
+    }
+
+    match /videos/{videoId} {
+      allow read: if true;
+      allow create: if isAdmin() || (
+        isContentCreator() &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.createdByRole == 'content_creator' &&
+        request.resource.data.get('isFeatured', false) == false
+      );
+      allow update: if isAdmin() || (
+        isContentCreator() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId &&
+        request.resource.data.createdByRole == resource.data.createdByRole &&
+        request.resource.data.get('isFeatured', false) == resource.data.get('isFeatured', false)
+      );
+      allow delete: if isAdmin() || (
+        isContentCreator() &&
+        resource.data.ownerId == request.auth.uid
+      );
+    }
+  }
+}

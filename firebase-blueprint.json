@@ -1,0 +1,509 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin", "moderator"] },
+        "acceptedTerms": { "type": "boolean" },
+        "acceptedTermsAt": { "type": "string", "format": "date-time" },
+        "ratingAverage": { "type": "number" },
+        "ratingCount": { "type": "number" },
+        "referralCode": { "type": "string" },
+        "referredUsersCount": { "type": "number" },
+        "referredBy": { "type": "string" },
+        "referralCredits": { "type": "number" }
+      },
+      "required": ["uid", "name", "email", "phone", "role", "acceptedTerms", "acceptedTermsAt"]
+    },
+    "Ad": {
+      "title": "Ad",
+      "description": "Marketplace advertisement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "city": { "type": "string" },
+        "category": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "sellerPhone": { "type": "string" },
+        "sellerName": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "expired", "archived", "sold"] },
+        "adStatus": { "type": "string", "enum": ["active", "near_expiration", "expired", "archived", "sold"] },
+        "plan": { "type": "string", "enum": ["free", "intermediate", "premium"] },
+        "expirationDate": { "type": "string", "format": "date-time" },
+        "renewalHistory": { "type": "array" },
+        "views": { "type": "number" },
+        "whatsappClicks": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isFeatured": { "type": "boolean" },
+        "featuredUntil": { "type": "string", "format": "date-time" },
+        "soldOutsidePlatform": { "type": "boolean" },
+        "isClaimableBusiness": { "type": "boolean" },
+        "claimStatus": { "type": "string", "enum": ["unclaimed", "pending", "claimed"] },
+        "claimedBy": { "type": "string" },
+        "claimedAt": { "type": "string", "format": "date-time" },
+        "businessViews": { "type": "number" },
+        "invitationMilestonesSent": { "type": "array", "items": { "type": "string" } },
+        "serviceCoverage": { "type": "string", "enum": ["city", "radius20", "radius50", "county", "uk", "portugal", "online"] }
+      },
+      "required": ["id", "title", "description", "imageUrl", "city", "category", "sellerId", "sellerPhone", "sellerName", "status", "createdAt"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Global marketplace settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "planDurations": { "type": "object" },
+        "maxImages": { "type": "object" },
+        "expirationAction": { "type": "string", "enum": ["archive", "delete"] },
+        "warningDays": { "type": "number" }
+      },
+      "required": ["id", "planDurations", "expirationAction", "warningDays"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "System notification for users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["expiration_warning", "ad_expired", "ad_approved"] },
+        "adId": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "message", "type", "read", "createdAt"]
+    },
+    "Favorite": {
+      "title": "Favorite",
+      "description": "User's favorite advertisements",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "adId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "adId", "createdAt"]
+    },
+    "Metric": {
+      "title": "Metric",
+      "description": "Daily aggregated metrics",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "users": { "type": "object" },
+        "ads": { "type": "object" },
+        "interactions": { "type": "object" },
+        "notifications": { "type": "object" }
+      },
+      "required": ["id", "date", "users", "ads", "interactions", "notifications"]
+    },
+    "Report": {
+      "title": "Report",
+      "description": "User report for an advertisement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "adId": { "type": "string" },
+        "userId": { "type": "string" },
+        "reason": { "type": "string" },
+        "details": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "resolved", "dismissed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "adId", "userId", "reason", "status", "createdAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User review after a transaction",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "adId": { "type": "string" },
+        "adTitle": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "success": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "adId", "adTitle", "sellerId", "buyerName", "rating", "comment", "success", "createdAt"]
+    },
+    "Referral": {
+      "title": "Referral",
+      "description": "User referral tracking record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "inviterId": { "type": "string" },
+        "inviterCode": { "type": "string" },
+        "referredUserId": { "type": "string" },
+        "referredName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "inviterId", "inviterCode", "referredUserId", "referredName", "createdAt"]
+    },
+    "Suggestion": {
+      "title": "Suggestion",
+      "description": "User suggestions and ideas for platform improvement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "reviewed", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "message", "status", "createdAt"]
+    },
+    "SellerPublicProfile": {
+      "title": "SellerPublicProfile",
+      "description": "Public profiles of sellers with non-sensitive information",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "city": { "type": "string" },
+        "country": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["displayName", "country", "createdAt", "updatedAt"]
+    },
+    "AdInterest": {
+      "title": "AdInterest",
+      "description": "Expressed user interest in an advertisement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "adId": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "interestedUserId": { "type": "string" },
+        "interestedUserName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string", "enum": ["whatsapp"] }
+      },
+      "required": ["id", "adId", "sellerId", "interestedUserId", "interestedUserName", "createdAt", "source"]
+    },
+    "MarketingMaterial": {
+      "title": "MarketingMaterial",
+      "description": "Dynamic material for marketing campaigns",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "type": { "type": "string", "enum": ["Texto", "Imagem/Banner", "Vídeo", "Link"] },
+        "description": { "type": "string" },
+        "content": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["id", "title", "category", "type", "description", "content", "createdAt", "createdBy"]
+    },
+    "PhotoStoreItem": {
+      "title": "PhotoStoreItem",
+      "description": "Digital photo item for sale in store",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["title", "description", "price", "imageUrl", "active", "createdAt", "createdBy"]
+    },
+    "ShowcaseProduct": {
+      "title": "ShowcaseProduct",
+      "description": "Product or service offered in an entrepreneur's digital showcase",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "active": { "type": "boolean" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "name", "description", "images", "active", "order", "createdAt"]
+    },
+    "ShowcaseProductInterest": {
+      "title": "ShowcaseProductInterest",
+      "description": "Expressed buyer interest in showcase products & services",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "showcaseSlug": { "type": "string" },
+        "productId": { "type": "string" },
+        "productName": { "type": "string" },
+        "productPrice": { "type": "number" },
+        "productImageUrl": { "type": "string" },
+        "buyerId": { "type": "string" },
+        "buyerName": { "type": "string" },
+        "buyerEmail": { "type": "string" },
+        "buyerPhone": { "type": "string" },
+        "message": { "type": "string" },
+        "source": { "type": "string", "enum": ["whatsapp"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "country": { "type": "string" },
+        "city": { "type": "string" }
+      },
+      "required": ["id", "sellerId", "showcaseSlug", "productId", "productName", "source", "createdAt"]
+    },
+    "InvitationVisit": {
+      "title": "InvitationVisit",
+      "description": "Metric tracking of visits/actions on invitation page",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "campaign": { "type": "string" },
+        "action": { "type": "string", "enum": ["visit", "register_click", "login_click"] },
+        "userAgent": { "type": "string" },
+        "userAgentSimplified": { "type": "string" },
+        "country": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "action", "createdAt"]
+    },
+    "Giveaway": {
+      "title": "Giveaway",
+      "description": "Campaign Giveaway and Raffles",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "prizeImage": { "type": "string" },
+        "country": { "type": "string", "enum": ["Portugal", "Reino Unido", "Ambos"] },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "rules": { "type": "string" },
+        "winnersCount": { "type": "number" },
+        "status": { "type": "string", "enum": ["Ativo", "Encerrado", "Finalizado"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" },
+        "winners": { "type": "array" }
+      },
+      "required": ["id", "title", "description", "prizeImage", "country", "startDate", "endDate", "rules", "winnersCount", "status", "createdAt", "createdBy"]
+    },
+    "GiveawayParticipation": {
+      "title": "GiveawayParticipation",
+      "description": "User participation in a giveaway",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "giveawayId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "sharesCount": { "type": "number" },
+        "ticketsCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "giveawayId", "userId", "userName", "userEmail", "sharesCount", "ticketsCount", "createdAt", "updatedAt"]
+    },
+    "GiveawayShare": {
+      "title": "GiveawayShare",
+      "description": "User share entry for a giveaway",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "giveawayId": { "type": "string" },
+        "userId": { "type": "string" },
+        "channel": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["giveawayId", "userId", "channel", "createdAt"]
+    },
+    "DrawHistory": {
+      "title": "DrawHistory",
+      "description": "Historical records of performed giveaway draws",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "giveawayId": { "type": "string" },
+        "giveawayTitle": { "type": "string" },
+        "drawNumber": { "type": "number" },
+        "prizeImage": { "type": "string" },
+        "country": { "type": "string" },
+        "winners": { "type": "array" },
+        "drawnAt": { "type": "string", "format": "date-time" },
+        "isDemo": { "type": "boolean" }
+      },
+      "required": ["giveawayId", "giveawayTitle", "drawnAt", "winners"]
+    },
+    "BusinessClaimRequest": {
+      "title": "BusinessClaimRequest",
+      "description": "User request to claim ownership of an advertisement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "adId": { "type": "string" },
+        "adTitle": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "processedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "adId", "adTitle", "userId", "name", "phone", "email", "status", "createdAt"]
+    },
+    "CommunityVideo": {
+      "title": "CommunityVideo",
+      "description": "Video produced by the community",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "slug": { "type": "string" },
+        "youtubeUrl": { "type": "string" },
+        "youtubeId": { "type": "string" },
+        "title": { "type": "string" },
+        "channelName": { "type": "string" },
+        "category": { "type": "string", "enum": ["Notícias", "Empreendedorismo", "Reino Unido", "Portugal", "Imigração", "Turismo", "Gastronomia", "Música", "Humor", "Educação", "Tecnologia", "Comunidade"] },
+        "country": { "type": "string", "enum": ["🇬🇧 Reino Unido", "🇵🇹 Portugal"] },
+        "description": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "isFeatured": { "type": "boolean" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "channelId": { "type": "string" },
+        "channelUrl": { "type": "string" },
+        "createdByRole": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "disabled"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "slug", "youtubeUrl", "youtubeId", "title", "channelName", "category", "country", "thumbnailUrl", "isFeatured", "active", "createdAt", "createdBy"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/ads/{adId}": {
+      "schema": "Ad",
+      "description": "Advertisements"
+    },
+    "/settings/{settingsId}": {
+      "schema": "Settings",
+      "description": "Global settings"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    },
+    "/favorites/{favoriteId}": {
+      "schema": "Favorite",
+      "description": "User favorites"
+    },
+    "/metrics/{metricId}": {
+      "schema": "Metric",
+      "description": "Daily metrics"
+    },
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Ad reports"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "User reviews"
+    },
+    "/referrals/{referralId}": {
+      "schema": "Referral",
+      "description": "User referral trackings"
+    },
+    "/suggestions/{suggestionId}": {
+      "schema": "Suggestion",
+      "description": "User suggestions and ideas"
+    },
+    "/sellerPublicProfiles/{userId}": {
+      "schema": "SellerPublicProfile",
+      "description": "Public profiles of sellers"
+    },
+    "/adInterests/{interestId}": {
+      "schema": "AdInterest",
+      "description": "User expressions of interest"
+    },
+    "/marketing_materials/{materialId}": {
+      "schema": "MarketingMaterial",
+      "description": "Marketing materials"
+    },
+    "/photoStoreItems/{itemId}": {
+      "schema": "PhotoStoreItem",
+      "description": "Digital photos for sale"
+    },
+    "/sellerPublicProfiles/{userId}/products/{productId}": {
+      "schema": "ShowcaseProduct",
+      "description": "Products and services in digital showcase"
+    },
+    "/showcaseProductInterests/{interestId}": {
+      "schema": "ShowcaseProductInterest",
+      "description": "Expressed buyer interests in showcase products & services"
+    },
+    "/invitationVisits/{visitId}": {
+      "schema": "InvitationVisit",
+      "description": "Tracking of visits and actions on invitation page"
+    },
+    "/giveaways/{giveawayId}": {
+      "schema": "Giveaway",
+      "description": "Campaign Giveaway and Raffles"
+    },
+    "/participations/{participationId}": {
+      "schema": "GiveawayParticipation",
+      "description": "User participation in a giveaway"
+    },
+    "/shares/{shareId}": {
+      "schema": "GiveawayShare",
+      "description": "User share tracks"
+    },
+    "/draw_history/{drawId}": {
+      "schema": "DrawHistory",
+      "description": "Historical log of conducted lottery drawings"
+    },
+    "/businessClaimRequests/{requestId}": {
+      "schema": "BusinessClaimRequest",
+      "description": "Requests to claim owner status on advertisements"
+    },
+    "/videos/{videoId}": {
+      "schema": "CommunityVideo",
+      "description": "Videos of the community"
+    }
+  }
+}

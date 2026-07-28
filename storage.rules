@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isStaff() {
+      return isAuthenticated() && (
+        request.auth.token.email == "valtailubereats@gmail.com" ||
+        request.auth.token.email == "generalsales2021@gmail.com" ||
+        (
+          firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+          (
+            firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+            firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'moderator'
+          )
+        )
+      );
+    }
+
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /showcases/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /marketing/{allPaths=**} {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+  }
+}

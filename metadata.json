@@ -1,0 +1,8 @@
+{
+  "name": "ConnectBoat",
+  "description": "Modern marketplace for buying, selling and hiring boats across the United Kingdom.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

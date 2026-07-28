@@ -1,0 +1,36 @@
+{
+  "name": "Mercado Luso",
+  "short_name": "MercadoLuso",
+  "description": "Marketplace da comunidade lusófona e anúncios classificados em Portugal.",
+  "id": "/",
+  "scope": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#1a73e8",
+  "theme_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icons/icon-72.png", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-96.png", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-128.png", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-144.png", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-152.png", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-192.png", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-384.png", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-wide.png",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Plataforma Mercado Luso no Computador"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "type": "image/png",
+      "label": "Aplicativo Mercado Luso no Smartphone"
+    }
+  ]
+}

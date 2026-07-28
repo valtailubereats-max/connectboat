@@ -1,0 +1,173 @@
+import express from 'express';
+import path from 'path';
+import dotenv from 'dotenv';
+import { createServer as createViteServer } from 'vite';
+
+// Carregar variáveis de ambiente de .env
+dotenv.config();
+
+import importAdHandler from './api/import-ad.ts';
+import geminiAnalyzeHandler from './api/gemini/analyze.ts';
+import emailSendHandler from './api/email/send.ts';
+import productSeoHandler from './api/product-seo.ts';
+import seoHandler from './api/seo.ts';
+import sitemapHandler from './api/sitemap.ts';
+
+async function startServer() {
+  const app = express();
+  const PORT = Number(process.env.PORT) || 3000;
+
+  // Middlewares de parse JSON e URL Encoded para requisições das APIs
+  app.use(express.json({ limit: '20mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+  // Middleware global para rotas de API: CORS e cabeçalhos de resposta
+  app.use('/api/*', (req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.status(200).end();
+    }
+    next();
+  });
+
+  // Rotas de API Backend
+  app.post('/api/import-ad', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      await importAdHandler(req, res);
+    } catch (err: any) {
+      console.error('[Server Error /api/import-ad]:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, stage: 'Server Exception', error: err.message || 'Erro interno no servidor' });
+      }
+    }
+  });
+
+  app.post('/api/gemini/analyze', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      await geminiAnalyzeHandler(req, res);
+    } catch (err: any) {
+      console.error('[Server Error /api/gemini/analyze]:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: err.message || 'Erro interno no servidor' });
+      }
+    }
+  });
+
+  app.post('/api/email/send', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      await emailSendHandler(req, res);
+    } catch (err: any) {
+      console.error('[Server Error /api/email/send]:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: err.message || 'Erro interno no servidor' });
+      }
+    }
+  });
+
+  app.all('/api/product-seo', async (req, res) => {
+    try {
+      await productSeoHandler(req as any, res as any);
+    } catch (err: any) {
+      console.error('[Server Error /api/product-seo]:', err);
+      if (!res.headersSent) {
+        res.status(500).send('Internal Server Error');
+      }
+    }
+  });
+
+  app.all('/api/seo', async (req, res) => {
+    try {
+      await seoHandler(req as any, res as any);
+    } catch (err: any) {
+      console.error('[Server Error /api/seo]:', err);
+      if (!res.headersSent) {
+        res.status(500).send('Internal Server Error');
+      }
+    }
+  });
+
+  app.get(['/sitemap.xml', '/api/sitemap'], async (req, res) => {
+    try {
+      await sitemapHandler(req as any, res as any);
+    } catch (err: any) {
+      console.error('[Server Error /sitemap]:', err);
+      if (!res.headersSent) {
+        res.status(500).send('Internal Server Error');
+      }
+    }
+  });
+
+  app.get('/api/health', (_req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // Handler de segurança 404 exclusivo para rotas de API: impede que chamadas /api/* caiam no index.html da SPA
+  app.all('/api/*', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.status(404).json({
+      success: false,
+      error: `API endpoint não encontrado: ${req.method} ${req.originalUrl}`
+    });
+  });
+
+  // Reescritas para crawlers de redes sociais (OpenGraph/Twitter Cards)
+  const crawlerUserAgents = /facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot|bingbot|googlebot/i;
+
+  app.get('/anuncio/:slugAndId', async (req, res, next) => {
+    const userAgent = req.headers['user-agent'] || '';
+    if (crawlerUserAgents.test(userAgent)) {
+      try {
+        return await seoHandler(req as any, res as any);
+      } catch (e) {
+        console.error('Erro ao servir SEO de anúncio para crawler:', e);
+      }
+    }
+    next();
+  });
+
+  app.get('/empreendedores/:showcaseSlug/produto/:productId', async (req, res, next) => {
+    const userAgent = req.headers['user-agent'] || '';
+    if (crawlerUserAgents.test(userAgent)) {
+      try {
+        return await productSeoHandler(req as any, res as any);
+      } catch (e) {
+        console.error('Erro ao servir SEO de produto para crawler:', e);
+      }
+    }
+    next();
+  });
+
+  // Servidor estático em produção vs middleware do Vite em desenvolvimento
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      if (req.originalUrl.startsWith('/api/') || req.path.startsWith('/api/')) {
+        res.setHeader('Content-Type', 'application/json');
+        return res.status(404).json({
+          success: false,
+          error: `API endpoint não encontrado: ${req.method} ${req.originalUrl}`
+        });
+      }
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[ConnectBoat Server] Escutando em http://0.0.0.0:${PORT} (NODE_ENV=${process.env.NODE_ENV || 'development'})`);
+  });
+}
+
+startServer();

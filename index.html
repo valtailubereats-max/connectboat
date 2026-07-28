@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ConnectBoat - UK & Europe Boat Marketplace</title>
+    <meta name="description" content="ConnectBoat - Buy and sell new and used boats, yachts, marine equipment, and nautical services across the UK and Europe." />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ConnectBoat" />
+    <meta property="og:title" content="ConnectBoat - Marine & Boat Marketplace" />
+    <meta property="og:description" content="Buy and sell boats, yachts, jet skis, marine engines and nautical services on ConnectBoat." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ConnectBoat - Marine & Boat Marketplace" />
+    <meta name="twitter:description" content="Buy and sell boats, yachts, jet skis, marine engines and nautical services." />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/x-icon" href="/icons/favicon.ico" />
+    <meta name="theme-color" content="#0284c7" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="ConnectBoat" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((reg) => {
+              console.log('[PWA] Service Worker registrado com sucesso:', reg.scope);
+              
+              // Handle update detection automatically
+              reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                if (installingWorker) {
+                  installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed') {
+                      if (navigator.serviceWorker.controller) {
+                        console.log('[PWA] Nova atualização disponível! Recarregando...');
+                        window.location.reload();
+                      } else {
+                        console.log('[PWA] Aplicativo pronto para uso offline!');
+                      }
+                    }
+                  };
+                }
+              };
+            })
+            .catch((err) => {
+              console.error('[PWA] Falha ao registrar Service Worker:', err);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
+
