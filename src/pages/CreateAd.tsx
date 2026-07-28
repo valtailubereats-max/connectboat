@@ -109,11 +109,11 @@ const CreateAd = () => {
     targetUrl: '',
     serviceCoverage: prefill?.serviceCoverage || 'city',
     // Boating fields (Phase 4)
-    boatType: prefill?.boatType || BOAT_TYPES[0],
+    boatType: prefill?.boatType || '',
     manufacturer: prefill?.manufacturer || '',
     model: prefill?.model || '',
     year: prefill?.year ? prefill.year.toString() : '',
-    condition: prefill?.condition || BOAT_CONDITIONS[1],
+    condition: prefill?.condition || '',
     length: prefill?.length || '',
     beam: prefill?.beam || '',
     draft: prefill?.draft || '',
@@ -471,25 +471,25 @@ const CreateAd = () => {
           listingType: data.listingType || 'normal',
           targetUrl: data.targetUrl || '',
           serviceCoverage: (data as any).serviceCoverage || 'city',
-          boatType: data.boatType || BOAT_TYPES[0],
+          boatType: data.boatType || '',
           manufacturer: data.manufacturer || '',
           model: data.model || '',
-          year: data.year ? data.year.toString() : new Date().getFullYear().toString(),
-          condition: data.condition || BOAT_CONDITIONS[1],
+          year: data.year ? data.year.toString() : '',
+          condition: data.condition || '',
           length: data.length || '',
           beam: data.beam || '',
           draft: data.draft || '',
-          fuelType: data.fuelType || BOAT_FUEL_TYPES[0],
+          fuelType: data.fuelType || '',
           engineBrand: data.engineBrand || '',
           horsepower: data.horsepower || '',
           engineHours: data.engineHours || '',
           cabins: data.cabins || '',
           berths: data.berths || '',
           bathrooms: data.bathrooms || '',
-          hullMaterial: data.hullMaterial || BOAT_HULL_MATERIALS[0],
-          trailerIncluded: data.trailerIncluded || 'No',
-          vatPaid: data.vatPaid || 'Yes',
-          ceCertified: data.ceCertified || 'Yes'
+          hullMaterial: data.hullMaterial || '',
+          trailerIncluded: data.trailerIncluded || '',
+          vatPaid: data.vatPaid || '',
+          ceCertified: data.ceCertified || ''
         });
         setImagePositionX(data.imagePositionX !== undefined ? data.imagePositionX : 50);
         setImagePositionY(data.imagePositionY !== undefined ? data.imagePositionY : 50);
@@ -799,28 +799,6 @@ const CreateAd = () => {
       return;
     }
 
-    // Required Boat Fields Validation
-    if (!formData.boatType) {
-      showValidationError('Por favor selecione o Tipo de Barco.', 'sel-boat-type');
-      return;
-    }
-    if (!formData.manufacturer?.trim()) {
-      showValidationError('Por favor introduza o Fabricante / Marca do barco.', 'txt-manufacturer');
-      return;
-    }
-    if (!formData.model?.trim()) {
-      showValidationError('Por favor introduza o Modelo do barco.', 'txt-model');
-      return;
-    }
-    if (!formData.year) {
-      showValidationError('Por favor introduza o Ano de Fabrico do barco.', 'txt-year');
-      return;
-    }
-    if (!formData.condition) {
-      showValidationError('Por favor selecione a Condição do barco.', 'sel-condition');
-      return;
-    }
-
     if (formData.images.length === 0) {
       showValidationError('Por favor carregue pelo menos uma imagem para o seu anúncio.', 'sec-images-upload');
       return;
@@ -908,7 +886,7 @@ const CreateAd = () => {
         targetUrl: isAdmin ? (formData.listingType === 'informativo' ? formData.targetUrl.trim() : '') : (originalAd?.targetUrl || ''),
         serviceCoverage: (formData.category === 'Serviços' || formData.category?.startsWith('Serviços') || formData.category?.includes('Serviços')) ? (formData.serviceCoverage || 'city') : 'city',
         // Boating fields (Phase 4)
-        boatType: formData.boatType || BOAT_TYPES[0],
+        boatType: formData.boatType || '',
         manufacturer: formData.manufacturer.trim(),
         model: formData.model.trim(),
         year: formData.year ? parseInt(formData.year.toString()) || formData.year : '',
@@ -924,9 +902,9 @@ const CreateAd = () => {
         berths: formData.berths.trim(),
         bathrooms: formData.bathrooms.trim(),
         hullMaterial: formData.hullMaterial || '',
-        trailerIncluded: formData.trailerIncluded || 'No',
-        vatPaid: formData.vatPaid || 'Yes',
-        ceCertified: formData.ceCertified || 'Yes'
+        trailerIncluded: formData.trailerIncluded || '',
+        vatPaid: formData.vatPaid || '',
+        ceCertified: formData.ceCertified || ''
       };
 
       if (formData.category === '💚 Doações & Solidariedade') {
@@ -1262,11 +1240,11 @@ const CreateAd = () => {
             category: matchedCategory || prev.category, // fallback nicely but keep empty choice as principal
             images: images && Array.isArray(images) && images.length > 0 ? images : prev.images,
             sourceUrl: importUrl,
-            boatType: result.data.boatType !== undefined && result.data.boatType !== null && result.data.boatType !== '' ? result.data.boatType : (prev.boatType || BOAT_TYPES[0]),
+            boatType: result.data.boatType !== undefined && result.data.boatType !== null ? result.data.boatType : (prev.boatType || ''),
             manufacturer: result.data.manufacturer ?? '',
             model: result.data.model ?? '',
             year: result.data.year !== undefined && result.data.year !== null ? result.data.year.toString() : '',
-            condition: result.data.condition !== undefined && result.data.condition !== null && result.data.condition !== '' ? result.data.condition : (prev.condition || BOAT_CONDITIONS[1]),
+            condition: result.data.condition !== undefined && result.data.condition !== null ? result.data.condition : (prev.condition || ''),
             length: result.data.length ?? '',
             beam: result.data.beam ?? '',
             draft: result.data.draft ?? '',
@@ -1719,21 +1697,20 @@ const CreateAd = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
-                    Identificação do Barco <span className="text-xs font-semibold text-indigo-300 bg-indigo-500/20 px-2.5 py-0.5 rounded-full border border-indigo-400/30">Obrigatório</span>
+                    Identificação do Barco <span className="text-xs font-semibold text-emerald-300 bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-400/30">Opcional</span>
                   </h3>
-                  <p className="text-xs text-slate-300 mt-0.5">Preencha os dados da embarcação para criar o anúncio profissional ConnectBoat.</p>
+                  <p className="text-xs text-slate-300 mt-0.5">Preencha os dados da embarcação se desejar especificar detalhes técnicos.</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {/* Boat Type */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Tipo de Barco *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Tipo de Barco</label>
                   <select
                     id="sel-boat-type"
                     value={formData.boatType}
                     onChange={(e) => setFormData({ ...formData, boatType: e.target.value })}
-                    required
                     disabled={!isAdmin && isEditLocked}
                     className="w-full px-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-indigo-400 text-white outline-none transition-all font-medium text-sm disabled:opacity-50"
                   >
@@ -1746,14 +1723,13 @@ const CreateAd = () => {
 
                 {/* Manufacturer */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Fabricante / Marca *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Fabricante / Marca</label>
                   <input
                     id="txt-manufacturer"
                     type="text"
                     value={formData.manufacturer}
                     onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
                     placeholder="Ex: Princess, Sunseeker, Bavaria"
-                    required
                     disabled={!isAdmin && isEditLocked}
                     className="w-full px-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-indigo-400 text-white outline-none transition-all text-sm disabled:opacity-50"
                   />
@@ -1761,14 +1737,13 @@ const CreateAd = () => {
 
                 {/* Model */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Modelo *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Modelo</label>
                   <input
                     id="txt-model"
                     type="text"
                     value={formData.model}
                     onChange={(e) => setFormData({ ...formData, model: e.target.value })}
                     placeholder="Ex: V48, Oceanis 40.1"
-                    required
                     disabled={!isAdmin && isEditLocked}
                     className="w-full px-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-indigo-400 text-white outline-none transition-all text-sm disabled:opacity-50"
                   />
@@ -1776,7 +1751,7 @@ const CreateAd = () => {
 
                 {/* Year */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Ano de Fabrico *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Ano de Fabrico</label>
                   <input
                     id="txt-year"
                     type="number"
@@ -1785,7 +1760,6 @@ const CreateAd = () => {
                     value={formData.year}
                     onChange={(e) => setFormData({ ...formData, year: e.target.value })}
                     placeholder="Ex: 2021"
-                    required
                     disabled={!isAdmin && isEditLocked}
                     className="w-full px-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-indigo-400 text-white outline-none transition-all text-sm disabled:opacity-50"
                   />
@@ -1793,12 +1767,11 @@ const CreateAd = () => {
 
                 {/* Condition */}
                 <div className="space-y-2 md:col-span-2 lg:col-span-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Condição do Barco *</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Condição do Barco</label>
                   <select
                     id="sel-condition"
                     value={formData.condition}
                     onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-                    required
                     disabled={!isAdmin && isEditLocked}
                     className="w-full px-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-indigo-400 text-white outline-none transition-all font-medium text-sm disabled:opacity-50"
                   >

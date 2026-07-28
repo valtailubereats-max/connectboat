@@ -632,36 +632,6 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
                 <span className="truncate">{ad.category}</span>
               </div>
             )}
-
-            {/* Nautical Specifications Technical Summary Pills */}
-            {!useCompactMode && (ad.year || ad.length || ad.horsepower || ad.cabins) && (
-              <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                {ad.year && (
-                  <span className="inline-flex items-center gap-1 text-[9px] md:text-[10px] font-extrabold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md border border-slate-200/60">
-                    <Calendar size={10} className="text-slate-500 shrink-0" />
-                    <span>{ad.year}</span>
-                  </span>
-                )}
-                {ad.length && (
-                  <span className="inline-flex items-center gap-1 text-[9px] md:text-[10px] font-extrabold bg-sky-50 text-sky-800 px-1.5 py-0.5 rounded-md border border-sky-100">
-                    <Ruler size={10} className="text-sky-600 shrink-0" />
-                    <span>{ad.length}</span>
-                  </span>
-                )}
-                {ad.horsepower && (
-                  <span className="inline-flex items-center gap-1 text-[9px] md:text-[10px] font-extrabold bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded-md border border-amber-100">
-                    <Gauge size={10} className="text-amber-600 shrink-0" />
-                    <span>{ad.horsepower}</span>
-                  </span>
-                )}
-                {ad.cabins && (
-                  <span className="inline-flex items-center gap-1 text-[9px] md:text-[10px] font-extrabold bg-indigo-50 text-indigo-800 px-1.5 py-0.5 rounded-md border border-indigo-100">
-                    <Bed size={10} className="text-indigo-600 shrink-0" />
-                    <span>{ad.cabins} Cab.</span>
-                  </span>
-                )}
-              </div>
-            )}
           </div>
 
           {!useCompactMode && (
