@@ -22,7 +22,8 @@ import {
   Gift,
   Activity,
   UserCheck,
-  Film
+  Film,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -88,6 +89,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin/dashboard' },
     { icon: Activity, label: 'System Health', path: '/admin/health' },
+    { icon: Upload, label: 'Bulk Import Listings', path: '/admin/bulk-import' },
+    { icon: Sparkles, label: 'Demo Content', path: '/admin/demo-content' },
     { icon: Upload, label: 'Import via AI', path: '/admin/import' },
     { icon: ShoppingBag, label: 'Manage Listings', path: '/admin/ads' },
     { icon: Store, label: 'Marine Showcases', path: '/admin/showcases' },

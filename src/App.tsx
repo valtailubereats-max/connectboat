@@ -17,6 +17,8 @@ import Campanhas from './pages/Campanhas';
 import CreateAd from './pages/CreateAd';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminImport from './pages/AdminImport';
+import AdminBulkImport from './pages/AdminBulkImport';
+import AdminDemoListings from './pages/AdminDemoListings';
 import AdminMarketing from './pages/AdminMarketing';
 import AdminAds from './pages/AdminAds';
 import AdminSettings from './pages/AdminSettings';
@@ -1006,6 +1008,8 @@ export default function App() {
                 <Route path="/admin/health" element={<AdminLayout><AdminSystemHealth /></AdminLayout>} />
                 <Route path="/admin/showcases" element={<AdminLayout><AdminShowcases /></AdminLayout>} />
                 <Route path="/admin/import" element={<AdminLayout><AdminImport /></AdminLayout>} />
+                <Route path="/admin/bulk-import" element={<AdminLayout><AdminBulkImport /></AdminLayout>} />
+                <Route path="/admin/demo-content" element={<AdminLayout><AdminDemoListings /></AdminLayout>} />
                 <Route path="/admin/marketing" element={<AdminLayout><AdminMarketing /></AdminLayout>} />
                 <Route path="/admin/ads" element={<AdminLayout><AdminAds /></AdminLayout>} />
                 <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />

@@ -1,5 +1,5 @@
-export type AdStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'archived' | 'sold';
-export type AdLifecycleStatus = 'active' | 'near_expiration' | 'expired' | 'archived' | 'sold';
+export type AdStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'expired' | 'archived' | 'sold';
+export type AdLifecycleStatus = 'active' | 'inactive' | 'near_expiration' | 'expired' | 'archived' | 'sold';
 export type AdPlan = 'free' | 'local' | 'national' | 'highlight' | 'intermediate' | 'premium';
 
 export interface RenewalAction {
@@ -145,6 +145,14 @@ export interface Ad {
   soldAt?: any; // Firestore Timestamp
   soldOutsidePlatform?: boolean;
   sourceUrl?: string;
+  externalListing?: boolean;
+  demoListing?: boolean;
+  sourceSite?: string;
+  sourceListingId?: string;
+  sourceCheckedAt?: any;
+  importedBy?: string;
+  importedAt?: any;
+  externalStatus?: 'active' | 'removed' | 'unknown';
   salary?: string;
   contractType?: string;
   workSchedule?: string;

@@ -8,10 +8,14 @@ import { CITIES } from '../types';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
+import AdminDemoListings from './AdminDemoListings';
+import AdminBulkImport from './AdminBulkImport';
+
 const AdminImport = () => {
   const { categories } = useSettings();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'bulk' | 'print' | 'demo'>('bulk');
   const [image, setImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -88,17 +92,62 @@ const AdminImport = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Importador Inteligente</h1>
-        <p className="text-slate-500 font-medium">Extraia informações de anúncios via IA.</p>
+    <div className="space-y-6">
+      {/* Tab Switcher */}
+      <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-2xl w-fit border border-slate-200">
+        <button
+          onClick={() => setActiveTab('bulk')}
+          className={`px-5 py-2.5 rounded-xl font-extrabold text-xs transition flex items-center gap-2 cursor-pointer ${
+            activeTab === 'bulk'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Sparkles size={16} />
+          <span>Bulk Import Listings (URLs)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('print')}
+          className={`px-5 py-2.5 rounded-xl font-extrabold text-xs transition flex items-center gap-2 cursor-pointer ${
+            activeTab === 'print'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Upload size={16} />
+          <span>Extração via Print / IA</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('demo')}
+          className={`px-5 py-2.5 rounded-xl font-extrabold text-xs transition flex items-center gap-2 cursor-pointer ${
+            activeTab === 'demo'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Sparkles size={16} />
+          <span>Gerador Demo Fixo</span>
+        </button>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100"
-      >
+      {activeTab === 'bulk' ? (
+        <AdminBulkImport />
+      ) : activeTab === 'demo' ? (
+        <AdminDemoListings />
+      ) : (
+        <>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Importador Inteligente por Print</h1>
+            <p className="text-slate-500 font-medium">Faça upload de um print/captura de ecrã para extrair informações via IA.</p>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100"
+          >
         <div className="space-y-8">
           <div 
             onClick={() => !analyzing && fileInputRef.current?.click()}
@@ -209,8 +258,10 @@ const AdminImport = () => {
           </AnimatePresence>
         </div>
       </motion.div>
-    </div>
-  );
+    </>
+  )}
+</div>
+);
 };
 
 export default AdminImport;

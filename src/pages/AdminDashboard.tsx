@@ -499,6 +499,14 @@ const AdminDashboard = () => {
         </div>
         
         <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
+          {/* Bulk Import Button */}
+          <button
+            onClick={() => navigate('/admin/bulk-import')}
+            className="h-11 px-5 flex items-center gap-2 font-bold text-xs rounded-2xl transition-all bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] text-white shadow-md shadow-indigo-100 cursor-pointer"
+          >
+            <span>✨ Importação em Massa</span>
+          </button>
+
           {/* Download Backup Button */}
           <button
             onClick={handleDownloadBackup}

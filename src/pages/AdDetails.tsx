@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   MapPin, MessageCircle, Clock, ChevronLeft, ChevronRight, X, Heart, Star, 
   Trash2, Edit, AlertCircle, ShieldAlert, ShoppingBag, Eye, Award, Calendar, Share2, ExternalLink,
-  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed
+  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag
 } from 'lucide-react';
 import { 
   doc, updateDoc, increment, setDoc, collection, query, where, limit, getDoc, serverTimestamp, Timestamp 
@@ -1175,6 +1175,36 @@ const AdDetails = () => {
 
             {/* Título & Preço */}
             <div className="space-y-2">
+              {ad.externalListing && (
+                <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl p-4 flex items-start gap-3 mb-2">
+                  <div className="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5">
+                    <ExternalLink size={18} />
+                  </div>
+                  <div className="space-y-1 text-xs text-indigo-950">
+                    <span className="font-extrabold text-indigo-900 block text-sm">
+                      External Listing {ad.sourceSite ? `• ${ad.sourceSite}` : ''}
+                    </span>
+                    <p className="text-indigo-800 leading-relaxed font-medium">
+                      This listing originated from a partner marketplace ({ad.sourceSite || 'External Source'}). ConnectBoat is not the seller of this item. Click "View Original Listing" to visit the seller's source page.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {ad.demoListing && (
+                <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3 mb-2">
+                  <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
+                    <Tag size={18} />
+                  </div>
+                  <div className="space-y-1 text-xs text-amber-950">
+                    <span className="font-extrabold text-amber-900 block text-sm">
+                      Example Listing (Demonstração)
+                    </span>
+                    <p className="text-amber-800 leading-relaxed font-medium">
+                      This is an example listing created for demonstration purposes and is not available for purchase.
+                    </p>
+                  </div>
+                </div>
+              )}
               <h1 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
                 {ad.title}
               </h1>
@@ -1294,8 +1324,22 @@ const AdDetails = () => {
 
               {/* CTAs */}
               <div className="flex flex-col gap-3">
-                {/* WhatsApp Button */}
-                {ad.adStatus === 'sold' || ad.status === 'sold' ? (
+                {ad.externalListing || (hasSourceUrl && !ad.demoListing) ? (
+                  <a
+                    href={ad.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center"
+                  >
+                    <ExternalLink size={20} className="flex-shrink-0" />
+                    <span className="leading-tight">View Original Listing</span>
+                  </a>
+                ) : ad.demoListing ? (
+                  <div className="flex items-center justify-center gap-2 bg-amber-50 text-amber-800 py-3.5 px-6 rounded-2xl font-extrabold text-xs text-center border border-amber-200/80">
+                    <Tag size={16} className="text-amber-600 shrink-0" />
+                    <span>Demo Listing — Not Available for Sale</span>
+                  </div>
+                ) : ad.adStatus === 'sold' || ad.status === 'sold' ? (
                   <div className="flex items-center justify-center gap-2 bg-slate-100 text-slate-500 py-3.5 px-6 rounded-2xl font-black text-sm border border-slate-200">
                     <ShoppingBag size={20} className="flex-shrink-0 text-slate-400" />
                     <span className="leading-tight">Anúncio Vendido</span>
@@ -1303,16 +1347,10 @@ const AdDetails = () => {
                 ) : (
                   <button
                     onClick={handleContactClick}
-                    className={`flex items-center justify-center gap-2 ${
-                      hasSourceUrl ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-500 hover:bg-emerald-600'
-                    } text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center`}
+                    className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center"
                   >
-                    {hasSourceUrl ? (
-                      <ExternalLink size={20} className="flex-shrink-0" />
-                    ) : (
-                      <MessageCircle size={20} className="flex-shrink-0" />
-                    )}
-                    <span className="leading-tight">{hasSourceUrl ? 'Contato' : 'Contactar via WhatsApp'}</span>
+                    <MessageCircle size={20} className="flex-shrink-0" />
+                    <span className="leading-tight">Contactar via WhatsApp</span>
                   </button>
                 )}
 

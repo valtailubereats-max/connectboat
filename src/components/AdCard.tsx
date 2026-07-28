@@ -270,6 +270,10 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
   const handleContactClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (ad.demoListing) {
+      showToastMsg('error', 'Este é um anúncio de demonstração e não está disponível para contacto ou compra.');
+      return;
+    }
     if (ad.adStatus === 'sold') {
       showToastMsg('error', 'Este anúncio já foi vendido. Não é possível contactar o vendedor.');
       return;
@@ -508,6 +512,18 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
                 : 'top-1.5 left-1.5 text-[9px] w-5 h-5'
             }`}>
               <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? '💚' : isNationalHighlight ? '👑' : '⭐'}</span>
+            </div>
+          )}
+          {ad.externalListing && (
+            <div className="absolute top-1.5 left-1.5 z-20 bg-indigo-900/90 backdrop-blur-md text-indigo-100 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-sm border border-indigo-400/30 flex items-center gap-1">
+              <ExternalLink size={10} className="text-indigo-300 shrink-0" />
+              <span>External Listing</span>
+            </div>
+          )}
+          {ad.demoListing && !ad.externalListing && (
+            <div className="absolute top-1.5 left-1.5 z-20 bg-amber-900/90 backdrop-blur-md text-amber-100 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-sm border border-amber-400/30 flex items-center gap-1">
+              <Tag size={10} className="text-amber-300 shrink-0" />
+              <span>Example Listing</span>
             </div>
           )}
           {ad.boatType && (

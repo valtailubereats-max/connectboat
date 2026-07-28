@@ -1145,6 +1145,7 @@ const CreateAd = () => {
 
     try {
       console.log('[Import Pipeline Stage 2] Sending request to /api/import-ad...');
+      const userRole = isAdmin ? 'admin' : isModerator ? 'moderator' : (profile?.role || 'user');
       const response = await fetch('/api/import-ad', {
         method: 'POST',
         headers: {
@@ -1153,7 +1154,7 @@ const CreateAd = () => {
         body: JSON.stringify({
           url: importUrl,
           userId: user?.uid,
-          userRole: profile?.role || (isAdmin ? 'admin' : isModerator ? 'moderator' : 'user')
+          userRole
         })
       });
 
