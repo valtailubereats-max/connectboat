@@ -133,23 +133,6 @@ const Campanhas = () => {
         </div>
       ) : null}
 
-      {/* Quick Access to Sorteios/Giveaways */}
-      <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 p-6 rounded-3xl border border-slate-100 text-white shadow-xl flex items-center justify-between gap-6 flex-wrap">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-indigo-400 font-black tracking-widest text-[9px] uppercase">
-            <span>Sorteios & Bilhetes</span>
-          </div>
-          <h3 className="text-lg font-black text-yellow-300">🎉 Sorteios Ativos da Comunidade</h3>
-          <p className="text-xs text-slate-300 leading-relaxed max-w-xl">Claim de bilhetes com pontos de convite e promoções especiais da nossa comunidade de empreendedores lusófonos.</p>
-        </div>
-        <button
-          onClick={() => navigate('/sorteios')}
-          className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all shadow-md shrink-0 uppercase tracking-wider"
-        >
-          Participar nos Sorteios →
-        </button>
-      </div>
-
       {/* Sharing Invite Link & QR Code container (Bento Grid) */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Left Side: link & share buttons */}
