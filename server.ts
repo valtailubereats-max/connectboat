@@ -7,6 +7,7 @@ import { createServer as createViteServer } from 'vite';
 dotenv.config();
 
 import importAdHandler from './api/import-ad.ts';
+import discoverListingsHandler from './api/discover-listings.ts';
 import geminiAnalyzeHandler from './api/gemini/analyze.ts';
 import emailSendHandler from './api/email/send.ts';
 import productSeoHandler from './api/product-seo.ts';
@@ -33,6 +34,18 @@ async function startServer() {
   });
 
   // Rotas de API Backend
+  app.post('/api/discover-listings', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      await discoverListingsHandler(req as any, res as any);
+    } catch (err: any) {
+      console.error('[Server Error /api/discover-listings]:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: err.message || 'Erro interno no servidor' });
+      }
+    }
+  });
+
   app.post('/api/import-ad', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     try {

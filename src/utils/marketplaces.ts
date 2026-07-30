@@ -23,7 +23,7 @@ export const SUPPORTED_MARKETPLACES: SupportedMarketplace[] = [
   {
     id: 'apolloduck',
     name: 'Apollo Duck',
-    domains: ['apolloduck.com']
+    domains: ['apolloduck.com', 'apolloduck.co.uk', 'apolloduck.ie']
   },
   {
     id: 'yachtworld',

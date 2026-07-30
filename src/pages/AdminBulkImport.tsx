@@ -13,6 +13,7 @@ import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'fire
 import { db } from '../firebase';
 import { getSourceSiteFromUrl, getSupportedMarketplace } from '../utils/marketplaces';
 import { normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
+import { AdminSearchPageDiscovery } from '../components/AdminSearchPageDiscovery';
 
 export interface BulkItem {
   id: string; // internal tracking id
@@ -57,6 +58,7 @@ const AdminBulkImport: React.FC = () => {
   const { categories } = useSettings();
   const navigate = useNavigate();
 
+  const [importTabMode, setImportTabMode] = useState<'search_page' | 'manual_urls'>('search_page');
   const [rawUrls, setRawUrls] = useState<string>('');
   const [items, setItems] = useState<BulkItem[]>([]);
   const [batchListingMode, setBatchListingMode] = useState<'external' | 'claimable'>('external');
@@ -73,14 +75,13 @@ const AdminBulkImport: React.FC = () => {
     published: 0
   });
 
-  const handleStartBulkImport = async () => {
+  const handleStartBulkImportWithUrls = async (urlsToImport: string[]) => {
     setActionStatus(null);
-    const lines = rawUrls
-      .split('\n')
+    const validLines = urlsToImport
       .map(l => l.trim())
       .filter(l => l.length > 0 && /^https?:\/\//i.test(l));
 
-    if (lines.length === 0) {
+    if (validLines.length === 0) {
       setActionStatus({
         type: 'error',
         message: 'Por favor, introduza pelo menos um URL válido (começando com http:// ou https://).'
@@ -88,8 +89,8 @@ const AdminBulkImport: React.FC = () => {
       return;
     }
 
-    // De-duplicate lines input
-    const uniqueUrls: string[] = Array.from(new Set(lines));
+    // De-duplicate lines input & cap at 20 per batch if coming from search page
+    const uniqueUrls: string[] = Array.from(new Set(validLines)).slice(0, 20);
 
     setIsProcessing(true);
     setCurrentIndex(0);
@@ -256,6 +257,21 @@ const AdminBulkImport: React.FC = () => {
     });
   };
 
+  const handleStartBulkImport = async () => {
+    const lines = rawUrls
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 0 && /^https?:\/\//i.test(l));
+
+    await handleStartBulkImportWithUrls(lines);
+  };
+
+  const handleImportDiscoveredUrls = (selectedUrls: string[]) => {
+    setRawUrls(selectedUrls.join('\n'));
+    setImportTabMode('manual_urls');
+    handleStartBulkImportWithUrls(selectedUrls);
+  };
+
   const toggleSelect = (id: string) => {
     setItems(prev => prev.map(item => item.id === id ? { ...item, selected: !item.selected } : item));
   };
@@ -420,41 +436,73 @@ const AdminBulkImport: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Step 1: Input Box */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-            <FileText size={18} className="text-indigo-600" />
-            URLs para Extração (Um URL por linha):
-          </label>
-          <span className="text-xs text-slate-500 font-semibold">
-            Suporta qualquer quantidade (1, 10, 20, 50, 100+ URLs)
-          </span>
-        </div>
+      {/* Navigation Tabs */}
+      <div className="flex bg-slate-200/80 p-1.5 rounded-2xl max-w-md">
+        <button
+          onClick={() => setImportTabMode('search_page')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            importTabMode === 'search_page'
+              ? 'bg-white text-indigo-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Sparkles size={16} className={importTabMode === 'search_page' ? 'text-indigo-600' : ''} />
+          Página de Pesquisa
+        </button>
 
-        <textarea
-          rows={6}
-          value={rawUrls}
-          onChange={(e) => setRawUrls(e.target.value)}
-          placeholder={`https://www.yachtworld.com/yacht/2021-princess-v48-9283741/\nhttps://www.apolloduck.com/boat/hallberg-rassy-340-for-sale/732109\nhttps://www.olx.pt/d/anuncio/...`}
-          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-mono text-xs focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
-        />
+        <button
+          onClick={() => setImportTabMode('manual_urls')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            importTabMode === 'manual_urls'
+              ? 'bg-white text-indigo-900 shadow-sm'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <FileText size={16} className={importTabMode === 'manual_urls' ? 'text-indigo-600' : ''} />
+          URLs Manuais
+        </button>
+      </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-          <div className="text-xs text-slate-500 font-medium">
-            💡 Os URLs são verificados contra a base de dados para impedir duplicados automaticamente.
+      {/* Mode View Rendering */}
+      {importTabMode === 'search_page' && items.length === 0 ? (
+        <AdminSearchPageDiscovery onImportSelected={handleImportDiscoveredUrls} />
+      ) : (
+        /* Step 1: Input Box for Manual URLs */
+        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+              <FileText size={18} className="text-indigo-600" />
+              URLs para Extração (Um URL por linha):
+            </label>
+            <span className="text-xs text-slate-500 font-semibold">
+              Suporta qualquer quantidade (1, 10, 20, 50, 100+ URLs)
+            </span>
           </div>
 
-          <button
-            onClick={handleStartBulkImport}
-            disabled={isProcessing || !rawUrls.trim()}
-            className="w-full sm:w-auto px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-indigo-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shrink-0"
-          >
-            <Play size={16} />
-            {isProcessing ? 'A Extrair URLs via IA...' : 'Iniciar Importação em Massa'}
-          </button>
+          <textarea
+            rows={6}
+            value={rawUrls}
+            onChange={(e) => setRawUrls(e.target.value)}
+            placeholder={`https://www.yachtworld.com/yacht/2021-princess-v48-9283741/\nhttps://www.apolloduck.com/boat/hallberg-rassy-340-for-sale/732109\nhttps://www.olx.pt/d/anuncio/...`}
+            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-mono text-xs focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
+          />
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+            <div className="text-xs text-slate-500 font-medium">
+              💡 Os URLs são verificados contra a base de dados para impedir duplicados automaticamente.
+            </div>
+
+            <button
+              onClick={handleStartBulkImport}
+              disabled={isProcessing || !rawUrls.trim()}
+              className="w-full sm:w-auto px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-indigo-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+            >
+              <Play size={16} />
+              {isProcessing ? 'A Extrair URLs via IA...' : 'Iniciar Importação em Massa'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Progress & Live Stats Counter */}
       {stats.total > 0 && (
