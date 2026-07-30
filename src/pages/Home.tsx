@@ -1663,13 +1663,15 @@ const Home = () => {
             <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
           </div>
 
-          className="relative z-10 w-full h-full flex flex-col justify-between p-6 sm:p-8 md:p-10 lg:p-12 pt-12 md:pt-16 pb-16 md:pb-40 min-h-[320px] md:min-h-[400px] lg:min-h-[440px]"
+          <div
+  className="relative z-10 w-full h-full flex flex-col justify-between p-6 sm:p-8 md:p-10 lg:p-12 min-h-[320px] md:min-h-[400px] lg:min-h-[440px]"
+>
             {/* Topo do Banner: Título no Topo à Esquerda + Stats Badges à Direita */}
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full"
-            >
+           <motion.div
+  initial={{ opacity: 0, y: 10 }}
+  animate={{ opacity: 1, y: 0 }}
+  className="mt-auto text-left w-full translate-y-10 md:translate-y-16"
+>
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)]">
                 ConnectBoat<span className="text-sky-400 font-light"> Marketplace</span>
               </h1>
