@@ -624,6 +624,28 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
             )}
           </div>
 
+          {isHomepageSimple && (
+            <div className="mt-auto pt-1 flex flex-col items-center justify-center text-center">
+              {ad.listingType === 'informativo' ? (
+                <span className="text-[9px] sm:text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                  💡 Links Úteis
+                </span>
+              ) : (ad.category === '💚 Doações & Solidariedade' || ad.donationBadge) ? (
+                <span className="text-[9px] sm:text-[10px] font-black text-emerald-700 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-150">
+                  Grátis 💚
+                </span>
+              ) : hasPrice ? (
+                <div className="font-black text-indigo-600 tracking-tight leading-none text-base md:text-lg">
+                  {formatPrice(ad.price, ad.country)}
+                </div>
+              ) : (
+                <div className="font-extrabold text-[#111111] uppercase tracking-wide leading-none text-xs md:text-sm">
+                  Sob Consulta
+                </div>
+              )}
+            </div>
+          )}
+
           {!useCompactMode && !isHomepageSimple && (
             <>
               {/* Linha horizontal de ações */}
