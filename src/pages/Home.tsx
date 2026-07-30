@@ -1663,7 +1663,7 @@ const Home = () => {
             <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
           </div>
 
-          <div className="relative z-10 w-full h-full flex flex-col justify-between p-6 sm:p-8 md:p-10 lg:p-12 min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
+          <div className="relative z-10 w-full h-full flex flex-col justify-between p-6 sm:p-8 md:p-10 lg:p-12 pt-12 md:pt-16 pb-16 md:pb-24 min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
             {/* Topo do Banner: Título no Topo à Esquerda + Stats Badges à Direita */}
             <motion.div 
               initial={{ opacity: 0, y: -10 }} 
@@ -1718,7 +1718,7 @@ const Home = () => {
             <motion.div 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-24 text-left w-full"
+              className="mt-auto text-left w-full"
             >
               <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3 shadow-2xl max-w-full">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/95 font-medium italic tracking-wide leading-snug whitespace-normal lg:whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
