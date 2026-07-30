@@ -50,14 +50,14 @@ async function startServer() {
   });
 
   // Rotas de API Backend
-  app.post('/api/discover-listings', async (req, res) => {
+  app.all('/api/discover-listings', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     try {
       await discoverListingsHandler(req as any, res as any);
     } catch (err: any) {
       console.error('[Server Error /api/discover-listings]:', err);
       if (!res.headersSent) {
-        res.status(500).json({ success: false, error: err.message || 'Erro interno no servidor' });
+        res.status(500).json({ success: false, error: 'SERVER_ERROR', errorMessage: err.message || 'Erro interno no servidor' });
       }
     }
   });

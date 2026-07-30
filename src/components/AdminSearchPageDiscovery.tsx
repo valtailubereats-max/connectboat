@@ -69,6 +69,10 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
   // Handoff state
   const [handoffCount, setHandoffCount] = useState<number | null>(null);
 
+  // Diagnostic Error ID state
+  const [errorRequestId, setErrorRequestId] = useState<string | null>(null);
+  const [errorDebug, setErrorDebug] = useState<any | null>(null);
+
   // Load existing Firestore URLs pre-flight for duplicate detection
   useEffect(() => {
     async function loadExistingDbUrls() {
@@ -125,6 +129,8 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
 
   const handleDiscoverListings = async () => {
     setErrorMessage(null);
+    setErrorRequestId(null);
+    setErrorDebug(null);
     setWarningMessages([]);
     setDiscoveryResult(null);
     setDiscoveredListings([]);
@@ -159,12 +165,27 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
       try {
         data = await resp.json();
       } catch (jsonErr) {
-        console.error('[AdminSearchPageDiscovery] Response was not valid JSON:', jsonErr);
+        console.error('[AdminSearchPageDiscovery] Response was not valid JSON:', jsonErr, { status: resp.status, statusText: resp.statusText });
         setErrorMessage('Ocorreu um erro temporário no servidor ao ler a página. Por favor, tente novamente.');
         return;
       }
 
+      console.log('[AdminSearchPageDiscovery Response]', {
+        status: resp.status,
+        statusText: resp.statusText,
+        contentType: resp.headers.get('content-type'),
+        requestId: data?.requestId,
+        success: data?.success,
+        marketplace: data?.marketplace,
+        totalFound: data?.totalFound,
+        error: data?.error,
+        errorMessage: data?.errorMessage
+      });
+
       if (!resp.ok || !data.success) {
+        if (data?.requestId) setErrorRequestId(data.requestId);
+        if (data?.debug) setErrorDebug(data.debug);
+
         setErrorMessage(formatDiscoveryError(data?.error, data?.errorMessage));
         return;
       }
@@ -406,9 +427,28 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
 
         {/* Client Error Message */}
         {errorMessage && !isLoading && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs md:text-sm font-bold flex items-center gap-3">
-            <AlertCircle size={20} className="shrink-0 text-rose-600" />
-            <span>{errorMessage}</span>
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs md:text-sm font-bold space-y-2">
+            <div className="flex items-center gap-3">
+              <AlertCircle size={20} className="shrink-0 text-rose-600" />
+              <span>{errorMessage}</span>
+            </div>
+            {errorRequestId && (
+              <div className="pt-2 border-t border-rose-200/80 flex flex-wrap items-center justify-between text-[11px] text-rose-800 font-mono font-normal">
+                <span>Código do erro: <strong className="font-bold select-all bg-rose-100 px-1.5 py-0.5 rounded">{errorRequestId}</strong></span>
+              </div>
+            )}
+            {errorDebug && (
+              <details className="mt-2 text-left text-[11px] font-mono text-slate-700 bg-white p-3 rounded-xl border border-rose-200">
+                <summary className="cursor-pointer font-bold text-rose-900">Detalhes de Diagnóstico (Admin)</summary>
+                <div className="mt-2 space-y-1">
+                  <div><strong>Estágio:</strong> {errorDebug.stage}</div>
+                  <div><strong>Erro:</strong> {errorDebug.errorName} - {errorDebug.errorMessage}</div>
+                  {errorDebug.stack && (
+                    <pre className="text-[10px] overflow-x-auto p-2 bg-slate-100 rounded text-slate-800">{errorDebug.stack}</pre>
+                  )}
+                </div>
+              </details>
+            )}
           </div>
         )}
 

@@ -121,109 +121,118 @@ export function discoverBoatsAndOutboardsListings(textOrHtml: string, pageUrl: s
   const results: DiscoveredListing[] = [];
   const seenUrls = new Set<string>();
 
-  const isMarkdown = textOrHtml.includes('Markdown Content:') || textOrHtml.includes('URL Source:');
+  // Detect boatsandoutboards target links (either in markdown or html)
+  const targetUrlRegex = /(?:\]\(|href=["'])(https?:\/\/(?:www\.)?boatsandoutboards\.co\.uk\/(?:boat|boats-for-sale)\/[^\)\s"']+\d{5,}\/?)/gi;
+  let m: RegExpExecArray | null;
 
-  if (isMarkdown) {
-    // Parse Markdown link blocks e.g. [Title £ Price Dealer | Location ![Image](url)](https://www.boatsandoutboards.co.uk/boat/...)
-    const markdownLinkRegex = /\[([\s\S]*?)\]\((https?:\/\/(?:www\.)?boatsandoutboards\.co\.uk\/[^\)\s]+)\)/gi;
-    let m: RegExpExecArray | null;
+  while ((m = targetUrlRegex.exec(textOrHtml)) !== null) {
+    const rawUrl = m[1];
+    const normalized = normalizeListingUrl(rawUrl, pageUrl);
+    if (!normalized || seenUrls.has(normalized)) continue;
 
-    while ((m = markdownLinkRegex.exec(textOrHtml)) !== null) {
-      const linkText = m[1];
-      const rawUrl = m[2];
+    seenUrls.add(normalized);
+    const externalId = extractExternalId(normalized, 'boatsandoutboards');
 
-      const normalized = normalizeListingUrl(rawUrl, pageUrl);
-      if (!normalized || seenUrls.has(normalized)) continue;
+    // Extract context around the match
+    const matchIdx = m.index;
+    let startIdx = Math.max(0, matchIdx - 600);
 
-      // Ensure it's an individual boat listing link e.g. contains /boat/ or numeric ID at end of path
-      const path = new URL(normalized).pathname;
-      if (!/\/boat\/[^\/]*\d{5,}/i.test(path) && !/\/boats-for-sale\/[^\/]*\d{5,}\/?$/i.test(path)) {
-        continue;
+    // If there's an outer opening '[' before matchIdx, start from there
+    let depth = 0;
+    for (let i = matchIdx; i >= startIdx; i--) {
+      if (textOrHtml[i] === ']') depth++;
+      else if (textOrHtml[i] === '[') {
+        depth--;
+        if (depth === 0) {
+          startIdx = i;
+          break;
+        }
       }
-
-      seenUrls.add(normalized);
-
-      const externalId = extractExternalId(normalized, 'boatsandoutboards');
-
-      // Extract Image URL inside link text if present e.g. ![Image 25](https://images.boatsgroup.com/...)
-      let image: string | undefined = undefined;
-      const imgMatch = linkText.match(/!\[[^\]]*\]\((https?:\/\/images\.boatsgroup\.com\/[^"\)]+)\)/i);
-      if (imgMatch) {
-        image = imgMatch[1];
-      }
-
-      // Extract Title, Price, Location from link text
-      let title: string | undefined = undefined;
-      let priceText: string | undefined = undefined;
-      let locationText: string | undefined = undefined;
-
-      // Clean image markdown out of link text
-      const cleanText = linkText.replace(/!\[[^\]]*\]\([^\)]+\)/g, '').replace(/#+/g, '').replace(/[*_]/g, '').trim();
-
-      const priceMatch = cleanText.match(/(?:£|€|\$|GBP|EUR|USD)\s*[\d,.]+/i) || cleanText.match(/\bPOA\b/i) || cleanText.match(/Request price/i);
-      if (priceMatch) {
-        priceText = priceMatch[0];
-      }
-
-      const locationMatch = cleanText.match(/\|\s*([^|\n]+)$/);
-      if (locationMatch) {
-        locationText = locationMatch[1].trim();
-      }
-
-      // Title is before price or location
-      let rawTitle = cleanText;
-      if (priceMatch) {
-        rawTitle = rawTitle.split(priceMatch[0])[0];
-      } else if (locationMatch) {
-        rawTitle = rawTitle.split('|')[0];
-      }
-
-      title = cleanTitle(rawTitle);
-
-      results.push({
-        sourceUrl: normalized,
-        normalizedSourceUrl: normalized,
-        externalId,
-        title: title || 'Boats and Outboards Listing',
-        image,
-        priceText,
-        locationText,
-        alreadyImported: false,
-        status: 'new'
-      });
     }
-  } else {
-    // Parse Direct HTML
-    const decodedHtml = decodeHtmlEntities(textOrHtml);
-    const linkRegex = /href=["'](\/boat\/[^\/"']+\/|https?:\/\/(?:www\.)?boatsandoutboards\.co\.uk\/(?:boat|boats-for-sale)\/[^\/"']+\d{5,}\/?)["']/gi;
-    let match: RegExpExecArray | null;
 
-    while ((match = linkRegex.exec(decodedHtml)) !== null) {
-      const rawUrl = match[1];
-      const normalized = normalizeListingUrl(rawUrl, pageUrl);
-      if (!normalized || seenUrls.has(normalized)) continue;
+    const snippet = textOrHtml.slice(startIdx, matchIdx);
 
-      seenUrls.add(normalized);
-      const externalId = extractExternalId(normalized, 'boatsandoutboards');
-
-      results.push({
-        sourceUrl: normalized,
-        normalizedSourceUrl: normalized,
-        externalId,
-        title: 'Boats and Outboards Listing',
-        alreadyImported: false,
-        status: 'new'
-      });
+    // Extract image URL from snippet
+    let image: string | undefined = undefined;
+    const imgMatch = snippet.match(/(https?:\/\/images\.boatsgroup\.com\/resize\/[^\)\s"']+)/i) ||
+                     snippet.match(/src=["'](https?:\/\/[^"']+)["']/i);
+    if (imgMatch) {
+      image = imgMatch[1];
     }
+
+    // Extract price, location, title from snippet
+    let title: string | undefined = undefined;
+    let priceText: string | undefined = undefined;
+    let locationText: string | undefined = undefined;
+
+    const cleanSnippet = snippet
+      .replace(/!\[[^\]]*\]\([^\)]+\)/g, '')
+      .replace(/#+/g, '')
+      .replace(/[*_]/g, '')
+      .replace(/\[/g, '')
+      .replace(/\]/g, '')
+      .trim();
+
+    const priceMatch = cleanSnippet.match(/(?:£|€|\$|GBP|EUR|USD)\s*[\d,.]+/i) || cleanSnippet.match(/\bPOA\b/i) || cleanSnippet.match(/Request price/i);
+    if (priceMatch) {
+      priceText = priceMatch[0];
+    }
+
+    const locationMatch = cleanSnippet.match(/\|\s*([^|\n]+)$/) || cleanSnippet.match(/\|\s*([^|\n]+)/);
+    if (locationMatch) {
+      const candidateLoc = locationMatch[1].trim();
+      if (!candidateLoc.toLowerCase().includes('in-stock') && !candidateLoc.toLowerCase().includes('featured') && candidateLoc.length < 50) {
+        locationText = candidateLoc;
+      }
+    }
+
+    // Title extraction
+    let rawTitle = cleanSnippet;
+    if (priceMatch) {
+      rawTitle = rawTitle.split(priceMatch[0])[0];
+    } else if (locationMatch) {
+      rawTitle = rawTitle.split('|')[0];
+    }
+
+    rawTitle = rawTitle.replace(/^(?:Featured|New Arrival|In-Stock|Price Drop|↓ Price Drop|\s)+/i, '').trim();
+
+    title = cleanTitle(rawTitle);
+    if (!title || title.length < 3) {
+      const slugMatch = normalized.match(/\/boat\/(?:[^\/]+-)?([^\/]+)-\d+/i);
+      if (slugMatch) {
+        title = cleanTitle(slugMatch[1].replace(/-/g, ' '));
+      }
+    }
+
+    results.push({
+      sourceUrl: normalized,
+      normalizedSourceUrl: normalized,
+      externalId,
+      title: title || 'Boats and Outboards Listing',
+      image,
+      priceText,
+      locationText,
+      alreadyImported: false,
+      status: 'new'
+    });
   }
 
   return results;
 }
 
+export type FetchResult = {
+  htmlOrText: string;
+  fetchSource: 'direct' | 'jina';
+  status: number;
+  errorCode?: 'FETCH_TIMEOUT' | 'DNS_ERROR' | 'TLS_ERROR' | 'PAGE_ACCESS_DENIED' | 'FALLBACK_FAILED' | 'EMPTY_RESPONSE';
+  errorDetails?: string;
+  fallbackAttempted: boolean;
+};
+
 /**
  * Resilient Page Fetcher with Jina Reader Fallback
  */
-async function fetchPageResiliently(pageUrl: string): Promise<{ htmlOrText: string; fetchSource: 'direct' | 'jina'; status: number }> {
+async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
   const userAgents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
@@ -231,6 +240,7 @@ async function fetchPageResiliently(pageUrl: string): Promise<{ htmlOrText: stri
 
   let directStatus = 0;
   let directHtml = '';
+  let fallbackAttempted = false;
 
   try {
     const controller = new AbortController();
@@ -259,14 +269,15 @@ async function fetchPageResiliently(pageUrl: string): Promise<{ htmlOrText: stri
                         directHtml.includes('Attention Required');
 
       if (!isBlocked && directHtml.length > 500) {
-        return { htmlOrText: directHtml, fetchSource: 'direct', status: directStatus };
+        return { htmlOrText: directHtml, fetchSource: 'direct', status: directStatus, fallbackAttempted: false };
       }
     }
-  } catch (err) {
+  } catch (err: any) {
     console.warn('[discover-listings] Direct fetch failed or timed out:', err);
   }
 
   // Fallback to Jina Reader
+  fallbackAttempted = true;
   const jinaTargetUrl = (pageUrl.includes('boatsandoutboards') && !pageUrl.endsWith('/')) ? `${pageUrl}/` : pageUrl;
   console.log('[discover-listings] Attempting Jina Reader fallback for:', jinaTargetUrl);
   try {
@@ -286,20 +297,50 @@ async function fetchPageResiliently(pageUrl: string): Promise<{ htmlOrText: stri
     if (jinaResp.ok) {
       const jinaText = await jinaResp.text();
       if (jinaText && jinaText.length > 300) {
-        return { htmlOrText: jinaText, fetchSource: 'jina', status: jinaResp.status };
+        return { htmlOrText: jinaText, fetchSource: 'jina', status: jinaResp.status, fallbackAttempted: true };
       }
     }
-  } catch (jinaErr) {
+  } catch (jinaErr: any) {
     console.error('[discover-listings] Jina fallback failed:', jinaErr);
+    let errorCode: FetchResult['errorCode'] = 'FALLBACK_FAILED';
+    if (jinaErr.name === 'AbortError') errorCode = 'FETCH_TIMEOUT';
+    else if (jinaErr.code === 'ENOTFOUND') errorCode = 'DNS_ERROR';
+
+    return {
+      htmlOrText: directHtml,
+      fetchSource: 'direct',
+      status: directStatus || 500,
+      errorCode,
+      errorDetails: jinaErr.message,
+      fallbackAttempted: true
+    };
   }
 
-  return { htmlOrText: directHtml, fetchSource: 'direct', status: directStatus || 500 };
+  const finalErrorCode = directStatus === 403 ? 'PAGE_ACCESS_DENIED' : (!directHtml ? 'EMPTY_RESPONSE' : 'FALLBACK_FAILED');
+
+  return {
+    htmlOrText: directHtml,
+    fetchSource: 'direct',
+    status: directStatus || 500,
+    errorCode: finalErrorCode,
+    errorDetails: 'Não foi possível aceder à página diretamente nem via serviço de leitura.',
+    fallbackAttempted: true
+  };
 }
 
 /**
  * Main Endpoint Handler for POST /api/discover-listings
  */
 export default async function discoverListingsHandler(req: Request, res: Response) {
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  let lastCompletedStage = 'REQUEST_RECEIVED';
+  let targetPageUrl = '';
+  let detectedMarketplace = 'Unknown';
+  let authUid = 'anonymous';
+  let httpStatus = 0;
+  let fallbackAttempted = false;
+  let htmlLength = 0;
+
   res.setHeader("Content-Type", "application/json");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -313,11 +354,13 @@ export default async function discoverListingsHandler(req: Request, res: Respons
     return res.status(405).json({
       success: false,
       error: "METHOD_NOT_ALLOWED",
-      errorMessage: "Método não permitido."
+      errorMessage: "Método não permitido.",
+      requestId
     });
   }
 
   try {
+    // Stage 2: BODY_PARSED
     let body: any = {};
     if (typeof req.body === 'string') {
       try {
@@ -326,79 +369,127 @@ export default async function discoverListingsHandler(req: Request, res: Respons
         return res.status(400).json({
           success: false,
           error: 'INVALID_JSON_PAYLOAD',
-          errorMessage: 'Corpo do pedido em formato JSON inválido.'
+          errorMessage: 'Corpo do pedido em formato JSON inválido.',
+          requestId
         });
       }
     } else {
       body = req.body || {};
     }
 
-    const { pageUrl, userRole } = body;
+    lastCompletedStage = 'BODY_PARSED';
 
-    // 1. Authorization Verification
-    if (userRole !== 'admin' && userRole !== 'moderator') {
-      return res.status(403).json({
+    const rawPageUrl = body.pageUrl || body.url || body.searchUrl;
+    const userRole = body.userRole;
+    const diagnosticsOnly = body.diagnosticsOnly === true;
+
+    if (!rawPageUrl || typeof rawPageUrl !== 'string' || !rawPageUrl.trim()) {
+      return res.status(400).json({
         success: false,
-        error: 'UNAUTHORIZED',
-        errorMessage: 'Acesso negado. Apenas administradores ou moderadores podem realizar a descoberta de anúncios.'
+        error: 'INVALID_REQUEST_BODY',
+        errorMessage: 'O URL da página de pesquisa (pageUrl) é obrigatório.',
+        requestId
       });
     }
 
-    // 2. Search Page URL Validation
-    const validation: SearchPageValidationResult = validateSearchPageUrl(pageUrl);
+    targetPageUrl = rawPageUrl.trim();
+
+    // Stage 3: AUTH_STARTED
+    lastCompletedStage = 'AUTH_STARTED';
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      authUid = 'authenticated_token_user';
+    }
+
+    // Role check: Admin or Moderator required
+    if (userRole !== 'admin' && userRole !== 'moderator') {
+      if (!authHeader) {
+        return res.status(401).json({
+          success: false,
+          error: 'UNAUTHENTICATED',
+          errorMessage: 'Autenticação necessária. Faça login como administrador ou moderador.',
+          requestId
+        });
+      }
+      return res.status(403).json({
+        success: false,
+        error: 'FORBIDDEN',
+        errorMessage: 'Acesso negado. Apenas administradores ou moderadores podem realizar a descoberta de anúncios.',
+        requestId
+      });
+    }
+
+    // Stage 4: AUTH_SUCCESS
+    lastCompletedStage = 'AUTH_SUCCESS';
+
+    // Stage 5: URL_VALIDATED
+    const validation: SearchPageValidationResult = validateSearchPageUrl(targetPageUrl);
     if (!validation.isValid) {
       return res.status(400).json({
         success: false,
         error: validation.errorCode,
-        errorMessage: validation.errorMessage
+        errorMessage: validation.errorMessage,
+        requestId
       });
     }
 
-    const { marketplaceId, marketplaceName, normalizedUrl } = validation;
+    lastCompletedStage = 'URL_VALIDATED';
 
-    // 3. Resilient Fetch
-    const fetchRes = await fetchPageResiliently(normalizedUrl || pageUrl);
+    // Stage 6: MARKETPLACE_DETECTED
+    const { marketplaceId, marketplaceName, normalizedUrl } = validation;
+    detectedMarketplace = marketplaceName;
+    targetPageUrl = normalizedUrl || targetPageUrl;
+    lastCompletedStage = 'MARKETPLACE_DETECTED';
+
+    // Stage 7: FETCH_STARTED
+    lastCompletedStage = 'FETCH_STARTED';
+    const fetchRes = await fetchPageResiliently(targetPageUrl);
+    httpStatus = fetchRes.status;
+    fallbackAttempted = fetchRes.fallbackAttempted;
+    htmlLength = fetchRes.htmlOrText ? fetchRes.htmlOrText.length : 0;
+
+    if (fetchRes.fetchSource === 'jina') {
+      lastCompletedStage = 'FALLBACK_FETCH_STARTED';
+    } else {
+      lastCompletedStage = 'DIRECT_FETCH_COMPLETED';
+    }
+
     if (!fetchRes.htmlOrText || fetchRes.htmlOrText.length < 200) {
+      const errCode = fetchRes.errorCode || (fetchRes.status === 403 ? 'PAGE_ACCESS_DENIED' : 'SEARCH_PAGE_FETCH_FAILED');
+      const errMsg = fetchRes.errorDetails || 'Não foi possível aceder à página de resultados de pesquisa. Verifique se a página está disponível publicamente.';
+
       return res.status(400).json({
         success: false,
-        error: fetchRes.status === 403 ? 'PAGE_ACCESS_DENIED' : 'SEARCH_PAGE_FETCH_FAILED',
-        errorMessage: 'Não foi possível aceder à página de resultados de pesquisa. Verifique se a página está disponível publicamente.'
-      });
-    }
-
-    // 4. Discovery via Marketplace Adapter
-    let candidateListings: DiscoveredListing[] = [];
-    if (marketplaceId === 'apolloduck') {
-      candidateListings = discoverApolloDuckListings(fetchRes.htmlOrText, normalizedUrl || pageUrl);
-    } else if (marketplaceId === 'boatsandoutboards') {
-      candidateListings = discoverBoatsAndOutboardsListings(fetchRes.htmlOrText, normalizedUrl || pageUrl);
-    }
-
-    const totalCandidates = candidateListings.length;
-
-    if (totalCandidates === 0) {
-      return res.status(200).json({
-        success: true,
-        marketplace: marketplaceName,
-        pageUrl: normalizedUrl || pageUrl,
-        totalCandidates: 0,
-        totalFound: 0,
-        duplicatesRemoved: 0,
-        alreadyImportedCount: 0,
-        listings: [],
-        warnings: ['Nenhum anúncio individual de barco foi encontrado nesta página de resultados.'],
+        error: errCode,
+        errorMessage: errMsg,
+        requestId,
         _diagnostics: {
           directStatus: fetchRes.status,
           fallbackUsed: fetchRes.fetchSource === 'jina',
           fetchSource: fetchRes.fetchSource,
-          htmlLength: fetchRes.htmlOrText.length,
-          candidateLinkCount: 0,
-          validListingCount: 0
+          htmlLength
         }
       });
     }
 
-    // 5. URL Normalization & Local Deduplication
+    // Stage 10: HTML_RECEIVED
+    lastCompletedStage = 'HTML_RECEIVED';
+
+    // Stage 11: ADAPTER_STARTED
+    lastCompletedStage = 'ADAPTER_STARTED';
+    let candidateListings: DiscoveredListing[] = [];
+    if (marketplaceId === 'apolloduck') {
+      candidateListings = discoverApolloDuckListings(fetchRes.htmlOrText, targetPageUrl);
+    } else if (marketplaceId === 'boatsandoutboards') {
+      candidateListings = discoverBoatsAndOutboardsListings(fetchRes.htmlOrText, targetPageUrl);
+    }
+
+    // Stage 12: LINKS_DISCOVERED
+    lastCompletedStage = 'LINKS_DISCOVERED';
+    const totalCandidates = candidateListings.length;
+
+    // Stage 13: DUPLICATE_CHECK_STARTED
+    lastCompletedStage = 'DUPLICATE_CHECK_STARTED';
     const uniqueMap = new Map<string, DiscoveredListing>();
     let duplicatesInPage = 0;
 
@@ -421,32 +512,79 @@ export default async function discoverListingsHandler(req: Request, res: Respons
       warnings.push('A página contém mais de 30 anúncios. Apenas os primeiros 30 anúncios foram listados.');
     }
 
+    // If Health-Check Mode (diagnosticsOnly) is requested:
+    if (diagnosticsOnly) {
+      return res.status(200).json({
+        success: true,
+        requestId,
+        stages: {
+          authentication: "ok",
+          validation: "ok",
+          marketplace: marketplaceName,
+          directFetchStatus: fetchRes.status,
+          fallbackUsed: fetchRes.fetchSource === 'jina',
+          htmlLength,
+          candidateLinks: totalCandidates,
+          validLinks: validListings.length,
+          duplicateCheck: "ok"
+        }
+      });
+    }
+
+    if (totalCandidates === 0) {
+      warnings.push('Nenhum anúncio individual de barco foi encontrado nesta página de resultados.');
+    }
+
+    // Stage 14: RESPONSE_SENT
+    lastCompletedStage = 'RESPONSE_SENT';
+
     return res.status(200).json({
       success: true,
+      requestId,
       marketplace: marketplaceName,
-      pageUrl: normalizedUrl || pageUrl,
+      pageUrl: targetPageUrl,
       totalCandidates,
       totalFound,
       duplicatesRemoved: duplicatesInPage,
-      alreadyImportedCount: 0, // Duplicate check on client against Firestore or DB
+      alreadyImportedCount: 0,
       listings: validListings,
       warnings,
       _diagnostics: {
         directStatus: fetchRes.status,
         fallbackUsed: fetchRes.fetchSource === 'jina',
         fetchSource: fetchRes.fetchSource,
-        htmlLength: fetchRes.htmlOrText.length,
+        htmlLength,
         candidateLinkCount: totalCandidates,
         validListingCount: validListings.length
       }
     });
 
   } catch (err: any) {
-    console.error('[discover-listings exception]:', err);
+    console.error('[discover-listings exception]', {
+      requestId,
+      lastCompletedStage,
+      pageUrl: targetPageUrl,
+      marketplace: detectedMarketplace,
+      authenticatedUserUid: authUid,
+      httpStatus,
+      fallbackAttempted,
+      htmlLength,
+      errorName: err.name,
+      errorMessage: err.message,
+      stack: err.stack
+    });
+
     return res.status(500).json({
       success: false,
-      error: 'SERVER_ERROR',
-      errorMessage: err.message || 'Erro interno ao processar a página de pesquisa.'
+      error: 'DISCOVERY_FAILED',
+      errorMessage: 'Ocorreu um erro temporário no servidor ao ler a página. Por favor, tente novamente.',
+      requestId,
+      debug: {
+        errorName: err.name || 'Error',
+        errorMessage: err.message || 'Erro desconhecido',
+        stage: lastCompletedStage,
+        stack: err.stack
+      }
     });
   }
 }
