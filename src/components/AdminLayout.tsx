@@ -97,11 +97,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { icon: Users, label: 'Users', path: '/admin/users' },
     { icon: UserCheck, label: 'Claims', path: '/admin/claims' },
     { icon: Megaphone, label: 'Marketing', path: '/admin/marketing' },
-    { icon: Gift, label: 'Giveaways & Campaigns', path: '/admin/sorteios' },
     { icon: QrCode, label: 'Invites', path: '/admin/invitations' },
     { icon: MessageSquare, label: 'Suggestions', path: '/admin/suggestions' },
     { icon: Camera, label: 'Marine Gallery', path: '/admin/fotos' },
-    { icon: Film, label: 'Community Videos', path: '/admin/videos' },
     { icon: UserCheck, label: 'Content Creators', path: '/admin/criadores' },
     { icon: Settings, label: 'Settings', path: '/admin/settings' },
     { icon: BookOpen, label: 'Technical Manual', path: '/admin/manual-tecnico' },
@@ -134,7 +132,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         { icon: Store, label: 'Marine Showcases', path: '/admin/showcases' },
         { icon: Users, label: 'Users', path: '/admin/users' },
         { icon: UserCheck, label: 'Claims', path: '/admin/claims' },
-        { icon: Film, label: 'Community Videos', path: '/admin/videos' },
         { icon: UserCheck, label: 'Content Creators', path: '/admin/criadores' },
       ]
     },
@@ -150,7 +147,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           submenuItems: [
             { icon: Megaphone, label: 'Campaigns', path: '/admin/marketing' },
             { icon: QrCode, label: 'Invites', path: '/admin/invitations' },
-            { icon: Gift, label: 'Giveaways & Campaigns', path: '/admin/sorteios' },
           ]
         },
         { icon: Upload, label: 'Import via AI', path: '/admin/import' },
