@@ -300,6 +300,7 @@ async function fetchPageResiliently(pageUrl: string): Promise<{ htmlOrText: stri
  * Main Endpoint Handler for POST /api/discover-listings
  */
 export default async function discoverListingsHandler(req: Request, res: Response) {
+  res.setHeader("Content-Type", "application/json");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -309,11 +310,29 @@ export default async function discoverListingsHandler(req: Request, res: Respons
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method Not Allowed" });
+    return res.status(405).json({
+      success: false,
+      error: "METHOD_NOT_ALLOWED",
+      errorMessage: "Método não permitido."
+    });
   }
 
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    let body: any = {};
+    if (typeof req.body === 'string') {
+      try {
+        body = JSON.parse(req.body);
+      } catch (err) {
+        return res.status(400).json({
+          success: false,
+          error: 'INVALID_JSON_PAYLOAD',
+          errorMessage: 'Corpo do pedido em formato JSON inválido.'
+        });
+      }
+    } else {
+      body = req.body || {};
+    }
+
     const { pageUrl, userRole } = body;
 
     // 1. Authorization Verification

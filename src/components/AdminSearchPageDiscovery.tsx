@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Search, Layers, ExternalLink, CheckCircle2, AlertCircle,
-  AlertTriangle, Loader2, CheckSquare, Square, Sparkles, ArrowRight, X, ShieldCheck
+  AlertTriangle, Loader2, CheckSquare, Square, Sparkles, ArrowRight, X, ShieldCheck,
+  Filter, RotateCcw, Info, Globe, Tag, MapPin, Anchor, ArrowLeftRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { collection, query, getDocs } from 'firebase/firestore';
@@ -25,6 +26,14 @@ interface AdminSearchPageDiscoveryProps {
   onImportSelected: (urls: string[]) => void;
 }
 
+const LOADING_STEPS = [
+  'A ler página de resultados de pesquisa...',
+  'A identificar anúncios de barcos...',
+  'A remover duplicados da página...',
+  'A verificar anúncios existentes no ConnectBoat...',
+  'A preparar pré-visualização dos anúncios...'
+];
+
 export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> = ({
   onImportSelected
 }) => {
@@ -33,6 +42,8 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
 
   const [searchUrl, setSearchUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadingStepIdx, setLoadingStepIdx] = useState<number>(0);
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [warningMessages, setWarningMessages] = useState<string[]>([]);
   const [discoveryResult, setDiscoveryResult] = useState<{
@@ -46,6 +57,17 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
 
   const [discoveredListings, setDiscoveredListings] = useState<DiscoveredListingItem[]>([]);
   const [existingDbUrls, setExistingDbUrls] = useState<Set<string>>(new Set());
+
+  // Filter states
+  const [filterOnlyNew, setFilterOnlyNew] = useState<boolean>(false);
+  const [filterOnlyWithPrice, setFilterOnlyWithPrice] = useState<boolean>(false);
+  const [filterUkOnly, setFilterUkOnly] = useState<boolean>(false);
+
+  // Limit warning banner state
+  const [showLimitWarning, setShowLimitWarning] = useState<boolean>(false);
+
+  // Handoff state
+  const [handoffCount, setHandoffCount] = useState<number | null>(null);
 
   // Load existing Firestore URLs pre-flight for duplicate detection
   useEffect(() => {
@@ -68,11 +90,45 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
     loadExistingDbUrls();
   }, []);
 
+  // Step ticker during loading
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingStepIdx(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setLoadingStepIdx(prev => (prev < LOADING_STEPS.length - 1 ? prev + 1 : prev));
+    }, 1200);
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  const formatDiscoveryError = (errCode?: string, fallbackMsg?: string): string => {
+    switch (errCode) {
+      case 'INVALID_RESULTS_PAGE':
+      case 'INVALID_SEARCH_URL':
+        return 'Página de pesquisa inválida. Certifique-se de introduzir um URL de resultados de pesquisa do Apollo Duck ou Boats & Outboards.';
+      case 'INDIVIDUAL_LISTING_URL':
+        return 'Este URL é um anúncio individual de barco. Utilize a aba "URLs Manuais" para importar este anúncio individual.';
+      case 'PAGE_BLOCKED':
+      case 'PAGE_ACCESS_DENIED':
+        return 'Esta página está protegida ou temporariamente indisponível (Cloudflare/Access Denied). Tente novamente mais tarde.';
+      case 'UNSUPPORTED_MARKETPLACE':
+        return 'Apenas o Apollo Duck e Boats & Outboards são suportados para desambiguação de páginas de pesquisa.';
+      case 'UNAUTHORIZED':
+        return 'Não possui autorização para efetuar a descoberta de anúncios.';
+      case 'NO_LISTINGS_FOUND':
+        return 'Nenhum anúncio de barco foi encontrado nesta página de resultados.';
+      default:
+        return fallbackMsg || 'Ocorreu um erro temporário no servidor ao ler a página. Por favor, tente novamente.';
+    }
+  };
+
   const handleDiscoverListings = async () => {
     setErrorMessage(null);
     setWarningMessages([]);
     setDiscoveryResult(null);
     setDiscoveredListings([]);
+    setShowLimitWarning(false);
 
     const trimmedUrl = searchUrl.trim();
     if (!trimmedUrl) {
@@ -83,7 +139,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
     // Client side validation pre-check
     const val: SearchPageValidationResult = validateSearchPageUrl(trimmedUrl);
     if (!val.isValid) {
-      setErrorMessage(val.errorMessage || 'URL inválido para importação de pesquisa.');
+      setErrorMessage(formatDiscoveryError(val.errorCode, val.errorMessage));
       return;
     }
 
@@ -99,10 +155,17 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
         })
       });
 
-      const data = await resp.json();
+      let data: any = null;
+      try {
+        data = await resp.json();
+      } catch (jsonErr) {
+        console.error('[AdminSearchPageDiscovery] Response was not valid JSON:', jsonErr);
+        setErrorMessage('Ocorreu um erro temporário no servidor ao ler a página. Por favor, tente novamente.');
+        return;
+      }
 
       if (!resp.ok || !data.success) {
-        setErrorMessage(data.errorMessage || 'Falha ao processar a página de pesquisa.');
+        setErrorMessage(formatDiscoveryError(data?.error, data?.errorMessage));
         return;
       }
 
@@ -154,7 +217,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
 
     } catch (err: any) {
       console.error('[AdminSearchPageDiscovery] Error:', err);
-      setErrorMessage(err.message || 'Erro de rede ao comunicar com o servidor de descoberta.');
+      setErrorMessage('Erro de comunicação com o servidor de descoberta. Por favor, tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -162,24 +225,26 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
 
   const selectedCount = discoveredListings.filter(l => l.selected).length;
 
-  const toggleSelect = (idx: number) => {
+  const toggleSelect = (idxInDiscovered: number) => {
     setDiscoveredListings(prev => {
       const copy = [...prev];
-      const target = copy[idx];
+      const target = copy[idxInDiscovered];
       if (target.alreadyImported) return prev;
 
       const nextSelected = !target.selected;
       if (nextSelected && selectedCount >= 20) {
-        alert('Máximo de 20 anúncios por lote de importação. Por favor, desmarque alguns anúncios para selecionar este.');
+        setShowLimitWarning(true);
         return prev;
       }
 
-      copy[idx] = { ...target, selected: nextSelected };
+      setShowLimitWarning(false);
+      copy[idxInDiscovered] = { ...target, selected: nextSelected };
       return copy;
     });
   };
 
   const handleSelectAllNew = () => {
+    setShowLimitWarning(false);
     setDiscoveredListings(prev => {
       let count = 0;
       return prev.map(item => {
@@ -195,7 +260,25 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
   };
 
   const handleClearSelection = () => {
+    setShowLimitWarning(false);
     setDiscoveredListings(prev => prev.map(item => ({ ...item, selected: false })));
+  };
+
+  const handleInvertSelection = () => {
+    setShowLimitWarning(false);
+    setDiscoveredListings(prev => {
+      let count = 0;
+      return prev.map(item => {
+        if (item.alreadyImported) return item;
+        const inverted = !item.selected;
+        if (inverted && count < 20) {
+          count++;
+          return { ...item, selected: true };
+        } else {
+          return { ...item, selected: false };
+        }
+      });
+    });
   };
 
   const handleStartImport = () => {
@@ -209,25 +292,61 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
     }
 
     if (selectedUrls.length > 20) {
-      alert('Máximo de 20 anúncios por lote. Por favor, desmarque alguns anúncios para continuar.');
+      setShowLimitWarning(true);
       return;
     }
 
-    onImportSelected(selectedUrls);
+    setHandoffCount(selectedUrls.length);
+    setTimeout(() => {
+      onImportSelected(selectedUrls);
+    }, 600);
   };
+
+  // Location filter existence check
+  const hasLocationData = discoveredListings.some(l => !!l.locationText && l.locationText.trim().length > 0);
+
+  // Filtered List Computation
+  const filteredListings = discoveredListings.filter(item => {
+    if (filterOnlyNew && item.alreadyImported) return false;
+    if (filterOnlyWithPrice && (!item.priceText || item.priceText.toLowerCase().includes('poa') || item.priceText.toLowerCase().includes('request price'))) return false;
+    if (filterUkOnly && item.locationText) {
+      const locLower = item.locationText.toLowerCase();
+      const isUk = locLower.includes('uk') || locLower.includes('united kingdom') || locLower.includes('england') ||
+                   locLower.includes('scotland') || locLower.includes('wales') || locLower.includes('gb') || locLower.includes('ireland');
+      if (!isUk) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">
+      {/* Handoff Modal Overlay */}
+      {handoffCount !== null && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100 text-center space-y-4 animate-in fade-in zoom-in duration-200">
+            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto text-indigo-600">
+              <Loader2 size={32} className="animate-spin" />
+            </div>
+            <h3 className="text-xl font-black text-slate-900">
+              A Importar {handoffCount} Anúncios
+            </h3>
+            <p className="text-xs text-slate-600 font-medium">
+              A transferir a lista de anúncios selecionados para o pipeline de extração e análise automática por IA...
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Explanation Banner */}
-      <div className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-6 rounded-3xl shadow-lg border border-slate-800 space-y-3">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-lg border border-slate-800 space-y-3">
         <div className="flex items-center gap-2 text-indigo-400 font-extrabold text-xs uppercase tracking-wider">
           <Sparkles size={16} /> Importação por Página de Resultados
         </div>
         <h2 className="text-xl md:text-2xl font-black text-white">
           Descobrir Anúncios em Lote via URL de Pesquisa
         </h2>
-        <p className="text-slate-300 text-xs md:text-sm font-medium leading-relaxed">
-          Cole o URL de uma página de resultados de pesquisa do <strong className="text-white">Apollo Duck</strong> ou <strong className="text-white">Boats and Outboards</strong>. O sistema lerá a página, descobrirá todos os anúncios de barcos individuais, removerá duplicados e permitirá selecionar até 20 anúncios por lote para extração automática via IA.
+        <p className="text-slate-300 text-xs md:text-sm font-medium leading-relaxed max-w-4xl">
+          Cole o URL de uma página de resultados de pesquisa do <strong className="text-white">Apollo Duck</strong> ou <strong className="text-white">Boats and Outboards</strong>. O sistema descobre automaticamente os anúncios de barcos, remove duplicados e permite selecionar até 20 anúncios por lote para extração.
         </p>
       </div>
 
@@ -243,7 +362,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
             type="url"
             value={searchUrl}
             onChange={(e) => setSearchUrl(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleDiscoverListings()}
+            onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleDiscoverListings()}
             placeholder="https://www.apolloduck.co.uk/boats/power-boats ou https://www.boatsandoutboards.co.uk/boats-for-sale/"
             className="flex-1 px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs md:text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
           />
@@ -256,7 +375,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
             {isLoading ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                <span>A Descobrir Anúncios...</span>
+                <span>A Processar...</span>
               </>
             ) : (
               <>
@@ -267,17 +386,35 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
           </button>
         </div>
 
+        {/* Multi-Step Loading Indicator */}
+        {isLoading && (
+          <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-3">
+            <div className="flex items-center gap-3">
+              <Loader2 size={20} className="animate-spin text-indigo-600 shrink-0" />
+              <span className="font-extrabold text-xs md:text-sm text-indigo-950">
+                {LOADING_STEPS[loadingStepIdx]}
+              </span>
+            </div>
+            <div className="w-full bg-indigo-200/60 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-indigo-600 h-full transition-all duration-500 rounded-full"
+                style={{ width: `${((loadingStepIdx + 1) / LOADING_STEPS.length) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Client Error Message */}
-        {errorMessage && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs md:text-sm font-bold flex items-center gap-3">
-            <AlertCircle size={18} className="shrink-0 text-rose-600" />
+        {errorMessage && !isLoading && (
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs md:text-sm font-bold flex items-center gap-3">
+            <AlertCircle size={20} className="shrink-0 text-rose-600" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {/* Warning Messages */}
-        {warningMessages.length > 0 && (
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs md:text-sm font-semibold space-y-1">
+        {warningMessages.length > 0 && !isLoading && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs md:text-sm font-semibold space-y-1.5">
             {warningMessages.map((w, i) => (
               <div key={i} className="flex items-center gap-2">
                 <AlertTriangle size={16} className="shrink-0 text-amber-600" />
@@ -288,52 +425,138 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
         )}
       </div>
 
-      {/* Discovery Results & Selection Matrix */}
-      {discoveryResult && (
+      {/* Discovery Summary Card & Results */}
+      {discoveryResult && !isLoading && (
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-          {/* Summary Metrics Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-slate-900 text-white">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                <ShieldCheck size={14} /> {discoveryResult.marketplace}
+          {/* Summary Panel */}
+          <div className="p-6 rounded-3xl bg-slate-900 text-white space-y-4 shadow-md border border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                  <ShieldCheck size={14} /> {discoveryResult.marketplace}
+                </div>
+                <h3 className="text-base font-extrabold text-white truncate max-w-lg">
+                  Resumo da Descoberta
+                </h3>
+                <p className="text-xs text-slate-400 font-mono truncate max-w-md">
+                  {discoveryResult.pageUrl}
+                </p>
               </div>
-              <p className="text-xs text-slate-300 font-mono truncate max-w-md">
-                {discoveryResult.pageUrl}
-              </p>
+
+              <div className="flex items-center gap-2 bg-slate-800/90 p-3 rounded-2xl border border-slate-700">
+                <div className="text-right">
+                  <span className="block text-[10px] text-slate-400 font-extrabold uppercase">Lote Atual</span>
+                  <span className="text-lg font-black text-indigo-400">
+                    {selectedCount} / 20 <span className="text-xs text-slate-400">selecionados</span>
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 text-xs font-bold">
-              <span className="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700">
-                Descobertos: {discoveryResult.totalCandidates}
-              </span>
-              <span className="bg-emerald-500/20 text-emerald-300 px-3 py-1.5 rounded-xl border border-emerald-500/30">
-                Únicos: {discoveryResult.totalFound}
-              </span>
-              {discoveryResult.alreadyImportedCount > 0 && (
-                <span className="bg-amber-500/20 text-amber-300 px-3 py-1.5 rounded-xl border border-amber-500/30">
-                  Já no sistema: {discoveryResult.alreadyImportedCount}
+            {/* Metrics Breakdown Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="bg-slate-800/70 p-3.5 rounded-2xl border border-slate-700/60">
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Anúncios no Site</span>
+                <span className="text-lg font-black text-white">{discoveryResult.totalCandidates}</span>
+              </div>
+
+              <div className="bg-slate-800/70 p-3.5 rounded-2xl border border-slate-700/60">
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Disponíveis p/ Revisão</span>
+                <span className="text-lg font-black text-emerald-400">{discoveryResult.totalFound}</span>
+              </div>
+
+              <div className="bg-slate-800/70 p-3.5 rounded-2xl border border-slate-700/60">
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Já no ConnectBoat</span>
+                <span className="text-lg font-black text-amber-400">{discoveryResult.alreadyImportedCount}</span>
+              </div>
+
+              <div className="bg-slate-800/70 p-3.5 rounded-2xl border border-slate-700/60">
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Novos Selecionáveis</span>
+                <span className="text-lg font-black text-indigo-300">
+                  {Math.max(0, discoveryResult.totalFound - discoveryResult.alreadyImportedCount)}
                 </span>
-              )}
-              <span className="bg-indigo-500 text-white px-3.5 py-1.5 rounded-xl shadow-sm font-black">
-                Selecionados: {selectedCount} / 20
-              </span>
+              </div>
             </div>
           </div>
 
+          {/* Quick Filters Toolbar */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+            <div className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-wider">
+              <Filter size={14} className="text-indigo-600" /> Filtros Rápidos
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-slate-700">
+              <label className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-indigo-300 transition-all select-none">
+                <input
+                  type="checkbox"
+                  checked={filterOnlyNew}
+                  onChange={(e) => setFilterOnlyNew(e.target.checked)}
+                  className="rounded text-indigo-600 focus:ring-indigo-500"
+                />
+                <span>Ocultar Já Importados</span>
+              </label>
+
+              <label className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-indigo-300 transition-all select-none">
+                <input
+                  type="checkbox"
+                  checked={filterOnlyWithPrice}
+                  onChange={(e) => setFilterOnlyWithPrice(e.target.checked)}
+                  className="rounded text-indigo-600 focus:ring-indigo-500"
+                />
+                <span>Apenas com Preço</span>
+              </label>
+
+              {hasLocationData && (
+                <label className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-indigo-300 transition-all select-none">
+                  <input
+                    type="checkbox"
+                    checked={filterUkOnly}
+                    onChange={(e) => setFilterUkOnly(e.target.checked)}
+                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Apenas Reino Unido (UK)</span>
+                </label>
+              )}
+            </div>
+          </div>
+
+          {/* Selection Limit Explanation Warning Banner */}
+          {showLimitWarning && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs font-semibold flex items-start gap-3 animate-in fade-in duration-150">
+              <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <h5 className="font-extrabold text-amber-900 text-xs">
+                  Limite Máximo de 20 Anúncios Por Lote Requerido
+                </h5>
+                <p className="text-amber-800 text-xs">
+                  Para garantir elevada precisão na extração de dados via Inteligência Artificial e evitar sobrecargas de rede, o limite por lote é de 20 anúncios. Por favor, desmarque alguns itens para selecionar este anúncio ou processe em múltiplos lotes.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Action Toolbar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-b border-slate-100 pb-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleSelectAllNew}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <CheckSquare size={14} /> Selecionar Novos (máx. 20)
+                <CheckSquare size={14} className="text-indigo-600" /> Selecionar Novos (máx. 20)
               </button>
+
+              <button
+                onClick={handleInvertSelection}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <ArrowLeftRight size={14} className="text-slate-600" /> Inverter Seleção
+              </button>
+
               <button
                 onClick={handleClearSelection}
-                className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <Square size={14} /> Limpar Seleção
+                <Square size={14} className="text-slate-500" /> Limpar Seleção
               </button>
             </div>
 
@@ -347,101 +570,130 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
             </button>
           </div>
 
-          {/* Discovered Cards List */}
-          <div className="space-y-3">
-            {discoveredListings.map((item, idx) => (
-              <div
-                key={idx}
-                onClick={() => toggleSelect(idx)}
-                className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer ${
-                  item.alreadyImported
-                    ? 'bg-slate-50 border-slate-200 opacity-60'
-                    : item.selected
-                    ? 'bg-indigo-50/50 border-indigo-300 shadow-sm'
-                    : 'bg-white border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Checkbox */}
-                  <button
-                    type="button"
-                    disabled={item.alreadyImported}
-                    className="shrink-0 text-slate-400 hover:text-indigo-600 cursor-pointer disabled:cursor-not-allowed"
+          {/* Discovered Cards Table Layout */}
+          {filteredListings.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 font-bold text-xs bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              Nenhum anúncio corresponde aos filtros ativos.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredListings.map((item) => {
+                const originalIndex = discoveredListings.findIndex(
+                  l => l.normalizedSourceUrl === item.normalizedSourceUrl
+                );
+
+                return (
+                  <div
+                    key={item.normalizedSourceUrl}
+                    onClick={() => toggleSelect(originalIndex)}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
+                      item.alreadyImported
+                        ? 'bg-slate-100/70 border-slate-200 opacity-60 cursor-not-allowed'
+                        : item.selected
+                        ? 'bg-indigo-50/60 border-indigo-300 shadow-sm cursor-pointer'
+                        : 'bg-white border-slate-200 hover:border-slate-300 cursor-pointer'
+                    }`}
+                    title={item.alreadyImported ? "Este anúncio já existe no ConnectBoat." : `Clique para selecionar: ${item.title}`}
                   >
-                    {item.alreadyImported ? (
-                      <CheckCircle2 size={20} className="text-amber-500" />
-                    ) : item.selected ? (
-                      <CheckSquare size={20} className="text-indigo-600" />
-                    ) : (
-                      <Square size={20} />
-                    )}
-                  </button>
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      {/* Checkbox */}
+                      <button
+                        type="button"
+                        disabled={item.alreadyImported}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleSelect(originalIndex);
+                        }}
+                        className="shrink-0 text-slate-400 hover:text-indigo-600 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        {item.alreadyImported ? (
+                          <CheckCircle2 size={20} className="text-amber-500" />
+                        ) : item.selected ? (
+                          <CheckSquare size={20} className="text-indigo-600" />
+                        ) : (
+                          <Square size={20} />
+                        )}
+                      </button>
 
-                  {/* Image Preview */}
-                  {item.image ? (
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="w-16 h-12 object-cover rounded-xl border border-slate-200 bg-slate-100 shrink-0"
-                    />
-                  ) : (
-                    <div className="w-16 h-12 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center shrink-0 text-slate-400 text-xs font-bold">
-                      Sem Imagem
+                      {/* Image Preview */}
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.title}
+                          className="w-16 h-12 object-cover rounded-xl border border-slate-200 bg-slate-100 shrink-0"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-16 h-12 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center shrink-0 text-slate-400 text-[10px] font-bold">
+                          <Anchor size={14} />
+                          <span>Sem Foto</span>
+                        </div>
+                      )}
+
+                      {/* Title & Metadata */}
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <h4 className="font-extrabold text-slate-900 text-xs md:text-sm truncate">
+                          {item.title}
+                        </h4>
+
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
+                          {item.priceText ? (
+                            <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-200 font-black">
+                              {item.priceText}
+                            </span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md text-[11px]">
+                              Sob Consulta
+                            </span>
+                          )}
+
+                          {item.locationText && (
+                            <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md text-[11px] flex items-center gap-1">
+                              <MapPin size={10} className="text-slate-400" />
+                              {item.locationText}
+                            </span>
+                          )}
+
+                          {item.externalId && (
+                            <span className="font-mono text-[10px] text-slate-400">
+                              ID: {item.externalId}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Title & Metadata */}
-                  <div className="space-y-1">
-                    <h4 className="font-extrabold text-slate-900 text-xs md:text-sm line-clamp-1">
-                      {item.title}
-                    </h4>
+                    {/* Right Status Badges & URL Link */}
+                    <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+                      {item.alreadyImported ? (
+                        <span
+                          className="px-3 py-1 bg-amber-100 text-amber-900 rounded-lg text-xs font-black border border-amber-200"
+                          title="Este anúncio já existe no ConnectBoat."
+                        >
+                          Já Importado
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 bg-indigo-100 text-indigo-900 rounded-lg text-xs font-black border border-indigo-200">
+                          Novo
+                        </span>
+                      )}
 
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500">
-                      {item.priceText && (
-                        <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200 font-extrabold">
-                          {item.priceText}
-                        </span>
-                      )}
-                      {item.locationText && (
-                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-                          {item.locationText}
-                        </span>
-                      )}
-                      {item.externalId && (
-                        <span className="font-mono text-[10px] text-slate-400">
-                          ID: {item.externalId}
-                        </span>
-                      )}
+                      <a
+                        href={item.normalizedSourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-2 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
+                        title={`Abrir anúncio original: ${item.normalizedSourceUrl}`}
+                      >
+                        <ExternalLink size={16} />
+                      </a>
                     </div>
                   </div>
-                </div>
-
-                {/* Right Status Badge & External Link */}
-                <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
-                  {item.alreadyImported ? (
-                    <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-lg text-xs font-bold border border-amber-200">
-                      Já Importado
-                    </span>
-                  ) : (
-                    <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-lg text-xs font-bold border border-indigo-200">
-                      Pronto p/ Importar
-                    </span>
-                  )}
-
-                  <a
-                    href={item.normalizedSourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-2 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
-                    title="Abrir anúncio original"
-                  >
-                    <ExternalLink size={16} />
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

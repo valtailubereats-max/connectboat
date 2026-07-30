@@ -22,6 +22,22 @@ async function startServer() {
   app.use(express.json({ limit: '20mb' }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
+  // Middleware para capturar erros de sintaxe de JSON do body-parser em rotas /api/*
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const isApiRoute = (req.originalUrl && req.originalUrl.startsWith('/api/')) ||
+                       (req.path && req.path.startsWith('/api/')) ||
+                       (req.url && req.url.startsWith('/api/'));
+    if (err && isApiRoute) {
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(err.status || 400).json({
+        success: false,
+        error: 'INVALID_JSON_PAYLOAD',
+        errorMessage: 'O corpo do pedido em formato JSON é inválido.'
+      });
+    }
+    next(err);
+  });
+
   // Middleware global para rotas de API: CORS e cabeçalhos de resposta
   app.use('/api/*', (req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -127,6 +143,19 @@ async function startServer() {
       success: false,
       error: `API endpoint não encontrado: ${req.method} ${req.originalUrl}`
     });
+  });
+
+  // Handler global de erros em rotas de API: garante sempre resposta JSON
+  app.use('/api/*', (err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error('[Global API Exception]:', err);
+    res.setHeader('Content-Type', 'application/json');
+    if (!res.headersSent) {
+      res.status(err.status || 500).json({
+        success: false,
+        error: 'SERVER_ERROR',
+        errorMessage: err.message || 'Erro interno no servidor'
+      });
+    }
   });
 
   // Reescritas para crawlers de redes sociais (OpenGraph/Twitter Cards)
