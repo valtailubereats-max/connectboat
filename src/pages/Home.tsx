@@ -1718,7 +1718,7 @@ const Home = () => {
             <motion.div 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-6 text-left w-full"
+              className="mt-auto pt-14 md:pt-20 text-left w-full"
             >
               <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3 shadow-2xl max-w-full">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/95 font-medium italic tracking-wide leading-snug whitespace-normal lg:whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
