@@ -1773,7 +1773,7 @@ const Home = () => {
         )}
 
         {/* 4. ⚓ EMPREENDEDORES EM DESTAQUE */}
-        {featuredVitrines.length > 0 && (
+        {false && featuredVitrines.length > 0 && (
           <section className="py-2 md:py-4 border-b border-slate-250/20 overflow-hidden max-w-full" id="desktop-featured-entrepreneurs">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-4 text-left">
               <div className="flex flex-col gap-0.5">
@@ -2189,7 +2189,7 @@ const Home = () => {
         )}
 
         {/* 5. EMPREENDEDORES MOBILE (Compact scroller) */}
-        {featuredVitrines.length > 0 && (
+        {false && featuredVitrines.length > 0 && (
           <section className="w-full border-b border-slate-100 dark:border-slate-800/60 pb-3" id="mobile-entrepreneurs-section">
             <div className="flex items-center justify-between mb-2.5 text-left">
               <div className="flex items-center gap-1.5">
