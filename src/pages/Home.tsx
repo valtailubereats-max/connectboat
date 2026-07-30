@@ -1913,7 +1913,7 @@ const Home = () => {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
                 {displayedAds.map((ad) => (
-                  <AdCard key={ad.id} ad={ad} />
+                  <AdCard key={ad.id} ad={ad} variant="homepage-simple" />
                 ))}
               </div>
             )}
@@ -2252,7 +2252,7 @@ const Home = () => {
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {displayedAds.map((ad) => (
-                  <AdCard key={`mb-ad-${ad.id}`} ad={ad} />
+                  <AdCard key={`mb-ad-${ad.id}`} ad={ad} variant="homepage-simple" />
                 ))}
               </div>
             )}
