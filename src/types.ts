@@ -165,6 +165,11 @@ export interface Ad {
   duplicateReason?: string;
   duplicateOf?: string;
   listingType?: 'normal' | 'informativo';
+  listingMode?: 'external' | 'claimable';
+  currency?: string;
+  priceOnApplication?: boolean;
+  priceRequiresReview?: boolean;
+  locationRequiresReview?: boolean;
   targetUrl?: string;
   isClaimableBusiness?: boolean;
   claimStatus?: 'unclaimed' | 'pending' | 'claimed';

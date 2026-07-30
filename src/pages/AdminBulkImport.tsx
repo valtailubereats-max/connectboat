@@ -11,6 +11,8 @@ import { useSettings } from '../context/SettingsContext';
 import { Ad, BOAT_TYPES } from '../types';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getSourceSiteFromUrl, getSupportedMarketplace } from '../utils/marketplaces';
+import { normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
 
 export interface BulkItem {
   id: string; // internal tracking id
@@ -50,24 +52,6 @@ export interface BulkItem {
   expanded?: boolean;
 }
 
-const getSourceSiteFromUrl = (urlStr: string): string => {
-  if (!urlStr || typeof urlStr !== 'string') return 'External Marketplace';
-  try {
-    const parsed = new URL(urlStr.trim());
-    const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
-    if (host.includes('yachtworld')) return 'YachtWorld UK';
-    if (host.includes('apolloduck')) return 'Apollo Duck UK';
-    if (host.includes('boatshop24')) return 'Boatshop24 UK';
-    if (host.includes('boatsandoutboards')) return 'BoatsAndOutboards UK';
-    if (host.includes('theboatmarket')) return 'The Boat Market UK';
-    if (host.includes('olx.pt')) return 'OLX Portugal';
-    if (host.includes('gumtree')) return 'Gumtree UK';
-    return host;
-  } catch (e) {
-    return 'External Marketplace';
-  }
-};
-
 const AdminBulkImport: React.FC = () => {
   const { isAdmin, isModerator, profile, user } = useAuth();
   const { categories } = useSettings();
@@ -75,6 +59,7 @@ const AdminBulkImport: React.FC = () => {
 
   const [rawUrls, setRawUrls] = useState<string>('');
   const [items, setItems] = useState<BulkItem[]>([]);
+  const [batchListingMode, setBatchListingMode] = useState<'external' | 'claimable'>('external');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [actionStatus, setActionStatus] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
@@ -310,20 +295,27 @@ const AdminBulkImport: React.FC = () => {
     try {
       let count = 0;
       for (const item of selectedItems) {
+        const cleanImages = normalizeAndLimitImages(item.images || [item.imageUrl || ''], 6);
+        const primaryImage = cleanImages[0] || item.imageUrl || '';
+
         const payload: Partial<Ad> = {
           title: item.title || 'Anúncio Importado',
           description: item.description || '',
           price: item.price || 0,
           category: item.category || 'Outros',
-          city: item.city || 'Desconhecida',
+          city: item.city || '',
           country: item.country || 'United Kingdom',
-          imageUrl: item.imageUrl || (item.images?.[0] || ''),
-          images: item.images || [],
+          imageUrl: primaryImage,
+          images: cleanImages,
           status: asDraft ? 'draft' : 'approved',
           adStatus: asDraft ? 'inactive' : 'active',
           views: 0,
           whatsappClicks: 0,
           createdAt: serverTimestamp(),
+          // Mode & Claim status
+          listingMode: batchListingMode,
+          isClaimableBusiness: batchListingMode === 'claimable',
+          claimStatus: batchListingMode === 'claimable' ? 'unclaimed' : null,
           // Metadata
           externalListing: true,
           demoListing: false,
@@ -333,6 +325,10 @@ const AdminBulkImport: React.FC = () => {
           externalStatus: 'active',
           importedBy: user?.email || user?.uid || 'admin',
           importedAt: new Date(),
+          // Phone details optional for external imports
+          sellerPhone: '',
+          contactPhone: '',
+          useProfilePhone: false,
           // Boat specs
           boatType: item.boatType || '',
           manufacturer: item.manufacturer || '',
@@ -352,14 +348,8 @@ const AdminBulkImport: React.FC = () => {
           hullMaterial: item.hullMaterial || '',
         };
 
-        // Remove any undefined values to prevent Firestore addDoc errors
-        Object.keys(payload).forEach(key => {
-          if ((payload as any)[key] === undefined) {
-            delete (payload as any)[key];
-          }
-        });
-
-        await addDoc(collection(db, 'ads'), payload);
+        const cleanPayload = sanitizeFirestorePayload(payload);
+        await addDoc(collection(db, 'ads'), cleanPayload);
         count++;
 
         // Update item status locally
@@ -499,33 +489,49 @@ const AdminBulkImport: React.FC = () => {
       {/* Step 2: Preview & Batch Publication List */}
       {items.length > 0 && (
         <div className="space-y-4">
-          <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => toggleSelectAll(selectedCount < items.length)}
-                className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition cursor-pointer"
-              >
-                {selectedCount === items.length ? <CheckSquare size={16} className="text-indigo-600" /> : <Square size={16} />}
-                {selectedCount === items.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
-              </button>
-              <span className="text-xs font-bold text-slate-500">
-                {selectedCount} de {items.length} selecionados ({processableCount} prontos para publicar)
-              </span>
+          <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-500">Modo de Publicação:</span>
+                <select
+                  value={batchListingMode}
+                  onChange={(e) => setBatchListingMode(e.target.value as 'external' | 'claimable')}
+                  className="bg-slate-100 text-slate-900 border border-slate-300 text-xs font-bold rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 outline-none"
+                >
+                  <option value="external">🔗 Redirecionamento Externo (Padrão: Direciona para Anúncio Original)</option>
+                  <option value="claimable">🏷️ Reivindicável (Administrador ativa fluxo de Reivindicação)</option>
+                </select>
+              </div>
             </div>
+          </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                onClick={() => handleBatchPublish(true)}
-                disabled={isProcessing || selectedCount === 0}
-                className="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition border border-slate-700 disabled:opacity-50 cursor-pointer"
-              >
-                Guardar Rascunhos
-              </button>
-              <button
-                onClick={() => handleBatchPublish(false)}
-                disabled={isProcessing || selectedCount === 0}
-                className="flex-1 sm:flex-initial px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
-              >
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => toggleSelectAll(selectedCount < items.length)}
+                  className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition cursor-pointer"
+                >
+                  {selectedCount === items.length ? <CheckSquare size={16} className="text-indigo-600" /> : <Square size={16} />}
+                  {selectedCount === items.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                </button>
+                <span className="text-xs font-bold text-slate-500">
+                  {selectedCount} de {items.length} selecionados ({processableCount} prontos para publicar)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => handleBatchPublish(true)}
+                  disabled={isProcessing || selectedCount === 0}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition border border-slate-700 disabled:opacity-50 cursor-pointer"
+                >
+                  Guardar Rascunhos
+                </button>
+                <button
+                  onClick={() => handleBatchPublish(false)}
+                  disabled={isProcessing || selectedCount === 0}
+                  className="flex-1 sm:flex-initial px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
                 <CheckCircle2 size={16} />
                 Publicar Selecionados
               </button>

@@ -1,7 +1,8 @@
 import type { Request, Response } from 'express';
+import { getSupportedMarketplace, getSupportedMarketplacesMessage, getSourceSiteFromUrl } from '../src/utils/marketplaces';
 
 // Decodificador de HTML Entities
-const decodeHtmlEntities = (str: string): string => {
+export const decodeHtmlEntities = (str: string): string => {
   if (!str) return '';
   let temp = str
     .replace(/&amp;/g, '&')
@@ -12,6 +13,9 @@ const decodeHtmlEntities = (str: string): string => {
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
     .replace(/&nbsp;/g, ' ')
+    .replace(/&pound;/g, '£')
+    .replace(/&euro;/g, '€')
+    .replace(/&#36;/g, '$')
     .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
     .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
   
@@ -24,7 +28,7 @@ const decodeHtmlEntities = (str: string): string => {
 };
 
 // Limpador do título
-const cleanTitle = (title: string): string => {
+export const cleanTitle = (title: string): string => {
   if (!title) return '';
   let temp = decodeHtmlEntities(title)
     .replace(/\s*-\s*à venda\s*-\s*.*$/gi, '')
@@ -33,6 +37,14 @@ const cleanTitle = (title: string): string => {
     .replace(/\s*[|]\s*Gumtree.*$/gi, '')
     .replace(/\s*-\s*Gumtree.*$/gi, '')
     .replace(/\s*in\s+[^|]+[|]\s*Gumtree.*$/gi, '')
+    .replace(/\s*-\s*Boats\s*and\s*Outboards.*$/gi, '')
+    .replace(/\s*-\s*Apollo\s*Duck.*$/gi, '')
+    .replace(/\s*-\s*YachtWorld.*$/gi, '')
+    .replace(/\s*-\s*Rightboat.*$/gi, '')
+    .replace(/\s*-\s*TheYachtMarket.*$/gi, '')
+    .replace(/\s*-\s*Boatshop24.*$/gi, '')
+    .replace(/\s*-\s*Boat24.*$/gi, '')
+    .replace(/\s*-\s*Boats\.com.*$/gi, '')
     .replace(/\|.*$/gi, '')
     .trim();
 
@@ -46,7 +58,7 @@ const cleanTitle = (title: string): string => {
 };
 
 // Limpador da descrição
-const cleanDescription = (desc: string): string => {
+export const cleanDescription = (desc: string): string => {
   if (!desc) return '';
   let temp = decodeHtmlEntities(desc);
   
@@ -59,13 +71,13 @@ const cleanDescription = (desc: string): string => {
   temp = temp.replace(/\r/g, '');
   temp = temp.replace(/\n{3,}/g, '\n\n'); // Permite no máximo 2 novas linhas consecutivas
   temp = temp.split('\n').map(line => line.trim()).join('\n');
-  temp = temp.split('\n').map(line => line.replace(/[ \t]{2,}/g, ' ')).join('\n'); // Evita visual spacing slop
+  temp = temp.split('\n').map(line => line.replace(/[ \t]{2,}/g, ' ')).join('\n');
 
   return temp.trim();
 };
 
 // Parseador de preço
-const parsePrice = (priceStr: string | number | undefined | null): number => {
+export const parsePrice = (priceStr: string | number | undefined | null): number => {
   if (priceStr === undefined || priceStr === null) return 0;
   if (typeof priceStr === 'number') return priceStr;
   
@@ -146,7 +158,7 @@ const extractFromJsonLdList = (jsonLdList: any[]): any => {
         }
       } else {
         const typeStr = String(item['@type'] || '').toLowerCase();
-        if (typeStr === 'product' || typeStr === 'productmodel') {
+        if (typeStr === 'product' || typeStr === 'productmodel' || typeStr === 'vehicle' || typeStr === 'boat') {
           return item;
         }
         if (item['@graph']) {
@@ -184,6 +196,10 @@ const findLocationInJsonLd = (obj: any): string | null => {
     if (obj.addressRegion) {
       return String(obj.addressRegion);
     }
+    if (obj.address && typeof obj.address === 'object') {
+      if (obj.address.addressLocality) return String(obj.address.addressLocality);
+      if (obj.address.addressRegion) return String(obj.address.addressRegion);
+    }
     for (const k of Object.keys(obj)) {
       const loc = findLocationInJsonLd(obj[k]);
       if (loc) return loc;
@@ -192,8 +208,560 @@ const findLocationInJsonLd = (obj: any): string | null => {
   return null;
 };
 
-// Função robusta e resiliente para descarregar o HTML da página do anúncio
-async function fetchAdHtml(url: string): Promise<{ html: string; source: string }> {
+// Interface do Adaptador
+export interface MarketplaceAdapterResult {
+  price?: number;
+  currency?: string;
+  priceOnApplication?: boolean;
+  city?: string;
+  country?: string;
+  manufacturer?: string;
+  model?: string;
+  year?: string;
+  length?: string;
+  beam?: string;
+  draft?: string;
+  fuelType?: string;
+  engineBrand?: string;
+  boatType?: string;
+  priceSource: 'json-ld' | 'embedded-json' | 'marketplace-adapter' | 'visible-html' | 'gemini' | 'not-found';
+  locationSource: 'json-ld' | 'embedded-json' | 'marketplace-adapter' | 'visible-html' | 'gemini' | 'not-found';
+  rawPriceText?: string;
+  rawLocationText?: string;
+}
+
+// ADAPTADOR 1: APOLLO DUCK
+export function extractApolloDuckData(html: string, url: string): MarketplaceAdapterResult {
+  const decodedHtml = decodeHtmlEntities(html);
+
+  let rawPriceText = '';
+  let price = 0;
+  let currency = 'GBP';
+  let priceOnApplication = false;
+  let priceSource: MarketplaceAdapterResult['priceSource'] = 'not-found';
+
+  // Verificação de Sob Consulta / POA
+  if (/\b(?:poa|price on application|price on request)\b/i.test(decodedHtml)) {
+    priceOnApplication = true;
+    priceSource = 'marketplace-adapter';
+  } else {
+    // 1. _boatAdvertPrice
+    const boatPriceMatch = decodedHtml.match(/<div[^>]*class=["']_boatAdvertPrice["'][^>]*>([\s\S]*?)<\/div>/i);
+    // 2. nativePrice span
+    const nativePriceMatch = decodedHtml.match(/<span[^>]*id=["']nativePrice["'][^>]*>([\s\S]*?)<\/span>/i);
+    // 3. _pclPrice
+    const pclPriceMatch = decodedHtml.match(/<td[^>]*class=["']_pclPrice["'][^>]*>([\s\S]*?)<\/td>/i);
+
+    const priceTarget = boatPriceMatch?.[1] || nativePriceMatch?.[1] || pclPriceMatch?.[1];
+    if (priceTarget) {
+      const cleanTarget = priceTarget.replace(/<select[\s\S]*?<\/select>/gi, '').replace(/<[^>]+>/g, ' ').trim();
+      const numMatch = cleanTarget.match(/(?:£|€|\$|GBP|EUR|USD)\s*([\d,.]+)|([\d,.]+)/i);
+      if (numMatch) {
+        rawPriceText = cleanTarget;
+        if (cleanTarget.includes('€') || cleanTarget.includes('EUR')) currency = 'EUR';
+        else if (cleanTarget.includes('$') || cleanTarget.includes('USD')) currency = 'USD';
+        else currency = 'GBP';
+
+        const pStr = numMatch[1] || numMatch[2];
+        const num = parseFloat(pStr.replace(/,/g, ''));
+        if (!isNaN(num) && num > 0) {
+          price = num;
+          priceSource = 'marketplace-adapter';
+        }
+      }
+    }
+  }
+
+  // Extração de Localização em Apollo Duck
+  let rawLocationText = '';
+  let city = '';
+  let country = 'United Kingdom';
+  let locationSource: MarketplaceAdapterResult['locationSource'] = 'not-found';
+
+  const locRowMatch = decodedHtml.match(/<td[^>]*class=["']_pclLabel["'][^>]*>\s*(?:Location|Lying):\s*<\/td>\s*<td[^>]*class=["']_pclData["'][^>]*>([\s\S]*?)<\/td>/i);
+  if (locRowMatch) {
+    const rawLoc = locRowMatch[1]
+      .replace(/\[\s*<a[^>]*>[\s\S]*?<\/a>\s*\]/gi, '') // remove [View Map]
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<[^>]+>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (rawLoc) {
+      rawLocationText = rawLoc;
+      locationSource = 'marketplace-adapter';
+
+      let cleanLoc = rawLoc.replace(/\bUK\b/i, '').replace(/\bUnited Kingdom\b/i, '').trim();
+      cleanLoc = cleanLoc.replace(/,$/, '').trim();
+      const parts = cleanLoc.split(',').map(p => p.trim()).filter(Boolean);
+      city = parts[0] || cleanLoc;
+      country = 'United Kingdom';
+    }
+  }
+
+  // Extração de especificações
+  let year = '';
+  let length = '';
+  let beam = '';
+  let draft = '';
+  let manufacturer = '';
+  let model = '';
+
+  const specRows = decodedHtml.match(/<tr[^>]*class=["']_pclLine["'][^>]*>[\s\S]*?<\/tr>/gi) || [];
+  for (const row of specRows) {
+    const labelMatch = row.match(/<td[^>]*class=["']_pclLabel["'][^>]*>([\s\S]*?)<\/td>/i);
+    const dataMatch = row.match(/<td[^>]*class=["']_pclData["'][^>]*>([\s\S]*?)<\/td>/i);
+    if (labelMatch && dataMatch) {
+      const lbl = labelMatch[1].replace(/<[^>]+>/g, '').trim().toLowerCase();
+      const val = dataMatch[1].replace(/<[^>]+>/g, '').trim();
+
+      if (lbl.includes('year') || lbl.includes('built')) year = val;
+      else if (lbl.includes('loa') || lbl.includes('length')) length = val;
+      else if (lbl.includes('beam')) beam = val;
+      else if (lbl.includes('draft')) draft = val;
+      else if (lbl.includes('manufacturer') || lbl.includes('builder')) manufacturer = val;
+      else if (lbl.includes('model')) model = val;
+    }
+  }
+
+  return {
+    price,
+    currency,
+    priceOnApplication,
+    city,
+    country,
+    year,
+    length,
+    beam,
+    draft,
+    manufacturer,
+    model,
+    priceSource,
+    locationSource,
+    rawPriceText,
+    rawLocationText
+  };
+}
+
+// ADAPTADOR 2: BOATS AND OUTBOARDS
+export function extractBoatsAndOutboardsData(textOrHtml: string, url: string): MarketplaceAdapterResult {
+  let rawPriceText = '';
+  let price = 0;
+  let currency = 'GBP';
+  let priceOnApplication = false;
+  let priceSource: MarketplaceAdapterResult['priceSource'] = 'not-found';
+
+  let rawLocationText = '';
+  let city = '';
+  let country = 'United Kingdom';
+  let locationSource: MarketplaceAdapterResult['locationSource'] = 'not-found';
+
+  // 1. JSON embutido ("boatcity":"poole", "boatcountry":"gb", "price":799950)
+  const boatCityMatch = textOrHtml.match(/"boatcity"\s*:\s*"([^"]+)"/i);
+  const boatCountryMatch = textOrHtml.match(/"boatcountry"\s*:\s*"([^"]+)"/i);
+  if (boatCityMatch && boatCityMatch[1]) {
+    city = boatCityMatch[1].charAt(0).toUpperCase() + boatCityMatch[1].slice(1);
+    if (boatCountryMatch?.[1]?.toLowerCase() === 'gb' || boatCountryMatch?.[1]?.toLowerCase() === 'uk') {
+      country = 'United Kingdom';
+    }
+    rawLocationText = `${city}, ${country}`;
+    locationSource = 'marketplace-adapter';
+  }
+
+  // 2. Localização por padrão de texto ("Poole, Dorset")
+  if (!city) {
+    const textLocMatch = textOrHtml.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*),\s*(Dorset|Hampshire|Devon|Cornwall|Kent|Essex|Norfolk|Suffolk|Surrey|Sussex|Lincolnshire|Yorkshire|Pembrokeshire|Argyll|Fife|Glamorgan)\b/i);
+    if (textLocMatch) {
+      city = textLocMatch[1];
+      rawLocationText = textLocMatch[0];
+      country = 'United Kingdom';
+      locationSource = 'marketplace-adapter';
+    }
+  }
+
+  // 3. Sufixo no título ("Fairline Targa 50 Open | 15m | 2025 - Dorset | Boats and Outboards")
+  if (!city) {
+    const titleLocMatch = textOrHtml.match(/-\s*([A-Za-z\s]+)\s*\|\s*Boats and Outboards/i);
+    if (titleLocMatch && titleLocMatch[1]) {
+      const cand = titleLocMatch[1].trim();
+      if (!/boat|sale|search|login/i.test(cand)) {
+        city = cand;
+        rawLocationText = cand;
+        country = 'United Kingdom';
+        locationSource = 'marketplace-adapter';
+      }
+    }
+  }
+
+  // Preço
+  const jsonPriceMatch = textOrHtml.match(/"price"\s*:\s*"?(\d+)"?/i) || textOrHtml.match(/"listingPrice"\s*:\s*"?(\d+)"?/i);
+  if (jsonPriceMatch && jsonPriceMatch[1] && parseInt(jsonPriceMatch[1], 10) > 100) {
+    price = parseInt(jsonPriceMatch[1], 10);
+    rawPriceText = `${price}`;
+    currency = 'GBP';
+    priceSource = 'marketplace-adapter';
+  } else {
+    const textPriceMatch = textOrHtml.match(/£\s*([\d,.]+)/i);
+    if (textPriceMatch && textPriceMatch[1]) {
+      rawPriceText = textPriceMatch[0];
+      const p = parseFloat(textPriceMatch[1].replace(/,/g, ''));
+      if (!isNaN(p) && p > 0) {
+        price = p;
+        currency = 'GBP';
+        priceSource = 'marketplace-adapter';
+      }
+    }
+  }
+
+  // Especificações
+  let year = '';
+  let manufacturer = '';
+  let model = '';
+
+  const yearMatch = textOrHtml.match(/"modelyear"\s*:\s*"([^"]+)"/i) || textOrHtml.match(/\b(20\d{2}|19\d{2})\b/);
+  if (yearMatch) year = yearMatch[1];
+
+  const makeMatch = textOrHtml.match(/"make"\s*:\s*"([^"]+)"/i);
+  if (makeMatch) manufacturer = makeMatch[1];
+
+  const modelMatch = textOrHtml.match(/"model"\s*:\s*"([^"]+)"/i);
+  if (modelMatch) model = modelMatch[1];
+
+  return {
+    price,
+    currency,
+    priceOnApplication,
+    city,
+    country,
+    year,
+    manufacturer,
+    model,
+    priceSource,
+    locationSource,
+    rawPriceText,
+    rawLocationText
+  };
+}
+
+// ADAPTADOR 3: GUMTREE
+export function extractGumtreeData(textOrHtml: string, url: string): MarketplaceAdapterResult {
+  let rawPriceText = '';
+  let price = 0;
+  let currency = 'GBP';
+  let priceOnApplication = false;
+  let priceSource: MarketplaceAdapterResult['priceSource'] = 'not-found';
+
+  let rawLocationText = '';
+  let city = '';
+  let country = 'United Kingdom';
+  let locationSource: MarketplaceAdapterResult['locationSource'] = 'not-found';
+
+  // Localização
+  const titleLocMatch = textOrHtml.match(/\|\s*in\s+([^|]+)\|/i) || textOrHtml.match(/Location[:\s]+([^\n<]+)/i) || textOrHtml.match(/itemprop=["']addressLocality["'][^>]*>([^<]+)</i);
+  if (titleLocMatch && titleLocMatch[1]) {
+    const cand = titleLocMatch[1].trim();
+    if (cand) {
+      city = cand.split(',')[0].trim();
+      rawLocationText = cand;
+      locationSource = 'marketplace-adapter';
+    }
+  }
+
+  // Preço
+  const priceMatch = textOrHtml.match(/itemprop=["']price["'][^>]*content=["']([^"']+)["']/i) || textOrHtml.match(/£\s*([\d,.]+)/i);
+  if (priceMatch) {
+    const rawP = priceMatch[1] || priceMatch[0];
+    const p = parsePrice(rawP);
+    if (p > 0) {
+      price = p;
+      rawPriceText = rawP;
+      priceSource = 'marketplace-adapter';
+    }
+  }
+
+  return {
+    price,
+    currency,
+    priceOnApplication,
+    city,
+    country,
+    priceSource,
+    locationSource,
+    rawPriceText,
+    rawLocationText
+  };
+}
+
+// Extração de Preço e Moeda (Genérico)
+interface PriceResult {
+  price: number;
+  currency: string;
+  priceOnApplication: boolean;
+  priceRequiresReview: boolean;
+  priceSource: 'json-ld' | 'embedded-json' | 'marketplace-adapter' | 'visible-html' | 'gemini' | 'not-found';
+  rawPriceText: string;
+}
+
+function extractPriceAndCurrency(
+  html: string,
+  productNode: any,
+  jsonLdList: any[],
+  rawTitle: string,
+  url: string
+): PriceResult {
+  const lowerUrl = url.toLowerCase();
+  
+  let defaultCurrency = 'GBP';
+  if (lowerUrl.includes('.pt') || lowerUrl.includes('olx.pt') || lowerUrl.includes('barcos.pt')) {
+    defaultCurrency = 'EUR';
+  } else if (lowerUrl.includes('.uk') || lowerUrl.includes('gumtree.com') || lowerUrl.includes('apolloduck.com') || lowerUrl.includes('boatsandoutboards') || lowerUrl.includes('boatshop24')) {
+    defaultCurrency = 'GBP';
+  }
+
+  // 1. Verificação de Sob Consulta / POA
+  const poaRegex = /\b(?:poa|price on application|price on request|sob consulta|a consultar|price upon request)\b/i;
+  if (poaRegex.test(rawTitle + ' ' + html.slice(0, 8000))) {
+    return {
+      price: 0,
+      currency: defaultCurrency,
+      priceOnApplication: true,
+      priceRequiresReview: false,
+      priceSource: 'visible-html',
+      rawPriceText: 'POA'
+    };
+  }
+
+  let extractedPrice = 0;
+  let extractedCurrency = defaultCurrency;
+  let priceSource: PriceResult['priceSource'] = 'not-found';
+  let rawPriceText = '';
+
+  const detectCurrency = (str: string) => {
+    if (!str) return;
+    if (str.includes('€') || /\beur\b/i.test(str)) extractedCurrency = 'EUR';
+    else if (str.includes('£') || /\bgbp\b/i.test(str)) extractedCurrency = 'GBP';
+    else if (str.includes('$') || /\busd\b/i.test(str)) extractedCurrency = 'USD';
+  };
+
+  // Etapa 1: Metatags Open Graph & Produto
+  const ogPriceAmount = extractMetaContent(html, 'product:price:amount') || extractMetaContent(html, 'og:price:amount');
+  const ogPriceCurrency = extractMetaContent(html, 'product:price:currency') || extractMetaContent(html, 'og:price:currency');
+  if (ogPriceCurrency) detectCurrency(ogPriceCurrency);
+
+  if (ogPriceAmount) {
+    extractedPrice = parsePrice(ogPriceAmount);
+    if (extractedPrice > 0) {
+      priceSource = 'visible-html';
+      rawPriceText = ogPriceAmount;
+    }
+  }
+
+  // Etapa 2: JSON-LD
+  if (extractedPrice === 0) {
+    const checkOffer = (offer: any) => {
+      if (!offer) return;
+      if (offer.priceCurrency) detectCurrency(offer.priceCurrency);
+      if (offer.price !== undefined && offer.price !== null) {
+        const p = parsePrice(offer.price);
+        if (p > 0) {
+          extractedPrice = p;
+          priceSource = 'json-ld';
+          rawPriceText = String(offer.price);
+        }
+      } else if (offer.lowPrice !== undefined && offer.lowPrice !== null) {
+        const p = parsePrice(offer.lowPrice);
+        if (p > 0) {
+          extractedPrice = p;
+          priceSource = 'json-ld';
+          rawPriceText = String(offer.lowPrice);
+        }
+      }
+    };
+
+    if (productNode?.offers) {
+      if (Array.isArray(productNode.offers)) {
+        for (const o of productNode.offers) {
+          checkOffer(o);
+          if (extractedPrice > 0) break;
+        }
+      } else {
+        checkOffer(productNode.offers);
+      }
+    }
+  }
+
+  // Etapa 3: Schema.org microdata (itemprop="price")
+  if (extractedPrice === 0) {
+    const itempropPriceMatch = html.match(/itemprop=["']price["'][^>]*content=["']([^"']+)["']/i) || html.match(/content=["']([^"']+)["'][^>]*itemprop=["']price["']/i);
+    if (itempropPriceMatch) {
+      extractedPrice = parsePrice(itempropPriceMatch[1]);
+      if (extractedPrice > 0) {
+        priceSource = 'visible-html';
+        rawPriceText = itempropPriceMatch[1];
+      }
+    }
+    const itempropCurrencyMatch = html.match(/itemprop=["']priceCurrency["'][^>]*content=["']([^"']+)["']/i);
+    if (itempropCurrencyMatch) {
+      detectCurrency(itempropCurrencyMatch[1]);
+    }
+  }
+
+  // Etapa 4: Dados de Hidratação Embutidos (__NEXT_DATA__, __NUXT__, __INITIAL_STATE__)
+  if (extractedPrice === 0) {
+    const jsonMatches = html.match(/<script[^>]*id=["'](?:__NEXT_DATA__|__NUXT__|__INITIAL_STATE__)["'][^>]*>([\s\S]*?)<\/script>/gi);
+    if (jsonMatches) {
+      for (const jm of jsonMatches) {
+        const cleanContent = jm.replace(/<[^>]+>/g, '');
+        const pMatch = cleanContent.match(/"(?:price|askingPrice|listingPrice|amount)"\s*:\s*"?(\d+(?:[.,]\d+)?)"?/i);
+        if (pMatch) {
+          const p = parsePrice(pMatch[1]);
+          if (p > 0) {
+            extractedPrice = p;
+            priceSource = 'embedded-json';
+            rawPriceText = pMatch[1];
+            const cMatch = cleanContent.match(/"(?:currency|priceCurrency|currencyCode)"\s*:\s*"([A-Z]{3})"/i);
+            if (cMatch) detectCurrency(cMatch[1]);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Etapa 5: Elementos HTML DOM com classes de preço
+  if (extractedPrice === 0) {
+    const priceClassMatch = html.match(/(?:class|id)=["'][^"']*(?:price|asking-price|boat-price|ad-price|listing-price)[^"']*["'][^>]*>([^<]+)</i);
+    if (priceClassMatch) {
+      detectCurrency(priceClassMatch[1]);
+      extractedPrice = parsePrice(priceClassMatch[1]);
+      if (extractedPrice > 0) {
+        priceSource = 'visible-html';
+        rawPriceText = priceClassMatch[1];
+      }
+    }
+  }
+
+  // Etapa 6: Regex inteligente sobre título e snippet inicial do HTML
+  if (extractedPrice === 0) {
+    const snippet = (rawTitle + ' ' + html.slice(0, 10000));
+    const priceMatch = snippet.match(/(?:€|£|\$)\s*([\d,.]+)|([\d,.]+)\s*(?:€|£|\$|GBP|EUR|USD)/i);
+    if (priceMatch) {
+      detectCurrency(priceMatch[0]);
+      extractedPrice = parsePrice(priceMatch[1] || priceMatch[2]);
+      if (extractedPrice > 0) {
+        priceSource = 'visible-html';
+        rawPriceText = priceMatch[0];
+      }
+    }
+  }
+
+  if (extractedPrice > 0) {
+    return {
+      price: extractedPrice,
+      currency: extractedCurrency,
+      priceOnApplication: false,
+      priceRequiresReview: false,
+      priceSource,
+      rawPriceText
+    };
+  }
+
+  return {
+    price: 0,
+    currency: extractedCurrency,
+    priceOnApplication: false,
+    priceRequiresReview: true,
+    priceSource: 'not-found',
+    rawPriceText: ''
+  };
+}
+
+// Extração de Localização (Genérico)
+interface LocationResult {
+  city: string;
+  country: string;
+  locationRequiresReview: boolean;
+  locationSource: 'json-ld' | 'embedded-json' | 'marketplace-adapter' | 'visible-html' | 'gemini' | 'not-found';
+  rawLocationText: string;
+}
+
+function extractLocation(
+  html: string,
+  jsonLdList: any[],
+  url: string
+): LocationResult {
+  const lowerUrl = url.toLowerCase();
+  const defaultCountry = (lowerUrl.includes('.pt') || lowerUrl.includes('olx.pt')) ? 'Portugal' : 'United Kingdom';
+
+  let foundLoc: string | null = null;
+  let locationSource: LocationResult['locationSource'] = 'not-found';
+
+  // 1. Procura em JSON-LD
+  foundLoc = findLocationInJsonLd(jsonLdList);
+  if (foundLoc) locationSource = 'json-ld';
+
+  // 2. Procura em OpenGraph / Metatags
+  if (!foundLoc) {
+    foundLoc = extractMetaContent(html, 'og:locality') || extractMetaContent(html, 'geo.placename') || extractMetaContent(html, 'locality');
+    if (foundLoc) locationSource = 'visible-html';
+  }
+
+  // 3. Procura em atributos Microdata / JSON
+  if (!foundLoc) {
+    const localityMatch = html.match(/"addressLocality"\s*:\s*"([^"]+)"/i) || 
+                          html.match(/"addressRegion"\s*:\s*"([^"]+)"/i) || 
+                          html.match(/"cityName"\s*:\s*"([^"]+)"/i) ||
+                          html.match(/itemprop=["']addressLocality["'][^>]*>([^<]+)</i);
+    if (localityMatch) {
+      foundLoc = localityMatch[1];
+      locationSource = 'embedded-json';
+    }
+  }
+
+  // 4. Procura por palavras-chave visíveis no texto do anúncio marítimo
+  if (!foundLoc) {
+    const locationTextMatches = html.match(/(?:Boat Location|Location|Lying|Based in|Marina|Port|Harbour|Town|County|Docked in)[:\s]+([A-Za-z0-9\s,.-]{3,35})(?:<|\n|"|;|\))/i);
+    if (locationTextMatches) {
+      const candidate = locationTextMatches[1].trim();
+      if (candidate && !/cookie|policy|rights|copyright|terms|privacy|navigation/i.test(candidate)) {
+        foundLoc = candidate;
+        locationSource = 'visible-html';
+      }
+    }
+  }
+
+  // Sanitização da localização encontrada
+  if (foundLoc) {
+    let clean = decodeHtmlEntities(String(foundLoc)).replace(/[\r\n]+/g, ' ').trim();
+    if (
+      clean &&
+      clean.length > 1 &&
+      clean.length < 60 &&
+      !/copyright|all rights|limited|ltd|inc|website|homepage|cookies|privacy/i.test(clean)
+    ) {
+      const parts = clean.split(',').map(p => p.trim());
+      const cityPart = parts[0] || clean;
+      return {
+        city: cityPart,
+        country: defaultCountry,
+        locationRequiresReview: false,
+        locationSource,
+        rawLocationText: clean
+      };
+    }
+  }
+
+  return {
+    city: "",
+    country: defaultCountry,
+    locationRequiresReview: true,
+    locationSource: 'not-found',
+    rawLocationText: ''
+  };
+}
+
+// Função para descarregar o HTML da página do anúncio
+async function fetchAdHtml(url: string): Promise<{ html: string; source: string; status: number }> {
   console.log('[Import Pipeline] Stage: Fetching HTML from URL:', url);
 
   const headersList = [
@@ -214,7 +782,7 @@ async function fetchAdHtml(url: string): Promise<{ html: string; source: string 
     }
   ];
 
-  // Tentativa 1: Fetch direto com Headers alternados
+  // Tentativa 1: Fetch direto com Headers de browser
   for (let i = 0; i < headersList.length; i++) {
     try {
       const controller = new AbortController();
@@ -231,7 +799,7 @@ async function fetchAdHtml(url: string): Promise<{ html: string; source: string 
         const text = await res.text();
         if (text && !text.includes('Request Blocked') && !text.includes('Link11') && text.length > 2000) {
           console.log(`[Import Pipeline] Direct fetch attempt ${i + 1} succeeded! HTML Length: ${text.length}`);
-          return { html: text, source: 'direct' };
+          return { html: text, source: 'direct', status: res.status };
         }
       } else {
         console.warn(`[Import Pipeline] Direct fetch attempt ${i + 1} returned status: ${res.status}`);
@@ -241,9 +809,32 @@ async function fetchAdHtml(url: string): Promise<{ html: string; source: string 
     }
   }
 
-  // Tentativa 2: Microlink API Fallback
+  // Tentativa 2: Jina Reader Proxy Fallback
   try {
-    console.log('[Import Pipeline] Direct fetch blocked/failed. Trying Microlink API proxy fallback...');
+    console.log('[Import Pipeline] Trying Jina Reader proxy fallback...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+    const jRes = await fetch("https://r.jina.ai/" + url, {
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (jRes.ok) {
+      const jText = await jRes.text();
+      if (jText && jText.length > 500 && !jText.includes("Request Blocked")) {
+        console.log('[Import Pipeline] Jina Reader fallback succeeded! Length:', jText.length);
+        return { html: jText, source: 'jina', status: 200 };
+      }
+    }
+  } catch (jErr: any) {
+    console.warn('[Import Pipeline] Jina fallback error:', jErr.message);
+  }
+
+  // Tentativa 3: Microlink API Proxy Fallback
+  try {
+    console.log('[Import Pipeline] Trying Microlink API proxy fallback...');
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -275,41 +866,18 @@ async function fetchAdHtml(url: string): Promise<{ html: string; source: string 
             </body>
           </html>
         `;
-        return { html: syntheticHtml, source: 'microlink' };
+        return { html: syntheticHtml, source: 'microlink', status: 200 };
       }
     }
   } catch (mErr: any) {
     console.warn('[Import Pipeline] Microlink fallback error:', mErr.message);
   }
 
-  // Tentativa 3: Jina Reader Fallback
-  try {
-    console.log('[Import Pipeline] Trying Jina Reader proxy fallback...');
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    const jRes = await fetch("https://r.jina.ai/" + url, {
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (jRes.ok) {
-      const jText = await jRes.text();
-      if (jText && jText.length > 500 && !jText.includes("Request Blocked")) {
-        console.log('[Import Pipeline] Jina Reader fallback succeeded!');
-        return { html: jText, source: 'jina' };
-      }
-    }
-  } catch (jErr: any) {
-    console.warn('[Import Pipeline] Jina fallback error:', jErr.message);
-  }
-
   throw new Error('Não foi possível transferir o conteúdo da página do anúncio. O fornecedor bloqueou a ligação.');
 }
 
-// Helper para extração de especificações náuticas via IA ou Regras
-async function extractNauticalDetails(title: string, description: string): Promise<Record<string, any>> {
+// Helper para extração de especificações náuticas e suporte a IA Gemini
+async function extractNauticalDetails(title: string, description: string, rawHtml?: string): Promise<Record<string, any>> {
   console.log('[Import Pipeline] Stage: Extracting nautical details via AI/Regex...');
 
   const result: Record<string, any> = {
@@ -331,10 +899,13 @@ async function extractNauticalDetails(title: string, description: string): Promi
     hullMaterial: '',
     trailerIncluded: '',
     vatPaid: '',
-    ceCertified: ''
+    ceCertified: '',
+    extractedPrice: 0,
+    extractedCity: '',
+    aiPriceOnApplication: false
   };
 
-  const combinedText = `${title || ''}\n${description || ''}`;
+  const combinedText = `${title || ''}\n${description || ''}\n${(rawHtml || '').slice(0, 8000)}`;
   const lowerText = combinedText.toLowerCase();
 
   try {
@@ -349,81 +920,25 @@ async function extractNauticalDetails(title: string, description: string): Promi
     const prompt = `Você é um motor de extração de dados náuticos de nível profissional e altíssima precisão.
 Sua missão é analisar o título, tabelas de especificações, marcadores e descrição deste anúncio náutico e extrair as especificações exatas em JSON estrito.
 
-ORDEM E PRIORIDADE DE EXTRAÇÃO:
-1. Tabelas de especificações técnicas e fichas técnicas
-2. Listas de características (bullet points / marcadores)
-3. Seções estruturadas do anúncio
-4. Descrição detalhada
-
 REGRAS RÍGIDAS DE PRECISÃO - NUNCA INVENTE DADOS:
 - A PRECISÃO É MUITO MAIS IMPORTANTE QUE A COMPLETUDE. Um campo omitido/vazio é INFINITAMENTE MELHOR do que um dado inventado, estimado ou incorreto.
 - NUNCA adivinhe, estime, fabrique, presuma ou invente informações que não estejam explicitamente escritas no texto do anúncio.
-- Se uma informação NÃO for mencionada no texto, retorne "" (string vazia).
+- Se uma informação NÃO for mencionada no texto, retorne "" (string vazia) ou 0 para números.
 - Se a confiança sobre uma informação for BAIXA, DEIXE O CAMPO VAZIO ("").
 
 DIRETRIZES CAMPO A CAMPO:
-1. boatType: Identifique pelo título, palavras-chave e contexto.
-   - "Sailboat": palavras como sailboat, veleiro, barco a vela, mast, boom, rigging, keel, fin keel, bilge keel, sloop, cutter, ketch, schooner, mainsail, jib, genoa, spinnaker, tiller, furling, vela.
-   - "Motorboat": motorboat, motor cruiser, cabin cruiser, speedboat, day cruiser, bowrider, cuddy, walkaround, center console, lancha, barco a motor, outboard, inboard.
-   - "RIB": RIB, rigid inflatable, semirrigido, semi-rigido, inflatable boat, tender, zodiac, ribcraft.
-   - "Jet Ski": jet ski, jetski, PWC, personal watercraft, waverunner, sea-doo, mota de água.
-   - "Fishing Boat": fishing boat, angler, cuddy fisher, pilothouse, bass boat, traineira, barco de pesca, pescador.
-   - "Catamaran": catamaran, catamarã, multihull, trimaran.
-   - "Canal Boat" / "Narrowboat": canal boat, narrowboat, widebeam, barge.
-   - "Yacht": superyacht, luxury yacht, iate.
-   - "Houseboat": houseboat, casa flutuante.
-   - "Commercial Boat": commercial boat, passenger boat, workboat.
-   - "Other": caso seja outro tipo específico.
-   - Se não for possível determinar com clareza, retorne "".
+1. boatType: "Sailboat" | "Motorboat" | "RIB" | "Jet Ski" | "Fishing Boat" | "Catamaran" | "Canal Boat" | "Narrowboat" | "Yacht" | "Houseboat" | "Commercial Boat" | "Other" | ""
+2. manufacturer & model: Fabricante exato (ex: "Princess", "Beneteau", "Fairline", "Tornado", "Fletcher") e modelo exato (ex: "V48", "Oceanis 34.1", "Targa 50", "5.5m", "Arrowflyte").
+3. year: Ano real de fabricação de 4 dígitos (ex: "1982", "2021", "2025"). Nunca anos futuros ou códigos.
+4. length, beam, draft: Comprimento total (LOA), boca e calado com unidades (ex: "8.23 m", "22 ft", "15m").
+5. berths, cabins, bathrooms: Contagem exata em string.
+6. fuelType, engineBrand, horsepower, engineHours: Especificações do motor se explícitas.
+7. trailerIncluded, vatPaid, ceCertified: "Yes" ou "No" apenas se afirmado explicitamente.
+8. extractedPrice: Valor numérico do preço se presente no texto (ex: 799950), ou 0 se não encontrado.
+9. extractedCity: Cidade, concelho ou porto/marina onde o barco se encontra se explícito (ex: "Poole", "West Mersea", "East End"), ou "".
+10. aiPriceOnApplication: true se for "POA" / "Sob consulta", senão false.
 
-2. manufacturer & model:
-   - Identifique com rigor o fabricante/construtor (ex: "Atlanta Marine Ltd", "Beneteau", "Jeanneau", "Bavaria Yachts", "Princess", "Quicksilver", "Sea Ray", "Bayliner", "Westerly", "Moody").
-   - Identifique o modelo exato (ex: "Catch 22", "Antares 8", "Cap Camarat 6.5", "Oceanis 34.1").
-   - Exemplo: em "Atlanta Catch 22 1982 sailing boat", o fabricante é "Atlanta Marine Ltd" (ou "Atlanta") e o modelo é "Catch 22".
-
-3. year:
-   - Extraia apenas o ano real de fabricação/construção (ex: "1982", "2018").
-   - NUNCA extraia anos futuros (ex: 2026), nem números de telefone, códigos postais ou números de modelo (como "Model 2000").
-   - Se o ano não for explicitado, retorne "".
-
-4. length, beam, draft:
-   - Extraia especificações técnicas como LOA / Comprimento total (ex: "6.71 m" ou "22 ft"), Boca / Beam / Largura (ex: "2.41 m"), Calado / Max Draft (ex: "1.2 m").
-   - Mantenha as unidades (m, ft, ').
-
-5. berths:
-   - Permite calcular somas de acomodações/camas declaradas. Exemplo: "1 double berth + 2 single berths" -> "4". "Sleeps 4" -> "4". "4 berths" -> "4".
-   - Se não houver informação de dormidas/camas, retorne "".
-
-6. fuelType, engineBrand, horsepower, engineHours:
-   - Extraia apenas se presente no anúncio. Se o combustível não for mencionado, retorne "".
-
-7. trailerIncluded, vatPaid, ceCertified:
-   - "Yes" APENAS se explicitamente afirmado que inclui reboque, IVA pago ou certificado CE.
-   - "No" APENAS se explicitamente afirmado que NÃO inclui reboque, IVA não pago, etc.
-   - Se NÃO for mencionado no anúncio, retorne "" (string vazia). NUNCA presuma "Yes" ou "No".
-
-Retorne APENAS um objeto JSON válido com a seguinte estrutura:
-{
-  "boatType": "Sailboat" | "Motorboat" | "RIB" | "Jet Ski" | "Fishing Boat" | "Catamaran" | "Canal Boat" | "Narrowboat" | "Yacht" | "Houseboat" | "Commercial Boat" | "Other" | "",
-  "manufacturer": "string",
-  "model": "string",
-  "year": "string",
-  "condition": "New" | "Used - Excellent" | "Used - Good" | "Used - Fair" | "Restored / Refitted" | "Project / Needs Work" | "",
-  "length": "string",
-  "beam": "string",
-  "draft": "string",
-  "fuelType": "Diesel" | "Petrol / Gasoline" | "Electric" | "Hybrid" | "Solar" | "None / Manual" | "Other" | "",
-  "engineBrand": "string",
-  "horsepower": "string",
-  "engineHours": "string",
-  "cabins": "string",
-  "berths": "string",
-  "bathrooms": "string",
-  "hullMaterial": "Fiberglass / GRP" | "Aluminium" | "Steel" | "Wood" | "Carbon Fibre" | "Inflatable / Hypalon" | "Composite" | "Other" | "",
-  "trailerIncluded": "Yes" | "No" | "",
-  "vatPaid": "Yes" | "No" | "",
-  "ceCertified": "Yes" | "No" | ""
-}`;
+Retorne APENAS um objeto JSON válido com essa estrutura.`;
 
     const aiRes = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -437,7 +952,7 @@ Retorne APENAS um objeto JSON válido com a seguinte estrutura:
       if (parsed && typeof parsed === 'object') {
         Object.keys(result).forEach(key => {
           if (parsed[key] !== undefined && parsed[key] !== null) {
-            result[key] = String(parsed[key]).trim();
+            result[key] = parsed[key];
           }
         });
         console.log('[Import Pipeline] Gemini AI extraction succeeded!');
@@ -448,23 +963,18 @@ Retorne APENAS um objeto JSON válido com a seguinte estrutura:
     console.warn("[Import Pipeline] Gemini AI extraction failed or timed out. Falling back to regex rules:", err.message);
   }
 
-  // Fallback seguro e conservador por expressões regulares se a IA falhar
+  // Fallback seguro por expressões regulares
   const currentYear = new Date().getFullYear();
   const yearExplicitMatch = combinedText.match(/\b(?:year|built|built in|ano|fabrico|ano de fabrico)[:\s]*([12]\d{3})\b/i);
   if (yearExplicitMatch) {
     const yr = parseInt(yearExplicitMatch[1], 10);
-    if (yr >= 1900 && yr <= currentYear) {
+    if (yr >= 1850 && yr <= currentYear + 1) {
       result.year = String(yr);
     }
   }
 
   const loaMatch = combinedText.match(/\b(?:loa|length|comprimento|comprimento total)[:\s]*(\d+(?:[.,]\d+)?\s*(?:m|metres|meters|ft|feet|'))\b/i);
-  if (loaMatch) {
-    result.length = loaMatch[1];
-  } else {
-    const genericLen = combinedText.match(/\b(\d+(?:[.,]\d+)?\s*(?:m|metres|meters|ft|feet))\b/i);
-    if (genericLen) result.length = genericLen[1];
-  }
+  if (loaMatch) result.length = loaMatch[1];
 
   const beamMatch = combinedText.match(/\b(?:beam|boca|largura)[:\s]*(\d+(?:[.,]\d+)?\s*(?:m|metres|meters|ft|feet|'))\b/i);
   if (beamMatch) result.beam = beamMatch[1];
@@ -499,38 +1009,15 @@ Retorne APENAS um objeto JSON válido com a seguinte estrutura:
     result.boatType = 'Motorboat';
   }
 
-  const builders = ['Atlanta Marine', 'Atlanta', 'Beneteau', 'Jeanneau', 'Quicksilver', 'Bayliner', 'Sea Ray', 'Bavaria', 'Yamaha', 'Sessa', 'Princess', 'Sunseeker', 'Azimut', 'Boston Whaler', 'Ranieri', 'Capelli', 'Zodiac', 'Mastercraft', 'Monterey', 'Chaparral', 'Regal', 'Westerly', 'Moody', 'Sadler', 'Hunter', 'Hanse', 'Dufour', 'Hallberg-Rassy', 'Catalina', 'MacGregor', 'Fairline', 'Sealine', 'Orkney', 'Fletcher'];
+  const builders = ['Atlanta Marine', 'Atlanta', 'Beneteau', 'Jeanneau', 'Quicksilver', 'Bayliner', 'Sea Ray', 'Bavaria', 'Yamaha', 'Sessa', 'Princess', 'Sunseeker', 'Azimut', 'Boston Whaler', 'Ranieri', 'Capelli', 'Zodiac', 'Mastercraft', 'Monterey', 'Chaparral', 'Regal', 'Westerly', 'Moody', 'Sadler', 'Hunter', 'Hanse', 'Dufour', 'Hallberg-Rassy', 'Catalina', 'MacGregor', 'Fairline', 'Sealine', 'Orkney', 'Fletcher', 'Tornado'];
   const foundBuilder = builders.find(b => lowerText.includes(b.toLowerCase()));
   if (foundBuilder) result.manufacturer = foundBuilder;
-
-  const berthMatch = combinedText.match(/\b(\d+)\s*(?:berths?|camas?|dormidas?|sleeps)\b/i);
-  if (berthMatch) {
-    result.berths = berthMatch[1];
-  } else {
-    const dbl = combinedText.match(/\b(\d+)\s*double\b/i);
-    const sgl = combinedText.match(/\b(\d+)\s*single\b/i);
-    if (dbl || sgl) {
-      const numDbl = dbl ? parseInt(dbl[1], 10) : 0;
-      const numSgl = sgl ? parseInt(sgl[1], 10) : 0;
-      const total = numDbl * 2 + numSgl;
-      if (total > 0) result.berths = String(total);
-    }
-  }
-
-  if (/\b(?:reboque incl|trailer incl|com reboque|with trailer|trailer included)\b/i.test(combinedText)) result.trailerIncluded = 'Yes';
-  else if (/\b(?:sem reboque|no trailer|without trailer)\b/i.test(combinedText)) result.trailerIncluded = 'No';
-
-  if (/\b(?:iva pago|vat paid|vat included|iva incluido)\b/i.test(combinedText)) result.vatPaid = 'Yes';
-  else if (/\b(?:sem iva|plus vat|\+ vat|acresce iva)\b/i.test(combinedText)) result.vatPaid = 'No';
-
-  if (/\b(?:certificado ce|ce certified|ce mark|categoria ce)\b/i.test(combinedText)) result.ceCertified = 'Yes';
 
   return result;
 }
 
 // Handler Serverless Function da Vercel / Express
 export default async function handler(req: any, res: any) {
-  // Configuração de CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -562,15 +1049,18 @@ export default async function handler(req: any, res: any) {
     }
 
     const lowerUrl = url.toLowerCase();
-    const isOlx = lowerUrl.includes('olx.pt');
-    const isGumtree = lowerUrl.includes('gumtree.com') || lowerUrl.includes('gumtree.co.uk');
+    const marketplace = getSupportedMarketplace(url);
+    const isOlx = marketplace?.id === 'olx' || lowerUrl.includes('olx.pt');
+    const isGumtree = marketplace?.id === 'gumtree' || lowerUrl.includes('gumtree.com') || lowerUrl.includes('gumtree.co.uk');
+    const isApolloDuck = marketplace?.id === 'apolloduck' || lowerUrl.includes('apolloduck.com');
+    const isBoatsAndOutboards = marketplace?.id === 'boatsandoutboards' || lowerUrl.includes('boatsandoutboards.co.uk');
     const isTestUrl = lowerUrl.includes('teste.mercadoluso.com') || lowerUrl.includes('teste.mercadoluso');
 
-    if (!isOlx && !isGumtree && !isTestUrl) {
+    if (!marketplace && !isTestUrl) {
       return res.status(200).json({
         success: false,
         stage: 'Platform Support Check',
-        error: 'Esta plataforma ainda não é suportada. No momento, suportamos apenas OLX e Gumtree.'
+        error: getSupportedMarketplacesMessage()
       });
     }
 
@@ -584,9 +1074,13 @@ export default async function handler(req: any, res: any) {
           title: "Beneteau Antares 8 OB (2021) - Mercury 200 HP",
           description: "Beneteau Antares 8 OB em estado imaculado, ano 2021. Equipado com motor fora-de-borda Mercury Verado 200 HP com 140 horas de navegação.\n\nFicha Técnica:\n- Comprimento: 8.23 m | Boca: 2.76 m | Calado: 0.80 m\n- Casco em Fibra de Vidro (GRP)\n- 1 Cabine, 4 Camas, 1 WC elétrico\n- Reboque incluído e IVA pago.",
           price: 68500,
+          currency: "EUR",
+          priceOnApplication: false,
+          priceRequiresReview: false,
           category: "Carros, motos e barcos",
           city: "Faro",
           country: "Portugal",
+          locationRequiresReview: false,
           images: [
             "https://images.unsplash.com/photo-1569263979104-865ab7cd8d13?w=800&auto=format&fit=crop&q=60",
             "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&auto=format&fit=crop&q=60"
@@ -609,16 +1103,23 @@ export default async function handler(req: any, res: any) {
           hullMaterial: "Fiberglass / GRP",
           trailerIncluded: "Yes",
           vatPaid: "Yes",
-          ceCertified: "Yes"
+          ceCertified: "Yes",
+          listingMode: "external",
+          sourceUrl: url,
+          sourceSite: "ConnectBoat Test Marketplace"
         }
       });
     }
 
     // Stage 2: Fetch HTML
     let responseText = '';
+    let fetchSource = 'direct';
+    let fetchStatus = 200;
     try {
       const fetchResult = await fetchAdHtml(url);
       responseText = fetchResult.html;
+      fetchSource = fetchResult.source;
+      fetchStatus = fetchResult.status;
     } catch (fetchErr: any) {
       console.error("[Import Pipeline Failure Stage 2 - Fetch HTML]:", fetchErr.message);
       return res.status(200).json({
@@ -628,7 +1129,20 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Stage 3: Parse Metadata & JSON-LD
+    // Stage 3: Marketplace-Specific Adapter Execution
+    let adapterRes: MarketplaceAdapterResult | null = null;
+    if (isApolloDuck) {
+      console.log('[Import Pipeline] Running Apollo Duck Marketplace Adapter...');
+      adapterRes = extractApolloDuckData(responseText, url);
+    } else if (isBoatsAndOutboards) {
+      console.log('[Import Pipeline] Running Boats & Outboards Marketplace Adapter...');
+      adapterRes = extractBoatsAndOutboardsData(responseText, url);
+    } else if (isGumtree) {
+      console.log('[Import Pipeline] Running Gumtree Marketplace Adapter...');
+      adapterRes = extractGumtreeData(responseText, url);
+    }
+
+    // Parse Metadata & JSON-LD
     console.log('[Import Pipeline] Stage 3: Parsing metadata & JSON-LD...');
     const jsonLdList = extractJsonLd(responseText);
     const productNode = extractFromJsonLdList(jsonLdList);
@@ -642,6 +1156,24 @@ export default async function handler(req: any, res: any) {
       const titleMatch = responseText.match(/<title>([^<]+)<\/title>/i);
       rawTitle = titleMatch ? titleMatch[1] : '';
     }
+    // Jina Reader Markdown Title Header ("Title: ..." ou "# ...")
+    if (!rawTitle || /second-hand|items for sale|access denied|attention required|just a moment/i.test(rawTitle)) {
+      const jinaTitleMatch = responseText.match(/^Title:\s*([^\n]+)/m) || responseText.match(/^#\s*([^\n]+)/m);
+      if (jinaTitleMatch) {
+        rawTitle = jinaTitleMatch[1].trim();
+      }
+    }
+    // Fallback por Slug do URL se o título ainda estiver genérico ou vazio
+    if (!rawTitle || /second-hand|items for sale|access denied|attention required|just a moment/i.test(rawTitle)) {
+      const urlSlugMatch = url.match(/\/([a-z0-9-]+?)(?:\/\d+)?\/?$/i);
+      if (urlSlugMatch) {
+        const slug = urlSlugMatch[1].replace(/[-_]/g, ' ').trim();
+        if (slug.length > 5 && !/boats|kayaks|jet-skis|p|boat/i.test(slug)) {
+          rawTitle = slug.charAt(0).toUpperCase() + slug.slice(1);
+        }
+      }
+    }
+
     let title = cleanTitle(rawTitle);
     if (!title && rawTitle) {
       title = decodeHtmlEntities(rawTitle).trim();
@@ -663,25 +1195,26 @@ export default async function handler(req: any, res: any) {
     }
     const description = cleanDescription(foundDescription);
 
-    // Extração de Preço
-    let price = 0;
-    const ogPriceAmount = extractMetaContent(responseText, 'product:price:amount');
-    if (ogPriceAmount) {
-      price = parsePrice(ogPriceAmount);
-    }
-    if (price === 0) {
-      if (productNode?.offers?.price !== undefined) {
-        price = parsePrice(productNode.offers.price);
-      } else if (productNode?.offers?.[0]?.price !== undefined) {
-        price = parsePrice(productNode.offers[0].price);
-      }
-    }
-    if (price === 0 && (rawTitle || responseText)) {
-      const priceMatch = (rawTitle + ' ' + responseText).match(/(?:€|\$|£)\s*(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:€|\$|£)/);
-      if (priceMatch) {
-        price = parsePrice(priceMatch[1] || priceMatch[2]);
-      }
-    }
+    // Extração de Preço e Moeda
+    const priceRes = extractPriceAndCurrency(responseText, productNode, jsonLdList, rawTitle, url);
+
+    // Extração de Cidade e País
+    const locRes = extractLocation(responseText, jsonLdList, url);
+
+    // Consolidação de Preço
+    let finalPrice = adapterRes?.price && adapterRes.price > 0 ? adapterRes.price : priceRes.price;
+    let finalCurrency = adapterRes?.currency || priceRes.currency;
+    let finalPriceOnApp = adapterRes?.priceOnApplication || priceRes.priceOnApplication;
+    let finalPriceRequiresReview = finalPrice === 0 && !finalPriceOnApp;
+    let priceSource = adapterRes?.price && adapterRes.price > 0 ? adapterRes.priceSource : priceRes.priceSource;
+    let rawPriceText = adapterRes?.rawPriceText || priceRes.rawPriceText;
+
+    // Consolidação de Localização
+    let finalCity = adapterRes?.city || locRes.city;
+    let finalCountry = adapterRes?.country || locRes.country;
+    let finalLocRequiresReview = !finalCity;
+    let locationSource = adapterRes?.city ? adapterRes.locationSource : locRes.locationSource;
+    let rawLocationText = adapterRes?.rawLocationText || locRes.rawLocationText;
 
     // Mapeamento de Categoria
     let parsedCategory = productNode?.category || '';
@@ -699,51 +1232,7 @@ export default async function handler(req: any, res: any) {
       parsedCategory = extractMetaContent(responseText, 'category') || '';
     }
 
-    let category = 'Carros, motos e barcos'; // Categoria padrão para anúncios náuticos
-    const lowerParsedCat = String(parsedCategory).toLowerCase() + ' ' + title.toLowerCase() + ' ' + description.toLowerCase();
-
-    if (lowerParsedCat.includes('carro') || lowerParsedCat.includes('moto') || lowerParsedCat.includes('barco') || lowerParsedCat.includes('veiculo') || lowerParsedCat.includes('auto') || lowerParsedCat.includes('peças') || lowerParsedCat.includes('pneus') || lowerParsedCat.includes('jantes') || lowerParsedCat.includes('motociclo') || lowerParsedCat.includes('car ') || lowerParsedCat.includes('cars ') || lowerParsedCat.includes('vehicle') || lowerParsedCat.includes('motor') || lowerParsedCat.includes('van') || lowerParsedCat.includes('wheel') || lowerParsedCat.includes('tyre') || lowerParsedCat.includes('boat') || lowerParsedCat.includes('sailing')) {
-      category = 'Carros, motos e barcos';
-    } else if (lowerParsedCat.includes('imovel') || lowerParsedCat.includes('apartamento') || lowerParsedCat.includes('casa') || lowerParsedCat.includes('moradia') || lowerParsedCat.includes('quarto') || lowerParsedCat.includes('terreno') || lowerParsedCat.includes('loja') || lowerParsedCat.includes('garagem') || lowerParsedCat.includes('escritório') || lowerParsedCat.includes('prédio') || lowerParsedCat.includes('property') || lowerParsedCat.includes('flat') || lowerParsedCat.includes('house') || lowerParsedCat.includes('rent') || lowerParsedCat.includes('room') || lowerParsedCat.includes('studio')) {
-      category = 'Imóveis';
-    } else if (lowerParsedCat.includes('telemovel') || lowerParsedCat.includes('iphone') || lowerParsedCat.includes('samsung') || lowerParsedCat.includes('computador') || lowerParsedCat.includes('tecnologia') || lowerParsedCat.includes('eletronica') || lowerParsedCat.includes('tablet') || lowerParsedCat.includes('tv') || lowerParsedCat.includes('laptop') || lowerParsedCat.includes('smartphone') || lowerParsedCat.includes('consola') || lowerParsedCat.includes('playstation') || lowerParsedCat.includes('nintendo') || lowerParsedCat.includes('xbox') || lowerParsedCat.includes('phone') || lowerParsedCat.includes('computer') || lowerParsedCat.includes('tv ') || lowerParsedCat.includes('console') || lowerParsedCat.includes('camera') || lowerParsedCat.includes('electronics')) {
-      category = 'Tecnologia';
-    } else if (lowerParsedCat.includes('jardim') || lowerParsedCat.includes('moveis') || lowerParsedCat.includes('móveis') || lowerParsedCat.includes('decoracao') || lowerParsedCat.includes('decoração') || lowerParsedCat.includes('eletrodomestico') || lowerParsedCat.includes('eletrodoméstico') || lowerParsedCat.includes('diy') || lowerParsedCat.includes('ferramenta') || lowerParsedCat.includes('bricolage') || lowerParsedCat.includes('sofá') || lowerParsedCat.includes('mesa') || lowerParsedCat.includes('cadeira') || lowerParsedCat.includes('cama') || lowerParsedCat.includes('garden') || lowerParsedCat.includes('furniture') || lowerParsedCat.includes('home') || lowerParsedCat.includes('sofa') || lowerParsedCat.includes('table') || lowerParsedCat.includes('chair') || lowerParsedCat.includes('bed') || lowerParsedCat.includes('appliance')) {
-      category = 'Casa e Jardim';
-    }
-
-    // Extração de Cidade
-    let city: string | null = null;
-    let foundCity = findLocationInJsonLd(jsonLdList) || extractMetaContent(responseText, 'og:locality') || extractMetaContent(responseText, 'geo.placename');
-    
-    if (!foundCity) {
-      const localityMatch = responseText.match(/"addressLocality"\s*:\s*"([^"]+)"/i) || responseText.match(/"addressRegion"\s*:\s*"([^"]+)"/i) || responseText.match(/"cityName"\s*:\s*"([^"]+)"/i);
-      if (localityMatch) {
-        foundCity = localityMatch[1];
-      }
-    }
-
-    if (foundCity) {
-      const normCity = decodeHtmlEntities(String(foundCity)).trim().toLowerCase();
-      if (isGumtree) {
-        const allUkCities = [
-          'London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds', 'Bristol', 
-          'Southampton', 'Portsmouth', 'Bournemouth', 'Reading', 'Milton Keynes', 
-          'Leicester', 'Coventry', 'Nottingham', 'Glasgow', 'Edinburgh', 'Cardiff', 
-          'Belfast', 'Weymouth', 'Aberdeen', 'Ayr', 'Bangor', 'Blackpool'
-        ];
-        const matched = allUkCities.find(c => c.toLowerCase() === normCity || normCity.includes(c.toLowerCase()));
-        city = matched ? matched : (normCity.includes('london') ? 'London' : decodeHtmlEntities(String(foundCity)).trim());
-      } else {
-        const allPortugalCities = ['Lisboa', 'Porto', 'Braga', 'Faro', 'Coimbra', 'Aveiro', 'Setúbal', 'Leiria', 'Madeira', 'Açores', 'Outra'];
-        const matched = allPortugalCities.find(c => c.toLowerCase() === normCity || normCity.includes(c.toLowerCase()));
-        city = matched ? matched : decodeHtmlEntities(String(foundCity)).trim();
-      }
-    }
-
-    if (!city) {
-      city = isGumtree ? 'London' : 'Lisboa';
-    }
+    let category = 'Carros, motos e barcos';
 
     // Extração de Imagens
     let images: string[] = [];
@@ -774,28 +1263,116 @@ export default async function handler(req: any, res: any) {
       for (const mUrl of ebayImgMatches) images.push(mUrl);
     }
 
-    const isValidImageUrl = (imgUrl: string): boolean => {
-      if (!imgUrl || typeof imgUrl !== 'string') return false;
+    const genericImgMatches = responseText.match(/https?:\/\/[^\s"'>\)]+?\.(?:jpg|jpeg|png|webp)/gi) || [];
+    for (const mUrl of genericImgMatches) images.push(mUrl);
+
+    const isValidImageUrl = (imgUrl: string): string | null => {
+      if (!imgUrl || typeof imgUrl !== 'string') return null;
       try {
-        const decoded = decodeHtmlEntities(imgUrl).trim();
-        if (!decoded.startsWith('http://') && !decoded.startsWith('https://')) return false;
+        let decoded = decodeHtmlEntities(imgUrl).trim();
+        if (decoded.startsWith('//')) {
+          decoded = 'https:' + decoded;
+        }
+        if (!decoded.startsWith('http://') && !decoded.startsWith('https://')) return null;
         const parsed = new URL(decoded);
-        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          return parsed.toString();
+        }
+        return null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const isPlaceholderOrLogo = (imgUrl: string): boolean => {
+      if (!imgUrl) return true;
+      const lower = imgUrl.toLowerCase();
+      const banned = ['logo', 'avatar', 'placeholder', 'no-image', 'no_image', 'default-image', 'spacer', '1x1', 'tracking', 'pixel', 'analytics', 'badge', 'fav-icon', 'favicon'];
+      try {
+        const pathname = new URL(imgUrl).pathname.toLowerCase();
+        return banned.some(b => pathname.includes(b));
       } catch (e) {
         return false;
       }
     };
 
-    images = Array.from(new Set(images.map(img => decodeHtmlEntities(img).trim())))
-      .filter(img => isValidImageUrl(img))
-      .slice(0, 10);
+    const cleanImages: string[] = [];
+    const seenImages = new Set<string>();
 
-    const countryResult = isGumtree ? 'Reino Unido' : isOlx ? 'Portugal' : null;
+    for (const rawImg of images) {
+      const normalized = isValidImageUrl(rawImg);
+      if (!normalized) continue;
+      const key = normalized.toLowerCase();
+      if (seenImages.has(key)) continue;
+      if (isPlaceholderOrLogo(normalized)) continue;
+      seenImages.add(key);
+      cleanImages.push(normalized);
+      if (cleanImages.length >= 6) break;
+    }
 
-    // Stage 4: Extract Nautical Specifications via AI
-    const nauticalDetails = await extractNauticalDetails(title, description);
+    images = cleanImages;
+
+    // Stage 4: Extração de Especificações Náuticas com Gemini AI
+    const nauticalDetails = await extractNauticalDetails(title, description, responseText);
+
+    // Preenche com dados do adaptador se disponíveis
+    if (adapterRes?.year && !nauticalDetails.year) nauticalDetails.year = adapterRes.year;
+    if (adapterRes?.manufacturer && !nauticalDetails.manufacturer) nauticalDetails.manufacturer = adapterRes.manufacturer;
+    if (adapterRes?.model && !nauticalDetails.model) nauticalDetails.model = adapterRes.model;
+    if (adapterRes?.length && !nauticalDetails.length) nauticalDetails.length = adapterRes.length;
+    if (adapterRes?.beam && !nauticalDetails.beam) nauticalDetails.beam = adapterRes.beam;
+    if (adapterRes?.draft && !nauticalDetails.draft) nauticalDetails.draft = adapterRes.draft;
+
+    // Se preço ou cidade ainda não tiverem sido encontrados, usa o resultado da IA Gemini
+    if (finalPrice === 0 && !finalPriceOnApp && nauticalDetails.extractedPrice && Number(nauticalDetails.extractedPrice) > 0) {
+      finalPrice = Number(nauticalDetails.extractedPrice);
+      finalPriceRequiresReview = false;
+      priceSource = 'gemini';
+      rawPriceText = String(finalPrice);
+    }
+    if (nauticalDetails.aiPriceOnApplication) {
+      finalPriceOnApp = true;
+      finalPriceRequiresReview = false;
+      finalPrice = 0;
+      priceSource = 'gemini';
+      rawPriceText = 'POA';
+    }
+
+    if (!finalCity && nauticalDetails.extractedCity && typeof nauticalDetails.extractedCity === 'string' && nauticalDetails.extractedCity.trim()) {
+      finalCity = nauticalDetails.extractedCity.trim();
+      finalLocRequiresReview = false;
+      locationSource = 'gemini';
+      rawLocationText = finalCity;
+    }
+
+    const sourceSite = marketplace ? marketplace.name : getSourceSiteFromUrl(url);
+
+    // Remove campos de controlo temporários
+    delete nauticalDetails.extractedPrice;
+    delete nauticalDetails.extractedCity;
+    delete nauticalDetails.aiPriceOnApplication;
 
     console.log('[Import Pipeline] Stage 5: Import completed successfully!');
+
+    // Diagnósticos de desenvolvimento para inspeção e auditoria
+    const diagnostics = {
+      httpStatus: fetchStatus,
+      finalUrl: url,
+      contentType: 'text/html',
+      htmlLength: responseText.length,
+      pageTitle: title,
+      hasPrice: finalPrice > 0 || finalPriceOnApp,
+      hasLocation: Boolean(finalCity),
+      hasJsonLd: jsonLdList.length > 0,
+      hasNextData: responseText.includes('__NEXT_DATA__'),
+      hasHydrationData: responseText.includes('__NUXT__') || responseText.includes('__INITIAL_STATE__'),
+      isAntiBotOrConsentShell: responseText.includes('Request Blocked') || responseText.includes('Cloudflare') || responseText.includes('Link11'),
+      priceSource,
+      locationSource,
+      rawPriceText,
+      rawLocationText,
+      fetchSource
+    };
 
     return res.status(200).json({
       success: true,
@@ -803,11 +1380,23 @@ export default async function handler(req: any, res: any) {
       data: {
         title,
         description,
-        price,
+        price: finalPrice,
+        currency: finalCurrency,
+        priceOnApplication: finalPriceOnApp,
+        priceRequiresReview: finalPriceRequiresReview,
         category,
-        city,
-        country: countryResult,
+        city: finalCity,
+        country: finalCountry,
+        locationRequiresReview: finalLocRequiresReview,
         images,
+        listingMode: 'external',
+        sourceUrl: url,
+        sourceSite,
+        priceSource,
+        locationSource,
+        rawPriceText,
+        rawLocationText,
+        _diagnostics: diagnostics,
         ...nauticalDetails
       }
     });

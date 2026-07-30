@@ -13,6 +13,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 import { normalizeDescription } from '../utils/textFormatter';
+import { getSourceSiteFromUrl, getSupportedMarketplace, getSupportedMarketplacesMessage } from '../utils/marketplaces';
+import { isImportedOrExternalAd, normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
 
 const CreateAd = () => {
   const { categories } = useSettings();
@@ -87,6 +89,10 @@ const CreateAd = () => {
     title: prefill?.title || '',
     description: prefill?.description || '',
     price: prefill?.price?.toString() || '',
+    currency: 'GBP',
+    priceOnApplication: false,
+    priceRequiresReview: false,
+    locationRequiresReview: false,
     images: [] as string[],
     city: prefill?.city || PORTUGAL_CITIES[0],
     country: (prefill?.country || 'Portugal') as 'Portugal' | 'Reino Unido' | 'Ambos',
@@ -97,6 +103,7 @@ const CreateAd = () => {
     externalUrl: '',
     sellerPhone: prefill?.sellerPhone || '',
     sourceUrl: prefill?.sourceUrl || '',
+    listingMode: 'external' as 'external' | 'claimable',
     salary: '',
     contractType: '',
     workSchedule: '',
@@ -441,16 +448,17 @@ const CreateAd = () => {
       const docSnap = await getDocWithCacheFallback(docRef, `ads/${id}`);
       if (docSnap.exists()) {
         const data = docSnap.data() as Ad;
-        if (data.sellerId !== user?.uid && !isAdmin) {
+        if (data.sellerId !== user?.uid && !isAdmin && !isModerator) {
           navigate('/');
           return;
         }
         setOriginalAd(data);
+        const fetchedImages = normalizeAndLimitImages(data.images || (data.imageUrl ? [data.imageUrl] : []), 6);
         setFormData({
           title: data.title,
           description: data.description,
           price: data.price?.toString() || '',
-          images: data.images || (data.imageUrl ? [data.imageUrl] : []),
+          images: fetchedImages.length > 0 ? fetchedImages : (data.images || []),
           city: data.city,
           country: data.country || 'Portugal',
           category: data.category,
@@ -652,7 +660,15 @@ const CreateAd = () => {
   const executeSaveAd = async (finalAdData: any, targetAdId: string) => {
     setLoading(true);
     try {
-      await setDoc(doc(db, 'ads', targetAdId), finalAdData, { merge: true });
+      const cleanPayload = sanitizeFirestorePayload(finalAdData);
+      try {
+        await setDoc(doc(db, 'ads', targetAdId), cleanPayload, { merge: true });
+      } catch (saveErr: any) {
+        console.error('[Ad Save Failure]', saveErr);
+        showValidationError(`Erro ao guardar anúncio no Firestore: ${saveErr?.message || String(saveErr)}`);
+        setLoading(false);
+        return;
+      }
 
       // Notificação interna automática para admins e moderadores quando um novo anúncio for criado como pendente
       if (!id && finalAdData.status === 'pending') {
@@ -719,8 +735,8 @@ const CreateAd = () => {
 
       clearHomeCache();
       if (id) {
-        if (isAdmin && originalAd?.sellerId !== user.uid) {
-          setSaveSuccessMsg('Anúncio atualizado com sucesso (Edição de Administrador).');
+        if ((isAdmin || isModerator) && originalAd?.sellerId !== user.uid) {
+          setSaveSuccessMsg('Anúncio atualizado com sucesso (Edição de Staff).');
           setTimeout(() => {
             setSaveSuccessMsg(null);
             navigate('/admin/ads');
@@ -739,7 +755,8 @@ const CreateAd = () => {
           navigate('/profile?tab=anuncios');
         }, 2000);
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error('[Ad Save Execution Error]', err);
       handleFirestoreError(err, id ? OperationType.UPDATE : OperationType.CREATE, `ads/${targetAdId}`);
     } finally {
       setLoading(false);
@@ -757,34 +774,37 @@ const CreateAd = () => {
 
     const isJob = formData.category === 'Trabalho/Empregos';
     const isSpecialCategory = formData.category === 'Imigração' || isJob;
+    const isImportedAd = isImportedOrExternalAd(formData) || isImportedOrExternalAd(originalAd) || isAdmin || isModerator;
 
-    // Contact Phone Validation
-    if (isSpecialCategory) {
-      if (!formData.sellerPhone?.trim()) {
-        showValidationError('Por favor introduza um telefone/WhatsApp de contacto.', 'txt-seller-phone');
-        return;
-      }
-    } else {
-      if (formData.useProfilePhone) {
-        if (!profile?.phone?.trim()) {
-          showValidationError(
-            'O seu perfil não possui um telefone configurado. Introduza um telefone de contacto ou atualize o seu perfil.',
-            'contact-phone-section'
-          );
-          setFormData(prev => ({ ...prev, useProfilePhone: false }));
-          setTimeout(() => {
-            const phoneInput = document.getElementById('txt-contact-phone');
-            phoneInput?.focus();
-          }, 100);
+    // Contact Phone Validation (Only required for normal non-imported listings)
+    if (!isImportedAd) {
+      if (isSpecialCategory) {
+        if (!formData.sellerPhone?.trim()) {
+          showValidationError('Por favor introduza um telefone/WhatsApp de contacto.', 'txt-seller-phone');
           return;
         }
       } else {
-        if (!formData.contactPhone?.trim() && !profile?.phone?.trim()) {
-          showValidationError(
-            'Por favor introduza um telefone de contacto para o seu anúncio.',
-            'txt-contact-phone'
-          );
-          return;
+        if (formData.useProfilePhone) {
+          if (!profile?.phone?.trim()) {
+            showValidationError(
+              'O seu perfil não possui um telefone configurado. Introduza um telefone de contacto ou atualize o seu perfil.',
+              'contact-phone-section'
+            );
+            setFormData(prev => ({ ...prev, useProfilePhone: false }));
+            setTimeout(() => {
+              const phoneInput = document.getElementById('txt-contact-phone');
+              phoneInput?.focus();
+            }, 100);
+            return;
+          }
+        } else {
+          if (!formData.contactPhone?.trim() && !profile?.phone?.trim()) {
+            showValidationError(
+              'Por favor introduza um telefone de contacto para o seu anúncio.',
+              'txt-contact-phone'
+            );
+            return;
+          }
         }
       }
     }
@@ -799,16 +819,9 @@ const CreateAd = () => {
       return;
     }
 
-    if (formData.images.length === 0) {
-      showValidationError('Por favor carregue pelo menos uma imagem para o seu anúncio.', 'sec-images-upload');
-      return;
-    }
-
-    const maxImgs = settings?.maxImages 
-      ? (settings.maxImages[formData.plan as keyof typeof settings.maxImages] || (formData.plan === 'national' ? 6 : 4)) 
-      : (formData.plan === 'free' ? 2 : (formData.plan === 'national' ? 6 : 4));
-    if (formData.images.length > maxImgs) {
-      showValidationError(`O plano selecionado permite um máximo de ${maxImgs} imagens. Por favor remova as imagens extra antes de guardar.`, 'sec-images-upload');
+    const cleanFormImages = normalizeAndLimitImages(formData.images, 6);
+    if (cleanFormImages.length === 0) {
+      showValidationError('Por favor carregue pelo menos uma imagem válida para o seu anúncio.', 'sec-images-upload');
       return;
     }
 
@@ -839,8 +852,6 @@ const CreateAd = () => {
 
       const validSourceUrl = (formData.sourceUrl && /^https?:\/\//i.test(formData.sourceUrl)) ? formData.sourceUrl.trim() : null;
 
-      const isJob = formData.category === 'Trabalho/Empregos';
-      const isSpecialCategory = formData.category === 'Imigração' || isJob;
       const useProfilePhoneValue = isSpecialCategory ? false : formData.useProfilePhone;
       const contactPhoneValue = isSpecialCategory 
         ? formData.sellerPhone.replace(/\s+/g, ' ').trim()
@@ -849,31 +860,33 @@ const CreateAd = () => {
         ? (formData.sellerPhone.replace(/\s+/g, ' ').trim() || profile.phone || '')
         : (formData.useProfilePhone ? (profile.phone || '') : (formData.contactPhone?.replace(/\s+/g, ' ').trim() || profile.phone || ''));
 
+      const isStaff = isAdmin || isModerator;
+
       const adData: any = {
         id: adId,
         title: formData.title,
         description: formData.description,
         price: (formData.category === 'Imigração' || isJob || formData.category === '💚 Doações & Solidariedade') ? 0 : (formData.price ? parseFloat(formData.price) : 0),
-        imageUrl: formData.images[0] || '', // Primary image
-        images: formData.images,
+        imageUrl: cleanFormImages[0] || '', // Primary image
+        images: cleanFormImages,
         city: formData.city,
         country: formData.country,
         category: formData.category,
-        sellerId: id && originalAd ? originalAd.sellerId : user.uid,
-        sellerPhone: finalSellerPhoneValue,
-        contactPhone: contactPhoneValue,
+        sellerId: id && originalAd ? (originalAd.sellerId || user.uid) : user.uid,
+        sellerPhone: finalSellerPhoneValue || (originalAd?.sellerPhone || ''),
+        contactPhone: contactPhoneValue || (originalAd?.contactPhone || ''),
         useProfilePhone: useProfilePhoneValue,
-        sellerName: id && originalAd ? originalAd.sellerName : profile.name,
-        status: isAdmin && id ? (originalAd?.status || 'pending') : 'pending',
+        sellerName: id && originalAd ? (originalAd.sellerName || profile.name || 'ConnectBoat') : (profile.name || 'ConnectBoat'),
+        status: isStaff && id ? (originalAd?.status || 'approved') : 'pending',
         adStatus: id && originalAd ? originalAd.adStatus : 'active',
         plan: formData.category === '💚 Doações & Solidariedade' ? 'local' : formData.plan,
         expirationDate: expirationDate,
-        userNotified: isAdmin && id ? true : false,
+        userNotified: isStaff && id ? true : false,
         createdAt: id && originalAd ? originalAd.createdAt : serverTimestamp(),
         updatedAt: serverTimestamp(),
-        contactEmail: (formData.category === 'Imigração' || isJob) ? (formData.contactEmail || '') : '',
-        externalUrl: (formData.category === 'Imigração' || isJob) ? (formData.externalUrl || '') : '',
-        sourceUrl: validSourceUrl,
+        contactEmail: (formData.category === 'Imigração' || isJob) ? (formData.contactEmail || '') : (originalAd?.contactEmail || ''),
+        externalUrl: (formData.category === 'Imigração' || isJob) ? (formData.externalUrl || '') : (originalAd?.externalUrl || ''),
+        sourceUrl: validSourceUrl || (originalAd?.sourceUrl || null),
         imagePositionX: imagePositionX,
         imagePositionY: imagePositionY,
         imageZoom: imageZoom,
@@ -882,8 +895,8 @@ const CreateAd = () => {
         workSchedule: isJob ? formData.workSchedule : '',
         companyName: isJob ? formData.companyName.trim() : '',
         experienceRequired: isJob ? formData.experienceRequired : '',
-        listingType: isAdmin ? formData.listingType : (originalAd?.listingType || 'normal'),
-        targetUrl: isAdmin ? (formData.listingType === 'informativo' ? formData.targetUrl.trim() : '') : (originalAd?.targetUrl || ''),
+        listingType: isStaff ? formData.listingType : (originalAd?.listingType || 'normal'),
+        targetUrl: isStaff ? (formData.listingType === 'informativo' ? formData.targetUrl.trim() : '') : (originalAd?.targetUrl || ''),
         serviceCoverage: (formData.category === 'Serviços' || formData.category?.startsWith('Serviços') || formData.category?.includes('Serviços')) ? (formData.serviceCoverage || 'city') : 'city',
         // Boating fields (Phase 4)
         boatType: formData.boatType || '',
@@ -907,6 +920,24 @@ const CreateAd = () => {
         ceCertified: formData.ceCertified || ''
       };
 
+      // Preservar metadados de anúncios importados/externos/reivindicáveis
+      if (id && originalAd) {
+        if (originalAd.sourceUrl) adData.sourceUrl = originalAd.sourceUrl;
+        if (originalAd.sourceSite) adData.sourceSite = originalAd.sourceSite;
+        if (originalAd.sourceCheckedAt) adData.sourceCheckedAt = originalAd.sourceCheckedAt;
+        if (originalAd.importedBy) adData.importedBy = originalAd.importedBy;
+        if (originalAd.importedAt) adData.importedAt = originalAd.importedAt;
+        if (originalAd.listingMode) adData.listingMode = originalAd.listingMode;
+        if (originalAd.isClaimableBusiness !== undefined) adData.isClaimableBusiness = originalAd.isClaimableBusiness;
+        if (originalAd.claimStatus !== undefined) adData.claimStatus = originalAd.claimStatus;
+        if (originalAd.claimedBy) adData.claimedBy = originalAd.claimedBy;
+        if (originalAd.claimedAt) adData.claimedAt = originalAd.claimedAt;
+        if (originalAd.sellerEmail) adData.sellerEmail = originalAd.sellerEmail;
+        if (originalAd.externalListing !== undefined) adData.externalListing = originalAd.externalListing;
+        if (originalAd.externalStatus) adData.externalStatus = originalAd.externalStatus;
+        if (originalAd.demoListing !== undefined) adData.demoListing = originalAd.demoListing;
+      }
+
       if (formData.category === '💚 Doações & Solidariedade') {
         const thirtyDaysOut = new Date();
         thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
@@ -920,21 +951,27 @@ const CreateAd = () => {
       }
 
       if (isStaff) {
-        adData.isPermanentFeatured = !!formData.isPermanentFeatured;
-        if (formData.isPermanentFeatured) {
-          const farFuture = new Date();
-          farFuture.setFullYear(farFuture.getFullYear() + 100);
+        const isFeaturedPlan = ['featured', 'highlight', 'local', 'national', 'intermediate', 'premium'].includes(formData.plan);
+        if (isFeaturedPlan || formData.isPermanentFeatured) {
           adData.isFeatured = true;
-          adData.featuredUntil = farFuture;
           adData.featuredLevel = formData.plan === 'national' ? 'national' : 'local';
-          adData.featuredActivatedAt = new Date();
-        } else {
+          if (formData.isPermanentFeatured) {
+            const farFuture = new Date();
+            farFuture.setFullYear(farFuture.getFullYear() + 100);
+            adData.isPermanentFeatured = true;
+            adData.featuredUntil = farFuture;
+          } else {
+            adData.featuredUntil = expirationDate;
+          }
+          adData.featuredActivatedAt = adData.featuredActivatedAt || new Date();
+        } else if (formData.plan === 'free' && !formData.isPermanentFeatured) {
+          adData.isFeatured = false;
           adData.isPermanentFeatured = false;
         }
       }
 
       // Proteger contra edição não autorizada de campos estratégicos em anúncios destacados com mais de 24h
-      if (!isAdmin && isEditLocked && originalAd) {
+      if (!isAdmin && !isModerator && isEditLocked && originalAd) {
         if (
           formData.title !== originalAd.title ||
           JSON.stringify(formData.images) !== JSON.stringify(originalAd.images) ||
@@ -1032,7 +1069,7 @@ const CreateAd = () => {
       }
 
       // Se não houver duplicado local, prosseguir normalmente para salvar ou cobrar destaque
-      if (isPaidDestaque && !alreadyHasThisDestaque && !isPromoActive && !formData.isPermanentFeatured && formData.category !== '💚 Doações & Solidariedade') {
+      if (isPaidDestaque && !alreadyHasThisDestaque && !isPromoActive && !formData.isPermanentFeatured && formData.category !== '💚 Doações & Solidariedade' && !isStaff) {
         setPendingAdData(adData);
         setShowPaymentModal(true);
         setLoading(false);
@@ -1040,7 +1077,8 @@ const CreateAd = () => {
       }
 
       await executeSaveAd(adData, adId);
-    } catch (err) {
+    } catch (err: any) {
+      console.error('[Submit Ad Exception]', err);
       handleFirestoreError(err, id ? OperationType.UPDATE : OperationType.CREATE, `ads/${id || 'new'}`);
     } finally {
       setLoading(false);
@@ -1263,11 +1301,10 @@ const CreateAd = () => {
           };
         });
 
-        setImportSuccess(isOlxPortugal 
-          ? 'Dados importados da OLX. Revise as informações antes de publicar.' 
-          : isGumtreeUk 
-          ? 'Dados importados do Gumtree Reino Unido. Revise as informações antes de publicar.' 
-          : 'Dados importados com sucesso. Revise as informações antes de publicar.');
+        const detectedMarketplace = getSupportedMarketplace(importUrl);
+        const sourceSiteName = detectedMarketplace ? detectedMarketplace.name : getSourceSiteFromUrl(importUrl);
+
+        setImportSuccess(`Dados importados de ${sourceSiteName}. Revise as informações antes de publicar.`);
       } else {
         const stageMsg = result?.stage ? `[Fase: ${result.stage}] ` : '';
         const errorMsg = result?.error || 'Não foi possível importar os dados deste anúncio. Preencha manualmente.';
@@ -1398,13 +1435,7 @@ const CreateAd = () => {
             <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-3">
               <Check className="text-emerald-600 shrink-0 mt-0.5" size={18} id="import-banner" />
               <div className="text-xs sm:text-sm text-slate-600">
-                {formData.sourceUrl.toLowerCase().includes('olx.pt') ? (
-                  'Este anúncio foi importado da OLX. O botão de contato direcionará para o anúncio original.'
-                ) : (formData.sourceUrl.toLowerCase().includes('gumtree.com') || formData.sourceUrl.toLowerCase().includes('gumtree.co.uk')) ? (
-                  'Este anúncio foi importado do Gumtree Reino Unido. O botão de contato direcionará para o anúncio original.'
-                ) : (
-                  'Este anúncio foi importado de um link externo. O botão de contato direcionará para o anúncio original.'
-                )}
+                Este anúncio foi importado de {getSourceSiteFromUrl(formData.sourceUrl)}. O botão de contacto direcionará para o anúncio original.
               </div>
             </div>
           )}

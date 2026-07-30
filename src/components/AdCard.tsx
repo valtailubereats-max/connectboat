@@ -514,29 +514,7 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
               <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? '💚' : isNationalHighlight ? '👑' : '⭐'}</span>
             </div>
           )}
-          {ad.externalListing && (
-            <div className="absolute top-1.5 left-1.5 z-20 bg-indigo-900/90 backdrop-blur-md text-indigo-100 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-sm border border-indigo-400/30 flex items-center gap-1">
-              <ExternalLink size={10} className="text-indigo-300 shrink-0" />
-              <span>External Listing</span>
-            </div>
-          )}
-          {ad.demoListing && !ad.externalListing && (
-            <div className="absolute top-1.5 left-1.5 z-20 bg-amber-900/90 backdrop-blur-md text-amber-100 text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-sm border border-amber-400/30 flex items-center gap-1">
-              <Tag size={10} className="text-amber-300 shrink-0" />
-              <span>Example Listing</span>
-            </div>
-          )}
-          {ad.boatType && (
-            <div className="absolute top-1.5 right-1.5 z-20 bg-slate-900/80 backdrop-blur-md text-white text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md shadow-sm border border-white/20 flex items-center gap-1">
-              <Anchor size={10} className="text-sky-400" />
-              <span>{ad.boatType}</span>
-            </div>
-          )}
-          {ad.listingType === 'informativo' && (
-            <div className="absolute top-1 right-1 z-20 bg-emerald-600 text-white text-[8px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded shadow-sm">
-              💡 Guia Útil
-            </div>
-          )}
+          {/* Removed top overlay tags per user request */}
           {(ad.status === 'sold' || ad.adStatus === 'sold') && (
             <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-900/60 z-30 flex items-center justify-center backdrop-blur-[1.5px] pointer-events-none">
               <span className="bg-rose-600 text-white text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-lg border border-rose-500 flex items-center gap-1.5 animate-scale-in">
