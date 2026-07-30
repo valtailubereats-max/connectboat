@@ -19,7 +19,7 @@ import { triggerShare } from '../utils/shareUtils';
 
 interface AdCardProps {
   ad: Ad;
-  variant?: 'normal' | 'featured';
+  variant?: 'normal' | 'featured' | 'homepage-simple';
 }
 
 const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
@@ -71,6 +71,7 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
 
   const isCompactActive = settings?.compactCardMode === true;
   const isFeaturedVariant = variant === 'featured';
+  const isHomepageSimple = variant === 'homepage-simple';
   const useCompactMode = isCompactActive && !isFeaturedVariant;
 
   React.useEffect(() => {
@@ -584,11 +585,11 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
                 : 'text-[10px] md:text-[11px] mb-2 md:mb-3'
           }`}>
             <div className="flex items-center gap-1 text-slate-600">
-              {(ad.category === 'Boat Services' || ad.category === 'Serviços' || ad.category?.includes('Services') || ad.category?.includes('Serviços')) && ad.serviceCoverage === 'online' ? (
+              {!isHomepageSimple && (ad.category === 'Boat Services' || ad.category === 'Serviços' || ad.category?.includes('Services') || ad.category?.includes('Serviços')) && ad.serviceCoverage === 'online' ? (
                 <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100 shadow-sm">
                   <span>💻</span> Online Service
                 </span>
-              ) : (ad.category === 'Boat Services' || ad.category === 'Serviços' || ad.category?.includes('Services') || ad.category?.includes('Serviços')) && (ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal') ? (
+              ) : !isHomepageSimple && (ad.category === 'Boat Services' || ad.category === 'Serviços' || ad.category?.includes('Services') || ad.category?.includes('Serviços')) && (ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal') ? (
                 <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded border border-emerald-100 shadow-sm">
                   <span>🌍</span> Nationwide Service
                 </span>
@@ -615,7 +616,7 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
                 </>
               )}
             </div>
-            {!useCompactMode && (
+            {!useCompactMode && !isHomepageSimple && (
               <div className="flex items-center gap-1 text-slate-500">
                 <Tag size={isFeaturedVariant ? 10 : 12} className="text-teal-600 shrink-0 opacity-75" />
                 <span className="truncate">{ad.category}</span>
@@ -623,7 +624,7 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
             )}
           </div>
 
-          {!useCompactMode && (
+          {!useCompactMode && !isHomepageSimple && (
             <>
               {/* Linha horizontal de ações */}
               <div className={`flex items-center justify-center border-t border-b border-dashed border-slate-100 ${
