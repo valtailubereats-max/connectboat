@@ -1,6 +1,6 @@
 // Helper utilities for URL normalization, search page validation, and external ID extraction
 
-import { decodeHtmlEntities } from '../../api/import-ad';
+import { decodeHtmlEntities } from './textUtils';
 
 const TRACKING_PARAMS = new Set([
   'utm_source',

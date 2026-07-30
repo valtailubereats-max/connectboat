@@ -152,9 +152,21 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
     setIsLoading(true);
 
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (user) {
+        try {
+          const token = await user.getIdToken();
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+        } catch (authErr) {
+          console.warn('[AdminSearchPageDiscovery] Could not retrieve ID token:', authErr);
+        }
+      }
+
       const resp = await fetch('/api/discover-listings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           pageUrl: trimmedUrl,
           userRole: userRole === 'guest' ? 'admin' : userRole

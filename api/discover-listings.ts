@@ -1,11 +1,13 @@
 import type { Request, Response } from 'express';
-import { decodeHtmlEntities, cleanTitle } from './import-ad';
+import { decodeHtmlEntities, cleanTitle } from '../src/utils/textUtils';
 import {
   normalizeListingUrl,
   extractExternalId,
   validateSearchPageUrl,
   SearchPageValidationResult
 } from '../src/utils/urlNormalization';
+
+console.log('[discover-listings] MODULE_LOAD: Module initialized successfully');
 
 export type DiscoveredListing = {
   sourceUrl: string;
@@ -330,8 +332,9 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
 
 /**
  * Main Endpoint Handler for POST /api/discover-listings
+ * Fully wrapped to guarantee zero unhandled runtime exceptions escape to Vercel.
  */
-export default async function discoverListingsHandler(req: Request, res: Response) {
+export default async function discoverListingsHandler(req: any, res: any) {
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   let lastCompletedStage = 'REQUEST_RECEIVED';
   let targetPageUrl = '';
@@ -341,28 +344,33 @@ export default async function discoverListingsHandler(req: Request, res: Respons
   let fallbackAttempted = false;
   let htmlLength = 0;
 
-  res.setHeader("Content-Type", "application/json");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({
-      success: false,
-      error: "METHOD_NOT_ALLOWED",
-      errorMessage: "Método não permitido.",
-      requestId
-    });
-  }
-
   try {
+    console.log('[discover-listings] HANDLER_START', { requestId, method: req?.method });
+
+    // Set CORS and content type headers safely
+    if (res && typeof res.setHeader === 'function') {
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
+
+    if (req?.method === "OPTIONS") {
+      return res.status(200).end();
+    }
+
+    if (req?.method !== "POST") {
+      return res.status(405).json({
+        success: false,
+        error: "METHOD_NOT_ALLOWED",
+        errorMessage: "Método não permitido.",
+        requestId
+      });
+    }
+
     // Stage 2: BODY_PARSED
     let body: any = {};
-    if (typeof req.body === 'string') {
+    if (typeof req?.body === 'string') {
       try {
         body = JSON.parse(req.body);
       } catch (err) {
@@ -373,8 +381,8 @@ export default async function discoverListingsHandler(req: Request, res: Respons
           requestId
         });
       }
-    } else {
-      body = req.body || {};
+    } else if (req?.body && typeof req.body === 'object') {
+      body = req.body;
     }
 
     lastCompletedStage = 'BODY_PARSED';
@@ -382,6 +390,8 @@ export default async function discoverListingsHandler(req: Request, res: Respons
     const rawPageUrl = body.pageUrl || body.url || body.searchUrl;
     const userRole = body.userRole;
     const diagnosticsOnly = body.diagnosticsOnly === true;
+
+    console.log('[discover-listings] BODY_RECEIVED', { requestId, pageUrl: rawPageUrl, userRole, diagnosticsOnly });
 
     if (!rawPageUrl || typeof rawPageUrl !== 'string' || !rawPageUrl.trim()) {
       return res.status(400).json({
@@ -396,8 +406,10 @@ export default async function discoverListingsHandler(req: Request, res: Respons
 
     // Stage 3: AUTH_STARTED
     lastCompletedStage = 'AUTH_STARTED';
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    const authHeader = req.headers?.authorization || req.headers?.Authorization;
+    console.log('[discover-listings] AUTH_START', { requestId, hasAuthHeader: Boolean(authHeader) });
+
+    if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
       authUid = 'authenticated_token_user';
     }
 
@@ -421,6 +433,7 @@ export default async function discoverListingsHandler(req: Request, res: Respons
 
     // Stage 4: AUTH_SUCCESS
     lastCompletedStage = 'AUTH_SUCCESS';
+    console.log('[discover-listings] AUTH_SUCCESS', { requestId, authUid, userRole });
 
     // Stage 5: URL_VALIDATED
     const validation: SearchPageValidationResult = validateSearchPageUrl(targetPageUrl);
@@ -440,9 +453,12 @@ export default async function discoverListingsHandler(req: Request, res: Respons
     detectedMarketplace = marketplaceName;
     targetPageUrl = normalizedUrl || targetPageUrl;
     lastCompletedStage = 'MARKETPLACE_DETECTED';
+    console.log('[discover-listings] MARKETPLACE_DETECTED', { requestId, detectedMarketplace, targetPageUrl });
 
     // Stage 7: FETCH_STARTED
     lastCompletedStage = 'FETCH_STARTED';
+    console.log('[discover-listings] BEFORE_FETCH', { requestId, targetPageUrl });
+
     const fetchRes = await fetchPageResiliently(targetPageUrl);
     httpStatus = fetchRes.status;
     fallbackAttempted = fetchRes.fallbackAttempted;
@@ -453,6 +469,8 @@ export default async function discoverListingsHandler(req: Request, res: Respons
     } else {
       lastCompletedStage = 'DIRECT_FETCH_COMPLETED';
     }
+
+    console.log('[discover-listings] AFTER_FETCH', { requestId, httpStatus, htmlLength, fetchSource: fetchRes.fetchSource });
 
     if (!fetchRes.htmlOrText || fetchRes.htmlOrText.length < 200) {
       const errCode = fetchRes.errorCode || (fetchRes.status === 403 ? 'PAGE_ACCESS_DENIED' : 'SEARCH_PAGE_FETCH_FAILED');
@@ -487,6 +505,7 @@ export default async function discoverListingsHandler(req: Request, res: Respons
     // Stage 12: LINKS_DISCOVERED
     lastCompletedStage = 'LINKS_DISCOVERED';
     const totalCandidates = candidateListings.length;
+    console.log('[discover-listings] LINKS_DISCOVERED', { requestId, totalCandidates });
 
     // Stage 13: DUPLICATE_CHECK_STARTED
     lastCompletedStage = 'DUPLICATE_CHECK_STARTED';
@@ -537,6 +556,7 @@ export default async function discoverListingsHandler(req: Request, res: Respons
 
     // Stage 14: RESPONSE_SENT
     lastCompletedStage = 'RESPONSE_SENT';
+    console.log('[discover-listings] BEFORE_RESPONSE', { requestId, totalFound, warningsCount: warnings.length });
 
     return res.status(200).json({
       success: true,
@@ -560,7 +580,7 @@ export default async function discoverListingsHandler(req: Request, res: Respons
     });
 
   } catch (err: any) {
-    console.error('[discover-listings exception]', {
+    console.error('[discover-listings EXCEPTION_CAUGHT]', {
       requestId,
       lastCompletedStage,
       pageUrl: targetPageUrl,
@@ -569,22 +589,24 @@ export default async function discoverListingsHandler(req: Request, res: Respons
       httpStatus,
       fallbackAttempted,
       htmlLength,
-      errorName: err.name,
-      errorMessage: err.message,
-      stack: err.stack
+      errorName: err?.name,
+      errorMessage: err?.message,
+      stack: err?.stack
     });
 
-    return res.status(500).json({
-      success: false,
-      error: 'DISCOVERY_FAILED',
-      errorMessage: 'Ocorreu um erro temporário no servidor ao ler a página. Por favor, tente novamente.',
-      requestId,
-      debug: {
-        errorName: err.name || 'Error',
-        errorMessage: err.message || 'Erro desconhecido',
-        stage: lastCompletedStage,
-        stack: err.stack
-      }
-    });
+    if (res && typeof res.status === 'function') {
+      return res.status(500).json({
+        success: false,
+        error: 'DISCOVERY_FAILED',
+        errorMessage: 'Ocorreu um erro temporário no servidor ao ler a página. Por favor, tente novamente.',
+        requestId,
+        debug: {
+          errorName: err?.name || 'Error',
+          errorMessage: err?.message || 'Erro desconhecido',
+          stage: lastCompletedStage,
+          stack: err?.stack
+        }
+      });
+    }
   }
 }
