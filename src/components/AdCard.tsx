@@ -7,6 +7,7 @@ import { pt } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatPrice, getAdUrl, getAdLocationLabel } from '../utils';
 import { sendEmailGeneric, getSellerEmail } from '../utils/emailService';
+import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../utils/imageFraming';
 import OptimizedImage from './OptimizedImage';
 import ReviewModal from './ReviewModal';
 
@@ -71,6 +72,16 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
   const isCompactActive = settings?.compactCardMode === true;
   const isFeaturedVariant = variant === 'featured';
   const useCompactMode = isCompactActive && !isFeaturedVariant;
+
+  React.useEffect(() => {
+    logFramingDiagnostic('AdCard Loaded Data', {
+      adId: ad.id,
+      title: ad.title,
+      imageUrl: ad.imageUrl,
+      framing: getAdFraming(ad),
+      listingType: ad.listingType
+    });
+  }, [ad.id, ad.imageUrl, ad.imagePositionX, ad.imagePositionY, ad.imageZoom, ad.coverImageSettings, ad.listingType]);
 
   const rawImages = ad.images && ad.images.length > 0 ? ad.images : [ad.imageUrl];
   const images = rawImages.filter((img): img is string => typeof img === 'string' && img.trim() !== '');
@@ -533,25 +544,9 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
           <OptimizedImage
             src={ad.imageUrl}
             alt={ad.title}
-            className="w-full h-full object-contain transition-transform duration-500 relative z-10"
+            className={`w-full h-full ${ad.listingType === 'informativo' ? 'object-contain' : 'object-cover'} transition-transform duration-500 relative z-10`}
             referrerPolicy="no-referrer"
-            style={ad.listingType === 'informativo' ? {
-              objectPosition: 'center',
-              transform: `scale(${isHovered ? 1.03 : 1})`
-            } : {
-              objectPosition: ad.imagePositionX !== undefined && ad.imagePositionY !== undefined
-                ? `${ad.imagePositionX}% ${ad.imagePositionY}%`
-                : '50% 50%',
-              transform: `scale(${(ad.imageZoom || 1) * (isHovered ? 1.08 : 1)}) translate(${
-                ad.imageZoom && ad.imageZoom > 1
-                  ? ((ad.imagePositionX || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                  : 0
-              }%, ${
-                ad.imageZoom && ad.imageZoom > 1
-                  ? ((ad.imagePositionY || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                  : 0
-              }%)`
-            }}
+            style={getCardFramingStyle(ad, { isHovered, listingType: ad.listingType })}
           />
         </div>
 

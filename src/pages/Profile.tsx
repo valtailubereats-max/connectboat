@@ -14,6 +14,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { formatPrice } from '../utils';
 import OptimizedImage from '../components/OptimizedImage';
+import { getCardFramingStyle } from '../utils/imageFraming';
 import ReviewModal from '../components/ReviewModal';
 import AdCard from '../components/AdCard';
 import ShowcaseStats from '../components/ShowcaseStats';
@@ -1366,20 +1367,7 @@ const Profile = () => {
                     alt={ad.title} 
                     className="w-full h-full object-cover" 
                     containerClassName="w-24 h-24 rounded-2xl bg-slate-50 overflow-hidden"
-                    style={{
-                      objectPosition: ad.imagePositionX !== undefined && ad.imagePositionY !== undefined
-                        ? `${ad.imagePositionX}% ${ad.imagePositionY}%`
-                        : '50% 50%',
-                      transform: `scale(${ad.imageZoom || 1}) translate(${
-                        ad.imageZoom && ad.imageZoom > 1
-                          ? ((ad.imagePositionX || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                          : 0
-                      }%, ${
-                        ad.imageZoom && ad.imageZoom > 1
-                          ? ((ad.imagePositionY || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                          : 0
-                      }%)`
-                    }}
+                    style={getCardFramingStyle(ad, { isHovered: false })}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">

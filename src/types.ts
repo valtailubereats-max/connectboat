@@ -140,6 +140,12 @@ export interface Ad {
   imagePositionX?: number;
   imagePositionY?: number;
   imageZoom?: number;
+  coverImageSettings?: {
+    imageUrl?: string;
+    x?: number;
+    y?: number;
+    zoom?: number;
+  };
   buyerId?: string;
   buyerName?: string;
   soldAt?: any; // Firestore Timestamp

@@ -15,6 +15,7 @@ import { compressImage } from '../lib/imageUtils';
 import { normalizeDescription } from '../utils/textFormatter';
 import { getSourceSiteFromUrl, getSupportedMarketplace, getSupportedMarketplacesMessage } from '../utils/marketplaces';
 import { isImportedOrExternalAd, normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
+import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../utils/imageFraming';
 
 const CreateAd = () => {
   const { categories } = useSettings();
@@ -184,6 +185,41 @@ const CreateAd = () => {
     }
   }, [canMoveY]);
 
+  const perImageFramingRef = useRef<Record<string, { x: number; y: number; zoom: number }>>({});
+  const prevCoverUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const currentCoverUrl = formData.images && formData.images[0] ? formData.images[0] : null;
+
+    if (currentCoverUrl !== prevCoverUrlRef.current) {
+      if (prevCoverUrlRef.current) {
+        perImageFramingRef.current[prevCoverUrlRef.current] = {
+          x: imagePositionX,
+          y: imagePositionY,
+          zoom: imageZoom,
+        };
+      }
+
+      if (currentCoverUrl && perImageFramingRef.current[currentCoverUrl]) {
+        const saved = perImageFramingRef.current[currentCoverUrl];
+        setImagePositionX(saved.x);
+        setImagePositionY(saved.y);
+        setImageZoom(saved.zoom);
+      } else {
+        setImagePositionX(50);
+        setImagePositionY(50);
+        setImageZoom(1);
+      }
+      prevCoverUrlRef.current = currentCoverUrl;
+    } else if (currentCoverUrl) {
+      perImageFramingRef.current[currentCoverUrl] = {
+        x: imagePositionX,
+        y: imagePositionY,
+        zoom: imageZoom,
+      };
+    }
+  }, [formData.images?.[0], imagePositionX, imagePositionY, imageZoom]);
+
   useEffect(() => {
     if (formData.images && formData.images[0]) {
       const img = new Image();
@@ -333,13 +369,7 @@ const CreateAd = () => {
   }, [containerRef.current]);
 
   const getAdImageStyle = (x: number, y: number, z: number) => {
-    const scale = z;
-    const translateX = scale > 1 ? ((x - 50) * (scale - 1)) / scale : 0;
-    const translateY = scale > 1 ? ((y - 50) * (scale - 1)) / scale : 0;
-    return {
-      objectPosition: `${x}% ${y}%`,
-      transform: `scale(${scale}) translate(${translateX}%, ${translateY}%)`,
-    };
+    return getCardFramingStyle({ x, y, zoom: z }, { isHovered: false });
   };
 
   const handleCountryChange = (newCountry: 'Portugal' | 'Reino Unido' | 'Ambos') => {
@@ -499,9 +529,10 @@ const CreateAd = () => {
           vatPaid: data.vatPaid || '',
           ceCertified: data.ceCertified || ''
         });
-        setImagePositionX(data.imagePositionX !== undefined ? data.imagePositionX : 50);
-        setImagePositionY(data.imagePositionY !== undefined ? data.imagePositionY : 50);
-        setImageZoom(data.imageZoom !== undefined ? data.imageZoom : 1);
+        const loadedFraming = getAdFraming(data);
+        setImagePositionX(loadedFraming.x);
+        setImagePositionY(loadedFraming.y);
+        setImageZoom(loadedFraming.zoom);
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.GET, `ads/${id}`);
@@ -661,6 +692,14 @@ const CreateAd = () => {
     setLoading(true);
     try {
       const cleanPayload = sanitizeFirestorePayload(finalAdData);
+      logFramingDiagnostic('CreateAd Save Payload', {
+        targetAdId,
+        imageUrl: cleanPayload.imageUrl,
+        imagePositionX: cleanPayload.imagePositionX,
+        imagePositionY: cleanPayload.imagePositionY,
+        imageZoom: cleanPayload.imageZoom,
+        coverImageSettings: cleanPayload.coverImageSettings,
+      });
       try {
         await setDoc(doc(db, 'ads', targetAdId), cleanPayload, { merge: true });
       } catch (saveErr: any) {
@@ -890,6 +929,12 @@ const CreateAd = () => {
         imagePositionX: imagePositionX,
         imagePositionY: imagePositionY,
         imageZoom: imageZoom,
+        coverImageSettings: {
+          imageUrl: cleanFormImages[0] || '',
+          x: imagePositionX,
+          y: imagePositionY,
+          zoom: imageZoom,
+        },
         salary: isJob ? formData.salary.trim() : '',
         contractType: isJob ? formData.contractType : '',
         workSchedule: isJob ? formData.workSchedule : '',

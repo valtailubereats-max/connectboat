@@ -143,10 +143,17 @@ const AdminAds = () => {
     if (!selectedAd) return;
     setSavingPosition(true);
     try {
+      const coverUrl = selectedAd.imageUrl || (selectedAd.images && selectedAd.images[0]) || '';
       await updateDoc(doc(db, 'ads', selectedAd.id), {
         imagePositionX: adminImagePositionX,
         imagePositionY: adminImagePositionY,
         imageZoom: adminImageZoom,
+        coverImageSettings: {
+          imageUrl: coverUrl,
+          x: adminImagePositionX,
+          y: adminImagePositionY,
+          zoom: adminImageZoom,
+        },
         updatedAt: serverTimestamp()
       });
       clearHomeCache();
@@ -154,13 +161,25 @@ const AdminAds = () => {
         ...ad, 
         imagePositionX: adminImagePositionX, 
         imagePositionY: adminImagePositionY,
-        imageZoom: adminImageZoom
+        imageZoom: adminImageZoom,
+        coverImageSettings: {
+          imageUrl: coverUrl,
+          x: adminImagePositionX,
+          y: adminImagePositionY,
+          zoom: adminImageZoom,
+        }
       } as Ad : ad));
       setSelectedAd(prev => prev ? {
         ...prev,
         imagePositionX: adminImagePositionX,
         imagePositionY: adminImagePositionY,
-        imageZoom: adminImageZoom
+        imageZoom: adminImageZoom,
+        coverImageSettings: {
+          imageUrl: coverUrl,
+          x: adminImagePositionX,
+          y: adminImagePositionY,
+          zoom: adminImageZoom,
+        }
       } : null);
       setSavedPositionSuccess(true);
       setTimeout(() => {
