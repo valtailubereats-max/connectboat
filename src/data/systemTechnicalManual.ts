@@ -65,7 +65,7 @@ export const manualItems: ManualItem[] = [
     id: 'navbar-menu',
     title: 'Navbar & Menu de Utilizador',
     type: 'Botão',
-    description: 'Barra de navegação persistente presente em todas as páginas. Permite ir para Home, Trabalhos, Preços, Criar Anúncio, Notificações e aceder ao Menu do Utilizador com o avatar exibindo o nome/sigla de 4 letras do usuário.',
+    description: 'Barra de navegação persistente presente em todas as páginas. Permite ir para Home, Preços, Criar Anúncio, Notificações e aceder ao Menu do Utilizador com o avatar exibindo o nome/sigla de 4 letras do usuário.',
     route: 'Todas as rotas (Global)',
     mainFile: 'src/App.tsx',
     relatedComponents: ['src/hooks/useClickOutside.ts'],
@@ -221,25 +221,6 @@ export const manualItems: ManualItem[] = [
       'Divisão por zero ao recalcular média de pontuações vazias.'
     ],
     tags: ['avaliações', 'feedback', 'estrelas', 'reputação', 'vendedor']
-  },
-  {
-    id: 'trabalhos-empregos',
-    title: 'Trabalhos & Empregos',
-    type: 'Página',
-    description: 'Secção especializada da plataforma para anúncios de prestação de serviços, subcontratações, vagas de telemóvel temporárias, jardinagem, restauros, e conexões profissionais portuguesas e inglesas.',
-    route: '/trabalhos, /empregos',
-    mainFile: 'src/pages/Trabalhos.tsx',
-    relatedComponents: ['src/components/AdCard.tsx'],
-    relatedFunctions: ['fetchJobs', 'filterByJobCategory'],
-    firestoreCollections: ['ads'],
-    access: 'Público',
-    buttons: ['Filtros Avançados', 'Procurar Profissionais', 'Publicar Vaga'],
-    actions: ['Filtrar anúncios cuja categoria seja "Serviços" ou "Empregos"', 'Filtros rápidos por país ou modalidade'],
-    technicalNotes: 'Reutiliza a lógica de listagem do AdCard mas otimizada para tags de salário, horários e experiência requerida.',
-    failurePoints: [
-      'Filtros conflitantes resultando em ecrã vazio.'
-    ],
-    tags: ['trabalhos', 'empregos', 'vagas', 'serviços', 'anúncios', 'contratação']
   },
   {
     id: 'empreendedores',
@@ -628,34 +609,6 @@ export const manualItems: ManualItem[] = [
     tags: ['storage', 'regras', 'bucket, segurança, upload']
   },
   {
-    id: 'campanhas-sorteios',
-    title: 'Campanhas e Sorteios (Passatempos)',
-    type: 'Página',
-    description: 'Módulo dinâmico de sorteios periódicos para impulsionar a partilha do ConnectBoat. Exige esforço mínimo para se qualificar (1 partilha obrigatória), concedendo bilhetes adicionais proporcionalmente a cada partilha extra em canais oficiais (como WhatsApp, Facebook e Twitter).',
-    route: '/sorteios',
-    mainFile: 'src/pages/Sorteios.tsx',
-    relatedComponents: ['src/pages/AdminSorteios.tsx'],
-    relatedFunctions: ['handleShareAndRegister', 'handleDrawWinners', 'handleUpdateWinnerStatus'],
-    firestoreCollections: ['giveaways', 'participations', 'shares'],
-    access: 'Público para consulta; Utilizador Autenticado para partilhar; Admin para criar e sortear',
-    buttons: ['Partilhar ConnectBoat / Partilhar novamente', 'Ver Regras do Passatempo', 'Sortear (Admin)', 'Listar Participantes (Admin)'],
-    actions: [
-      'Validar login antes de abrir as opções de partilha',
-      'Registrar a intenção de partilha em /shares',
-      'Verificar o limite máximo de 3 bilhetes por sorteio e utilizador',
-      'Garantir intervalo mínimo de 5 minutos entre novos bilhetes gerados pelo mesmo utilizador',
-      'Atualizar o documento em /participations com sharesCount, ticketsCount, lastShareAt, lastShareChannel, createdAt e updatedAt',
-      'Efetuar sorteio ponderado no painel administrativo de acordo com o ticketsCount de cada participante'
-    ],
-    technicalNotes: 'As participações contêm registros individuais em /participations. Cada partilha aceita atualiza lastShareAt que é usado para o bloqueio decorativo de 5 minutos, garantindo resistência a spams de geração ilimitada de bilhetes.',
-    failurePoints: [
-      'Geração infinita de bilhetes se o bloqueio temporal de 5 minutos não for validado contra lastShareAt no documento.',
-      'Sorteio uniforme que desvalorize quem efetuou partilhas extras (resolvido por amostragem baseada em peso).',
-      'Incompatibilidade do fuso horário ao comparar timestamps do servidor.'
-    ],
-    tags: ['sorteios', 'parcerias', 'campanhas', 'bilhetes', 'partilhar', 'whatsapp', 'pesos', 'manual']
-  },
-  {
     id: 'destaques-permanentes',
     title: 'Destaques Permanentes Administrativos (Fallback Inteligente)',
     type: 'Admin',
@@ -736,11 +689,11 @@ export const manualItems: ManualItem[] = [
     description: 'Motor unificado de partilha institucional que adapta as informações partilhadas de acordo com o contexto lido da página atual. Centraliza a formatação e visualização dinâmica para canais de redes sociais e garante suporte total a toda a comunidade lusófona mundial.',
     route: 'Global (Controlado via triggerShare e ShareModal)',
     mainFile: 'src/utils/shareUtils.ts',
-    relatedComponents: ['src/components/ShareModal.tsx', 'src/App.tsx', 'src/pages/AdDetails.tsx', 'src/pages/EmpreendedorDetalhes.tsx', 'src/pages/Sorteios.tsx'],
+    relatedComponents: ['src/components/ShareModal.tsx', 'src/App.tsx', 'src/pages/AdDetails.tsx', 'src/pages/EmpreendedorDetalhes.tsx'],
     relatedFunctions: ['triggerShare', 'generateShareText', 'request-share-current-page'],
     firestoreCollections: ['shares'],
     access: 'Público (Qualquer utilizador)',
-    buttons: ['Partilhar (Navbar)', 'Partilhar Anúncio (AdCard / AdDetails)', 'Partilhar Vitrine (EmpreendedorDetalhes)', 'Partilhar Sorteio (Sorteios)'],
+    buttons: ['Partilhar (Navbar)', 'Partilhar Anúncio (AdCard / AdDetails)', 'Partilhar Vitrine (EmpreendedorDetalhes)'],
     actions: [
       'Geração de textos de partilha dinâmicos com base nos dados do anúncio, vitrine ou sorteio ativo.',
       'Sincronização global de eventos para identificar se uma página aberta quer injetar dados customizados no botão de partilha do menu principal.',
@@ -928,8 +881,8 @@ export const technicalFlows: TechnicalFlow[] = [
     description: 'Fluxo seguro de participação, geração de bilhetes (máx. 3) e bloqueio temporário de 5 minutos entre partilhas extras.',
     startPoint: 'Aceder à página /sorteios estando autenticado e clicar em "Partilhar ConnectBoat"',
     buttonsInvolved: ['Partilhar ConnectBoat', 'Confirmar Partilha (WhatsApp, Facebook, Twitter, Copiar Link)', 'Partilhar novamente'],
-    pagesInvolved: ['Sorteios.tsx', 'AdminSorteios.tsx'],
-    mainFiles: ['src/pages/Sorteios.tsx', 'src/pages/AdminSorteios.tsx', 'firestore.rules'],
+    pagesInvolved: [],
+    mainFiles: ['firestore.rules'],
     firestoreCollections: ['giveaways', 'participations', 'shares'],
     expectedResult: 'A 1ª partilha cria a participação garantida com 1 bilhete. Partilhas adicionais geram mais bilhetes (máx 3), respeitando o espaço mínimo de 5 minutos desde a última partilha.'
   },

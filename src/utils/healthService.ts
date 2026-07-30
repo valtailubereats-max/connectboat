@@ -180,39 +180,7 @@ export async function runHealthChecks(): Promise<{
     console.warn('[HealthCheck] Email failure check failed', err);
   }
 
-  // 6. Sorteios
-  try {
-    const giveawaysSnap = await getDocs(collection(db, 'giveaways'));
-    const activeGiveaways = giveawaysSnap.docs.map(d => ({ id: d.id, ...d.data() as any }))
-      .filter(g => g.status === 'active' || g.status === 'published');
-    
-    const fortyEightHoursFromNow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-
-    for (const g of activeGiveaways) {
-      const endDate = g.endDate?.toDate ? g.endDate.toDate() : new Date(g.endDate);
-      if (endDate < fortyEightHoursFromNow) {
-        // Check participants
-        const partsSnap = await getDocs(query(
-          collection(db, 'participations'), 
-          where('giveawayId', '==', g.id)
-        ));
-        if (partsSnap.empty) {
-          alertsToCreate.push({
-            title: `Sorteio "${g.title}" termina sem participantes`,
-            description: `O sorteio ativo está agendado para terminar em breve (${endDate.toLocaleDateString()}) mas ainda tem 0 participantes registados.`,
-            severity: 'warning',
-            source: 'sorteios',
-            recommendedAction: 'Considere divulgar o sorteio nos canais de marketing ou estender a data de encerramento.',
-            relatedLink: '/admin/sorteios'
-          });
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('[HealthCheck] Sorteios check failed', err);
-  }
-
-  // 7. Vitrines
+  // 6. Vitrines
   try {
     const showcasesSnap = await getDocs(collection(db, 'sellerPublicProfiles'));
     const activeShowcases = showcasesSnap.docs.map(d => ({ uid: d.id, ...d.data() as any }))

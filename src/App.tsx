@@ -9,7 +9,6 @@ import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { collection, query, where, orderBy, doc, updateDoc, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import Home from './pages/Home';
 import Login from './pages/Login';
-import Trabalhos from './pages/Trabalhos';
 import Precos from './pages/Precos';
 import Profile from './pages/Profile';
 import Negocio from './pages/Negocio';
@@ -35,7 +34,6 @@ import AdminSuggestions from './pages/AdminSuggestions';
 import AdminClaims from './pages/AdminClaims';
 import Fotos from './pages/Fotos';
 import AdminFotos from './pages/AdminFotos';
-import Empreendedores from './pages/Empreendedores';
 import EmpreendedorDetalhes from './pages/EmpreendedorDetalhes';
 import EmpreendedorProduto from './pages/EmpreendedorProduto';
 import AdminShowcases from './pages/AdminShowcases';
@@ -51,13 +49,6 @@ import AdminLayout from './components/AdminLayout';
 import OptimizedImage from './components/OptimizedImage';
 import { motion, AnimatePresence } from 'motion/react';
 import Links from './pages/Links';
-import Sorteios from './pages/Sorteios';
-import AdminSorteios from './pages/AdminSorteios';
-import Videos from './pages/Videos';
-import VideoDetails from './pages/VideoDetails';
-import AdminVideos from './pages/AdminVideos';
-import MeusVideos from './pages/MeusVideos';
-import AdminContentCreators from './pages/AdminContentCreators';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ShareModal } from './components/ShareModal';
 import { triggerShare } from './utils/shareUtils';
@@ -514,17 +505,6 @@ const Navbar = () => {
                         My Listings
                       </Link>
 
-                      {profile?.role === 'content_creator' && (
-                        <Link
-                          to="/meus-videos"
-                          onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-4 py-2 hover:bg-sky-50/50 transition-colors text-sm font-semibold text-sky-700"
-                          id="menu-meus-videos"
-                        >
-                          🎬 My Videos
-                        </Link>
-                      )}
-
                       <Link
                         to="/create-ad"
                         onClick={() => setShowUserDropdown(false)}
@@ -926,8 +906,6 @@ export default function App() {
             <main ref={mainRef} className="max-w-7xl mx-auto px-1.5 xs:px-2 sm:px-6 lg:px-8 py-4 sm:py-8 cursor-grab active:cursor-grabbing">
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/trabalhos" element={<Trabalhos />} />
-                <Route path="/empregos" element={<Trabalhos />} />
                 <Route path="/precos" element={<Precos />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
@@ -950,7 +928,6 @@ export default function App() {
                 <Route path="/admin/claims" element={<AdminLayout><AdminClaims /></AdminLayout>} />
                 <Route path="/admin/team" element={<AdminLayout><AdminTeam /></AdminLayout>} />
                 <Route path="/fotos" element={<Fotos />} />
-                <Route path="/empreendedores" element={<Empreendedores />} />
                 <Route path="/vitrine-comercial" element={<VitrineComercial />} />
                 <Route path="/empreendedores/:slug" element={<EmpreendedorDetalhes />} />
                 <Route path="/empreendedores/:slug/produto/:productId" element={<EmpreendedorProduto />} />
@@ -962,17 +939,10 @@ export default function App() {
                 <Route path="/sugestoes" element={<Suggestions />} />
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/links" element={<Links />} />
-                <Route path="/sorteios" element={<Sorteios />} />
-                <Route path="/videos" element={<Videos />} />
-                <Route path="/videos/:slug" element={<VideoDetails />} />
-                <Route path="/meus-videos" element={<MeusVideos />} />
-                <Route path="/admin/videos" element={<AdminLayout><AdminVideos /></AdminLayout>} />
-                <Route path="/admin/criadores" element={<AdminLayout><AdminContentCreators /></AdminLayout>} />
                 <Route path="/convite" element={<Convite />} />
                 <Route path="/admin/invitations" element={<AdminLayout><AdminInvitations /></AdminLayout>} />
                 <Route path="/admin/suggestions" element={<AdminLayout><AdminSuggestions /></AdminLayout>} />
                 <Route path="/admin/manual-tecnico" element={<AdminLayout><AdminManualTecnico /></AdminLayout>} />
-                <Route path="/admin/sorteios" element={<AdminLayout><AdminSorteios /></AdminLayout>} />
               </Routes>
             </main>
             <footer className="bg-slate-50 border-t border-slate-200 pt-16 pb-12 mt-20 font-sans">

@@ -71,7 +71,7 @@ export interface UserProfile {
   email: string;
   phone: string;
   city?: string;
-  role?: 'user' | 'admin' | 'moderator' | 'content_creator';
+  role?: 'user' | 'admin' | 'moderator';
   acceptedTerms: boolean;
   acceptedTermsAt: any; // Firestore Timestamp
   lastLoginAt?: any; // Firestore Timestamp
@@ -375,96 +375,17 @@ export interface PhotoStoreItem {
   createdBy: string;
 }
 
-export interface GiveawayWinner {
-  userId: string;
-  name: string;
-  email: string;
-  drawDate: any; // Firestore Timestamp or Date ISO string
-  status: 'Aguardando Contacto' | 'Contactado' | 'Prémio Entregue';
-  prizeImage?: string;
-  prizeTitle?: string;
-  country?: string;
-}
-
-export interface Giveaway {
-  id: string;
-  title: string;
-  description: string;
-  prizeImage: string;
-  country: 'Portugal' | 'Reino Unido' | 'Ambos';
-  startDate: string; // ISO-8601 string or date input
-  endDate: string; // ISO-8601 string or date input
-  rules: string;
-  winnersCount: number;
-  drawNumber?: number;
-  status: 'Ativo' | 'Encerrado' | 'Finalizado';
-  createdAt: any; // Firestore Timestamp
-  createdBy: string;
-  winners?: GiveawayWinner[];
-  videoUrl?: string;
-  videoBase64?: string;
-}
-
-export interface GiveawayParticipation {
-  id: string; // `${giveawayId}_${userId}`
-  giveawayId: string;
-  userId: string;
-  userName: string;
-  userEmail: string;
-  name?: string;
-  email?: string;
-  sharesCount: number;
-  ticketsCount: number;
-  lastShareAt?: any; // Firestore Timestamp
-  lastShareChannel?: string;
-  createdAt: any; // Firestore Timestamp
-  updatedAt: any; // Firestore Timestamp
-}
-
-export interface GiveawayShare {
-  id?: string;
-  giveawayId: string;
-  userId: string;
-  channel: string;
-  createdAt: any; // Firestore Timestamp
-}
-
 export interface SystemHealthAlert {
   id: string;
   title: string;
   description: string;
   severity: 'info' | 'warning' | 'alert' | 'critical';
-  source: 'ads' | 'email' | 'import' | 'firestore' | 'vitrines' | 'sorteios' | 'destaque';
+  source: 'ads' | 'email' | 'import' | 'firestore' | 'vitrines' | 'destaque';
   createdAt: any; // Date or Firestore Timestamp
   status: 'aberto' | 'resolvido';
   recommendedAction: string;
   relatedLink: string;
 }
 
-export interface CommunityVideo {
-  id: string;
-  slug: string;
-  youtubeUrl: string;
-  youtubeId: string;
-  title: string;
-  channelName: string;
-  category: string;
-  country: string;
-  description: string;
-  thumbnailUrl: string;
-  isFeatured: boolean;
-  active: boolean;
-  createdAt: any; // Firestore Timestamp
-  createdBy: string;
-  
-  // Future Expansion/Creator Fields
-  ownerId?: string | null;
-  ownerName?: string | null;
-  channelId?: string | null;
-  channelUrl?: string | null;
-  createdByRole?: 'admin' | 'content_creator' | string;
-  status?: 'pending' | 'approved' | 'rejected' | 'disabled';
-  updatedAt?: any; // Firestore Timestamp
-}
 
 

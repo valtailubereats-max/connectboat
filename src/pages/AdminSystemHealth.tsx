@@ -405,7 +405,6 @@ export default function AdminSystemHealth() {
                   <option value="import">Importador de Screenshots</option>
                   <option value="firestore">Regras de BD (Firestore)</option>
                   <option value="vitrines">Vitrines Comerciais</option>
-                  <option value="sorteios">Sorteios & Campanhas</option>
                 </select>
               </div>
             </div>

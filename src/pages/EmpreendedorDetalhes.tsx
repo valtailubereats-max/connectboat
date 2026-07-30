@@ -204,7 +204,7 @@ const EmpreendedorDetalhes = () => {
           A vitrine que procura não existe ou foi temporariamente desativada pelo proprietário.
         </p>
         <Link 
-          to="/empreendedores" 
+          to="/" 
           className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-2xl transition-all shadow-md shadow-indigo-100 text-sm"
         >
           <ArrowLeft size={16} />
@@ -228,7 +228,7 @@ const EmpreendedorDetalhes = () => {
           Ficará visível para o público em geral assim que for aprovada!
         </p>
         <Link 
-          to="/empreendedores" 
+          to="/" 
           className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-2xl transition-all shadow-md shadow-indigo-100 text-sm"
         >
           <ArrowLeft size={16} />
@@ -262,7 +262,7 @@ const EmpreendedorDetalhes = () => {
       {/* Visual Back Arrow Container */}
       <div className="flex justify-between items-center">
         <Link
-          to="/empreendedores"
+          to="/"
           className="inline-flex items-center gap-2 text-slate-600 hover:text-indigo-600 text-sm font-black transition-colors"
         >
           <ArrowLeft size={16} />

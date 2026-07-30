@@ -54,7 +54,6 @@ const AdminDashboard = () => {
     approvedAds: 0,
     totalUsers: 0,
     staffCount: 0,
-    trabalhosCount: 0,
     vitrinesCount: 0,
     featuredAdsCount: 0,
     featuredLocalCount: 0,
@@ -254,10 +253,6 @@ const AdminDashboard = () => {
       const approvedAdsCount = adsList.filter(a => a.status === 'approved').length;
       const totalUsers = usersList.length;
       const staffCount = usersList.filter(u => u.role === 'admin' || u.role === 'moderator').length;
-      const trabalhosCount = adsList.filter(a => {
-        const cat = String(a.category || '').toLowerCase().trim();
-        return cat === 'trabalho/empregos' || cat === 'trabalho' || cat === 'trabalhos' || cat === 'emprego' || cat === 'empregos';
-      }).length;
       const vitrinesCount = profilesList.length;
       const featuredAdsCount = adsList.filter(a => a.isFeatured === true).length;
       const featuredLocalCount = adsList.filter(a => a.isFeatured === true && (a.featuredLevel === 'local' || a.plan === 'local' || a.plan === 'highlight' || a.plan === 'intermediate')).length;
@@ -272,7 +267,6 @@ const AdminDashboard = () => {
         approvedAds: approvedAdsCount,
         totalUsers,
         staffCount,
-        trabalhosCount,
         vitrinesCount,
         featuredAdsCount,
         featuredLocalCount,
@@ -664,17 +658,6 @@ const AdminDashboard = () => {
               <div>
                 <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Staff (Admins/Mods)</span>
                 <span className="text-2xl font-black text-slate-900">{realtimeStats.staffCount}</span>
-              </div>
-            </div>
-
-            {/* Trabalhos/Empregos */}
-            <div className="p-5 bg-cyan-50/40 border border-cyan-100 rounded-2.5xl flex flex-col justify-between hover:border-cyan-200 transition-all">
-              <div className="w-9 h-9 bg-cyan-100 text-cyan-500 rounded-xl flex items-center justify-center mb-4">
-                <Briefcase size={18} />
-              </div>
-              <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Trabalhos/Empregos</span>
-                <span className="text-2xl font-black text-slate-900">{realtimeStats.trabalhosCount}</span>
               </div>
             </div>
 
