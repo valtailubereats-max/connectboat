@@ -1577,8 +1577,8 @@ const Home = () => {
           </div>
         </section>
 
-        {/* 2. HERO BANNER LUXURY (Título no topo esquerdo e subtítulo flutuante abaixo do casco) */}
-        <section className="relative overflow-hidden shadow-xl rounded-3xl transition-all duration-500 max-w-full bg-slate-950 min-h-[320px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between">
+        {/* 2. HERO BANNER LUXURY (Título no topo esquerdo, stats à direita e subtítulo flutuante abaixo do casco) */}
+        <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl transition-all duration-500 max-w-full bg-slate-950 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between">
           {/* Imagem de Fundo dinâmica */}
           <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
             <img 
@@ -1595,28 +1595,28 @@ const Home = () => {
             <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
           </div>
 
-          <div className="relative z-10 w-full h-full flex flex-col justify-between p-6 sm:p-8 md:p-10 lg:p-12 min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
+          <div className="relative z-10 w-full h-full flex flex-col justify-between p-3.5 xs:p-4 sm:p-8 md:p-10 lg:p-12 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
             {/* Topo do Banner: Título no Topo à Esquerda + Stats Badges à Direita */}
             <motion.div 
               initial={{ opacity: 0, y: -10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full"
+              className="flex flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 w-full"
             >
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)]">
+              <h1 className="text-lg xs:text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)]">
                 ConnectBoat<span className="text-sky-400 font-light"> Marketplace</span>
               </h1>
 
               {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
-              <div className="flex flex-row items-center gap-3 shrink-0">
+              <div className="flex flex-row items-center gap-1.5 sm:gap-3 shrink-0">
                 {/* Contador de Anúncios Slim */}
                 {(settings?.showTotalAdsBadge === true || isModeratorOrAdmin) && (
                   <div 
-                    className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-xl px-3.5 py-2 shadow-lg select-none min-w-[110px] relative group"
+                    className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
                   >
-                    <span className="text-white font-black text-base md:text-xl mr-2">
+                    <span className="text-white font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
                       {totalApprovedCount !== null ? totalApprovedCount : filteredAds.length}
                     </span>
-                    <span className="text-white/70 text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Anúncios<br/>Ativos</span>
+                    <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Anúncios<br/>Ativos</span>
 
                     {!settings?.showTotalAdsBadge && isModeratorOrAdmin && (
                       <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
@@ -1629,12 +1629,12 @@ const Home = () => {
                 {/* Contador de Utilizadores Slim */}
                 {(settings?.showTotalUsersBadge || isModeratorOrAdmin) && totalUsersCount !== null && (
                   <div 
-                    className="flex items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-3.5 py-2 shadow-lg select-none min-w-[110px] relative group"
+                    className="flex items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
                   >
-                    <span className="text-amber-300 font-black text-base md:text-xl mr-2">
+                    <span className="text-amber-300 font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
                       {totalUsersCount}
                     </span>
-                    <span className="text-white/80 text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Membros<br/>Mundiais</span>
+                    <span className="text-white/80 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Membros<br/>Mundiais</span>
 
                     {!settings?.showTotalUsersBadge && isModeratorOrAdmin && (
                       <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
@@ -1650,10 +1650,10 @@ const Home = () => {
             <motion.div 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-6 text-left w-full"
+              className="mt-auto pt-3 sm:pt-6 text-left w-full"
             >
-              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3 shadow-2xl max-w-full">
-                <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/95 font-medium italic tracking-wide leading-snug whitespace-normal lg:whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3 sm:px-6 py-1.5 xs:py-2 sm:py-3 shadow-2xl max-w-full">
+                <p className="text-[10px] xs:text-xs sm:text-base md:text-lg lg:text-xl text-white/95 font-medium italic tracking-wide leading-snug whitespace-normal lg:whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
                   {country === 'Portugal'
                     ? 'Compre, venda e alugue barcos, iates, equipamentos e serviços marítimos.'
                     : 'Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.'}
@@ -1979,21 +1979,89 @@ const Home = () => {
           })()}
         </section>
 
-        {/* 3. BANNER PEQUENO (Reduzido para ~120px de Altura, Simplificado, Extremamente Compacto) */}
-        <section className="w-full" id="mobile-banner-section">
-          <div className="relative overflow-hidden rounded-2xl h-[115px] shadow-sm">
+        {/* 3. HERO BANNER LUXURY (Identico ao Desktop: Título, Stats e Subtítulo) */}
+        <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl transition-all duration-500 w-full bg-slate-950 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between" id="mobile-banner-section">
+          {/* Imagem de Fundo dinâmica */}
+          <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
             <img 
-              src={londonBg} 
-              alt="ConnectBoat" 
-              className="absolute inset-0 w-full h-full object-cover"
-              referrerPolicy="no-referrer"
+              src={country === 'Portugal' ? lisbonAerial : londonBg} 
+              alt={country} 
+              className="w-full h-full object-cover object-[center_20%] transition-all duration-700 ease-in-out"
+              onError={() => {
+                if (londonBg !== londonAerialOriginalStandby) {
+                  setLondonBg(londonAerialOriginalStandby);
+                }
+              }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-black/15 to-black/10" />
-            
-            <div className="relative z-10 h-full flex flex-col justify-center px-4 text-left">
-              <h2 className="text-base font-black text-white leading-tight">ConnectBoat Marketplace</h2>
-              <p className="text-[10px] text-white/80 font-bold mt-1">Boats, parts & marine services near you.</p>
-            </div>
+            {/* Overlay em gradiente top-to-bottom para maximizar legibilidade no topo e no fundo sem cobrir o centro */}
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
+          </div>
+
+          <div className="relative z-10 w-full h-full flex flex-col justify-between p-3.5 xs:p-4 sm:p-8 md:p-10 lg:p-12 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
+            {/* Topo do Banner: Título no Topo à Esquerda + Stats Badges à Direita */}
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }} 
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 w-full"
+            >
+              <h1 className="text-lg xs:text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)]">
+                ConnectBoat<span className="text-sky-400 font-light"> Marketplace</span>
+              </h1>
+
+              {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
+              <div className="flex flex-row items-center gap-1.5 sm:gap-3 shrink-0">
+                {/* Contador de Anúncios Slim */}
+                {(settings?.showTotalAdsBadge === true || isModeratorOrAdmin) && (
+                  <div 
+                    className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
+                  >
+                    <span className="text-white font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
+                      {totalApprovedCount !== null ? totalApprovedCount : filteredAds.length}
+                    </span>
+                    <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Anúncios<br/>Ativos</span>
+
+                    {!settings?.showTotalAdsBadge && isModeratorOrAdmin && (
+                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
+                        🔒 Oculto (Visto por Staff)
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Contador de Utilizadores Slim */}
+                {(settings?.showTotalUsersBadge || isModeratorOrAdmin) && totalUsersCount !== null && (
+                  <div 
+                    className="flex items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
+                  >
+                    <span className="text-amber-300 font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
+                      {totalUsersCount}
+                    </span>
+                    <span className="text-white/80 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Membros<br/>Mundiais</span>
+
+                    {!settings?.showTotalUsersBadge && isModeratorOrAdmin && (
+                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
+                        🔒 Oculto (Visto por Staff)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Abaixo do casco do barco) */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }} 
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-auto pt-3 sm:pt-6 text-left w-full"
+            >
+              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3 sm:px-6 py-1.5 xs:py-2 sm:py-3 shadow-2xl max-w-full">
+                <p className="text-[10px] xs:text-xs sm:text-base md:text-lg lg:text-xl text-white/95 font-medium italic tracking-wide leading-snug whitespace-normal lg:whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                  {country === 'Portugal'
+                    ? 'Compre, venda e alugue barcos, iates, equipamentos e serviços marítimos.'
+                    : 'Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.'}
+                </p>
+              </div>
+            </motion.div>
           </div>
         </section>
 
