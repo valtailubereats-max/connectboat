@@ -148,23 +148,103 @@ const AdCard: React.FC<AdCardProps> = ({
     const mdl = (ad.model || '').trim();
     if (!mfr && !mdl) return null;
 
-    if (mfr && mdl) {
-      const mfrLower = mfr.toLowerCase();
-      const mdlLower = mdl.toLowerCase();
-
-      if (mdlLower === mfrLower || mdlLower.startsWith(mfrLower)) {
-        return mfr;
+    const titleLower = (ad.title || '').trim().toLowerCase();
+    if (!titleLower) {
+      if (mfr && mdl) {
+        if (mdl.toLowerCase() === mfr.toLowerCase()) return mfr;
+        if (mdl.toLowerCase().startsWith(mfr.toLowerCase())) return mdl;
+        return `${mfr} • ${mdl}`;
       }
-
-      const titleLower = (ad.title || '').toLowerCase();
-      if (titleLower.includes(mfrLower)) {
-        return mfr;
-      }
-
-      return `${mfr} • ${mdl}`;
+      return mfr || mdl;
     }
 
-    return mfr || mdl;
+    const GENERIC_MFR_WORDS = new Set([
+      'yachts', 'yacht', 'boats', 'boat', 'marine', 'sailing',
+      'catamarans', 'catamaran', 'motors', 'motor', 'company',
+      'inc', 'ltd', 'co', 'shipyard', 'estaleiro'
+    ]);
+
+    let titleHasMfr = false;
+    if (mfr) {
+      const mfrLower = mfr.toLowerCase();
+      if (titleLower.includes(mfrLower)) {
+        titleHasMfr = true;
+      } else {
+        const mfrWords = mfrLower
+          .split(/\s+/)
+          .filter(w => w.length >= 2 && !GENERIC_MFR_WORDS.has(w));
+        
+        if (mfrWords.length > 0 && mfrWords.some(w => titleLower.includes(w))) {
+          titleHasMfr = true;
+        }
+      }
+    }
+
+    let titleHasMdl = false;
+    if (mdl) {
+      const mdlLower = mdl.toLowerCase();
+      if (titleLower.includes(mdlLower)) {
+        titleHasMdl = true;
+      } else {
+        if (mfr) {
+          const mfrLower = mfr.toLowerCase();
+          let mdlOnly = mdlLower;
+          if (mdlOnly.startsWith(mfrLower)) {
+            mdlOnly = mdlOnly.slice(mfrLower.length).trim();
+          } else {
+            const mfrWords = mfrLower
+              .split(/\s+/)
+              .filter(w => w.length >= 2 && !GENERIC_MFR_WORDS.has(w));
+            for (const w of mfrWords) {
+              if (mdlOnly.startsWith(w)) {
+                mdlOnly = mdlOnly.slice(w.length).trim();
+              }
+            }
+          }
+          if (mdlOnly.length >= 1 && titleLower.includes(mdlOnly)) {
+            titleHasMdl = true;
+          }
+        }
+      }
+    }
+
+    const showMfr = mfr && !titleHasMfr;
+    const showMdl = mdl && !titleHasMdl;
+
+    if (!showMfr && !showMdl) {
+      return null;
+    }
+
+    if (showMfr && !showMdl) {
+      return mfr;
+    }
+
+    if (!showMfr && showMdl) {
+      const mfrLower = mfr ? mfr.toLowerCase() : '';
+      let cleanMdl = mdl;
+      if (mfrLower && cleanMdl.toLowerCase().startsWith(mfrLower)) {
+        cleanMdl = cleanMdl.slice(mfrLower.length).trim();
+      } else if (mfrLower) {
+        const mfrWords = mfrLower
+          .split(/\s+/)
+          .filter(w => w.length >= 2 && !GENERIC_MFR_WORDS.has(w));
+        for (const w of mfrWords) {
+          if (cleanMdl.toLowerCase().startsWith(w)) {
+            cleanMdl = cleanMdl.slice(w.length).trim();
+            break;
+          }
+        }
+      }
+      return cleanMdl || mdl;
+    }
+
+    if (mdl.toLowerCase() === mfr.toLowerCase()) {
+      return mfr;
+    }
+    if (mdl.toLowerCase().startsWith(mfr.toLowerCase())) {
+      return mdl;
+    }
+    return `${mfr} • ${mdl}`;
   }, [ad.manufacturer, ad.model, ad.title]);
 
   const displayTitle = React.useMemo(() => {
