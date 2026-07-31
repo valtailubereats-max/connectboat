@@ -223,104 +223,6 @@ export const manualItems: ManualItem[] = [
     tags: ['avaliações', 'feedback', 'estrelas', 'reputação', 'vendedor']
   },
   {
-    id: 'trabalhos-empregos',
-    title: 'Trabalhos & Empregos',
-    type: 'Página',
-    description: 'Secção especializada da plataforma para anúncios de prestação de serviços, subcontratações, vagas de telemóvel temporárias, jardinagem, restauros, e conexões profissionais portuguesas e inglesas.',
-    route: '/trabalhos, /empregos',
-    mainFile: 'src/pages/Trabalhos.tsx',
-    relatedComponents: ['src/components/AdCard.tsx'],
-    relatedFunctions: ['fetchJobs', 'filterByJobCategory'],
-    firestoreCollections: ['ads'],
-    access: 'Público',
-    buttons: ['Filtros Avançados', 'Procurar Profissionais', 'Publicar Vaga'],
-    actions: ['Filtrar anúncios cuja categoria seja "Serviços" ou "Empregos"', 'Filtros rápidos por país ou modalidade'],
-    technicalNotes: 'Reutiliza a lógica de listagem do AdCard mas otimizada para tags de salário, horários e experiência requerida.',
-    failurePoints: [
-      'Filtros conflitantes resultando em ecrã vazio.'
-    ],
-    tags: ['trabalhos', 'empregos', 'vagas', 'serviços', 'anúncios', 'contratação']
-  },
-  {
-    id: 'empreendedores',
-    title: 'Empreendedores (Diretório)',
-    type: 'Vitrine',
-    description: 'Catálogo que agrega todos os negócios e empreendedores ativos no ConnectBoat. Exibe cards elegantes das vitrines contendo foto de capa grande, logotipo centralizado, cidade e contagem de itens de cada vitrine comercial.',
-    route: '/empreendedores',
-    mainFile: 'src/pages/Empreendedores.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['fetchShowcasesList'],
-    firestoreCollections: ['users'],
-    access: 'Público',
-    buttons: ['Visitar Vitrine ("Meu Negócio")', 'Filtros de Categoria', 'Pesquisa de Empreendedor'],
-    actions: ['Carregar utilizadores que têm "showcaseActive" como verdadeiro e estão com a vitrina aprovada ("showcaseApproved" == true)'],
-    technicalNotes: 'A exibição do cartão de vitrina foi remodelada recentemente para focar 80% na foto de capa de alta qualidade, com logotipo centralizado, e barra de CTA verde escura embaixo.',
-    failurePoints: [
-      'Capas desalinhadas devido a dimensões não recomendadas de imagem.',
-      'Vitrines sem nenhum produto listado aparecendo com 0 itens.'
-    ],
-    tags: ['empreendedores', 'negócios', 'vitrines', 'luso', 'diretório']
-  },
-  {
-    id: 'vitrine-digital',
-    title: 'Vitrine Digital (Negócio Individual)',
-    type: 'Vitrine',
-    description: 'Página bio dedicada ao negócio do empreendedor. Exibe banner de marca, logotipo circular, biografia corporativa, link de contacto prioritário por WhatsApp e grelha de produtos/serviços disponíveis.',
-    route: '/empreendedores/:slug',
-    mainFile: 'src/pages/EmpreendedorDetalhes.tsx',
-    relatedComponents: ['src/components/ShowcaseStats.tsx'],
-    relatedFunctions: ['incrementShowcaseVisit', 'loadShowcaseProducts', 'shareShowcase'],
-    firestoreCollections: ['users', 'showcaseProducts', 'showcaseVisits'],
-    access: 'Público',
-    buttons: ['Contactar no WhatsApp', 'Partilhar Vitrine', 'Explorar Produto', 'Ver no Mapa'],
-    actions: ['Registar entrada de visitantes únicos nas estatísticas da vitrina', 'Carregar todos os itens da subcoleção de produtos'],
-    technicalNotes: 'O layout foi otimizado recentemente para expandir a foto de capa do negócio a 100% da largura, cobrindo o ecrã com gradiente elegante, garantindo visualização imersiva para restauro e pastelarias.',
-    failurePoints: [
-      'Carregamento demorado ao buscar catálogo de produtos grandes.',
-      'Sincronização de fuso horário nas visitas.'
-    ],
-    tags: ['vitrine', 'negócio', 'página', 'bio', 'logo', 'capa', 'luso']
-  },
-  {
-    id: 'produtos-vitrine',
-    title: 'Produtos da Vitrine',
-    type: 'Vitrine',
-    description: 'Visualização de um produto específico de uma Vitrine Digital de Empreendedor. Mostra imagens ampliadas de alta definição, descrição detalhada do produto, preço e botão de pedido imediato via WhatsApp.',
-    route: '/empreendedores/:slug/produto/:productId',
-    mainFile: 'src/pages/EmpreendedorProduto.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['loadProductDetails', 'generateWhatsAppProductOrder'],
-    firestoreCollections: ['showcaseProducts', 'users'],
-    access: 'Público',
-    buttons: ['Encomendar no WhatsApp', 'Voltar à Vitrine', 'Ver Mais Imagens', 'Partilhar Link'],
-    actions: ['Gerar link do WhatsApp pré-formatado com o nome do produto e do negócio do empreendedor para fechar venda instantânea'],
-    technicalNotes: 'A submissão e o clique estruturam uma frase automática no WhatsApp (ex: Hello, I am interested in this item on ConnectBoat!).',
-    failurePoints: [
-      'Erro no link do WhatsApp se o número do telefone tiver símbolos de parênteses ou espaços.',
-      'Imagens indisponíveis caindo no fallback padrão.'
-    ],
-    tags: ['produto', 'vitrine', 'itens', 'preço', 'whatsapp']
-  },
-  {
-    id: 'whatsapp-vitrine',
-    title: 'WhatsApp da Vitrine (Conexão Direta)',
-    type: 'Vitrine',
-    description: 'Funcionalidade central de integração que redireciona de imediato os interessados em produtos ou serviços direto para o chat restrito do telemóvel do empreendedor.',
-    route: 'Redirecionamento Externo',
-    mainFile: 'src/pages/EmpreendedorDetalhes.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['formatWhatsAppNumber', 'buildWhatsAppLink'],
-    firestoreCollections: ['users'],
-    access: 'Público',
-    buttons: ['Contactar via WhatsApp', 'Falar com Empreendedor'],
-    actions: ['Abrir aba externa no telemóvel ou desktop para https://wa.me/num'],
-    technicalNotes: 'O número de telemóvel é filtrado de antemão para conter apenas algarismos numéricos e precedido do código de área do país (+351 PT ou +44 UK).',
-    failurePoints: [
-      'Número de telefone digitado sem indicativo de país.'
-    ],
-    tags: ['whatsapp', 'contacto', 'mensagem', 'clique', 'redireccionar']
-  },
-  {
     id: 'leads-interesses',
     title: 'Leads / Interesses de Produtos',
     type: 'Fluxo',
@@ -626,34 +528,6 @@ export const manualItems: ManualItem[] = [
       'Uploads rejeitados imediatamente no frontend por conflito de cabeçalhos no tipo Mime do ficheiro.'
     ],
     tags: ['storage', 'regras', 'bucket, segurança, upload']
-  },
-  {
-    id: 'campanhas-sorteios',
-    title: 'Campanhas e Sorteios (Passatempos)',
-    type: 'Página',
-    description: 'Módulo dinâmico de sorteios periódicos para impulsionar a partilha do ConnectBoat. Exige esforço mínimo para se qualificar (1 partilha obrigatória), concedendo bilhetes adicionais proporcionalmente a cada partilha extra em canais oficiais (como WhatsApp, Facebook e Twitter).',
-    route: '/sorteios',
-    mainFile: 'src/pages/Sorteios.tsx',
-    relatedComponents: ['src/pages/AdminSorteios.tsx'],
-    relatedFunctions: ['handleShareAndRegister', 'handleDrawWinners', 'handleUpdateWinnerStatus'],
-    firestoreCollections: ['giveaways', 'participations', 'shares'],
-    access: 'Público para consulta; Utilizador Autenticado para partilhar; Admin para criar e sortear',
-    buttons: ['Partilhar ConnectBoat / Partilhar novamente', 'Ver Regras do Passatempo', 'Sortear (Admin)', 'Listar Participantes (Admin)'],
-    actions: [
-      'Validar login antes de abrir as opções de partilha',
-      'Registrar a intenção de partilha em /shares',
-      'Verificar o limite máximo de 3 bilhetes por sorteio e utilizador',
-      'Garantir intervalo mínimo de 5 minutos entre novos bilhetes gerados pelo mesmo utilizador',
-      'Atualizar o documento em /participations com sharesCount, ticketsCount, lastShareAt, lastShareChannel, createdAt e updatedAt',
-      'Efetuar sorteio ponderado no painel administrativo de acordo com o ticketsCount de cada participante'
-    ],
-    technicalNotes: 'As participações contêm registros individuais em /participations. Cada partilha aceita atualiza lastShareAt que é usado para o bloqueio decorativo de 5 minutos, garantindo resistência a spams de geração ilimitada de bilhetes.',
-    failurePoints: [
-      'Geração infinita de bilhetes se o bloqueio temporal de 5 minutos não for validado contra lastShareAt no documento.',
-      'Sorteio uniforme que desvalorize quem efetuou partilhas extras (resolvido por amostragem baseada em peso).',
-      'Incompatibilidade do fuso horário ao comparar timestamps do servidor.'
-    ],
-    tags: ['sorteios', 'parcerias', 'campanhas', 'bilhetes', 'partilhar', 'whatsapp', 'pesos', 'manual']
   },
   {
     id: 'destaques-permanentes',

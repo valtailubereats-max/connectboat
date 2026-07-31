@@ -29,10 +29,6 @@ export default function Precos() {
     }
   };
 
-  const handleEmpreendedoresClick = () => {
-    navigate('/empreendedores');
-  };
-
   // Helper to format prices according to user preference, showing both but styling the active one
   const renderPrice = (eur: string, gbp: string, labelSuff?: string) => {
     const mainPrice = isUK ? `£${gbp}` : `€${eur}`;
@@ -479,12 +475,6 @@ export default function Precos() {
                 className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-sm md:text-base transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 cursor-pointer"
               >
                 Criar Anúncio
-              </button>
-              <button
-                onClick={handleEmpreendedoresClick}
-                className="px-8 py-4 bg-white/10 hover:bg-white/15 text-white border border-white/10 rounded-2xl font-black text-sm md:text-base transition-all hover:scale-105 cursor-pointer"
-              >
-                Conhecer Empreendedores
               </button>
             </div>
           </div>

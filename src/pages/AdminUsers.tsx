@@ -463,7 +463,7 @@ const AdminUsers = () => {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Utilizadores / Membros</h1>
-        <p className="text-slate-500 font-medium">Controle as contas de utilizadores, vitrines digitais de empreendedores, cargos e créditos de destaques.</p>
+        <p className="text-slate-500 font-medium">Controle as contas de utilizadores, cargos e créditos de destaques.</p>
       </div>
 
       {errorMsg && (

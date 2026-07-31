@@ -1523,7 +1523,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
         });
       } else {
         await navigator.clipboard.writeText(window.location.href);
-        alert("O link do portal de sorteios foi copiado para a área de transferência! Por favor, divulgue aos seus parceiros.");
+        alert("O link foi copiado para a área de transferência! Por favor, divulgue aos seus parceiros.");
       }
     } catch (err) {
       console.warn("Erro ao compartilhar vídeo:", err);

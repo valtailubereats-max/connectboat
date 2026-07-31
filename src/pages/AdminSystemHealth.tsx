@@ -207,8 +207,6 @@ export default function AdminSystemHealth() {
       case 'email': return <Mail className="w-4 h-4 text-emerald-500" />;
       case 'import': return <Sparkles className="w-4 h-4 text-violet-500" />;
       case 'firestore': return <Database className="w-4 h-4 text-purple-500" />;
-      case 'vitrines': return <Store className="w-4 h-4 text-teal-500" />;
-      case 'sorteios': return <Gift className="w-4 h-4 text-pink-500" />;
       default: return <Activity className="w-4 h-4 text-slate-500" />;
     }
   };
@@ -404,8 +402,6 @@ export default function AdminSystemHealth() {
                   <option value="email">Sistema de E-mails</option>
                   <option value="import">Importador de Screenshots</option>
                   <option value="firestore">Regras de BD (Firestore)</option>
-                  <option value="vitrines">Vitrines Comerciais</option>
-                  <option value="sorteios">Sorteios & Campanhas</option>
                 </select>
               </div>
             </div>

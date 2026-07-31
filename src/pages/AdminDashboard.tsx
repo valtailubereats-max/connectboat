@@ -667,39 +667,6 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Trabalhos/Empregos */}
-            <div className="p-5 bg-cyan-50/40 border border-cyan-100 rounded-2.5xl flex flex-col justify-between hover:border-cyan-200 transition-all">
-              <div className="w-9 h-9 bg-cyan-100 text-cyan-500 rounded-xl flex items-center justify-center mb-4">
-                <Briefcase size={18} />
-              </div>
-              <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Trabalhos/Empregos</span>
-                <span className="text-2xl font-black text-slate-900">{realtimeStats.trabalhosCount}</span>
-              </div>
-            </div>
-
-            {/* Vitrines Digitais */}
-            <div className="p-5 bg-rose-50/40 border border-rose-100 rounded-2.5xl flex flex-col justify-between hover:border-rose-200 transition-all">
-              <div className="w-9 h-9 bg-rose-100 text-rose-500 rounded-xl flex items-center justify-center mb-4">
-                <Store size={18} />
-              </div>
-              <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Vitrines Totais</span>
-                <span className="text-2xl font-black text-slate-900">{realtimeStats.vitrinesCount}</span>
-              </div>
-            </div>
-
-            {/* Vitrines Pagas */}
-            <div className="p-5 bg-emerald-50/40 border border-emerald-100 rounded-2.5xl flex flex-col justify-between hover:border-emerald-200 transition-all">
-              <div className="w-9 h-9 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
-                <ShieldCheck size={18} />
-              </div>
-              <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Vitrines Pagas ({realtimeStats.country === 'Reino Unido' ? '£8.99' : '€8.99'})</span>
-                <span className="text-2xl font-black text-emerald-700">{realtimeStats.paidVitrinesCount}</span>
-              </div>
-            </div>
-
             {/* Destaques Locais */}
             <div className="p-5 bg-amber-50/40 border border-amber-100 rounded-2.5xl flex flex-col justify-between hover:border-amber-200 transition-all" id="admin-featured-local">
               <div className="w-9 h-9 bg-amber-100 text-amber-500 rounded-xl flex items-center justify-center mb-4">

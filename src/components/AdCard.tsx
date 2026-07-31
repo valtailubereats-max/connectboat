@@ -927,28 +927,6 @@ const AdCard: React.FC<AdCardProps> = ({
                         </div>
                       </div>
 
-                      {showcaseActive && (
-                        <div className="bg-indigo-50/70 border border-indigo-150 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 animate-fade-in text-left">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">🏪</span>
-                            <div>
-                              <span className="font-extrabold text-indigo-950 text-xs block">Este vendedor possui uma Vitrine Digital.</span>
-                              <span className="text-[9px] text-indigo-600 block leading-tight">Conheça todos os seus produtos e serviços especiais.</span>
-                            </div>
-                          </div>
-                          <Link
-                            to={`/empreendedores/${showcaseSlug}`}
-                            onClick={(e) => {
-                              // Closes modal or stops propagation if needed
-                              setShowDetails(false);
-                            }}
-                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-black rounded-lg transition-all shadow-md text-center shrink-0 hover:scale-[1.02] active:scale-[0.98]"
-                          >
-                            <span>Ver Vitrine</span>
-                          </Link>
-                        </div>
-                      )}
-
                       <div className="flex flex-col gap-3">
                         {ad.status === 'sold' || ad.adStatus === 'sold' ? (
                           <div className="flex items-center justify-center gap-2 bg-slate-100 text-slate-500 py-3.5 px-4 rounded-xl font-bold text-sm border border-slate-200">
