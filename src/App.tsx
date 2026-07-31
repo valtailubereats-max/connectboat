@@ -11,7 +11,6 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Precos from './pages/Precos';
 import Profile from './pages/Profile';
-import Negocio from './pages/Negocio';
 import Campanhas from './pages/Campanhas';
 import CreateAd from './pages/CreateAd';
 import AdminDashboard from './pages/AdminDashboard';
@@ -35,7 +34,6 @@ import AdminClaims from './pages/AdminClaims';
 import Fotos from './pages/Fotos';
 import AdminFotos from './pages/AdminFotos';
 import AdminSystemHealth from './pages/AdminSystemHealth';
-import VitrineComercial from './pages/VitrineComercial';
 import Convite from './pages/Convite';
 import AdminInvitations from './pages/AdminInvitations';
 import { PWAInstallButton } from './components/PWAInstallButton';
@@ -427,15 +425,6 @@ const Navbar = () => {
                       </Link>
 
                       <Link
-                        to="/negocio"
-                        onClick={() => setShowUserDropdown(false)}
-                        className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700"
-                        id="menu-meu-negocio"
-                      >
-                        🏪 Marine Business
-                      </Link>
-
-                      <Link
                         to="/campanhas"
                         onClick={() => setShowUserDropdown(false)}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700"
@@ -668,9 +657,6 @@ const Navbar = () => {
                   <Link to="/profile" onClick={() => setIsOpen(false)} className="text-md font-bold text-slate-200">
                     👤 My Profile
                   </Link>
-                  <Link to="/negocio" onClick={() => setIsOpen(false)} className="text-md font-bold text-slate-200">
-                    🏪 Marine Business
-                  </Link>
                   <Link to="/campanhas" onClick={() => setIsOpen(false)} className="text-md font-bold text-slate-200">
                     🎁 Campaigns
                   </Link>
@@ -899,7 +885,6 @@ export default function App() {
                 <Route path="/precos" element={<Precos />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                <Route path="/negocio" element={<ProtectedRoute><Negocio /></ProtectedRoute>} />
                 <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
                 <Route path="/create-ad" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
                 <Route path="/edit-ad/:id" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
@@ -917,7 +902,6 @@ export default function App() {
                 <Route path="/admin/claims" element={<AdminLayout><AdminClaims /></AdminLayout>} />
                 <Route path="/admin/team" element={<AdminLayout><AdminTeam /></AdminLayout>} />
                 <Route path="/fotos" element={<Fotos />} />
-                <Route path="/vitrine-comercial" element={<VitrineComercial />} />
                 <Route path="/admin/fotos" element={<AdminLayout><AdminFotos /></AdminLayout>} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />

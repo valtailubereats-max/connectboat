@@ -241,7 +241,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               '/admin/dashboard',
               '/admin/ads',
               '/admin/marketing',
-              '/admin/showcases',
               '/admin/invitations'
             ].includes(item.path))
             .map((item) => {

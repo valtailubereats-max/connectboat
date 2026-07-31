@@ -41,14 +41,6 @@ export function generateShareText(options: ShareOptions): { text: string; url: s
       formattedText += `\nCheck out full details on ConnectBoat:`;
       break;
 
-    case 'vitrine':
-      formattedText = `🛍️ *${options.title || 'Digital Showcase'}*\n`;
-      if (options.description) {
-        formattedText += `📝 ${options.description}\n`;
-      }
-      formattedText += `\nView our marine showcase on ConnectBoat:`;
-      break;
-
     case 'links':
       formattedText = `ℹ️ *${options.title || 'Useful Links'}*\n`;
       if (options.description) {

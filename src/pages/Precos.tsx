@@ -98,9 +98,6 @@ export default function Precos() {
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
                       👑 Destaque Nacional
                     </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
-                      🏪 Vitrine Digital
-                    </span>
                   </div>
                 </div>
               </div>
@@ -179,7 +176,7 @@ export default function Precos() {
         </div>
 
         {/* Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
           
           {/* Card 1: Normal Ad */}
           <motion.div
@@ -375,75 +372,6 @@ export default function Precos() {
               className="w-full py-3.5 px-4 bg-indigo-600 text-white hover:bg-indigo-700 rounded-2xl font-black text-sm transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>Ativar Destaque Nacional</span>
-              <ArrowRight size={14} />
-            </button>
-          </motion.div>
-
-          {/* Card 4: Digital Showcase (Vitrine) */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="flex flex-col bg-white rounded-3xl border border-emerald-200 shadow-lg shadow-emerald-50/20 p-6 hover:-translate-y-2 transition-all relative overflow-hidden"
-          >
-            {/* Top Border Accent - Teal/Emerald Commercial */}
-            <div className="absolute top-0 inset-x-0 h-2 bg-emerald-600"></div>
-
-            <div className="mb-6 flex justify-between items-center">
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-black uppercase tracking-wider border border-emerald-100">
-                Empresas e Profissionais
-              </span>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                <Store size={20} className="text-emerald-600" />
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-brand font-black text-slate-900 mb-2 flex items-center gap-1.5">
-                🏪 Vitrine Digital
-              </h3>
-              <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Crie um catálogo digital personalizado, estabeleça a sua marca e receba leads diretamente do seu negócio.
-              </p>
-            </div>
-
-            <div className="mb-8 text-center bg-emerald-50/50 rounded-2xl py-4 border border-emerald-100/50">
-              {renderPrice('8.99', '8.99', ' /mês')}
-              <span className="block text-[10px] font-bold text-emerald-700 uppercase mt-1.5 tracking-wider">Subscrição Mensal</span>
-            </div>
-
-            <div className="space-y-4 mb-8 flex-1">
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Página exclusiva do seu negócio (vitrine)</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Logo e banner personalizados</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Até 6 produtos/serviços no catálogo</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">WhatsApp e formulário direto de contacto</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Estatísticas básicas de visitas</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-650 font-bold text-slate-950 leading-snug">Presença garantida em Empreendedores</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => navigate('/vitrine-comercial')}
-              className="w-full py-3.5 px-4 bg-[#046a38] text-white hover:bg-[#03522b] rounded-2xl font-black text-sm transition-all shadow-md shadow-emerald-700/20 flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <span>Ver Benefícios da Vitrine</span>
               <ArrowRight size={14} />
             </button>
           </motion.div>

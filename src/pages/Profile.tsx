@@ -17,8 +17,6 @@ import OptimizedImage from '../components/OptimizedImage';
 import { getCardFramingStyle } from '../utils/imageFraming';
 import ReviewModal from '../components/ReviewModal';
 import AdCard from '../components/AdCard';
-import ShowcaseStats from '../components/ShowcaseStats';
-import ShowcaseInterests from '../components/ShowcaseInterests';
 import { InstallButton } from '../components/InstallButton';
 import { calculateTotalPoints, calculateProgressPoints, POINTS_THRESHOLD, POINTS_PER_REFERRAL, POINTS_PER_AD } from '../utils/rewards';
 
@@ -1067,13 +1065,6 @@ const Profile = () => {
           id="btn-tab-perfil"
         >
           👤 Meu Perfil
-        </button>
-        <button
-          onClick={() => navigate('/negocio')}
-          className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap text-slate-500 hover:text-slate-800"
-          id="btn-tab-negocio-page"
-        >
-          🏪 Meu Negócio
         </button>
         <button
           onClick={() => navigate('/campanhas')}

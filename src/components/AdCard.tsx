@@ -59,10 +59,6 @@ const AdCard: React.FC<AdCardProps> = ({
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; type: 'success' | 'error' | 'loading'; message: string } | null>(null);
 
-  // Estados da Vitrine
-  const [showcaseActive, setShowcaseActive] = useState(false);
-  const [showcaseSlug, setShowcaseSlug] = useState('');
-
   const showToastMsg = (type: 'success' | 'error' | 'loading', message: string, duration = 4000) => {
     setToast({ show: true, type, message });
     if (type !== 'loading') {
@@ -146,34 +142,6 @@ const AdCard: React.FC<AdCardProps> = ({
       fetchSellerProfile();
     }
   }, [ad.sellerId, showDetails]);
-
-  React.useEffect(() => {
-    let active = true;
-    const checkShowcaseActive = async () => {
-      if (!ad.sellerId) return;
-      try {
-        const docRef = doc(db, 'sellerPublicProfiles', ad.sellerId);
-        const docSnap = await getDocWithCacheFallback(docRef, `sellerPublicProfiles/${ad.sellerId}`);
-        if (active && docSnap.exists()) {
-          const data = docSnap.data();
-          if (data && data.showcaseActive) {
-            setShowcaseActive(true);
-            setShowcaseSlug(data.showcaseSlug || '');
-          } else {
-            setShowcaseActive(false);
-            setShowcaseSlug('');
-          }
-        } else {
-          setShowcaseActive(false);
-          setShowcaseSlug('');
-        }
-      } catch (err) {
-        console.error('Error checking showcase active:', err);
-      }
-    };
-    checkShowcaseActive();
-    return () => { active = false; };
-  }, [ad.sellerId]);
 
   const brandHeader = React.useMemo(() => {
     const mfr = (ad.manufacturer || '').trim();
