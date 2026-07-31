@@ -19,7 +19,7 @@ import { triggerShare } from '../utils/shareUtils';
 
 interface AdCardProps {
   ad: Ad;
-  variant?: 'normal' | 'featured' | 'homepage-simple';
+  variant?: 'normal' | 'featured';
 }
 
 const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
@@ -71,7 +71,6 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
 
   const isCompactActive = settings?.compactCardMode === true;
   const isFeaturedVariant = variant === 'featured';
-  const isHomepageSimple = variant === 'homepage-simple';
   const useCompactMode = isCompactActive && !isFeaturedVariant;
 
   React.useEffect(() => {
@@ -585,11 +584,11 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
                 : 'text-[10px] md:text-[11px] mb-2 md:mb-3'
           }`}>
             <div className="flex items-center gap-1 text-slate-600">
-              {!isHomepageSimple && (ad.category === 'Boat Services' || ad.category === 'Serviços' || ad.category?.includes('Services') || ad.category?.includes('Serviços')) && ad.serviceCoverage === 'online' ? (
+              {(ad.category === 'Boat Services' || ad.category === 'Serviços' || ad.category?.includes('Services') || ad.category?.includes('Serviços')) && ad.serviceCoverage === 'online' ? (
                 <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100 shadow-sm">
                   <span>💻</span> Online Service
                 </span>
-              ) : !isHomepageSimple && (ad.category === 'Boat Services' || ad.category === 'Serviços' || ad.category?.includes('Services') || ad.category?.includes('Serviços')) && (ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal') ? (
+              ) : (ad.category === 'Boat Services' || ad.category === 'Serviços' || ad.category?.includes('Services') || ad.category?.includes('Serviços')) && (ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal') ? (
                 <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded border border-emerald-100 shadow-sm">
                   <span>🌍</span> Nationwide Service
                 </span>
@@ -616,7 +615,7 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
                 </>
               )}
             </div>
-            {!useCompactMode && !isHomepageSimple && (
+            {!useCompactMode && (
               <div className="flex items-center gap-1 text-slate-500">
                 <Tag size={isFeaturedVariant ? 10 : 12} className="text-teal-600 shrink-0 opacity-75" />
                 <span className="truncate">{ad.category}</span>
@@ -624,29 +623,7 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
             )}
           </div>
 
-          {isHomepageSimple && (
-            <div className="mt-auto pt-1 flex flex-col items-center justify-center text-center">
-              {ad.listingType === 'informativo' ? (
-                <span className="text-[9px] sm:text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-                  💡 Links Úteis
-                </span>
-              ) : (ad.category === '💚 Doações & Solidariedade' || ad.donationBadge) ? (
-                <span className="text-[9px] sm:text-[10px] font-black text-emerald-700 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-150">
-                  Grátis 💚
-                </span>
-              ) : hasPrice ? (
-                <div className="font-black text-indigo-600 tracking-tight leading-none text-base md:text-lg">
-                  {formatPrice(ad.price, ad.country)}
-                </div>
-              ) : (
-                <div className="font-extrabold text-[#111111] uppercase tracking-wide leading-none text-xs md:text-sm">
-                  Sob Consulta
-                </div>
-              )}
-            </div>
-          )}
-
-          {!useCompactMode && !isHomepageSimple && (
+          {!useCompactMode && (
             <>
               {/* Linha horizontal de ações */}
               <div className={`flex items-center justify-center border-t border-b border-dashed border-slate-100 ${

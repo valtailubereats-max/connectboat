@@ -1663,15 +1663,13 @@ const Home = () => {
             <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
           </div>
 
-          <div
-  className="relative z-10 w-full h-full flex flex-col justify-between p-6 sm:p-8 md:p-10 lg:p-12 min-h-[320px] md:min-h-[400px] lg:min-h-[440px]"
->
+          <div className="relative z-10 w-full h-full flex flex-col justify-between p-6 sm:p-8 md:p-10 lg:p-12 min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
             {/* Topo do Banner: Título no Topo à Esquerda + Stats Badges à Direita */}
-           <motion.div
-  initial={{ opacity: 0, y: 10 }}
-  animate={{ opacity: 1, y: 0 }}
-  className="mt-auto text-left w-full translate-y-10 md:translate-y-16"
->
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }} 
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full"
+            >
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)]">
                 ConnectBoat<span className="text-sky-400 font-light"> Marketplace</span>
               </h1>
@@ -1720,7 +1718,7 @@ const Home = () => {
             <motion.div 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="mt-auto text-left w-full"
+              className="mt-auto pt-6 text-left w-full"
             >
               <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-4 sm:px-6 py-2.5 sm:py-3 shadow-2xl max-w-full">
                 <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/95 font-medium italic tracking-wide leading-snug whitespace-normal lg:whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
@@ -1774,6 +1772,98 @@ const Home = () => {
           </section>
         )}
 
+        {/* 4. ⚓ EMPREENDEDORES EM DESTAQUE */}
+        {featuredVitrines.length > 0 && (
+          <section className="py-2 md:py-4 border-b border-slate-250/20 overflow-hidden max-w-full" id="desktop-featured-entrepreneurs">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2 mb-4 text-left">
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base sm:text-lg">⚓</span>
+                  <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                    Featured Marine Businesses
+                  </h2>
+                </div>
+                <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
+                  Chandleries, boatyards, brokers and marine service specialists
+                </p>
+              </div>
+              <Link
+                to="/empreendedores"
+                className="group flex items-center gap-1.5 text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 transition-colors uppercase tracking-wider bg-indigo-50 dark:bg-slate-800 hover:bg-indigo-100/80 px-3.5 py-1.5 rounded-full shadow-sm"
+              >
+                <span>View All</span>
+                <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+
+            <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-4 no-scrollbar" style={{ scrollSnapType: 'x mandatory' }}>
+              {featuredVitrines.map((vitrine) => {
+                const linkTo = `/empreendedores/${vitrine.showcaseSlug}`;
+                const fallbackCover = 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=450&h=150&fit=crop&q=80';
+                return (
+                  <Link 
+                    key={vitrine.uid} 
+                    to={linkTo}
+                    className="w-[260px] sm:w-[280px] h-[320px] shrink-0 bg-[#0d0e12] rounded-[1.5rem] border border-slate-800/60 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between overflow-hidden group scroll-snap-align-start cursor-pointer"
+                    style={{ scrollSnapAlign: 'start' }}
+                  >
+                    <div className="relative h-[255px] w-full bg-slate-900 overflow-hidden flex items-center justify-center">
+                      <img 
+                        src={vitrine.showcaseCover || fallbackCover} 
+                        alt="" 
+                        className="absolute inset-0 w-full h-full object-cover blur-md opacity-40 scale-110 pointer-events-none" 
+                        referrerPolicy="no-referrer"
+                      />
+                      <img 
+                        src={vitrine.showcaseCover || fallbackCover} 
+                        alt={vitrine.showcaseName} 
+                        className="relative z-10 w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" 
+                        referrerPolicy="no-referrer"
+                      />
+                      
+                      <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-white border-2 border-white shadow-md flex items-center justify-center overflow-hidden z-20">
+                        {vitrine.showcaseLogo && vitrine.showcaseLogo.trim() !== '' ? (
+                          <img src={vitrine.showcaseLogo} alt="Logo" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" />
+                        ) : (
+                          <span className="text-lg">🏬</span>
+                        )}
+                      </div>
+
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent pt-12 p-3.5 flex flex-col justify-end z-10">
+                        <div className="flex justify-between items-end gap-2 text-white">
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-black text-white text-sm sm:text-base leading-tight line-clamp-1 truncate drop-shadow-md">
+                              {vitrine.showcaseName}
+                            </h3>
+                            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-slate-300 font-semibold mt-0.5 truncate drop-shadow-sm">
+                              <MapPin size={10} className="text-slate-400 shrink-0" />
+                              <span className="truncate">{vitrine.city ? `${vitrine.city}, ` : ''}United Kingdom</span>
+                            </div>
+                          </div>
+                          
+                          <div className="px-1.5 py-0.5 bg-black/70 border border-white/15 text-white rounded-md text-[9px] font-black flex items-center gap-1 shrink-0 shadow-sm">
+                            <span>📦</span>
+                            <span>{vitrine.productsCount} {vitrine.productsCount === 1 ? 'item' : 'items'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 bg-[#0d0e12] flex items-center justify-center h-[60px] shrink-0 border-t border-slate-900/35">
+                      <div
+                        className="w-full py-1.5 bg-[#136338] group-hover:bg-[#1a5e37] text-white font-black text-xs flex items-center justify-center gap-1.5 rounded-lg transition-all shadow-md text-center border border-emerald-800/10"
+                      >
+                        <Store size={12} className="text-white shrink-0" />
+                        <span>View Business</span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* 5. ⛵ GRID DE ANÚNCIOS (Últimos anúncios) */}
         <section className="py-2 md:py-4 text-left">
           <div className="flex flex-col gap-0.5 mb-4">
@@ -1823,7 +1913,7 @@ const Home = () => {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
                 {displayedAds.map((ad) => (
-                  <AdCard key={ad.id} ad={ad} variant="homepage-simple" />
+                  <AdCard key={ad.id} ad={ad} />
                 ))}
               </div>
             )}
@@ -2098,6 +2188,42 @@ const Home = () => {
           </section>
         )}
 
+        {/* 5. EMPREENDEDORES MOBILE (Compact scroller) */}
+        {featuredVitrines.length > 0 && (
+          <section className="w-full border-b border-slate-100 dark:border-slate-800/60 pb-3" id="mobile-entrepreneurs-section">
+            <div className="flex items-center justify-between mb-2.5 text-left">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base">⚓</span>
+                <h2 className="text-xs font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                  Marine Businesses
+                </h2>
+              </div>
+              <Link to="/empreendedores" className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                View all
+              </Link>
+            </div>
+
+            <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar" style={{ scrollSnapType: 'x mandatory' }}>
+              {featuredVitrines.map((vitrine) => (
+                <Link 
+                  key={`mb-${vitrine.uid}`} 
+                  to={`/empreendedores/${vitrine.showcaseSlug}`}
+                  className="w-[190px] h-[135px] shrink-0 bg-slate-950 rounded-xl overflow-hidden relative flex flex-col justify-end p-2 border border-slate-800"
+                  style={{ scrollSnapAlign: 'start' }}
+                >
+                  <img src={vitrine.showcaseCover || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=350&q=85'} alt="" className="absolute inset-0 w-full h-full object-cover blur-sm opacity-40 scale-110 pointer-events-none" referrerPolicy="no-referrer" />
+                  <img src={vitrine.showcaseCover || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=350&q=85'} alt="" className="relative z-0 w-full h-full object-contain" referrerPolicy="no-referrer" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+                  <div className="relative z-10">
+                    <h3 className="text-xs font-black text-white truncate line-clamp-1">{vitrine.showcaseName}</h3>
+                    <p className="text-[8px] text-slate-300 font-bold mt-0.5 truncate">{vitrine.city || 'United Kingdom'}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* 6. ÚLTIMOS ANÚNCIOS (Grid Compacta de 2 Colunas) */}
         <section className="w-full text-left" id="mobile-latest-section">
           <div className="flex items-center gap-1.5 mb-3">
@@ -2126,7 +2252,7 @@ const Home = () => {
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {displayedAds.map((ad) => (
-                  <AdCard key={`mb-ad-${ad.id}`} ad={ad} variant="homepage-simple" />
+                  <AdCard key={`mb-ad-${ad.id}`} ad={ad} />
                 ))}
               </div>
             )}

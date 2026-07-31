@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mercado-luso-pwa-v4';
+const CACHE_NAME = 'connectboat-pwa-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

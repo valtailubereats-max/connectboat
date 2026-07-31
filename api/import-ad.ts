@@ -80,50 +80,35 @@ export const cleanDescription = (desc: string): string => {
 export const parsePrice = (priceStr: string | number | undefined | null): number => {
   if (priceStr === undefined || priceStr === null) return 0;
   if (typeof priceStr === 'number') return priceStr;
-
+  
   let str = String(priceStr).trim();
   if (!str) return 0;
 
-  // Keep only digits and common decimal/thousands separators.
-  str = str.replace(/[^0-9.,]/g, '');
-  if (!str) return 0;
+  // Remove símbolos monetários e espaços
+  str = str.replace(/[€$£\s]/g, '');
 
+  // Analisa o estilo decimal
   const lastComma = str.lastIndexOf(',');
   const lastDot = str.lastIndexOf('.');
-  const hasComma = lastComma !== -1;
-  const hasDot = lastDot !== -1;
-
-  if (hasComma && hasDot) {
-    // The last separator is decimal; the other separator is thousands.
-    if (lastComma > lastDot) {
-      str = str.replace(/\./g, '').replace(',', '.');
-    } else {
-      str = str.replace(/,/g, '');
-    }
-  } else if (hasComma || hasDot) {
-    const separator = hasComma ? ',' : '.';
-    const separatorIndex = str.lastIndexOf(separator);
-    const digitsAfter = str.length - separatorIndex - 1;
-    const occurrences = str.split(separator).length - 1;
-
-    if (digitsAfter === 3) {
-      // Boat prices commonly use a single separator as a thousands separator:
-      // £799,950 or £799.950 must become 799950, not 799.95.
-      str = str.replace(/[.,]/g, '');
-    } else if (digitsAfter === 1 || digitsAfter === 2) {
-      // One or two trailing digits represent decimals.
-      if (occurrences > 1) {
-        const parts = str.split(separator);
-        str = `${parts.slice(0, -1).join('')}${separator}${parts[parts.length - 1]}`;
-      }
-      if (separator === ',') str = str.replace(',', '.');
-    } else {
-      str = str.replace(/[.,]/g, '');
-    }
+  
+  if (lastComma > lastDot && (lastComma === str.length - 3 || lastComma === str.length - 2)) {
+    // Vírgula decimal europeia: 1.250,50 ou 1250,5
+    str = str.replace(/\./g, '').replace(',', '.');
+  } else if (lastDot > lastComma && (lastDot === str.length - 3 || lastDot === str.length - 2)) {
+    // Ponto decimal americano: 1,250.50
+    str = str.replace(/,/g, '');
+  } else {
+    // Sem fração decimal explícita
+    str = str.replace(/[.,]/g, '');
   }
 
-  const parsed = Number.parseFloat(str);
-  return Number.isFinite(parsed) ? parsed : 0;
+  // Captura o primeiro dígito correspondente
+  const match = str.match(/\d+(?:\.\d+)?/);
+  if (match) {
+    const parsed = parseFloat(match[0]);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
 };
 
 // Extrair tag Meta de HTML

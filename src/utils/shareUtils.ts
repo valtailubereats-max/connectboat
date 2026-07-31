@@ -1,7 +1,7 @@
 import { formatPrice } from '../utils';
 
 export interface ShareOptions {
-  type: 'home' | 'anuncio' | 'vitrine' | 'links' | 'generic';
+  type: 'home' | 'anuncio' | 'vitrine' | 'links' | 'sorteio' | 'generic';
   title?: string;
   price?: number;
   country?: string;
@@ -55,6 +55,14 @@ export function generateShareText(options: ShareOptions): { text: string; url: s
         formattedText += `📝 ${options.description}\n`;
       }
       formattedText += `\nAccess directly via ConnectBoat:`;
+      break;
+
+    case 'sorteio':
+      formattedText = `🍀 Giveaway: *${options.title || 'Free Giveaway'}*\n`;
+      if (options.prize) {
+        formattedText += `🎁 Prize: ${options.prize}\n`;
+      }
+      formattedText += `\nEnter for free on ConnectBoat:`;
       break;
 
     default:
