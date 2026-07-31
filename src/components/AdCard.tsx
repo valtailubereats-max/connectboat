@@ -20,9 +20,22 @@ import { triggerShare } from '../utils/shareUtils';
 interface AdCardProps {
   ad: Ad;
   variant?: 'normal' | 'featured';
+  hideCategory?: boolean;
+  hideSaveButton?: boolean;
+  hideShareButton?: boolean;
+  hideWhatsAppButton?: boolean;
+  hideActions?: boolean;
 }
 
-const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
+const AdCard: React.FC<AdCardProps> = ({
+  ad,
+  variant = 'normal',
+  hideCategory = false,
+  hideSaveButton = false,
+  hideShareButton = false,
+  hideWhatsAppButton = false,
+  hideActions = false,
+}) => {
   const { user, profile, favorites, toggleFavoriteGlobal } = useAuth();
   const { settings } = useSettings();
   const navigate = useNavigate();
@@ -615,7 +628,7 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
                 </>
               )}
             </div>
-            {!useCompactMode && (
+            {!useCompactMode && !hideCategory && (
               <div className="flex items-center gap-1 text-slate-500">
                 <Tag size={isFeaturedVariant ? 10 : 12} className="text-teal-600 shrink-0 opacity-75" />
                 <span className="truncate">{ad.category}</span>
@@ -626,54 +639,60 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant = 'normal' }) => {
           {!useCompactMode && (
             <>
               {/* Linha horizontal de ações */}
-              <div className={`flex items-center justify-center border-t border-b border-dashed border-slate-100 ${
-                isFeaturedVariant ? 'gap-3 py-1 mb-1.5' : 'gap-5 py-1.5 mb-2'
-              }`}>
-                {/* Favoritar */}
-                <button
-                  onClick={toggleFavorite}
-                  className={`transition-all border shadow-sm cursor-pointer hover:scale-110 active:scale-95 ${
-                    isFeaturedVariant ? 'p-1.5' : 'p-2'
-                  } ${
-                    isFavorite
-                      ? 'bg-rose-50 border-rose-100 text-rose-600'
-                      : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-rose-50 hover:border-rose-100 hover:text-rose-600'
-                  }`}
-                  title={isFavorite ? "Remove from saved" : "Save listing"}
-                >
-                  <Heart size={isFeaturedVariant ? 12 : 14} fill={isFavorite ? 'currentColor' : 'none'} className={isFavorite ? "text-rose-500" : ""} />
-                </button>
+              {!hideActions && !(hideSaveButton && hideShareButton && hideWhatsAppButton) && (
+                <div className={`flex items-center justify-center border-t border-b border-dashed border-slate-100 ${
+                  isFeaturedVariant ? 'gap-3 py-1 mb-1.5' : 'gap-5 py-1.5 mb-2'
+                }`}>
+                  {/* Favoritar */}
+                  {!hideSaveButton && (
+                    <button
+                      onClick={toggleFavorite}
+                      className={`transition-all border shadow-sm cursor-pointer hover:scale-110 active:scale-95 ${
+                        isFeaturedVariant ? 'p-1.5' : 'p-2'
+                      } ${
+                        isFavorite
+                          ? 'bg-rose-50 border-rose-100 text-rose-600'
+                          : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-rose-50 hover:border-rose-100 hover:text-rose-600'
+                      }`}
+                      title={isFavorite ? "Remove from saved" : "Save listing"}
+                    >
+                      <Heart size={isFeaturedVariant ? 12 : 14} fill={isFavorite ? 'currentColor' : 'none'} className={isFavorite ? "text-rose-500" : ""} />
+                    </button>
+                  )}
 
-                {/* Partilhar */}
-                <button
-                  onClick={handleShare}
-                  className={`transition-all border shadow-sm cursor-pointer hover:scale-110 active:scale-95 bg-slate-50 border-slate-100 text-slate-400 hover:bg-sky-50 hover:border-sky-100 hover:text-sky-600 ${
-                    isFeaturedVariant ? 'p-1.5' : 'p-2'
-                  }`}
-                  title="Share Listing"
-                >
-                  <Share2 size={isFeaturedVariant ? 12 : 14} />
-                </button>
+                  {/* Partilhar */}
+                  {!hideShareButton && (
+                    <button
+                      onClick={handleShare}
+                      className={`transition-all border shadow-sm cursor-pointer hover:scale-110 active:scale-95 bg-slate-50 border-slate-100 text-slate-400 hover:bg-sky-50 hover:border-sky-100 hover:text-sky-600 ${
+                        isFeaturedVariant ? 'p-1.5' : 'p-2'
+                      }`}
+                      title="Share Listing"
+                    >
+                      <Share2 size={isFeaturedVariant ? 12 : 14} />
+                    </button>
+                  )}
 
-                {/* WhatsApp ou Contato */}
-                {ad.listingType !== 'informativo' && ((getAdPhone() && getAdPhone().trim() !== '') || hasSourceUrl) && ad.adStatus !== 'sold' && ad.status !== 'sold' && (
-                  <button
-                    onClick={handleContactClick}
-                    className={`transition-all border shadow-sm cursor-pointer hover:scale-110 active:scale-95 bg-slate-50 border-slate-100 ${
-                      hasSourceUrl
-                        ? 'text-indigo-400 hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600'
-                        : 'text-slate-400 hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-600'
-                    } ${isFeaturedVariant ? 'p-1.5' : 'p-2'}`}
-                    title={hasSourceUrl ? "Contato" : "Contactar via WhatsApp"}
-                  >
-                    {hasSourceUrl ? (
-                      <ExternalLink size={isFeaturedVariant ? 12 : 14} className="text-indigo-600" />
-                    ) : (
-                      <MessageCircle size={isFeaturedVariant ? 12 : 14} className="text-[#25D366]" />
-                    )}
-                  </button>
-                )}
-              </div>
+                  {/* WhatsApp ou Contato */}
+                  {!hideWhatsAppButton && ad.listingType !== 'informativo' && ((getAdPhone() && getAdPhone().trim() !== '') || hasSourceUrl) && ad.adStatus !== 'sold' && ad.status !== 'sold' && (
+                    <button
+                      onClick={handleContactClick}
+                      className={`transition-all border shadow-sm cursor-pointer hover:scale-110 active:scale-95 bg-slate-50 border-slate-100 ${
+                        hasSourceUrl
+                          ? 'text-indigo-400 hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600'
+                          : 'text-slate-400 hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-600'
+                      } ${isFeaturedVariant ? 'p-1.5' : 'p-2'}`}
+                      title={hasSourceUrl ? "Contato" : "Contactar via WhatsApp"}
+                    >
+                      {hasSourceUrl ? (
+                        <ExternalLink size={isFeaturedVariant ? 12 : 14} className="text-indigo-600" />
+                      ) : (
+                        <MessageCircle size={isFeaturedVariant ? 12 : 14} className="text-[#25D366]" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Preço (Elemento final de maior destaque) */}
               <div className="mt-auto pt-1 flex flex-col items-center justify-center text-center">
