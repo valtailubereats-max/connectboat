@@ -1,6 +1,12 @@
 import type { Request, Response } from 'express';
 import Stripe from 'stripe';
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 const PROJECT_ID = 'navlink-489413';
 const DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
 const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents`;
@@ -16,6 +22,27 @@ function getStripe(): Stripe | null {
     });
   }
   return stripeClient;
+}
+
+async function getRawBody(req: Request): Promise<Buffer> {
+  if ((req as any).rawBody && Buffer.isBuffer((req as any).rawBody)) {
+    return (req as any).rawBody;
+  }
+  if (Buffer.isBuffer(req.body)) {
+    return req.body;
+  }
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    });
+    req.on('end', () => {
+      resolve(Buffer.concat(chunks));
+    });
+    req.on('error', (err) => {
+      reject(err);
+    });
+  });
 }
 
 async function patchFirestoreDoc(collectionName: string, docId: string, fields: Record<string, any>, updateFields: string[]) {
@@ -51,17 +78,30 @@ export default async function stripeWebhookHandler(req: Request & { rawBody?: Bu
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const sig = req.headers['stripe-signature'];
 
+  if (!stripe) {
+    return res.status(500).send('Stripe is not configured');
+  }
+
+  if (!webhookSecret) {
+    return res.status(500).send('Webhook secret is not configured');
+  }
+
+  if (!sig) {
+    return res.status(400).send('Missing stripe-signature header');
+  }
+
+  let rawBody: Buffer;
+  try {
+    rawBody = await getRawBody(req);
+  } catch (err: any) {
+    console.error(`[Stripe Webhook Read Error]: ${err.message}`);
+    return res.status(400).send(`Error reading request body: ${err.message}`);
+  }
+
   let event: Stripe.Event;
 
   try {
-    if (stripe && webhookSecret && sig) {
-      const payload = req.rawBody || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
-      event = stripe.webhooks.constructEvent(payload, sig, webhookSecret);
-    } else {
-      // Fallback mode if webhookSecret or Stripe instance is not initialized yet
-      console.warn('[Stripe Webhook] Warning: Verifying event without STRIPE_WEBHOOK_SECRET signature check.');
-      event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    }
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: any) {
     console.error(`[Stripe Webhook Verification Error]: ${err.message}`);
     return res.status(400).send(`Webhook Signature Verification Error: ${err.message}`);
