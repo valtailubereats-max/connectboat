@@ -776,20 +776,20 @@ const CreateAd = () => {
       clearHomeCache();
       if (id) {
         if ((isAdmin || isModerator) && originalAd?.sellerId !== user.uid) {
-          setSaveSuccessMsg('Anúncio atualizado com sucesso (Edição de Staff).');
+          setSaveSuccessMsg('Listing updated successfully (Staff Edit).');
           setTimeout(() => {
             setSaveSuccessMsg(null);
             navigate('/admin/ads');
           }, 2000);
         } else {
-          setSaveSuccessMsg('Anúncio atualizado! O seu anúncio voltou para a fila de aprovação do administrador.');
+          setSaveSuccessMsg('Listing updated! Your listing has been returned to the admin queue for approval.');
           setTimeout(() => {
             setSaveSuccessMsg(null);
             navigate('/profile?tab=anuncios');
           }, 2000);
         }
       } else {
-        setSaveSuccessMsg('Anúncio enviado! Receberá um alerta quando o seu anúncio estiver aprovado.');
+        setSaveSuccessMsg('Listing submitted! You will receive a notification when your listing is approved.');
         setTimeout(() => {
           setSaveSuccessMsg(null);
           navigate('/profile?tab=anuncios');
@@ -808,11 +808,11 @@ const CreateAd = () => {
     setFormError(null);
 
     if (!user || !profile) {
-      showValidationError('Erro ao carregar o perfil do utilizador. Por favor recarregue a página.');
+      showValidationError('Error loading user profile. Please reload the page.');
       return;
     }
 
-    const isJob = formData.category === 'Trabalho/Empregos';
+    const isJob = formData.category === 'Trabalho/Empregos' || formData.category === 'Boat Jobs';
     const isSpecialCategory = formData.category === 'Imigração' || isJob;
     const isImportedAd = isImportedOrExternalAd(formData) || isImportedOrExternalAd(originalAd) || isAdmin || isModerator;
 
@@ -820,14 +820,14 @@ const CreateAd = () => {
     if (!isImportedAd) {
       if (isSpecialCategory) {
         if (!formData.sellerPhone?.trim()) {
-          showValidationError('Por favor introduza um telefone/WhatsApp de contacto.', 'txt-seller-phone');
+          showValidationError('Please enter a contact phone/WhatsApp number.', 'txt-seller-phone');
           return;
         }
       } else {
         if (formData.useProfilePhone) {
           if (!profile?.phone?.trim()) {
             showValidationError(
-              'O seu perfil não possui um telefone configurado. Introduza um telefone de contacto ou atualize o seu perfil.',
+              'Your profile does not have a configured phone number. Enter a contact phone or update your profile.',
               'contact-phone-section'
             );
             setFormData(prev => ({ ...prev, useProfilePhone: false }));
@@ -840,7 +840,7 @@ const CreateAd = () => {
         } else {
           if (!formData.contactPhone?.trim() && !profile?.phone?.trim()) {
             showValidationError(
-              'Por favor introduza um telefone de contacto para o seu anúncio.',
+              'Please enter a contact phone number for your listing.',
               'txt-contact-phone'
             );
             return;
@@ -850,18 +850,18 @@ const CreateAd = () => {
     }
 
     if (!formData.title?.trim()) {
-      showValidationError('Por favor introduza o título do seu anúncio.', 'txt-ad-title');
+      showValidationError('Please enter a title for your listing.', 'txt-ad-title');
       return;
     }
 
     if (!formData.description?.trim()) {
-      showValidationError('Por favor introduza a descrição detalhada do seu anúncio.', 'txt-description');
+      showValidationError('Please enter a detailed description for your listing.', 'txt-description');
       return;
     }
 
     const cleanFormImages = normalizeAndLimitImages(formData.images, 6);
     if (cleanFormImages.length === 0) {
-      showValidationError('Por favor carregue pelo menos uma imagem válida para o seu anúncio.', 'sec-images-upload');
+      showValidationError('Please upload at least one valid image for your listing.', 'sec-images-upload');
       return;
     }
 
@@ -1211,13 +1211,13 @@ const CreateAd = () => {
     }
 
     if (!importUrl.trim()) {
-      setImportError('Por favor, cole um link de anúncio.');
+      setImportError('Please paste a listing link.');
       return;
     }
 
     const regex = /^https?:\/\//i;
     if (!regex.test(importUrl)) {
-      setImportError('Por favor, introduza um link válido que comece por http:// ou https://.');
+      setImportError('Please enter a valid link starting with http:// or https://.');
       return;
     }
 
@@ -1368,12 +1368,12 @@ const CreateAd = () => {
   const isPromoActive = settings?.launchPromoActive !== false;
   const isStaff = isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator';
 
-  if (fetching) return <div className="text-center py-20">A carregar...</div>;
+  if (fetching) return <div className="text-center py-20">Loading...</div>;
 
   return (
     <div className="max-w-3xl mx-auto">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 mb-6 font-medium transition-colors">
-        <ChevronLeft size={20} /> Voltar
+        <ChevronLeft size={20} /> Back
       </button>
 
       <motion.div
@@ -1381,18 +1381,18 @@ const CreateAd = () => {
         animate={{ opacity: 1, y: 0 }}
         className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100"
       >
-        <h1 className="text-3xl font-bold text-slate-900 mb-8">{id ? 'Editar Anúncio' : 'Novo Anúncio'}</h1>
+        <h1 className="text-3xl font-bold text-slate-900 mb-8">{id ? 'Edit Listing' : 'New Listing'}</h1>
 
         {id && isEditLocked && !isAdmin && (
           <div className="mb-8 p-6 bg-amber-50 border border-amber-200 rounded-3xl" id="edit-locked-warning">
             <h3 className="text-md font-extrabold text-amber-800 flex items-center gap-2 mb-1">
-              <span>⚠️</span> Edição Parcial Ativa (Destaque Protegido)
+              <span>⚠️</span> Partial Edit Active (Protected Feature Status)
             </h3>
             <p className="text-xs sm:text-sm text-amber-700 leading-relaxed">
-              Este anúncio tem um <strong>Destaque ativo há mais de 24 horas</strong>. Para garantir a segurança e a integridade da comunidade (evitando alterações de produto pós-pagamento), os campos estratégicos como <strong>Título, Imagens, Categoria, Localização e Tipo de Destaque</strong> estão bloqueados. 
+              This listing has an <strong>active feature status for over 24 hours</strong>. To ensure community safety and integrity (preventing post-payment product swaps), key fields such as <strong>Title, Images, Category, Location, and Featured Plan</strong> are locked.
             </p>
             <p className="text-xs sm:text-sm text-amber-700 mt-2 leading-relaxed">
-              Poderá ainda alterar livremente a <strong>Descrição, Contactos de telefone/WhatsApp ou marcar como Vendido/Encerrado</strong>. Agradecemos a compreensão.
+              You can still freely modify the <strong>Description, Phone/WhatsApp contact info, or mark as Sold/Closed</strong>. Thank you for your understanding.
             </p>
           </div>
         )}
@@ -1401,15 +1401,15 @@ const CreateAd = () => {
           <div className="mb-8 p-6 bg-indigo-50/40 border border-indigo-100/80 rounded-2xl" id="import-ad-section">
             <h3 className="text-md font-bold text-slate-900 flex items-center gap-2 mb-1">
               <Link className="text-indigo-600" size={18} />
-              Criar anúncio a partir de link
+              Create listing from URL
             </h3>
             <p className="text-xs sm:text-sm text-slate-500 mb-4">
-              Cole o link de um anúncio existente e tentaremos preencher os dados automaticamente.
+              Paste the link of an existing listing and we will try to fill in the details automatically.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
-                placeholder="Cole o link do anúncio (ex: https://...)"
+                placeholder="Paste listing link (e.g. https://...)"
                 value={importUrl}
                 onChange={(e) => {
                   setImportUrl(e.target.value);
@@ -1481,7 +1481,7 @@ const CreateAd = () => {
             <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-3">
               <Check className="text-emerald-600 shrink-0 mt-0.5" size={18} id="import-banner" />
               <div className="text-xs sm:text-sm text-slate-600">
-                Este anúncio foi importado de {getSourceSiteFromUrl(formData.sourceUrl)}. O botão de contacto direcionará para o anúncio original.
+                This listing was imported from {getSourceSiteFromUrl(formData.sourceUrl)}. The contact button will direct to the original listing.
               </div>
             </div>
           )}
@@ -1569,16 +1569,16 @@ const CreateAd = () => {
                     {uploading ? (
                       <div className="flex flex-col items-center gap-2">
                         <RefreshCcw className="animate-spin text-indigo-600" size={32} />
-                        <span className="text-xs font-bold text-indigo-600">A carregar...</span>
+                        <span className="text-xs font-bold text-indigo-600">Uploading...</span>
                       </div>
                     ) : (
                       <>
                         <Plus className={`mx-auto mb-1 transition-colors ${isDragging ? 'text-indigo-600' : 'text-slate-300 group-hover:text-indigo-400'}`} size={32} />
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-                          {isDragging ? 'Largar aqui' : 'Arrastar ou Clique'}
+                          {isDragging ? 'Drop here' : 'Drag or Click'}
                         </p>
                         <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-tighter font-semibold">
-                          (Fotos)
+                          (Photos)
                         </p>
                       </>
                     )}
@@ -1598,10 +1598,10 @@ const CreateAd = () => {
               >
                 <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wide mb-3 flex items-center gap-2">
                   <ImageIcon size={16} className="text-indigo-500" />
-                  Enquadramento da Foto Principal (Ajuste Visual)
+                  Main Photo Crop & Framing (Visual Adjustment)
                 </h4>
                 <p className="text-xs text-slate-500 mb-4">
-                  Clique e <strong>arraste a imagem diretamente</strong> no preview da direita. Rode a <strong>roda do rato (scroll)</strong> para aplicar zoom no computador, ou use <strong>dois dedos (gesto pinch)</strong> no telemóvel.
+                  Click and <strong>drag the image directly</strong> in the preview on the right. Scroll the <strong>mouse wheel</strong> to zoom in/out on desktop, or use a <strong>two-finger pinch gesture</strong> on mobile.
                 </p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
@@ -1611,12 +1611,12 @@ const CreateAd = () => {
                     {/* Imagem Original Preview - Reference */}
                     <div className="flex flex-col items-center">
                       <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-tighter text-center">
-                        Imagem Original (Referência)
+                        Original Image (Reference)
                       </div>
                       <div className="w-[170px] h-[170px] sm:w-[180px] sm:h-[180px] bg-slate-950 rounded-2xl overflow-hidden border border-slate-300 shadow-inner relative flex items-center justify-center">
                         <img 
                           src={formData.images[0]} 
-                          alt="Imagem original sem corte" 
+                          alt="Original image uncropped" 
                           className="w-full h-full object-contain pointer-events-none"
                         />
                       </div>
@@ -1625,7 +1625,7 @@ const CreateAd = () => {
                     {/* Como Ficará No Card Preview - Interactive */}
                     <div className="flex flex-col items-center">
                       <div className="text-[10px] font-bold text-indigo-500 uppercase mb-2 tracking-tighter text-center">
-                        {formData.listingType === 'informativo' ? 'Enquadramento Inteiro' : 'Como ficará no Card (Arraste)'}
+                        {formData.listingType === 'informativo' ? 'Full Image Framing' : 'Card Preview (Drag to Adjust)'}
                       </div>
                       <div 
                         ref={formData.listingType === 'informativo' ? undefined : containerRef}
@@ -1643,7 +1643,7 @@ const CreateAd = () => {
                       >
                         <img 
                           src={formData.images[0]} 
-                          alt="Ajuste de enquadramento" 
+                          alt="Framing adjustment preview" 
                           className={`w-full h-full pointer-events-none transition-all duration-75 ${
                             formData.listingType === 'informativo' ? 'object-contain' : 'object-cover'
                           }`}
@@ -1651,11 +1651,11 @@ const CreateAd = () => {
                         />
                         {formData.listingType === 'informativo' ? (
                           <div className="absolute top-2 right-2 bg-emerald-600/95 backdrop-blur-sm text-white text-[9px] font-black uppercase tracking-tight py-1 px-2.5 rounded-full pointer-events-none shadow">
-                            💻 Completo 💡
+                            💻 Full 💡
                           </div>
                         ) : (
                           <div className="absolute top-2 right-2 bg-indigo-600/90 backdrop-blur-sm text-white text-[9px] font-black uppercase tracking-tight py-1 px-2.5 rounded-full pointer-events-none shadow">
-                            Arraste 🖐️
+                            Drag 🖐️
                           </div>
                         )}
                       </div>
@@ -1668,35 +1668,35 @@ const CreateAd = () => {
                     {formData.listingType === 'informativo' ? (
                       <div className="bg-emerald-50/70 border-2 border-emerald-100 p-5 rounded-2xl space-y-3 shadow-sm">
                         <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 flex items-center gap-1">
-                          <span>💡</span> Modo Informativo Ativo
+                          <span>💡</span> Informational Mode Active
                         </span>
                         <p className="text-xs font-semibold text-slate-600 leading-relaxed">
-                          Este anúncio está configurado como <strong>Anúncio Informativo</strong>.
+                          This listing is configured as an <strong>Informational Listing</strong>.
                         </p>
                         <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
-                          Neste modo, a imagem principal será exibida integralmente (<strong>contain</strong>) com fundo neutro suave, prevenindo cortes nas bordas seja na Home, listas ou pesquisas. Os controlos manuais de zoom e posicionamento estão desativados pois a imagem inteira é preservada automaticamente.
+                          In this mode, the main image will be displayed completely (<strong>contain</strong>) with a neutral soft background, preventing edge crops on Home, lists, or search results. Manual zoom and positioning controls are disabled as the whole image is automatically preserved.
                         </p>
                       </div>
                     ) : (
                       <>
                         <div className="bg-slate-100/80 border border-slate-200/60 p-4 rounded-2xl space-y-3">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">✨ Instruções de Enquadramento</span>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">✨ Framing Instructions</span>
                           <ul className="text-xs font-semibold text-slate-600 space-y-2.5">
                             <li className="flex items-start gap-2">
                               <span className="text-indigo-600 shrink-0">🖐️</span>
-                              <span><strong>Mover:</strong> Arraste a imagem para cima, baixo, esquerda ou direita.</span>
+                              <span><strong>Move:</strong> Drag the image up, down, left or right.</span>
                             </li>
                             <li className="flex items-start gap-2">
                               <span className="text-indigo-600 shrink-0">🔍</span>
-                              <span><strong>Zoom (PC):</strong> Use a roda de rolagem (scroll) do rato sobre a imagem.</span>
+                              <span><strong>Zoom (PC):</strong> Scroll the mouse wheel over the image.</span>
                             </li>
                             <li className="flex items-start gap-2">
                               <span className="text-indigo-650 shrink-0">📱</span>
-                              <span><strong>Zoom (Mobile):</strong> Use um gesto de pinça (pinch) com dois dedos.</span>
+                              <span><strong>Zoom (Mobile):</strong> Use a two-finger pinch gesture.</span>
                             </li>
                           </ul>
                           <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] font-bold text-slate-500">
-                            <span>Zoom Atual:</span>
+                            <span>Current Zoom:</span>
                             <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-mono">{imageZoom.toFixed(2)}x</span>
                           </div>
                         </div>
@@ -1711,7 +1711,7 @@ const CreateAd = () => {
                             }}
                             className="flex-1 py-1.5 px-3 text-xs font-bold text-indigo-650 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100/70 rounded-xl transition-colors cursor-pointer text-center"
                           >
-                            Centralizar
+                            Center
                           </button>
                           <button
                             type="button"
@@ -1722,7 +1722,7 @@ const CreateAd = () => {
                             }}
                             className="flex-1 py-1.5 px-3 text-xs font-bold text-slate-650 bg-slate-100 border border-slate-200 hover:bg-slate-200/70 rounded-xl transition-colors cursor-pointer text-center"
                           >
-                            Repor Ajuste
+                            Reset
                           </button>
                         </div>
                       </>
@@ -1737,18 +1737,18 @@ const CreateAd = () => {
             {isAdmin && (
               <div className="bg-gradient-to-br from-indigo-50/70 to-blue-50/50 p-6 rounded-3xl border-2 border-indigo-100/80 md:col-span-2 space-y-4 shadow-sm">
                 <h4 className="font-bold text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider">
-                  <span>⚙️ Configurações de Administrador</span>
+                  <span>⚙️ Administrator Settings</span>
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Tipo de Anúncio</label>
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Listing Type</label>
                     <select
                       value={formData.listingType}
                       onChange={(e) => setFormData({ ...formData, listingType: e.target.value as any })}
                       className="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
                     >
-                      <option value="normal">Anúncio Normal (Abre página de detalhes)</option>
-                      <option value="informativo">Anúncio Informativo (Redireciona para Link Útil)</option>
+                      <option value="normal">Standard Listing (Opens detail page)</option>
+                      <option value="informativo">Informational Listing (Redirects to Useful Link)</option>
                     </select>
                   </div>
                   {formData.listingType === 'informativo' && (
@@ -2104,7 +2104,7 @@ const CreateAd = () => {
 
             <div className="space-y-2 md:col-span-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Título do Anúncio *</label>
+                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Listing Title *</label>
                 {formData.manufacturer && formData.model && (
                   <button
                     type="button"
@@ -2114,7 +2114,7 @@ const CreateAd = () => {
                     }}
                     className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors cursor-pointer"
                   >
-                    <Sparkles size={14} /> Gerar Título Automático
+                    <Sparkles size={14} /> Generate Automatic Title
                   </button>
                 )}
               </div>
@@ -2134,7 +2134,7 @@ const CreateAd = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Categoria</label>
+              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Category</label>
               <select
                 value={formData.category}
                 disabled={!isAdmin && isEditLocked}
@@ -2266,7 +2266,7 @@ const CreateAd = () => {
             {formData.category === 'Imigração' ? (
               <>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Telemóvel / WhatsApp (Obrigatório)</label>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Phone / WhatsApp (Required)</label>
                   <input
                     type="tel"
                     value={formData.sellerPhone}
@@ -2277,23 +2277,23 @@ const CreateAd = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">E-mail de Contacto (Opcional)</label>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Contact Email (Optional)</label>
                   <input
                     type="email"
                     value={formData.contactEmail}
                     onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
                     className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="exemplo@dominio.com"
+                    placeholder="example@domain.com"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Link Externo / Website (URL)</label>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">External Link / Website (URL)</label>
                   <input
                     type="url"
                     value={formData.externalUrl}
                     onChange={(e) => setFormData({ ...formData, externalUrl: e.target.value })}
                     className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="https://exemplo.com"
+                    placeholder="https://example.com"
                   />
                 </div>
               </>
@@ -2358,21 +2358,21 @@ const CreateAd = () => {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Experiência Requerida</label>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Required Experience</label>
                   <select
                     value={formData.experienceRequired}
                     onChange={(e) => setFormData({ ...formData, experienceRequired: e.target.value })}
                     className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
                   >
-                    <option value="">Seleccione a experiência...</option>
-                    <option value="Sem experiência">Sem experiência</option>
-                    <option value="1-2 anos">1-2 anos</option>
-                    <option value="3-5 anos">3-5 anos</option>
-                    <option value="Sénior (+5 anos)">Sénior (+5 anos)</option>
+                    <option value="">Select experience level...</option>
+                    <option value="Sem experiência">No experience</option>
+                    <option value="1-2 anos">1-2 years</option>
+                    <option value="3-5 anos">3-5 years</option>
+                    <option value="Sénior (+5 anos)">Senior (+5 years)</option>
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Telemóvel / WhatsApp de Contacto</label>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Contact Phone / WhatsApp</label>
                   <input
                     type="tel"
                     value={formData.sellerPhone}
@@ -2382,39 +2382,39 @@ const CreateAd = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">E-mail de Contacto (Opcional)</label>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Contact Email (Optional)</label>
                   <input
                     type="email"
                     value={formData.contactEmail}
                     onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
                     className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="exemplo@vagas.com"
+                    placeholder="example@jobs.com"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Link de Candidatura Externa (Opcional)</label>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">External Application Link (Optional)</label>
                   <input
                     type="url"
                     value={formData.externalUrl}
                     onChange={(e) => setFormData({ ...formData, externalUrl: e.target.value })}
                     className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="https://vagas.recrutamento.com/vaga/123"
+                    placeholder="https://jobs.recruitment.com/job/123"
                   />
                 </div>
               </>
             ) : formData.category === '💚 Doações & Solidariedade' ? (
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
-                  Preço
+                  Price
                 </label>
                 <div className="w-full px-4 py-4 bg-emerald-50 border-2 border-emerald-150 text-emerald-800 rounded-2xl font-extrabold flex items-center gap-2 select-none">
-                  <span>💚 Grátis (Artigo para Doação Solidária)</span>
+                  <span>💚 Free (Community Donation)</span>
                 </div>
               </div>
             ) : (
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
-                  Preço ({formData.country === 'Reino Unido' ? '£' : '€'})
+                  Price ({formData.country === 'Reino Unido' ? '£' : '€'})
                 </label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xl select-none leading-none z-10">
@@ -2426,14 +2426,14 @@ const CreateAd = () => {
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="Ex: 799,950 ou £799,950.00"
+                    placeholder="Ex: 799,950 or £799,950.00"
                   />
                 </div>
               </div>
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Comunidade de Publicação</label>
+              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Publishing Region</label>
               <div className="relative">
                 <select
                   value={formData.country}
@@ -2442,9 +2442,9 @@ const CreateAd = () => {
                   className="w-full px-4 py-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl font-bold text-emerald-800 outline-none cursor-pointer appearance-none shadow-sm hover:border-emerald-200 transition-all font-sans disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <option value="Portugal" className="font-bold text-slate-900 bg-white">🇵🇹 Portugal</option>
-                  <option value="Reino Unido" className="font-bold text-slate-900 bg-white">🇬🇧 Reino Unido</option>
+                  <option value="Reino Unido" className="font-bold text-slate-900 bg-white">🇬🇧 United Kingdom</option>
                   {isStaff && (
-                    <option value="Ambos" className="font-bold text-slate-900 bg-white">🌐 Ambos os Países</option>
+                    <option value="Ambos" className="font-bold text-slate-900 bg-white">🌐 Both Countries</option>
                   )}
                 </select>
                 <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-emerald-800 font-bold select-none">
@@ -2454,14 +2454,14 @@ const CreateAd = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Cidade / Região</label>
+              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">City / Region</label>
               <div className="relative">
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={20} />
                 <SearchableCitySelect
                   value={formData.city}
                   disabled={!isAdmin && isEditLocked}
                   onChange={(val) => setFormData({ ...formData, city: val })}
-                  placeholder="Escreva ou escolha a sua cidade"
+                  placeholder="Type or select your city"
                   country={formData.country}
                 />
               </div>
@@ -2470,8 +2470,8 @@ const CreateAd = () => {
             {formData.category !== 'Imigração' && formData.category !== 'Trabalho/Empregos' && (
               <div className="space-y-4 md:col-span-2 p-6 bg-slate-50 border-2 border-slate-100 rounded-2xl" id="contact-phone-section">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Telefone de Contacto</h4>
-                  <p className="text-xs text-slate-500">Escolha o telefone que os interessados usarão para falar consigo via WhatsApp.</p>
+                  <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Contact Phone</h4>
+                  <p className="text-xs text-slate-500">Choose the phone number buyers will use to contact you via WhatsApp.</p>
                 </div>
 
                 <label className="flex items-center gap-3 cursor-pointer select-none py-1">
@@ -2483,7 +2483,7 @@ const CreateAd = () => {
                     id="chk-use-profile-phone"
                   />
                   <span className="text-sm font-bold text-slate-700">
-                    Usar telefone do meu perfil <span className="text-slate-500 font-normal">({profile?.phone || 'Sem telefone configurado'})</span>
+                    Use phone from my profile <span className="text-slate-500 font-normal">({profile?.phone || 'No phone configured'})</span>
                   </span>
                 </label>
 
@@ -2497,7 +2497,7 @@ const CreateAd = () => {
                       className="overflow-hidden space-y-2"
                     >
                       <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mt-2">
-                        Telefone de contacto do anúncio (Opcional)
+                        Listing Contact Phone (Optional)
                       </label>
                       <div className="relative">
                         <input
@@ -2510,7 +2510,7 @@ const CreateAd = () => {
                         />
                       </div>
                       <p className="text-[11px] text-slate-400 font-medium">
-                        * Se o deixar em branco, usaremos o telefone do seu perfil como fallback para os interessados.
+                        * If left blank, we will use your profile phone number as fallback.
                       </p>
                     </motion.div>
                   )}
@@ -2583,42 +2583,42 @@ const CreateAd = () => {
                 </div>
               )}
 
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider block">Tipo de Anúncio & Destaque</label>
+              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider block">Listing Type & Features</label>
               {formData.category === '💚 Doações & Solidariedade' ? (
                 <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl border-2 border-emerald-400 shadow-md relative overflow-hidden text-left col-span-1 md:col-span-3">
                   <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[10px] font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-wider animate-pulse flex items-center gap-1">
-                    <span>Benefício Solidário Ativo</span> <span>💚</span>
+                    <span>Solidarity Benefit Active</span> <span>💚</span>
                   </div>
                   
                   <h3 className="text-base font-black text-emerald-950 flex items-center gap-2 mb-3">
-                    <span>🎉</span> Benefícios do seu anúncio solidário
+                    <span>🎉</span> Benefits of your donation listing
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-emerald-800 font-semibold mb-5">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-600 font-black">✅</span> <span>Destaque Local Gratuito</span>
+                        <span className="text-emerald-600 font-black">✅</span> <span>Free Local Highlight</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-600 font-black">✅</span> <span>Maior visibilidade na sua cidade</span>
+                        <span className="text-emerald-600 font-black">✅</span> <span>Enhanced visibility in your city</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-600 font-black">✅</span> <span>Selo Solidário destacado no anúncio</span>
+                        <span className="text-emerald-600 font-black">✅</span> <span>Solidarity Badge on listing</span>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-600 font-black">✅</span> <span>100% Grátis (Sem taxa de publicação ou destaque)</span>
+                        <span className="text-emerald-600 font-black">✅</span> <span>100% Free (No listing or highlight fee)</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-emerald-600 font-black">✅</span> <span>Validade do Destaque: 30 dias de destaque gratuito</span>
+                        <span className="text-emerald-600 font-black">✅</span> <span>Feature Duration: 30 days free highlight</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="p-4 bg-emerald-600 text-white border border-emerald-500 rounded-2xl text-xs space-y-1.5 font-sans">
                     <p className="font-extrabold flex items-center gap-1.5 text-white tracking-wide">
-                      <span>⚠️</span> AVISO IMPORTANTE
+                      <span>⚠️</span> IMPORTANT NOTICE
                     </p>
                     <p className="leading-relaxed font-semibold opacity-95">
                       This listing is strictly for donations and 100% free items. Any attempt at hidden sales, deceptive advertising, or abuse will result in account suspension on ConnectBoat. Please report any irregularities to moderation.
@@ -2628,7 +2628,7 @@ const CreateAd = () => {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-4">
                   
-                  {/* Plano Gratuito (Normal) */}
+                  {/* Standard Plan */}
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
@@ -2641,35 +2641,35 @@ const CreateAd = () => {
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <p className="font-extrabold text-slate-900 text-sm">Anúncio Normal</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Vendas e transações pontuais grátis</p>
+                        <p className="font-extrabold text-slate-900 text-sm">Standard Listing</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Free standard listings</p>
                       </div>
                       <span className="text-[9px] font-black bg-slate-200 text-slate-800 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
-                        Grátis
+                        Free
                       </span>
                     </div>
                     
                     <ul className="text-[11px] text-slate-600 space-y-1 my-3">
-                      <li className="flex items-center gap-1">✅ Até 2 fotos</li>
-                      <li className="flex items-center gap-1">✅ Listagens normais</li>
-                      <li className="flex items-center gap-1">✅ Pesquisa e favoritos</li>
+                      <li className="flex items-center gap-1">✅ Up to 2 photos</li>
+                      <li className="flex items-center gap-1">✅ Standard search results</li>
+                      <li className="flex items-center gap-1">✅ Search & favorites</li>
                     </ul>
 
                     <div className="mt-3 pt-3 border-t border-slate-200/50" onClick={(e) => e.stopPropagation()}>
-                      <label className="text-[9px] uppercase font-black tracking-wider text-slate-400 block mb-1">Duração do Anúncio</label>
+                      <label className="text-[9px] uppercase font-black tracking-wider text-slate-400 block mb-1">Listing Duration</label>
                       <select
                         value={formData.duration}
                         disabled={!isAdmin && isEditLocked}
                         onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 0, plan: 'free' })}
                         className="w-full p-2 bg-white border border-slate-200 rounded-xl text-[11px] font-bold outline-none cursor-pointer disabled:opacity-50"
                       >
-                        <option value={15}>15 Dias</option>
-                        <option value={30}>30 Dias</option>
+                        <option value={15}>15 Days</option>
+                        <option value={30}>30 Days</option>
                       </select>
                     </div>
                   </button>
 
-                  {/* ⭐ Destaque Local */}
+                  {/* Local Highlight */}
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
@@ -2686,12 +2686,12 @@ const CreateAd = () => {
                     
                     <div className="flex justify-between items-start mb-2 mt-2">
                       <div>
-                        <p className="font-extrabold text-slate-900 text-sm">Destaque Local</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Destaque na sua cidade</p>
+                        <p className="font-extrabold text-slate-900 text-sm">Local Highlight</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Featured in your city</p>
                         {isPromoActive && (
                           <div className="mt-1">
                             <span className="inline-flex items-center gap-1.5 text-[9px] font-black bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100">
-                              🎁 Gratuito no Lançamento
+                              🎁 Free at Launch
                             </span>
                           </div>
                         )}
@@ -2699,32 +2699,32 @@ const CreateAd = () => {
                     </div>
                     
                     <ul className="text-[11px] text-slate-600 space-y-1 my-3">
-                      <li className="flex items-center gap-1">🌟 <strong>Até 4 fotos</strong></li>
-                      <li className="flex items-center gap-1">🌟 Destaque local</li>
-                      <li className="flex items-center gap-1">🌟 Carrossel local</li>
-                      <li className="flex items-center gap-1">🌟 Etiqueta ⭐</li>
+                      <li className="flex items-center gap-1">🌟 <strong>Up to 4 photos</strong></li>
+                      <li className="flex items-center gap-1">🌟 Local highlight</li>
+                      <li className="flex items-center gap-1">🌟 Local carousel</li>
+                      <li className="flex items-center gap-1">🌟 Star Badge ⭐</li>
                     </ul>
 
                     <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col gap-1 p-2 bg-white/50 rounded-xl border border-dashed border-amber-200">
                       <div className="flex justify-between items-center text-[10px]">
-                        <span className="font-bold text-amber-800">Duração:</span>
-                        <span className="font-extrabold text-slate-930">30 Dias</span>
+                        <span className="font-bold text-amber-800">Duration:</span>
+                        <span className="font-extrabold text-slate-930">30 Days</span>
                       </div>
                       <div className="flex justify-between items-center text-[10px]">
-                        <span className="font-bold text-amber-800">Investimento:</span>
+                        <span className="font-bold text-amber-800">Price:</span>
                         <span className="font-black text-amber-600 flex flex-col items-end">
                           <span className={isPromoActive ? "line-through text-slate-400 font-bold" : ""}>
                             {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}
                           </span>
                           {isPromoActive && (
-                            <span className="text-emerald-600 font-black text-[9px]">Grátis 🎁</span>
+                            <span className="text-emerald-600 font-black text-[9px]">Free 🎁</span>
                           )}
                         </span>
                       </div>
                     </div>
                   </button>
 
-                  {/* ⭐⭐⭐ Destaque Nacional */}
+                  {/* National Highlight */}
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
@@ -2736,17 +2736,17 @@ const CreateAd = () => {
                     } ${(!isAdmin && isEditLocked) ? 'opacity-60 cursor-not-allowed' : ''}`}
                   >
                     <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-indigo-500 text-white text-[8px] font-black px-2 py-1 rounded-bl-xl uppercase tracking-wider shrink-0 animate-pulse">
-                      Nacional ⭐⭐⭐
+                      National ⭐⭐⭐
                     </div>
                     
                     <div className="flex justify-between items-start mb-2 mt-2">
                       <div>
-                        <p className="font-extrabold text-slate-900 text-sm">Destaque Nacional</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Visibilidade em todo o país</p>
+                        <p className="font-extrabold text-slate-900 text-sm">National Highlight</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Nationwide visibility</p>
                         {isPromoActive && (
                           <div className="mt-1">
                             <span className="inline-flex items-center gap-1.5 text-[9px] font-black bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100">
-                              🎁 Gratuito no Lançamento
+                              🎁 Free at Launch
                             </span>
                           </div>
                         )}
@@ -2754,25 +2754,25 @@ const CreateAd = () => {
                     </div>
                     
                     <ul className="text-[11px] text-slate-600 space-y-1 my-3">
-                      <li className="flex items-center gap-1 font-semibold text-indigo-900">🚀 Prioridade Máxima</li>
-                      <li className="flex items-center gap-1">🌟 <strong>Até 6 fotos</strong></li>
-                      <li className="flex items-center gap-1">🌟 Todas as cidades</li>
-                      <li className="flex items-center gap-1">🌟 Etiqueta ⭐⭐⭐</li>
+                      <li className="flex items-center gap-1 font-semibold text-indigo-900">🚀 Maximum Priority</li>
+                      <li className="flex items-center gap-1">🌟 <strong>Up to 6 photos</strong></li>
+                      <li className="flex items-center gap-1">🌟 All cities</li>
+                      <li className="flex items-center gap-1">🌟 Triple Star Badge ⭐⭐⭐</li>
                     </ul>
 
                     <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col gap-1 p-2 bg-indigo-50/50 rounded-xl border border-dashed border-indigo-200">
                       <div className="flex justify-between items-center text-[10px]">
-                        <span className="font-bold text-indigo-700">Duração:</span>
-                        <span className="font-extrabold text-slate-930">30 Dias</span>
+                        <span className="font-bold text-indigo-700">Duration:</span>
+                        <span className="font-extrabold text-slate-930">30 Days</span>
                       </div>
                       <div className="flex justify-between items-center text-[10px]">
-                        <span className="font-bold text-indigo-700">Investimento:</span>
+                        <span className="font-bold text-indigo-700">Price:</span>
                         <span className="font-black text-indigo-600 flex flex-col items-end">
                           <span className={isPromoActive ? "line-through text-slate-400 font-bold" : ""}>
                             {formData.country === 'Reino Unido' ? '£7.99' : '€7.99'}
                           </span>
                           {isPromoActive && (
-                            <span className="text-emerald-600 font-black text-[9px]">Grátis 🎁</span>
+                            <span className="text-emerald-600 font-black text-[9px]">Free 🎁</span>
                           )}
                         </span>
                       </div>
@@ -2784,7 +2784,7 @@ const CreateAd = () => {
             </div>
 
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Descrição Detalhada</label>
+              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Detailed Description</label>
               <div className="relative">
                 <FileText className="absolute left-4 top-6 text-slate-400" size={20} />
                 <textarea
@@ -2794,7 +2794,7 @@ const CreateAd = () => {
                   required
                   rows={6}
                   className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all resize-none"
-                  placeholder="Descreva o estado do produto, acessórios incluídos, etc."
+                  placeholder="Describe item condition, included accessories, equipment details, etc."
                 />
               </div>
             </div>
@@ -2825,9 +2825,9 @@ const CreateAd = () => {
             {loading ? (
               <>
                 <RefreshCcw className="animate-spin text-white" size={20} />
-                <span>A processar o anúncio...</span>
+                <span>Processing listing...</span>
               </>
-            ) : id ? 'Atualizar Anúncio' : 'Publicar Anúncio'}
+            ) : id ? 'Update Listing' : 'Publish Listing'}
           </button>
         </form>
       </motion.div>
@@ -2856,8 +2856,8 @@ const CreateAd = () => {
                 <div className="flex items-center gap-2 text-indigo-400 font-black tracking-widest text-[10px] uppercase">
                   <span>Stripe Secure Checkout</span>
                 </div>
-                <h3 className="text-xl font-bold mt-2">Destaque o seu anúncio</h3>
-                <p className="text-xs text-slate-300 mt-1">Multiplique em até 10x as visualizações e feche negócio rápido.</p>
+                <h3 className="text-xl font-bold mt-2">Highlight Your Listing</h3>
+                <p className="text-xs text-slate-300 mt-1">Multiply your views by up to 10x and sell faster.</p>
               </div>
 
               {/* Body */}
@@ -2865,17 +2865,17 @@ const CreateAd = () => {
                 {/* Summary */}
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
                   <div className="flex justify-between text-xs text-slate-600">
-                    <span>Subscrição (30 dias Destaque)</span>
+                    <span>Subscription (30 days Highlight)</span>
                     <span className="font-bold text-slate-900">
                       {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs text-slate-600">
-                    <span>Taxas e processamento</span>
-                    <span className="font-semibold text-emerald-600">Grátis</span>
+                    <span>Fees & processing</span>
+                    <span className="font-semibold text-emerald-600">Free</span>
                   </div>
                   <div className="border-t border-slate-200/50 pt-2 flex justify-between text-sm font-bold text-slate-900">
-                    <span>Total a pagar</span>
+                    <span>Total due</span>
                     <span className="text-indigo-600">
                       {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}
                     </span>
@@ -2884,12 +2884,12 @@ const CreateAd = () => {
 
                 {/* Credit Card Fields */}
                 <div className="space-y-3">
-                  <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider">Dados do Cartão (Simulação)</span>
+                  <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider">Card Details (Simulation)</span>
                   
                   <div className="border-2 border-slate-200 focus-within:border-indigo-600 rounded-2xl px-4 py-3 bg-white space-y-3 transition-all shadow-sm">
                     {/* Card Number */}
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Número do Cartão</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Card Number</label>
                       <input
                         type="text"
                         value={mockCardNumber}
@@ -2902,13 +2902,13 @@ const CreateAd = () => {
                     <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-2">
                       {/* Exp */}
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Validade</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expiry</label>
                         <input
                           type="text"
                           value={mockExpiry}
                           onChange={(e) => setMockExpiry(e.target.value)}
                           className="w-full bg-transparent border-none p-0 outline-none text-sm text-slate-900 font-medium placeholder-slate-300"
-                          placeholder="MM/AA"
+                          placeholder="MM/YY"
                         />
                       </div>
                       {/* CVC */}
@@ -2927,20 +2927,20 @@ const CreateAd = () => {
 
                   {/* Card Holder Name */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nome no Cartão</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cardholder Name</label>
                     <input
                       type="text"
                       value={mockCardName}
                       onChange={(e) => setMockCardName(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600 text-sm"
-                      placeholder="Ex: João Silva"
+                      placeholder="Ex: John Smith"
                     />
                   </div>
                 </div>
 
                 {/* Security and Logos */}
                 <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1">🔒 Processamento seguro SSL</span>
+                  <span className="flex items-center gap-1">🔒 SSL Secure Processing</span>
                   <div className="flex gap-1.5 opacity-60">
                     <span className="px-1 py-0.5 border border-slate-200 rounded bg-slate-50 font-black text-[8px] tracking-tighter">VISA</span>
                     <span className="px-1 py-0.5 border border-slate-200 rounded bg-slate-50 font-black text-[8px] tracking-tighter">MC</span>
@@ -2957,10 +2957,10 @@ const CreateAd = () => {
                   >
                     {loading ? (
                       <span className="flex items-center gap-2">
-                        <RefreshCcw className="animate-spin" size={16} /> A processar transação...
+                        <RefreshCcw className="animate-spin" size={16} /> Processing transaction...
                       </span>
                     ) : (
-                      <span>Efetuar Pagamento de {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}</span>
+                      <span>Pay {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}</span>
                     )}
                   </button>
                   
@@ -2971,7 +2971,7 @@ const CreateAd = () => {
                     }}
                     className="w-full text-center py-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-all"
                   >
-                    Cancelar e voltar ao anúncio
+                    Cancel and return to listing
                   </button>
                 </div>
               </div>
@@ -2992,9 +2992,9 @@ const CreateAd = () => {
                   <AlertCircle size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-slate-900">Anúncio Parecido Detetado</h3>
+                  <h3 className="text-xl font-bold text-slate-900">Similar Listing Detected</h3>
                   <p className="text-xs text-slate-500 mt-1 font-medium">
-                    Parece que este anúncio já existe no seu perfil. Deseja revisar antes de publicar?
+                    It looks like this listing already exists in your profile. Would you like to review before publishing?
                   </p>
                 </div>
               </div>
@@ -3002,7 +3002,7 @@ const CreateAd = () => {
               {/* Body */}
               <div className="p-6 space-y-4">
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
-                  <span className="text-[10px] uppercase font-black tracking-wider text-amber-700 block">Motivo do aviso:</span>
+                  <span className="text-[10px] uppercase font-black tracking-wider text-amber-700 block">Notice Reason:</span>
                   <p className="text-sm text-slate-700 leading-relaxed font-semibold">
                     {duplicateWarning.reason}
                   </p>
@@ -3021,7 +3021,7 @@ const CreateAd = () => {
                   }}
                   className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold py-4 rounded-xl transition-all text-center text-sm cursor-pointer"
                 >
-                  Revisar e Editar
+                  Review and Edit
                 </button>
                 <button
                   type="button"
@@ -3042,7 +3042,7 @@ const CreateAd = () => {
                   }}
                   className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-4 rounded-xl transition-all text-center text-sm shadow-md cursor-pointer"
                 >
-                  Publicar de qualquer forma
+                  Publish Anyway
                 </button>
               </div>
             </motion.div>
@@ -3066,7 +3066,7 @@ const CreateAd = () => {
               <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center">
                 <Check size={32} strokeWidth={3} className="animate-pulse" />
               </div>
-              <h3 className="text-xl font-brand font-black text-slate-900">Salvo com Sucesso!</h3>
+              <h3 className="text-xl font-brand font-black text-slate-900">Saved Successfully!</h3>
               <p className="text-slate-500 text-sm font-medium leading-relaxed">{saveSuccessMsg}</p>
             </motion.div>
           </motion.div>
@@ -3093,7 +3093,7 @@ const CreateAd = () => {
             >
               {/* Header */}
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">Adicionar Foto</h3>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">Add Photo</h3>
                 <button
                   type="button"
                   onClick={() => setShowPhotoSourceMenu(false)}
@@ -3119,8 +3119,8 @@ const CreateAd = () => {
                     <Camera size={20} />
                   </div>
                   <div className="flex-1">
-                    <p className="font-extrabold text-sm text-slate-900">Tirar Foto (Câmara Nativa)</p>
-                    <p className="text-[11px] text-slate-500 font-medium">Abre a câmara do telemóvel para fotografar</p>
+                    <p className="font-extrabold text-sm text-slate-900">Take Photo (Camera)</p>
+                    <p className="text-[11px] text-slate-500 font-medium">Opens native camera to take a photo</p>
                   </div>
                 </button>
 
@@ -3137,8 +3137,8 @@ const CreateAd = () => {
                     <ImageIcon size={20} />
                   </div>
                   <div className="flex-1">
-                    <p className="font-extrabold text-sm text-slate-900">Escolher da Galeria</p>
-                    <p className="text-[11px] text-slate-500 font-medium">Escolha uma ou mais imagens já guardadas</p>
+                    <p className="font-extrabold text-sm text-slate-900">Choose from Gallery</p>
+                    <p className="text-[11px] text-slate-500 font-medium">Select one or more saved images</p>
                   </div>
                 </button>
               </div>
@@ -3149,7 +3149,7 @@ const CreateAd = () => {
                 onClick={() => setShowPhotoSourceMenu(false)}
                 className="w-full text-center py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
               >
-                Voltar
+                Back
               </button>
             </motion.div>
           </div>

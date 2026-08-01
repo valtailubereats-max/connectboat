@@ -57,7 +57,7 @@ const Login = () => {
 
   const handleDemoLogin = (role: 'admin' | 'user') => {
     if (!acceptedTerms) {
-      setError('Deve aceitar os Termos de Uso para continuar.');
+      setError('You must accept the Terms of Use to continue.');
       return;
     }
     const demoProfile = role === 'admin' 
@@ -71,7 +71,7 @@ const Login = () => {
       : {
           uid: 'utilizador-demo-uid',
           email: 'visitante@mercadoluso.pt',
-          displayName: 'Utilizador de Teste',
+          displayName: 'Test User',
           role: 'user',
           phone: '+351 922 111 222'
         };
@@ -89,7 +89,7 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     if (!acceptedTerms) {
-      setError('Deve aceitar os Termos de Uso para continuar.');
+      setError('You must accept the Terms of Use to continue.');
       return;
     }
     setLoading(true);
@@ -121,7 +121,7 @@ const Login = () => {
           const refParam = searchParams.get('ref') || localStorage.getItem('referred_by_code_raw') || localStorage.getItem('referred_by_code');
           await setDoc(docRef, {
             uid: user.uid,
-            name: user.displayName || 'Utilizador',
+            name: user.displayName || 'User',
             email: user.email || '',
             phone: '', 
             country: finalCountry,
@@ -134,7 +134,7 @@ const Login = () => {
           // Sincronizar sellerPublicProfiles:
           try {
             await setDoc(doc(db, 'sellerPublicProfiles', user.uid), {
-              displayName: user.displayName || 'Utilizador',
+              displayName: user.displayName || 'User',
               country: finalCountry,
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp()
@@ -146,7 +146,7 @@ const Login = () => {
           // Enviar email de boas-vindas
           if (user.email) {
             sendEmailGeneric('boas_vindas', user.email, {
-              userName: user.displayName || 'Utilizador'
+              userName: user.displayName || 'User'
             }).catch(emailErr => console.warn('[Google Register Email] Erro ao enviar email de boas-vindas:', emailErr));
           }
         } catch (err) {
@@ -159,20 +159,20 @@ const Login = () => {
     } catch (err: any) {
       console.error('Login error:', err);
       if (err.code === 'auth/popup-closed-by-user') {
-        setError('A janela de login foi fechada.');
+        setError('The sign-in window was closed.');
       } else if (err.code === 'auth/network-request-failed') {
-        setError('Erro de rede. Verifique a sua ligação à internet.');
+        setError('Network error. Please check your internet connection.');
       } else if (err.code === 'auth/operation-not-allowed') {
-        setError('Este método de login não está ativado no Firebase Console.');
+        setError('This sign-in method is not enabled in Firebase Console.');
       } else if (err.message && err.message.startsWith('{')) {
         try {
           const parsed = JSON.parse(err.message);
-          setError(`Erro ao criar perfil (${parsed.operationType}): ${parsed.error}`);
+          setError(`Error creating profile (${parsed.operationType}): ${parsed.error}`);
         } catch {
-          setError('Erro de permissões ao criar perfil. Verifique se aceitou os termos.');
+          setError('Permission error when creating profile. Please check if you accepted the terms.');
         }
       } else {
-        setError(err.message || 'Erro ao entrar com Google. Tente novamente.');
+        setError(err.message || 'Error signing in with Google. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -182,11 +182,11 @@ const Login = () => {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!acceptedTerms) {
-      setError('Deve aceitar os Termos de Uso para continuar.');
+      setError('You must accept the Terms of Use to continue.');
       return;
     }
     if (!email || !password || (mode === 'register' && !name)) {
-      setError('Preencha todos os campos.');
+      setError('Please fill in all fields.');
       return;
     }
 
@@ -247,24 +247,24 @@ const Login = () => {
     } catch (err: any) {
       console.error('Email auth error:', err);
       if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError('E-mail ou senha incorretos.');
+        setError('Incorrect email or password.');
       } else if (err.code === 'auth/email-already-in-use') {
-        setError('Este e-mail já está em uso.');
+        setError('This email is already in use.');
       } else if (err.code === 'auth/weak-password') {
-        setError('A senha deve ter pelo menos 6 caracteres.');
+        setError('Password must be at least 6 characters long.');
       } else if (err.code === 'auth/operation-not-allowed') {
-        setError('O login por e-mail/senha não está ativado no Firebase Console.');
+        setError('Email/password sign-in is not enabled in Firebase Console.');
       } else if (err.code === 'auth/network-request-failed') {
-        setError('Erro de rede. Verifique a sua ligação à internet.');
+        setError('Network error. Please check your internet connection.');
       } else if (err.message && err.message.startsWith('{')) {
         try {
           const parsed = JSON.parse(err.message);
-          setError(`Erro no banco de dados (${parsed.operationType}): ${parsed.error}`);
+          setError(`Database error (${parsed.operationType}): ${parsed.error}`);
         } catch {
-          setError('Erro de permissão ou de rede ao comunicar com o servidor.');
+          setError('Permission or network error when communicating with the server.');
         }
       } else {
-        setError(err.message || 'Ocorreu um erro. Tente novamente.');
+        setError(err.message || 'An error occurred. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -274,7 +274,7 @@ const Login = () => {
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
-      setError('Por favor, introduza o seu e-mail.');
+      setError('Please enter your email.');
       return;
     }
     setLoading(true);
@@ -282,15 +282,15 @@ const Login = () => {
     setSuccessMessage('');
     try {
       await sendPasswordResetEmail(auth, email);
-      setSuccessMessage('E-mail de recuperação enviado com sucesso! Verifique a sua caixa de entrada.');
+      setSuccessMessage('Password recovery email sent successfully! Please check your inbox.');
     } catch (err: any) {
       console.error('Password reset error:', err);
       if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email') {
-        setError('E-mail não registado ou inválido.');
+        setError('Email not registered or invalid.');
       } else if (err.code === 'auth/network-request-failed') {
-        setError('Erro de rede. Verifique a sua ligação à internet.');
+        setError('Network error. Please check your internet connection.');
       } else {
-        setError('Erro ao enviar e-mail de recuperação. Tente novamente.');
+        setError('Error sending recovery email. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -309,11 +309,11 @@ const Login = () => {
             <ShoppingBag size={24} />
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            {mode === 'login' ? 'Bem-vindo de volta!' : mode === 'register' ? 'Criar conta' : 'Recuperar senha'}
+            {mode === 'login' ? 'Welcome back!' : mode === 'register' ? 'Create account' : 'Reset password'}
           </h1>
           <p className="text-slate-500 mt-1 font-medium text-sm leading-tight">
             {mode === 'login' 
-              ? 'Entre para continuar a negociar.' 
+              ? 'Sign in to continue trading.' 
               : mode === 'register' ? 'Join ConnectBoat marine community.' : 'Enter your email to receive instructions.'}
           </p>
         </div>
@@ -358,14 +358,14 @@ const Login = () => {
                 <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                 <input
                   type="text"
-                  placeholder="Nome completo"
+                  placeholder="Full name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-xl outline-none transition-all font-medium text-slate-900"
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-2">País / Comunidade</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-2">Country / Community</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base leading-none select-none shrink-0 pointer-events-none">
                     {profileCountry === 'Portugal' ? '🇵🇹' : '🇬🇧'}
@@ -376,7 +376,7 @@ const Login = () => {
                     className="w-full pl-12 pr-10 py-3 bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-xl outline-none transition-all font-bold text-slate-800 appearance-none cursor-pointer"
                   >
                     <option value="Portugal">🇵🇹 Portugal</option>
-                    <option value="Reino Unido">🇬🇧 Reino Unido</option>
+                    <option value="Reino Unido">🇬🇧 United Kingdom</option>
                   </select>
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">▼</span>
                 </div>
@@ -387,7 +387,7 @@ const Login = () => {
             <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input
               type="email"
-              placeholder="E-mail"
+              placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-xl outline-none transition-all font-medium text-slate-900"
@@ -398,7 +398,7 @@ const Login = () => {
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input
                 type={showPassword ? "text" : "password"}
-                placeholder="Senha"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-12 pr-12 py-3 bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-xl outline-none transition-all font-medium text-slate-900"
@@ -430,7 +430,7 @@ const Login = () => {
                 }}
                 className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
               >
-                Esqueci-me da senha?
+                Forgot password?
               </button>
             </div>
           )}
@@ -440,7 +440,7 @@ const Login = () => {
             disabled={loading}
             className="w-full bg-indigo-600 text-white py-3 rounded-xl font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-50 group"
           >
-            <span>{loading ? 'A processar...' : (mode === 'login' ? 'Entrar' : mode === 'register' ? 'Criar Conta' : 'Enviar E-mail')}</span>
+            <span>{loading ? 'Processing...' : (mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Send Email')}</span>
             {!loading && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
           </button>
         </form>
@@ -456,7 +456,7 @@ const Login = () => {
                 className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
               />
               <label htmlFor="terms" className="text-xs text-slate-600 cursor-pointer leading-tight font-medium">
-                Li e concordo com os <Link to="/terms" className="text-indigo-600 font-bold hover:underline">Termos de Uso</Link> e reconheço que a plataforma é apenas intermediária.
+                I read and agree to the <Link to="/terms" className="text-indigo-600 font-bold hover:underline">Terms of Use</Link> and acknowledge that the platform acts strictly as an intermediary.
               </label>
             </div>
 
@@ -465,7 +465,7 @@ const Login = () => {
                 <div className="w-full border-t border-slate-100"></div>
               </div>
               <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold">
-                <span className="bg-white px-3 text-slate-400">Aceder com Chave Google</span>
+                <span className="bg-white px-3 text-slate-400">Sign in with Google Key</span>
               </div>
             </div>
 
@@ -496,7 +496,7 @@ const Login = () => {
               }}
               className="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
             >
-              Voltar para o Login
+              Back to Sign In
             </button>
           ) : (
             <button
@@ -514,14 +514,14 @@ const Login = () => {
               }}
               className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
             >
-              {mode === 'login' ? 'Não tem conta? Registe-se' : 'Já tem conta? Entre aqui'}
+              {mode === 'login' ? "Don't have an account? Register" : "Already have an account? Sign in here"}
             </button>
           )}
         </div>
 
         <div className="mt-4 pt-3 border-t border-slate-50 text-center text-slate-400 text-[10px] uppercase tracking-[0.2em] font-black flex items-center justify-center gap-1.5">
           <ShieldCheck size={14} />
-          <span>Seguro e Rápido</span>
+          <span>Secure and Fast</span>
         </div>
       </motion.div>
     </div>

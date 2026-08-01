@@ -116,22 +116,22 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0 || success === null || !buyerName) {
-      alert('Por favor, preencha todos os campos.');
+      alert('Please fill in all required fields.');
       return;
     }
 
     if (!isBuyerRating && !selectedBuyerId) {
-      alert('Por favor, selecione um comprador real da lista de resultados.');
+      alert('Please select a buyer from the list of registered enquiries.');
       return;
     }
 
     if (isBuyerRating) {
       if (!sellerId) {
-        alert('Erro: O ID do vendedor está em falta.');
+        alert('Error: Seller ID is missing.');
         return;
       }
       if (sellerId === user?.uid) {
-        alert('Erro: Não pode avaliar-se a si próprio.');
+        alert('Error: You cannot review yourself.');
         return;
       }
     }
@@ -254,11 +254,11 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
     } catch (err: any) {
       const isPermissionDenied = err?.code === 'permission-denied' || String(err).includes('PERMISSION_DENIED') || String(err).includes('permission-denied');
       if (isPermissionDenied) {
-        console.error('[ReviewModal] ERRO CRÍTICO: Falha de Permissão Firestore (PERMISSION_DENIED). Verifique as regras de segurança para escrita/update do comprador em reviews, users ou ads:', err);
-        alert('Erro ao enviar feedback: Sem permissões para gravar esta avaliação no servidor.');
+        console.error('[ReviewModal] Firestore Permission Error (PERMISSION_DENIED):', err);
+        alert('Error submitting feedback: Insufficient permissions to record this review.');
       } else {
         console.error('Error submitting review:', err);
-        alert('Erro ao enviar feedback: ' + (err?.message || err || 'Tente novamente.'));
+        alert('Error submitting feedback: ' + (err?.message || err || 'Please try again.'));
       }
     } finally {
       setLoading(false);
@@ -286,7 +286,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
             
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-black text-slate-900">
-                {isBuyerRating ? 'Avaliar Vendedor' : 'Finalizar Negócio'}
+                {isBuyerRating ? 'Review Seller' : 'Complete Sale'}
               </h3>
               <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
                 <X size={24} />
@@ -297,15 +297,15 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
               <div>
                 <p className="text-sm text-slate-600 mb-4 font-medium">
                   {isBuyerRating 
-                    ? `Como foi negociar com ${sellerName} no anúncio "${adTitle}"?`
-                    : `Parabéns pela venda de "${adTitle}"! Como correu a negociação com o comprador?`
+                    ? `How was your experience dealing with ${sellerName} for "${adTitle}"?`
+                    : `Congratulations on selling "${adTitle}"! How was your experience dealing with the buyer?`
                   }
                 </p>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 text-center">
-                  Avaliação em Estrelas
+                  Star Rating
                 </label>
                 <div className="flex justify-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -330,7 +330,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
 
               <div className="space-y-3">
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest">
-                  Correu tudo bem com a negociação?
+                  Did the transaction go smoothly?
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -342,7 +342,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                         : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'
                     }`}
                   >
-                    <CheckCircle size={18} /> Sim
+                    <CheckCircle size={18} /> Yes
                   </button>
                   <button
                     type="button"
@@ -353,21 +353,21 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                         : 'bg-slate-50 border-slate-100 text-slate-500 hover:border-slate-200'
                     }`}
                   >
-                    <AlertCircle size={18} /> Não
+                    <AlertCircle size={18} /> No
                   </button>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
-                  {isBuyerRating ? 'O seu nome' : 'Selecione o Comprador da Lista'}
+                  {isBuyerRating ? 'Your Name' : 'Select Buyer from Enquiries'}
                 </label>
                 {isBuyerRating ? (
                   <input
                     type="text"
                     value={buyerName}
                     onChange={(e) => setBuyerName(e.target.value)}
-                    placeholder="O seu nome"
+                    placeholder="Your name"
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 font-medium mb-3 focus:border-indigo-500 outline-none transition-all"
                     required
                   />
@@ -376,14 +376,14 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                     {loadingUsers ? (
                       <div className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-center text-xs text-slate-400 font-medium flex items-center justify-center gap-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
-                        <span>A procurar interessados...</span>
+                        <span>Searching for interested buyers...</span>
                       </div>
                     ) : usersList.length === 0 ? (
                       <div className="bg-amber-50 border-2 border-amber-200 text-amber-800 p-4 rounded-2xl flex flex-col gap-2">
                         <div className="flex items-start gap-2">
                           <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
                           <p className="text-xs font-bold leading-relaxed">
-                            Ainda não há interessados registados neste anúncio. O comprador precisa clicar no WhatsApp estando logado antes de você marcar como vendido.
+                            No registered enquiries found for this listing yet. Buyers need to contact you via WhatsApp while logged in before you can mark it as sold.
                           </p>
                         </div>
                       </div>
@@ -400,7 +400,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                             {selectedBuyerId ? (
                               <span className="font-bold text-emerald-800">{buyerName}</span>
                             ) : (
-                              <span>Selecione o comprador...</span>
+                              <span>Select buyer...</span>
                             )}
                           </div>
                           <span className="text-slate-400 text-xs">▼</span>
@@ -430,7 +430,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                                       <span className="font-bold text-slate-900 text-sm">{interest.interestedUserName}</span>
                                       {isSelected && <CheckCircle size={14} className="text-emerald-500 shrink-0" />}
                                     </div>
-                                    <span className="text-[10px] text-slate-400 font-medium">Interesse em: {dateStr}</span>
+                                    <span className="text-[10px] text-slate-400 font-medium">Enquired on: {dateStr}</span>
                                   </button>
                                 );
                               })}
@@ -444,7 +444,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Conte-nos brevemente como foi a experiência..."
+                  placeholder="Share a short summary of your experience..."
                   rows={3}
                   className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 font-medium focus:border-indigo-500 outline-none transition-all resize-none"
                 />

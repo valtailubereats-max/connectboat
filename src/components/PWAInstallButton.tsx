@@ -66,7 +66,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               onClick={handleInstallClick}
               className="px-4 py-2 bg-[#046a38] text-white hover:bg-[#03522b] text-xs font-black rounded-xl shadow-md cursor-pointer transition-colors text-center whitespace-nowrap flex items-center justify-center gap-1.5"
             >
-              📱 Instalar App
+              📱 Install App
             </button>
           </div>
         </div>
@@ -92,7 +92,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           onClick={handleInstallClick}
           className="text-lg font-black text-emerald-700 text-left flex items-center gap-2 w-full hover:bg-emerald-50 p-2 rounded-xl transition-colors cursor-pointer"
         >
-          <span>📱 Instalar App</span>
+          <span>📱 Install App</span>
         </button>
 
         <IOSInstructionsDialog 
@@ -116,7 +116,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           onClick={handleInstallClick}
           className="flex items-center gap-2 px-4 py-2 hover:bg-emerald-50 text-emerald-600 transition-colors text-sm font-black w-full text-left cursor-pointer outline-none"
         >
-          <span>📱 Instalar App</span>
+          <span>📱 Install App</span>
         </button>
 
         <IOSInstructionsDialog 
@@ -140,7 +140,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           onClick={handleInstallClick}
           className="hover:text-[#046a38] active:text-[#046a38] transition-colors gap-1 text-slate-400 text-xs uppercase tracking-widest font-black flex items-center cursor-pointer"
         >
-          📱 Instalar App
+          📱 Install App
         </button>
 
         <IOSInstructionsDialog 
@@ -191,7 +191,7 @@ const IOSInstructionsDialog: React.FC<IOSInstructionsDialogProps> = ({ isOpen, o
               <div className="flex items-center gap-2">
                 <span className="text-2xl">📱</span>
                 <div>
-                  <h3 className="font-brand font-black text-base text-slate-900">Instalar no iPhone</h3>
+                  <h3 className="font-brand font-black text-base text-slate-900">Install on iPhone</h3>
                   <p className="text-xs text-slate-500 font-medium">Follow these simple steps in Safari</p>
                 </div>
               </div>
@@ -231,7 +231,7 @@ const IOSInstructionsDialog: React.FC<IOSInstructionsDialogProps> = ({ isOpen, o
                   3
                 </div>
                 <div className="text-sm font-medium text-slate-700 pt-0.5 leading-relaxed">
-                  Toque em <strong>"Adicionar"</strong> no canto superior direito para confirmar.
+                  Tap <strong>"Add"</strong> in the top right corner to confirm.
                 </div>
               </div>
             </div>
@@ -242,7 +242,7 @@ const IOSInstructionsDialog: React.FC<IOSInstructionsDialogProps> = ({ isOpen, o
                 onClick={onClose}
                 className="px-5 py-2.5 bg-[#046a38] text-white hover:bg-[#03522b] font-bold text-xs rounded-xl transition-colors cursor-pointer"
               >
-                Entendido
+                Got it
               </button>
             </div>
           </motion.div>
@@ -284,8 +284,8 @@ const GenericInstructionsDialog: React.FC<GenericInstructionsDialogProps> = ({ i
               <div className="flex items-center gap-2">
                 <span className="text-2xl">⚡</span>
                 <div>
-                  <h3 className="font-brand font-black text-base text-slate-900">Como Instalar</h3>
-                  <p className="text-xs text-slate-500 font-medium">Instale no seu dispositivo Android ou Desktop</p>
+                  <h3 className="font-brand font-black text-base text-slate-900">How to Install</h3>
+                  <p className="text-xs text-slate-500 font-medium">Install on your Android or Desktop device</p>
                 </div>
               </div>
               <button 
@@ -304,7 +304,7 @@ const GenericInstructionsDialog: React.FC<GenericInstructionsDialogProps> = ({ i
                   1
                 </div>
                 <div className="text-sm font-medium text-slate-700 pt-0.5 leading-relaxed">
-                  Abra o menu de opções do seu navegador (toque nos três pontos <strong>⋮</strong> no canto de cima ou de baixo).
+                  Open your browser menu (tap the three dots <strong>⋮</strong> in the top or bottom corner).
                 </div>
               </div>
 
@@ -314,7 +314,7 @@ const GenericInstructionsDialog: React.FC<GenericInstructionsDialogProps> = ({ i
                   2
                 </div>
                 <div className="text-sm font-medium text-slate-700 pt-0.5 leading-relaxed">
-                  Selecione <strong>"Instalar aplicação"</strong> ou <strong>"Adicionar ao ecrã inicial"</strong>.
+                  Select <strong>"Install app"</strong> or <strong>"Add to Home Screen"</strong>.
                 </div>
               </div>
 
@@ -335,7 +335,7 @@ const GenericInstructionsDialog: React.FC<GenericInstructionsDialogProps> = ({ i
                 onClick={onClose}
                 className="px-5 py-2.5 bg-[#046a38] text-white hover:bg-[#03522b] font-bold text-xs rounded-xl transition-colors cursor-pointer"
               >
-                Entendido
+                Got it
               </button>
             </div>
           </motion.div>

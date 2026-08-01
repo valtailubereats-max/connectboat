@@ -176,7 +176,7 @@ const AdminSuggestions = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mb-4"></div>
-          <p className="text-sm font-bold text-slate-500 tracking-tight">A carregar sugestões...</p>
+          <p className="text-sm font-bold text-slate-500 tracking-tight">Loading suggestions...</p>
         </div>
       ) : (
         <div className="grid lg:grid-cols-12 gap-8">

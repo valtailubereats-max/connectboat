@@ -5,7 +5,7 @@ export interface MarketingMaterial {
   id: string;
   title: string;
   category: string;
-  type: 'Texto' | 'Imagem/Banner' | 'Vídeo' | 'Link';
+  type: 'Text' | 'Image/Banner' | 'Video' | 'Link' | 'Texto' | 'Imagem/Banner' | 'Vídeo';
   description: string;
   content: string; // The copy text or main URL
   mediaUrl?: string; // Additional image/video/file URL when applicable

@@ -42,18 +42,18 @@ interface ColumnOption {
 }
 
 const ALL_COLUMNS: ColumnOption[] = [
-  { id: 'foto', label: 'Foto' },
-  { id: 'titulo', label: 'Título', mandatory: true },
-  { id: 'preco', label: 'Preço' },
+  { id: 'foto', label: 'Photo' },
+  { id: 'titulo', label: 'Title', mandatory: true },
+  { id: 'preco', label: 'Price' },
   { id: 'status', label: 'Status' },
-  { id: 'vendedor', label: 'Vendedor' },
-  { id: 'pais', label: 'País' },
-  { id: 'cidade', label: 'Cidade' },
-  { id: 'criacao', label: 'Criação' },
-  { id: 'expiracao', label: 'Expiração' },
-  { id: 'vistas', label: 'Vistas' },
-  { id: 'cliques', label: 'Cliques' },
-  { id: 'acoes', label: 'Ações rápidas', mandatory: true },
+  { id: 'vendedor', label: 'Seller' },
+  { id: 'pais', label: 'Country' },
+  { id: 'cidade', label: 'City' },
+  { id: 'criacao', label: 'Created' },
+  { id: 'expiracao', label: 'Expiry' },
+  { id: 'vistas', label: 'Views' },
+  { id: 'cliques', label: 'Clicks' },
+  { id: 'acoes', label: 'Quick actions', mandatory: true },
 ];
 
 const AdminAds = () => {
@@ -245,29 +245,29 @@ const AdminAds = () => {
               const notifId = `approval_${adId}_${Date.now()}`;
               const notifData = {
                 userId: adToUpdate.sellerId.trim(),
-                title: 'Anúncio aprovado',
-                message: `Seu anúncio "${adToUpdate.title}" foi aprovado e já está publicado.`,
+                title: 'Listing approved',
+                message: `Your listing "${adToUpdate.title}" has been approved and is now live.`,
                 createdAt: serverTimestamp(),
                 read: false,
                 adId: adId,
                 type: 'ad_approved'
               };
               await setDoc(doc(db, 'notifications', notifId), notifData);
-              console.log('[AdminAds] Notificação de aprovação gravada com sucesso!');
+              console.log('[AdminAds] Approval notification saved!');
             } catch (notifErr) {
-              console.warn('[AdminAds] Falha ao criar notificação de aprovação:', notifErr);
+              console.warn('[AdminAds] Failed to create approval notification:', notifErr);
             }
 
-            // Enviar email de aprovação (asíncrono, sem bloquear UI)
+            // Send approval email (async)
             getSellerEmail(adToUpdate.sellerId.trim()).then((email) => {
               if (email) {
                 sendEmailGeneric('anuncio_aprovado', email, {
-                  sellerName: adToUpdate.sellerName || 'Anunciante',
+                  sellerName: adToUpdate.sellerName || 'Advertiser',
                   adTitle: adToUpdate.title,
                   adId: adId
-                }).catch(err => console.warn('[AdminAds] Falha ao enviar email de aprovação:', err));
+                }).catch(err => console.warn('[AdminAds] Failed to send approval email:', err));
               }
-            }).catch(err => console.warn('[AdminAds] Falha ao obter email do vendedor:', err));
+            }).catch(err => console.warn('[AdminAds] Failed to get seller email:', err));
           } else {
             console.log('[AdminAds] Skipping approval email & notification for self-owned ad');
           }
@@ -278,8 +278,8 @@ const AdminAds = () => {
               const notifId = `rejection_${adId}_${Date.now()}`;
               const notifData = {
                 userId: adToUpdate.sellerId.trim(),
-                title: 'Anúncio rejeitado',
-                message: `Seu anúncio "${adToUpdate.title}" não pôde ser aprovado pela equipe de moderação.`,
+                title: 'Listing rejected',
+                message: `Your listing "${adToUpdate.title}" could not be approved by the moderation team.`,
                 createdAt: serverTimestamp(),
                 read: false,
                 adId: adId,
@@ -287,19 +287,19 @@ const AdminAds = () => {
               };
               await setDoc(doc(db, 'notifications', notifId), notifData);
             } catch (notifErr) {
-              console.warn('[AdminAds] Falha ao criar notificação de rejeição:', notifErr);
+              console.warn('[AdminAds] Failed to create rejection notification:', notifErr);
             }
 
-            // Enviar email de rejeição (asíncrono, sem bloquear UI)
+            // Send rejection email (async)
             getSellerEmail(adToUpdate.sellerId.trim()).then((email) => {
               if (email) {
                 sendEmailGeneric('anuncio_rejeitado', email, {
-                  sellerName: adToUpdate.sellerName || 'Anunciante',
+                  sellerName: adToUpdate.sellerName || 'Advertiser',
                   adTitle: adToUpdate.title,
-                  reason: 'Inadequação da descrição, preço inválido ou conteúdo contrário aos termos de publicação.'
-                }).catch(err => console.warn('[AdminAds] Falha ao enviar email de rejeição:', err));
+                  reason: 'Description inadequacy, invalid price or content contrary to terms.'
+                }).catch(err => console.warn('[AdminAds] Failed to send rejection email:', err));
               }
-            }).catch(err => console.warn('[AdminAds] Falha ao obter email do vendedor:', err));
+            }).catch(err => console.warn('[AdminAds] Failed to get seller email:', err));
           } else {
             console.log('[AdminAds] Skipping rejection email & notification for self-owned ad');
           }
@@ -316,23 +316,23 @@ const AdminAds = () => {
   };
 
   const handleDeleteAd = async (adId: string) => {
-    if (!window.confirm('Tem certeza que deseja eliminar permanentemente este anúncio? Esta ação é irreversível.')) return;
+    if (!window.confirm('Are you sure you want to permanently delete this listing? This action is irreversible.')) return;
     try {
       await deleteDoc(doc(db, 'ads', adId));
       clearHomeCache();
       setAds(prevAds => prevAds.filter(ad => ad.id !== adId));
       setSelectedAdIds(prev => prev.filter(id => id !== adId));
       if (selectedAd?.id === adId) setSelectedAd(null);
-      alert('Anúncio eliminado permanentemente com sucesso!');
+      alert('Listing permanently deleted successfully!');
     } catch (err) {
-      console.error('Erro ao eliminar anúncio:', err);
+      console.error('Error deleting listing:', err);
       handleFirestoreError(err, OperationType.DELETE, `ads/${adId}`);
     }
   };
 
   const handleBatchDelete = async () => {
     if (selectedAdIds.length === 0) return;
-    if (!window.confirm(`Tem certeza que deseja eliminar permanentemente os ${selectedAdIds.length} anúncios selecionados? Esta ação é irreversível.`)) return;
+    if (!window.confirm(`Are you sure you want to permanently delete the ${selectedAdIds.length} selected listings? This action is irreversible.`)) return;
 
     setBatchLoading(true);
     let successCount = 0;
@@ -343,7 +343,7 @@ const AdminAds = () => {
         await deleteDoc(doc(db, 'ads', id));
         successCount++;
       } catch (err) {
-        console.error(`Erro ao eliminar anúncio ${id}:`, err);
+        console.error(`Error deleting listing ${id}:`, err);
         failCount++;
       }
     });
@@ -354,13 +354,13 @@ const AdminAds = () => {
     if (selectedAd && selectedAdIds.includes(selectedAd.id)) setSelectedAd(null);
     setSelectedAdIds([]);
     setBatchLoading(false);
-    alert(`Eliminação em lote concluída: ${successCount} eliminados com sucesso.${failCount > 0 ? ` Falhas: ${failCount}` : ''}`);
+    alert(`Batch deletion completed: ${successCount} successfully deleted.${failCount > 0 ? ` Failures: ${failCount}` : ''}`);
   };
 
   const handleBatchAction = async (status: 'approved' | 'rejected') => {
     if (selectedAdIds.length === 0) return;
-    const actionLabel = status === 'approved' ? 'aprovar' : 'rejeitar';
-    const confirmMsg = `Deseja ${actionLabel} os ${selectedAdIds.length} anúncios selecionados em lote?`;
+    const actionLabel = status === 'approved' ? 'approve' : 'reject';
+    const confirmMsg = `Are you sure you want to ${actionLabel} the ${selectedAdIds.length} selected listings in batch?`;
     if (!window.confirm(confirmMsg)) return;
 
     setBatchLoading(true);
@@ -379,7 +379,7 @@ const AdminAds = () => {
     await Promise.all(promises);
     setBatchLoading(false);
     setSelectedAdIds([]);
-    alert(`Operação concluída com sucesso: ${successCount} anúncios atualizados.${failCount > 0 ? ` Falhas: ${failCount}` : ''}`);
+    alert(`Batch operation completed: ${successCount} listings updated.${failCount > 0 ? ` Failures: ${failCount}` : ''}`);
   };
 
   const handleRenewAd = async (adId: string) => {
@@ -395,7 +395,6 @@ const AdminAds = () => {
       });
       clearHomeCache();
       
-      // Update local state with a mock timestamp to avoid .toDate() errors in components
       const mockTimestamp = { toDate: () => newExpirationDate };
       
       setAds(prevAds => prevAds.map(ad => ad.id === adId ? { 
@@ -405,7 +404,7 @@ const AdminAds = () => {
         expirationDate: mockTimestamp 
       } as Ad : ad));
       
-      alert('Anúncio renovado com sucesso por mais 30 dias!');
+      alert('Listing successfully renewed for a further 30 days!');
     } catch (err) {
       console.error('Renew error:', err);
       handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
@@ -440,10 +439,10 @@ const AdminAds = () => {
       setAds(prevAds => prevAds.map(ad => ad.id === adId ? { ...ad, ...updates } as Ad : ad));
       setSelectedAd(prev => prev && prev.id === adId ? { ...prev, ...updates } as any : prev);
 
-      alert('Anúncio atualizado com sucesso como Empreendedores Reivindicáveis!');
+      alert('Listing successfully set as Claimable Business!');
     } catch (err) {
-      console.error('Erro ao tornar reivindicável:', err);
-      alert('Erro ao atualizar o anúncio: ' + (err instanceof Error ? err.message : String(err)));
+      console.error('Error making claimable:', err);
+      alert('Error updating listing: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setClaimActionLoading(false);
     }
@@ -457,7 +456,7 @@ const AdminAds = () => {
       if (!adToUpdate) return;
 
       if (adToUpdate.claimStatus === 'claimed') {
-        alert('Não é possível remover a reivindicação de um anúncio já aprovado e reivindicado.');
+        alert('Cannot remove claim status from an already approved and claimed business listing.');
         return;
       }
 
@@ -465,7 +464,6 @@ const AdminAds = () => {
         isClaimableBusiness: false,
         claimStatus: null,
         updatedAt: serverTimestamp()
-        // Wait, do we want to delete/reset the others? Setting claimStatus to null and isClaimableBusiness to false is perfect.
       };
 
       await updateDoc(doc(db, 'ads', adId), updates);
@@ -474,10 +472,10 @@ const AdminAds = () => {
       setAds(prevAds => prevAds.map(ad => ad.id === adId ? { ...ad, ...updates } as Ad : ad));
       setSelectedAd(prev => prev && prev.id === adId ? { ...prev, ...updates } as any : prev);
 
-      alert('Reivindicação removida com sucesso!');
+      alert('Claim status removed successfully!');
     } catch (err) {
-      console.error('Erro ao remover reivindicação:', err);
-      alert('Erro ao atualizar o anúncio: ' + (err instanceof Error ? err.message : String(err)));
+      console.error('Error removing claimable:', err);
+      alert('Error updating listing: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setClaimActionLoading(false);
     }
@@ -548,17 +546,17 @@ const AdminAds = () => {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Gerir Anúncios</h1>
-        <p className="text-slate-500 font-medium">Aprove, rejeite ou modere os anúncios da plataforma.</p>
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Manage Listings</h1>
+        <p className="text-slate-500 font-medium">Approve, reject or moderate platform listings.</p>
       </div>
 
       {/* Stats Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total', value: stats.total, color: 'bg-slate-100 text-slate-600' },
-          { label: 'Pendentes', value: stats.pending, color: stats.pending > 0 ? 'animate-pending-highlight text-amber-950 border-amber-300' : 'bg-amber-50 text-amber-600' },
-          { label: 'Aprovados', value: stats.approved, color: 'bg-emerald-50 text-emerald-600' },
-          { label: 'Expirados', value: stats.expired, color: 'bg-red-50 text-red-600' },
+          { label: 'Pending', value: stats.pending, color: stats.pending > 0 ? 'animate-pending-highlight text-amber-950 border-amber-300' : 'bg-amber-50 text-amber-600' },
+          { label: 'Approved', value: stats.approved, color: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Expired', value: stats.expired, color: 'bg-red-50 text-red-600' },
         ].map((stat, idx) => (
           <div key={idx} className={`p-4 rounded-2xl border border-slate-100 shadow-sm transition-all ${stat.color}`}>
             <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{stat.label}</p>
@@ -576,7 +574,7 @@ const AdminAds = () => {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text"
-              placeholder="Procurar por anúncio, descrição, vendedor, cidade ou ID..."
+              placeholder="Search by listing title, description, seller, city or ID..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -614,7 +612,7 @@ const AdminAds = () => {
               }`}
             >
               <List size={15} />
-              <span>Tabela</span>
+              <span>Table</span>
             </button>
           </div>
         </div>
@@ -623,16 +621,16 @@ const AdminAds = () => {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-2 border-t border-slate-100">
           {/* Status Segmented Filter - 6 columns */}
           <div className="md:col-span-6 flex flex-col gap-1.5">
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Filtrar por Status</label>
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Filter by Status</label>
             <div className="flex gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
               {[
-                { id: 'all', label: 'Todos' },
-                { id: 'pending', label: 'Pendentes' },
-                { id: 'duplicates', label: 'Duplicados⚠️' },
-                { id: 'approved', label: 'Ativos' },
-                { id: 'expired', label: 'Expirados' },
-                { id: 'rejected', label: 'Rejeitados' },
-                { id: 'archived', label: 'Arquivados' }
+                { id: 'all', label: 'All' },
+                { id: 'pending', label: 'Pending' },
+                { id: 'duplicates', label: 'Duplicates⚠️' },
+                { id: 'approved', label: 'Active' },
+                { id: 'expired', label: 'Expired' },
+                { id: 'rejected', label: 'Rejected' },
+                { id: 'archived', label: 'Archived' }
               ].map((filter) => (
                 <button
                   key={filter.id}
@@ -654,7 +652,7 @@ const AdminAds = () => {
 
           {/* Country Select Filter - 3 columns */}
           <div className="md:col-span-3 flex flex-col gap-1.5">
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">País</label>
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Country</label>
             <select
               value={countryFilter}
               onChange={(e) => {
@@ -663,15 +661,15 @@ const AdminAds = () => {
               }}
               className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-705 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
             >
-              <option value="all">🌍 Todos os Países</option>
+              <option value="all">🌍 All Countries</option>
               <option value="Portugal">🇵🇹 Portugal</option>
-              <option value="Reino Unido">🇬🇧 Reino Unido</option>
+              <option value="Reino Unido">🇬🇧 United Kingdom</option>
             </select>
           </div>
 
           {/* Period Select Filter - 3 columns */}
           <div className="md:col-span-3 flex flex-col gap-1.5">
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Data de Criação</label>
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Creation Date</label>
             <select
               value={periodFilter}
               onChange={(e) => {
@@ -680,18 +678,18 @@ const AdminAds = () => {
               }}
               className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-705 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
             >
-              <option value="all">📅 Todo o Período</option>
-              <option value="today">Hoje (últimas 24h)</option>
-              <option value="7days">Últimos 7 dias</option>
-              <option value="30days">Últimos 30 dias</option>
+              <option value="all">📅 All Time</option>
+              <option value="today">Today (last 24h)</option>
+              <option value="7days">Last 7 days</option>
+              <option value="30days">Last 30 days</option>
             </select>
           </div>
          </div>
         
-        {/* Colunas Visíveis Selector */}
+        {/* Visible Columns Selector */}
         {viewMode === 'table' && (
           <div className="pt-3.5 border-t border-slate-100 space-y-2">
-            <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Colunas visíveis</h4>
+            <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Visible columns</h4>
             <div className="flex flex-wrap gap-x-4 gap-y-2 bg-slate-50 p-3 rounded-xl border border-slate-150">
               {ALL_COLUMNS.map((col) => {
                 const isMandatory = col.mandatory;
@@ -723,7 +721,7 @@ const AdminAds = () => {
                     />
                     <span>
                       {col.label} 
-                      {isMandatory && <span className="text-[8px] text-indigo-500 font-black tracking-wider uppercase ml-1">(Obrigatória)</span>}
+                      {isMandatory && <span className="text-[8px] text-indigo-500 font-black tracking-wider uppercase ml-1">(Required)</span>}
                     </span>
                   </label>
                 );
@@ -734,18 +732,18 @@ const AdminAds = () => {
 
         {/* Info label about scope */}
         <div className="flex flex-wrap justify-between items-center gap-2 text-[10px] text-slate-400 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-          <span>A pesquisar localmente nos {ads.length} anúncios carregados na memória.</span>
+          <span>Searching locally in {ads.length} loaded listings.</span>
           <button 
             onClick={handleLoadMore}
             disabled={loading}
             className="text-indigo-600 hover:text-indigo-800 font-black uppercase tracking-wider transition-colors flex items-center gap-1 cursor-pointer"
           >
-            <span>Obter mais anúncios do servidor (+100)</span>
+            <span>Fetch more listings from server (+100)</span>
           </button>
         </div>
       </div>
 
-      {/* Barra de Ações em Massa / Lote */}
+      {/* Batch Actions Bar */}
       <AnimatePresence>
         {selectedAdIds.length > 0 && (
           <motion.div 
@@ -758,7 +756,7 @@ const AdminAds = () => {
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
                 <span className="text-xs font-black uppercase tracking-wider text-amber-900">
-                  {selectedAdIds.length} {selectedAdIds.length === 1 ? 'anúncio selecionado' : 'anúncios selecionados'}
+                  {selectedAdIds.length} {selectedAdIds.length === 1 ? 'listing selected' : 'listings selected'}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
@@ -768,7 +766,7 @@ const AdminAds = () => {
                   className="flex-1 sm:flex-initial h-9 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-100 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <CheckCircle size={14} />
-                  <span>Aprovar Selecionados</span>
+                  <span>Approve Selected</span>
                 </button>
                 <button
                   onClick={() => handleBatchAction('rejected')}
@@ -776,7 +774,7 @@ const AdminAds = () => {
                   className="flex-1 sm:flex-initial h-9 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-red-100"
                 >
                   <XCircle size={14} />
-                  <span>Rejeitar Selecionados</span>
+                  <span>Reject Selected</span>
                 </button>
                 <button
                   onClick={handleBatchDelete}
@@ -784,14 +782,14 @@ const AdminAds = () => {
                   className="flex-1 sm:flex-initial h-9 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-red-100"
                 >
                   <Trash2 size={14} />
-                  <span>Eliminar Selecionados</span>
+                  <span>Delete Selected</span>
                 </button>
                 <button
                   onClick={() => setSelectedAdIds([])}
                   disabled={batchLoading}
                   className="h-9 px-3.5 bg-white border border-slate-200 text-slate-500 hover:text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer"
                 >
-                  Desmarcar Todos
+                  Deselect All
                 </button>
               </div>
             </div>
@@ -800,11 +798,11 @@ const AdminAds = () => {
       </AnimatePresence>
 
       {loading ? (
-        <div className="text-center py-20 text-slate-400 font-bold animate-pulse">A carregar anúncios...</div>
+        <div className="text-center py-20 text-slate-400 font-bold animate-pulse">Loading listings...</div>
       ) : filteredAds.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
           <AlertCircle className="mx-auto text-slate-300 mb-4" size={48} />
-          <p className="text-slate-500 font-bold">Nenhum anúncio encontrado com os filtros selecionados.</p>
+          <p className="text-slate-500 font-bold">No listings found matching the selected filters.</p>
         </div>
       ) : viewMode === 'cards' ? (
         /* --- VIEW MODE: CARDS --- */
@@ -878,17 +876,17 @@ const AdminAds = () => {
                     <div className="mb-2 bg-amber-50 text-amber-800 border border-amber-100 rounded-lg p-2 text-[10px] font-semibold flex items-start gap-1">
                       <AlertCircle size={12} className="shrink-0 text-amber-600 mt-0.5" />
                       <div>
-                        <span>Suspeita Duplicado: {ad.duplicateReason}</span>
+                        <span>Suspected Duplicate: {ad.duplicateReason}</span>
                       </div>
                     </div>
                   )}
 
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-sm sm:text-base font-black text-indigo-600">
-                      {ad.category === '💚 Doações & Solidariedade' ? 'Grátis 💚' : formatPrice(ad.price, ad.country)}
+                      {ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}
                     </span>
                     <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
-                      • Vendedor: <span className="text-slate-600 font-semibold">{ad.sellerName || 'ValtailAdmin'}</span>
+                      • Seller: <span className="text-slate-600 font-semibold">{ad.sellerName || 'ValtailAdmin'}</span>
                     </span>
                   </div>
                 </div>
@@ -896,23 +894,23 @@ const AdminAds = () => {
 
               {/* Card Meta Row (Dates & Clicks) */}
               <div className="px-4 pb-3 sm:px-5 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] font-medium text-slate-400 border-b border-dashed border-slate-100 bg-white">
-                <div className="flex items-center gap-1" title="Data de Criação">
+                <div className="flex items-center gap-1" title="Creation Date">
                   <Clock size={13} className="text-indigo-400" />
-                  <span>Criado: {ad.createdAt?.toDate ? format(ad.createdAt.toDate(), 'dd MMM yyyy') : 'Recentemente'}</span>
+                  <span>Created: {ad.createdAt?.toDate ? format(ad.createdAt.toDate(), 'dd MMM yyyy') : 'Recently'}</span>
                 </div>
                 {ad.expirationDate && (
-                  <div className="flex items-center gap-1" title="Data de Expiração">
+                  <div className="flex items-center gap-1" title="Expiration Date">
                     <AlertCircle size={13} className="text-amber-400" />
                     <span>EXP: {ad.expirationDate.toDate ? format(ad.expirationDate.toDate(), 'dd MMM yyyy') : 'N/A'}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1">
                   <Eye size={13} className="text-slate-400" />
-                  <span>{ad.views || 0} vistas</span>
+                  <span>{ad.views || 0} views</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <MessageSquare size={13} className="text-slate-400" />
-                  <span>{ad.whatsappClicks || 0} cliques</span>
+                  <span>{ad.whatsappClicks || 0} clicks</span>
                 </div>
               </div>
 
@@ -923,36 +921,36 @@ const AdminAds = () => {
                   <button
                     onClick={() => setSelectedAd(ad)}
                     className="h-9 px-3 flex items-center gap-1.5 text-indigo-600 bg-white hover:bg-indigo-50 border border-indigo-100 rounded-xl transition-all font-bold text-[11px]"
-                    title="Visualizar Anúncio Completo"
+                    title="View Full Listing"
                   >
                     <Eye size={14} />
-                    <span>Visualizar</span>
+                    <span>View</span>
                   </button>
 
                   <button
                     onClick={() => navigate(`/edit-ad/${ad.id}`)}
                     className="h-9 px-3 flex items-center gap-1.5 text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all font-bold text-[11px]"
-                    title="Editar Anúncio"
+                    title="Edit Listing"
                   >
                     <Edit size={14} />
-                    <span>Editar</span>
+                    <span>Edit</span>
                   </button>
 
                   {ad.isClaimableBusiness ? (
                     ad.claimStatus === 'claimed' ? (
-                      <span className="h-9 px-3 flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl font-bold text-[11px]" title="Proprietário verificado">
+                      <span className="h-9 px-3 flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl font-bold text-[11px]" title="Verified Owner">
                         <ShieldCheck size={14} className="text-emerald-600" />
-                        <span>Proprietário verificado</span>
+                        <span>Verified Owner</span>
                       </span>
                     ) : (
                       <button
                         onClick={() => handleRemoveClaimable(ad.id)}
                         disabled={claimActionLoading}
                         className="h-9 px-3 flex items-center gap-1.5 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all font-bold text-[11px] disabled:opacity-50"
-                        title="Remover Reivindicação"
+                        title="Remove Claim Status"
                       >
                         <ShieldAlert size={14} />
-                        <span>Remover Reivindicação</span>
+                        <span>Remove Claim</span>
                       </button>
                     )
                   ) : (
@@ -960,10 +958,10 @@ const AdminAds = () => {
                       onClick={() => handleMakeClaimable(ad.id)}
                       disabled={claimActionLoading}
                       className="h-9 px-3 flex items-center gap-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-xl transition-all font-bold text-[11px] disabled:opacity-50"
-                      title="Tornar Reivindicável"
+                      title="Make Claimable Business"
                     >
                       <ShieldCheck size={14} />
-                      <span>Tornar Reivindicável</span>
+                      <span>Make Claimable</span>
                     </button>
                   )}
                 </div>
@@ -973,7 +971,7 @@ const AdminAds = () => {
                   {(ad.status === 'expired' || ad.adStatus === 'expired') && (
                     <button
                       onClick={() => {
-                        if (window.confirm('Reativar este anúncio por mais 30 dias?')) {
+                        if (window.confirm('Reactivate this listing for a further 30 days?')) {
                           handleRenewAd(ad.id);
                         }
                       }}
@@ -989,7 +987,7 @@ const AdminAds = () => {
                       ) : (
                         <RefreshCcw size={13} />
                       )}
-                      <span>Reativar</span>
+                      <span>Reactivate</span>
                     </button>
                   )}
 
@@ -997,7 +995,7 @@ const AdminAds = () => {
                     <div className="flex gap-1.5 items-center">
                       <button
                         onClick={() => {
-                          if (window.confirm('Renovar este anúncio por mais 30 dias?')) {
+                          if (window.confirm('Renew this listing for a further 30 days?')) {
                             handleRenewAd(ad.id);
                           }
                         }}
@@ -1005,14 +1003,14 @@ const AdminAds = () => {
                         className={`h-9 px-3.5 flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl transition-all font-bold text-[11px] ${
                           renewingId === ad.id ? 'opacity-50' : ''
                         }`}
-                        title="Renovar anúncio por mais 30 dias"
+                        title="Renew listing for 30 days"
                       >
                         {renewingId === ad.id ? (
                           <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-emerald-600 rounded-full animate-spin" />
                         ) : (
                           <RefreshCcw size={13} />
                         )}
-                        <span>Renovar</span>
+                        <span>Renew</span>
                       </button>
 
                       <button
@@ -1020,7 +1018,7 @@ const AdminAds = () => {
                         className="h-9 px-3 flex items-center gap-1.5 text-slate-500 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all font-bold text-[11px]"
                       >
                         <Archive size={14} />
-                        <span>Arquivar</span>
+                        <span>Archive</span>
                       </button>
                     </div>
                   )}
@@ -1032,14 +1030,14 @@ const AdminAds = () => {
                         className="h-9 px-3.5 bg-emerald-500 text-white hover:bg-emerald-600 rounded-xl transition-all font-bold flex items-center gap-1.5 text-[11px] shadow-sm shadow-emerald-100"
                       >
                         <CheckCircle size={14} />
-                        <span>Aprovar</span>
+                        <span>Approve</span>
                       </button>
                       <button
                         onClick={() => handleAdAction(ad.id, 'rejected')}
                         className="h-9 px-3.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-xl transition-all font-bold flex items-center gap-1.5 text-[11px]"
                       >
                         <XCircle size={14} />
-                        <span>Rejeitar</span>
+                        <span>Reject</span>
                       </button>
                     </div>
                   )}
@@ -1047,7 +1045,7 @@ const AdminAds = () => {
                   <button
                     onClick={() => handleDeleteAd(ad.id)}
                     className="h-9 w-9 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-100 rounded-xl transition-all shrink-0 animate-none"
-                    title="Eliminar permanentemente"
+                    title="Permanently delete"
                   >
                     <Trash2 size={15} />
                   </button>
@@ -1057,7 +1055,7 @@ const AdminAds = () => {
           ))}
         </div>
       ) : (
-        /* --- VIEW MODE: TABELA ERP (Highly Scalable Layout) --- */
+        /* --- VIEW MODE: TABLE --- */
         <div className="space-y-4">
           {/* Desktop/Tablet Table layout */}
           <div className="hidden md:block overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
@@ -1079,18 +1077,18 @@ const AdminAds = () => {
                       className="rounded border-slate-300 text-indigo-650 focus:ring-indigo-500/20 w-4 h-4 cursor-pointer"
                     />
                   </th>
-                  {isColVisible('foto') && <th className="py-3 px-4 w-16 text-center">Foto</th>}
-                  {isColVisible('titulo') && <th className="py-3 px-4">Anúncio</th>}
-                  {isColVisible('pais') && <th className="py-3 px-4 text-center">País</th>}
-                  {isColVisible('cidade') && <th className="py-3 px-4">Cidade / Localidade</th>}
-                  {isColVisible('preco') && <th className="py-3 px-4">Preço</th>}
+                  {isColVisible('foto') && <th className="py-3 px-4 w-16 text-center">Photo</th>}
+                  {isColVisible('titulo') && <th className="py-3 px-4">Listing</th>}
+                  {isColVisible('pais') && <th className="py-3 px-4 text-center">Country</th>}
+                  {isColVisible('cidade') && <th className="py-3 px-4">City / Location</th>}
+                  {isColVisible('preco') && <th className="py-3 px-4">Price</th>}
                   {isColVisible('status') && <th className="py-3 px-4 text-center">Status</th>}
-                  {isColVisible('vendedor') && <th className="py-3 px-4">Vendedor</th>}
-                  {isColVisible('criacao') && <th className="py-3 px-4">Criação</th>}
-                  {isColVisible('expiracao') && <th className="py-3 px-4">Expiração</th>}
-                  {isColVisible('vistas') && <th className="py-3 px-4 text-center">Vistas</th>}
-                  {isColVisible('cliques') && <th className="py-3 px-4 text-center">Cliques</th>}
-                  {isColVisible('acoes') && <th className="py-3 px-4 text-right pr-6">Ações Rápidas</th>}
+                  {isColVisible('vendedor') && <th className="py-3 px-4">Seller</th>}
+                  {isColVisible('criacao') && <th className="py-3 px-4">Created</th>}
+                  {isColVisible('expiracao') && <th className="py-3 px-4">Expiry</th>}
+                  {isColVisible('vistas') && <th className="py-3 px-4 text-center">Views</th>}
+                  {isColVisible('cliques') && <th className="py-3 px-4 text-center">Clicks</th>}
+                  {isColVisible('acoes') && <th className="py-3 px-4 text-right pr-6">Quick Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1143,7 +1141,7 @@ const AdminAds = () => {
                               </div>
                               {ad.isDuplicate && (
                                 <span className="bg-amber-100 text-amber-800 text-[8px] font-black uppercase tracking-wider px-1 rounded inline-block whitespace-nowrap shrink-0" title={ad.duplicateReason}>
-                                  Duplicado⚠️
+                                  Duplicate⚠️
                                 </span>
                               )}
                             </div>
@@ -1170,7 +1168,7 @@ const AdminAds = () => {
                       {/* Price Column */}
                       {isColVisible('preco') && (
                         <td className="py-3 px-4 border-none text-indigo-650 font-black whitespace-nowrap">
-                          {ad.category === '💚 Doações & Solidariedade' ? 'Grátis 💚' : formatPrice(ad.price, ad.country)}
+                          {ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}
                         </td>
                       )}
 
@@ -1211,7 +1209,7 @@ const AdminAds = () => {
                       {/* Creation Date */}
                       {isColVisible('criacao') && (
                         <td className="py-3 px-4 border-none text-slate-500 whitespace-nowrap">
-                          {ad.createdAt?.toDate ? format(ad.createdAt.toDate(), 'dd MMM yyyy') : 'Recentemente'}
+                          {ad.createdAt?.toDate ? format(ad.createdAt.toDate(), 'dd MMM yyyy') : 'Recently'}
                         </td>
                       )}
 
@@ -1240,40 +1238,40 @@ const AdminAds = () => {
                       {isColVisible('acoes') && (
                         <td className="py-3 px-4 border-none text-right pr-6">
                           <div className="flex gap-1 items-center justify-end">
-                            {/* Visualizar */}
+                            {/* View */}
                             <button
                               onClick={() => setSelectedAd(ad)}
                               className="p-1 px-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-150 border border-indigo-100 rounded-lg transition-all text-[10px] font-bold"
-                              title="Ver Detalhes"
+                              title="View Details"
                             >
-                              Ver
+                              View
                             </button>
 
-                            {/* Editar */}
+                            {/* Edit */}
                             <button
                               onClick={() => navigate(`/edit-ad/${ad.id}`)}
                               className="p-1 px-2 text-slate-600 bg-slate-50 hover:bg-slate-150 border border-slate-200 rounded-lg transition-all text-[10px] font-bold"
-                              title="Editar"
+                              title="Edit"
                             >
-                              Editar
+                              Edit
                             </button>
 
-                            {/* Reivindicação Controls */}
+                            {/* Claim Controls */}
                             {ad.isClaimableBusiness ? (
                               ad.claimStatus === 'claimed' ? (
-                                <span className="p-1 px-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-bold flex items-center gap-1" title="Proprietário verificado">
+                                <span className="p-1 px-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-bold flex items-center gap-1" title="Verified Owner">
                                   <ShieldCheck size={12} className="text-emerald-600" />
-                                  <span>Proprietário verificado</span>
+                                  <span>Verified Owner</span>
                                 </span>
                               ) : (
                                 <button
                                   onClick={() => handleRemoveClaimable(ad.id)}
                                   disabled={claimActionLoading}
                                   className="p-1 px-2 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-all text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
-                                  title="Remover Reivindicação"
+                                  title="Remove Claim Status"
                                 >
                                   <ShieldAlert size={12} />
-                                  <span>Remover Reivindicação</span>
+                                  <span>Remove Claim</span>
                                 </button>
                               )
                             ) : (
@@ -1281,70 +1279,70 @@ const AdminAds = () => {
                                 onClick={() => handleMakeClaimable(ad.id)}
                                 disabled={claimActionLoading}
                                 className="p-1 px-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-lg transition-all text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
-                                title="Tornar Reivindicável"
+                                title="Make Claimable Business"
                               >
                                 <ShieldCheck size={12} />
-                                <span>Tornar Reivindicável</span>
+                                <span>Make Claimable</span>
                               </button>
                             )}
 
-                            {/* Aprove/Reject */}
+                            {/* Approve/Reject */}
                             {ad.status === 'pending' && (
                               <>
                                 <button
                                   onClick={() => handleAdAction(ad.id, 'approved')}
                                   className="p-1 text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-all"
-                                  title="Aprovar"
+                                  title="Approve"
                                 >
                                   <CheckCircle size={14} />
                                 </button>
                                 <button
                                   onClick={() => handleAdAction(ad.id, 'rejected')}
                                   className="p-1 text-red-650 bg-red-50 hover:bg-red-200 rounded-lg transition-all"
-                                  title="Rejeitar"
+                                  title="Reject"
                                 >
                                   <XCircle size={14} />
                                 </button>
                               </>
                             )}
 
-                            {/* Reativar / Renovar */}
+                            {/* Reactivate / Renew */}
                             {(ad.status === 'expired' || ad.adStatus === 'expired') && (
                               <button
                                 onClick={() => {
-                                  if (window.confirm('Deseja reativar este anúncio por mais 30 dias?')) {
+                                  if (window.confirm('Reactivate this listing for a further 30 days?')) {
                                     handleRenewAd(ad.id);
                                   }
                                 }}
                                 disabled={renewingId === ad.id}
                                 className="p-1 px-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-lg transition-all text-[10px] font-extrabold"
                               >
-                                Reativar
+                                Reactivate
                               </button>
                             )}
 
-                            {/* Renovar (Active approved ads) */}
+                            {/* Renew (Active approved ads) */}
                             {ad.status === 'approved' && !ad.adStatus?.includes('expired') && (
                               <button
                                 onClick={() => {
-                                  if (window.confirm('Renovar este anúncio por mais 30 dias?')) {
+                                  if (window.confirm('Renew this listing for a further 30 days?')) {
                                     handleRenewAd(ad.id);
                                   }
                                 }}
                                 disabled={renewingId === ad.id}
                                 className="p-1 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all"
-                                title="Renovar (+30 dias)"
+                                title="Renew (+30 days)"
                               >
                                 <RefreshCcw size={13} className={renewingId === ad.id ? 'animate-spin' : ''} />
                               </button>
                             )}
 
-                            {/* Arquivar */}
+                            {/* Archive */}
                             {ad.status === 'approved' && !ad.adStatus?.includes('expired') && (
                               <button
                                 onClick={() => handleAdAction(ad.id, 'archived')}
                                 className="p-1 text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-all"
-                                title="Arquivar"
+                                title="Archive"
                               >
                                 <Archive size={13} />
                               </button>
@@ -1354,7 +1352,7 @@ const AdminAds = () => {
                             <button
                               onClick={() => handleDeleteAd(ad.id)}
                               className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-100 rounded-lg transition-all"
-                              title="Eliminar permanentemente"
+                              title="Permanently delete"
                             >
                               <Trash2 size={13} />
                             </button>
@@ -1400,7 +1398,7 @@ const AdminAds = () => {
                       {ad.title}
                     </h4>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      {countryIcon} {ad.city} • <span className="font-extrabold text-indigo-600">{ad.category === '💚 Doações & Solidariedade' ? 'Grátis 💚' : formatPrice(ad.price, ad.country)}</span>
+                      {countryIcon} {ad.city} • <span className="font-extrabold text-indigo-600">{ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}</span>
                     </p>
                     <div className="flex gap-1 mt-1">
                       <span className={`inline-block text-[8px] font-black px-1.5 py-0.2 rounded uppercase ${
@@ -1417,7 +1415,7 @@ const AdminAds = () => {
                       onClick={() => setSelectedAd(ad)}
                       className="p-1 px-1.5 bg-indigo-50 text-indigo-600 border border-indigo-100 transition-colors text-[9px] font-extrabold rounded-md"
                     >
-                      Ver
+                      View
                     </button>
                     <button
                       onClick={() => navigate(`/edit-ad/${ad.id}`)}
@@ -1438,11 +1436,11 @@ const AdminAds = () => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 bg-none">
           {/* Page Info */}
           <p className="text-xs text-slate-500 font-bold">
-            Mostrando <span className="text-slate-800">{(currentPage - 1) * pageSize + 1}</span> a{' '}
+            Showing <span className="text-slate-800">{(currentPage - 1) * pageSize + 1}</span> to{' '}
             <span className="text-slate-800">
               {Math.min(currentPage * pageSize, filteredAds.length)}
             </span>{' '}
-            de <span className="text-slate-800">{filteredAds.length}</span> resultados filtrados (carregados: {ads.length})
+            of <span className="text-slate-800">{filteredAds.length}</span> filtered results ({ads.length} loaded)
           </p>
 
           {/* Pagination Controls */}
@@ -1452,17 +1450,17 @@ const AdminAds = () => {
               disabled={currentPage === 1}
               className="px-3.5 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl text-slate-600 disabled:opacity-40 disabled:pointer-events-none hover:bg-slate-50 transition-all cursor-pointer"
             >
-              Anterior
+              Previous
             </button>
             <span className="px-3.5 py-1.5 bg-slate-50 text-xs font-bold rounded-xl text-slate-700 border border-slate-150">
-              Pág. {currentPage} de {totalPages}
+              Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
               className="px-3.5 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl text-slate-600 disabled:opacity-40 disabled:pointer-events-none hover:bg-slate-50 transition-all cursor-pointer"
             >
-              Seguinte
+              Next
             </button>
           </div>
 
@@ -1477,7 +1475,7 @@ const AdminAds = () => {
             ) : (
               <RefreshCcw size={14} className="text-indigo-650" />
             )}
-            <span>Carregar mais do Banco de Dados</span>
+            <span>Load More from Database</span>
           </button>
         </div>
       )}
@@ -1499,13 +1497,13 @@ const AdminAds = () => {
                     {selectedAd.title}
                   </h2>
                   <p className="text-xs text-slate-500 font-medium mt-1">
-                    ID do Anúncio: <span className="font-mono">{selectedAd.id}</span>
+                    Listing ID: <span className="font-mono">{selectedAd.id}</span>
                   </p>
                 </div>
                 <button
                   onClick={() => setSelectedAd(null)}
                   className="h-10 w-10 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
-                  aria-label="Fechar"
+                  aria-label="Close"
                 >
                   <X size={20} />
                 </button>
@@ -1528,7 +1526,7 @@ const AdminAds = () => {
                         <div key={i} className="aspect-video bg-slate-50 rounded-xl overflow-hidden border border-slate-100 flex items-center justify-center">
                           <img
                             src={img}
-                            alt={`Imagem ${i + 1}`}
+                            alt={`Image ${i + 1}`}
                             className="max-h-full max-w-full object-contain"
                           />
                         </div>
@@ -1537,11 +1535,11 @@ const AdminAds = () => {
                   )}
                 </div>
 
-                {/* Ajuste de Enquadramento */}
+                {/* Image Framing Adjustment */}
                 <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-2xl space-y-4">
                   <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5 pb-2 border-b border-slate-200">
                     <ImageIcon size={14} className="text-indigo-500" />
-                    Enquadramento de Imagem (Ajuste Administrador)
+                    Image Framing (Admin Adjustment)
                   </h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
@@ -1551,7 +1549,7 @@ const AdminAds = () => {
                       <div className="w-28 h-28 bg-slate-200 rounded-xl overflow-hidden border border-slate-300 relative shadow-inner">
                         <img 
                           src={selectedAd.imageUrl} 
-                          alt="Visualização do enquadramento" 
+                          alt="Framing preview" 
                           className="w-full h-full object-cover transition-all duration-75"
                           style={{
                             objectPosition: `${adminImagePositionX}% ${adminImagePositionY}%`,
@@ -1627,7 +1625,7 @@ const AdminAds = () => {
                           }}
                           className="flex-1 py-1.5 px-2 bg-indigo-50 border border-indigo-100/70 hover:bg-indigo-100/60 text-[10px] font-bold text-indigo-600 rounded-lg transition-colors cursor-pointer text-center"
                         >
-                          Centralizar
+                          Center
                         </button>
                         <button
                           type="button"
@@ -1638,7 +1636,7 @@ const AdminAds = () => {
                           }}
                           className="flex-1 py-1.5 px-2 bg-slate-100 border border-slate-200 hover:bg-slate-200/60 text-[10px] font-bold text-slate-600 rounded-lg transition-colors cursor-pointer text-center"
                         >
-                          Repor
+                          Reset
                         </button>
                       </div>
                     </div>
@@ -1655,7 +1653,7 @@ const AdminAds = () => {
                           : 'bg-slate-900 hover:bg-indigo-600 text-white'
                       }`}
                     >
-                      {savingPosition ? 'A Guardar...' : savedPositionSuccess ? '✓ Guardado com Sucesso!' : 'Guardar Enquadramento'}
+                      {savingPosition ? 'Saving...' : savedPositionSuccess ? '✓ Saved Successfully!' : 'Save Framing'}
                     </button>
                   </div>
                 </div>
@@ -1671,12 +1669,12 @@ const AdminAds = () => {
                   </span>
                   {selectedAd.adStatus && selectedAd.adStatus !== selectedAd.status && (
                     <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-indigo-50 text-indigo-600 font-sans">
-                      Ciclo: {selectedAd.adStatus}
+                      Cycle: {selectedAd.adStatus}
                     </span>
                   )}
                   {selectedAd.plan && (
                     <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-purple-50 text-purple-600 font-sans">
-                      Plano: {selectedAd.plan}
+                      Plan: {selectedAd.plan}
                     </span>
                   )}
                 </div>
@@ -1684,14 +1682,14 @@ const AdminAds = () => {
                 {/* Primary Details Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
-                    <p className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">Preço</p>
+                    <p className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">Price</p>
                     <p className="text-2xl font-black text-slate-950 mt-1">
-                      {selectedAd.category === '💚 Doações & Solidariedade' ? 'Grátis 💚' : formatPrice(selectedAd.price, selectedAd.country)}
+                      {selectedAd.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(selectedAd.price, selectedAd.country)}
                     </p>
                   </div>
 
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Localização & Categoria</p>
+                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Location & Category</p>
                     <div className="space-y-1.5 mt-2">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
                         <MapPin size={14} className="text-red-500 shrink-0" />
@@ -1709,32 +1707,32 @@ const AdminAds = () => {
                   <div className="bg-amber-50 text-amber-900 border-2 border-amber-200 rounded-2xl p-4 text-xs font-semibold space-y-1">
                     <div className="flex items-center gap-1.5 font-bold text-amber-800">
                       <AlertCircle size={16} className="text-amber-600 shrink-0" />
-                      <span>ALERTA DE ANÚNCIO DUPLICADO</span>
+                      <span>DUPLICATE LISTING ALERT</span>
                     </div>
                     <p className="text-slate-705 leading-relaxed font-medium">
-                      O sistema identificou este anúncio como um potencial duplicado do mesmo vendedor.
+                      The system identified this listing as a potential duplicate from the same seller.
                     </p>
                     <p className="text-slate-900 font-black bg-amber-100/40 p-2.5 rounded-xl mt-1 select-text">
-                      Razão: {selectedAd.duplicateReason}
+                      Reason: {selectedAd.duplicateReason}
                     </p>
                   </div>
                 )}
 
                 {/* Description */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Descrição Completa</h4>
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Full Description</h4>
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-sm text-slate-700 font-medium whitespace-pre-wrap break-words overflow-hidden leading-relaxed">
-                    {selectedAd.description || 'Sem descrição fornecida.'}
+                    {selectedAd.description || 'No description provided.'}
                   </div>
                 </div>
 
                 {/* Seller Info */}
                 <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 space-y-2">
-                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Informações do Vendedor</h4>
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Seller Information</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <p className="text-slate-600 font-medium">Nome: <span className="text-slate-900 font-bold">{selectedAd.sellerName}</span></p>
-                    <p className="text-slate-600 font-medium">Telemóvel: <span className="text-slate-900 font-bold">{selectedAd.sellerPhone}</span></p>
-                    <p className="text-slate-600 font-medium sm:col-span-2">ID do Vendedor: <span className="text-slate-950 font-mono select-all bg-slate-100 px-1 py-0.5 rounded">{selectedAd.sellerId}</span></p>
+                    <p className="text-slate-600 font-medium">Name: <span className="text-slate-900 font-bold">{selectedAd.sellerName}</span></p>
+                    <p className="text-slate-600 font-medium">Phone: <span className="text-slate-900 font-bold">{selectedAd.sellerPhone}</span></p>
+                    <p className="text-slate-600 font-medium sm:col-span-2">Seller ID: <span className="text-slate-950 font-mono select-all bg-slate-100 px-1 py-0.5 rounded">{selectedAd.sellerId}</span></p>
                   </div>
                 </div>
               </div>
@@ -1742,10 +1740,10 @@ const AdminAds = () => {
               {/* Actions Footer */}
               <div className="p-6 border-t border-slate-100 bg-slate-50/80 flex flex-wrap gap-3 items-center justify-between">
                 <div>
-                  <p className="text-[10px] font-black uppercase text-slate-400">Criado em</p>
+                  <p className="text-[10px] font-black uppercase text-slate-400">Created on</p>
                   <p className="text-xs font-bold text-slate-700 mt-1 flex items-center gap-1">
                     <Clock size={12} />
-                    {selectedAd.createdAt?.toDate ? format(selectedAd.createdAt.toDate(), 'dd MMM yyyy HH:mm', { locale: pt }) : 'Recentemente'}
+                    {selectedAd.createdAt?.toDate ? format(selectedAd.createdAt.toDate(), 'dd MMM yyyy HH:mm') : 'Recently'}
                   </p>
                 </div>
 
@@ -1756,10 +1754,10 @@ const AdminAds = () => {
                       navigate(`/edit-ad/${selectedAd.id}`);
                     }}
                     className="h-10 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-xl transition-all flex items-center gap-2"
-                    title="Editar Anúncio"
+                    title="Edit Listing"
                   >
                     <Edit size={16} />
-                    <span>Editar</span>
+                    <span>Edit</span>
                   </button>
                   {selectedAd.status === 'pending' && (
                     <>
@@ -1768,44 +1766,44 @@ const AdminAds = () => {
                           const success = await handleAdAction(selectedAd.id, 'approved');
                           if (success) {
                             setSelectedAd(null);
-                            alert('Anúncio aprovado com sucesso!');
+                            alert('Listing approved successfully!');
                           }
                         }}
                         className="h-10 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-sm shadow-emerald-100"
                       >
                         <CheckCircle size={16} />
-                        <span>Aprovar</span>
+                        <span>Approve</span>
                       </button>
                       <button
                         onClick={async () => {
                           const success = await handleAdAction(selectedAd.id, 'rejected');
                           if (success) {
                             setSelectedAd(null);
-                            alert('Anúncio rejeitado com sucesso!');
+                            alert('Listing rejected successfully!');
                           }
                         }}
                         className="h-10 px-4 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
                       >
                         <XCircle size={16} />
-                        <span>Rejeitar</span>
+                        <span>Reject</span>
                       </button>
                     </>
                   )}
                   {selectedAd.isClaimableBusiness ? (
                     selectedAd.claimStatus === 'claimed' ? (
-                      <span className="h-10 px-4 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl flex items-center gap-2" title="Proprietário verificado">
+                      <span className="h-10 px-4 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl flex items-center gap-2" title="Verified Owner">
                         <ShieldCheck size={16} className="text-emerald-600" />
-                        <span>Proprietário verificado</span>
+                        <span>Verified Owner</span>
                       </span>
                     ) : (
                       <button
                         onClick={() => handleRemoveClaimable(selectedAd.id)}
                         disabled={claimActionLoading}
                         className="h-10 px-4 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
-                        title="Remover Reivindicação"
+                        title="Remove Claim Status"
                       >
                         <ShieldAlert size={16} />
-                        <span>Remover Reivindicação</span>
+                        <span>Remove Claim</span>
                       </button>
                     )
                   ) : (
@@ -1813,25 +1811,25 @@ const AdminAds = () => {
                       onClick={() => handleMakeClaimable(selectedAd.id)}
                       disabled={claimActionLoading}
                       className="h-10 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
-                      title="Tornar Reivindicável"
+                      title="Make Claimable Business"
                     >
                       <ShieldCheck size={16} />
-                      <span>Tornar Reivindicável</span>
+                      <span>Make Claimable</span>
                     </button>
                   )}
                   <button
                     onClick={() => handleDeleteAd(selectedAd.id)}
                     className="h-10 px-4 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
-                    title="Eliminar permanentemente"
+                    title="Permanently delete"
                   >
                     <Trash2 size={16} />
-                    <span>Eliminar</span>
+                    <span>Delete</span>
                   </button>
                   <button
                     onClick={() => setSelectedAd(null)}
                     className="h-10 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-all"
                   >
-                    Fechar
+                    Close
                   </button>
                 </div>
               </div>

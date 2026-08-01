@@ -124,7 +124,7 @@ const AdminMarketing = () => {
       const isValidImageExtension = ['jpg', 'jpeg', 'png', 'webp'].includes(extension || '');
       const isValidImageType = allowedImageTypes.includes(file.type);
       if (!isValidImageExtension && !isValidImageType) {
-        setUploadError('Formato de imagem não suportado. Use apenas JPG, JPEG, PNG ou WEBP.');
+        setUploadError('Unsupported image format. Use JPG, JPEG, PNG, or WEBP only.');
         return;
       }
     }
@@ -133,7 +133,7 @@ const AdminMarketing = () => {
       const isValidVideoExtension = extension === 'mp4';
       const isValidVideoType = allowedVideoTypes.includes(file.type);
       if (!isValidVideoExtension && !isValidVideoType) {
-        setUploadError('Formato de vídeo não suportado. Use apenas MP4.');
+        setUploadError('Unsupported video format. Use MP4 only.');
         return;
       }
     }
@@ -165,7 +165,7 @@ const AdminMarketing = () => {
       },
       (error) => {
         console.error('[Marketing Upload] Failed:', error);
-        setUploadError('Erro no envio: ' + (error.message || 'Tente novamente.'));
+        setUploadError('Upload error: ' + (error.message || 'Please try again.'));
         setUploadProgress(null);
       },
       async () => {
@@ -176,7 +176,7 @@ const AdminMarketing = () => {
           setUploadSuccess(true);
         } catch (downloadErr) {
           console.error('[Marketing Upload] Error getting download URL:', downloadErr);
-          setUploadError('Falha ao obter URL pública do Storage.');
+          setUploadError('Failed to get public Storage URL.');
           setUploadProgress(null);
         }
       }
@@ -243,8 +243,8 @@ const AdminMarketing = () => {
   const openCreateModal = () => {
     setEditingMaterial(null);
     setFormTitle('');
-    // Safely default to 'Geral' or first existing category
-    const defaultCat = categories.length > 0 ? categories[0].name : 'Geral';
+    // Safely default to 'General' or first existing category
+    const defaultCat = categories.length > 0 ? categories[0].name : 'General';
     setFormCategory(defaultCat);
     setFormType('Texto');
     setFormDescription('');
@@ -268,10 +268,10 @@ const AdminMarketing = () => {
 
   const handleDelete = async (id: string, name: string) => {
     if (!hasDeletePermission) {
-      alert('Apenas administradores podem eliminar materiais de marketing.');
+      alert('Only administrators can delete marketing assets.');
       return;
     }
-    if (!window.confirm(`Tem a certeza que deseja eliminar o material de marketing "${name}"?`)) {
+    if (!window.confirm(`Are you sure you want to delete the marketing asset "${name}"?`)) {
       return;
     }
     
@@ -286,12 +286,12 @@ const AdminMarketing = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasWritePermission) {
-      alert('Não possui permissão para editar ou criar materiais.');
+      alert('You do not have permission to edit or create assets.');
       return;
     }
 
     if (!formTitle.trim() || !formDescription.trim() || !formContent.trim()) {
-      alert('Preencha todos os campos obrigatórios (Título, Descrição e Conteúdo).');
+      alert('Please fill in all required fields (Title, Description, and Content).');
       return;
     }
 
@@ -305,7 +305,7 @@ const AdminMarketing = () => {
       content: formContent.trim(),
       mediaUrl: formMediaUrl.trim() || undefined,
       createdAt: editingMaterial ? editingMaterial.createdAt : new Date().toISOString(),
-      createdBy: editingMaterial ? editingMaterial.createdBy : (user?.email || 'Administração'),
+      createdBy: editingMaterial ? editingMaterial.createdBy : (user?.email || 'Administration'),
       visualType: 'gradient',
       visualValue: formVisualValue
     };
@@ -323,7 +323,7 @@ const AdminMarketing = () => {
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hasWritePermission) {
-      alert('Sem permissões para gerir categorias.');
+      alert('No permission to manage categories.');
       return;
     }
     if (!newCategoryName.trim()) return;
@@ -332,7 +332,7 @@ const AdminMarketing = () => {
       c => c.name.toLowerCase() === newCategoryName.trim().toLowerCase()
     );
     if (exists) {
-      alert('Esta categoria já existe!');
+      alert('This category already exists!');
       return;
     }
     
@@ -355,7 +355,7 @@ const AdminMarketing = () => {
 
   const handleSaveCategoryEdit = async (id: string) => {
     if (!hasWritePermission) {
-      alert('Sem permissões para gerir categorias.');
+      alert('No permission to manage categories.');
       return;
     }
     if (!editingCategoryName.trim()) return;
@@ -364,7 +364,7 @@ const AdminMarketing = () => {
       c => c.id !== id && c.name.toLowerCase() === editingCategoryName.trim().toLowerCase()
     );
     if (exists) {
-      alert('Já existe outra categoria com este nome!');
+      alert('A category with this name already exists!');
       return;
     }
     
@@ -394,20 +394,20 @@ const AdminMarketing = () => {
 
   const handleDeleteCategory = async (id: string, name: string) => {
     if (!hasWritePermission) {
-      alert('Sem permissões para gerir categorias.');
+      alert('No permission to manage categories.');
       return;
     }
-    if (!window.confirm(`Tem a certeza que deseja eliminar a categoria "${name}"? Os materiais desta categoria NÃO serão eliminados, mas serão re-atribuídos à categoria "Geral".`)) {
+    if (!window.confirm(`Are you sure you want to delete the category "${name}"? Assets in this category will NOT be deleted, but reassigned to "General".`)) {
       return;
     }
     
     const updatedList = deleteLocalCategory(id);
     setCategories(updatedList);
     
-    // Move any materials of this category to fallback category 'Geral'
+    // Move any materials of this category to fallback category 'General'
     const updatedMaterials = materials.map(m => {
       if (m.category === name) {
-        const materialCopy = { ...m, category: 'Geral' };
+        const materialCopy = { ...m, category: 'General' };
         syncToFirestore(materialCopy);
         return materialCopy;
       }
@@ -428,13 +428,13 @@ const AdminMarketing = () => {
   const categoriesList = ['all', ...categories.map(c => c.name)];
 
   const gradientsList = [
-    { value: 'from-violet-600 to-indigo-500', name: 'Roxo Elétrico' },
-    { value: 'from-indigo-600 to-indigo-400', name: 'Indigo Noite' },
-    { value: 'from-emerald-600 to-emerald-400', name: 'Verde Esmeralda' },
-    { value: 'from-blue-600 to-blue-400', name: 'Azul Elétrico' },
-    { value: 'from-amber-600 to-amber-400', name: 'Dourado Quente' },
-    { value: 'from-rose-600 to-rose-400', name: 'Rosa Suave' },
-    { value: 'from-red-600 to-orange-500', name: 'Fogo Energizante' },
+    { value: 'from-violet-600 to-indigo-500', name: 'Electric Purple' },
+    { value: 'from-indigo-600 to-indigo-400', name: 'Midnight Indigo' },
+    { value: 'from-emerald-600 to-emerald-400', name: 'Emerald Green' },
+    { value: 'from-blue-600 to-blue-400', name: 'Electric Blue' },
+    { value: 'from-amber-600 to-amber-400', name: 'Warm Gold' },
+    { value: 'from-rose-600 to-rose-400', name: 'Soft Pink' },
+    { value: 'from-red-600 to-orange-500', name: 'Energising Fire' },
   ];
 
   const getTypeIcon = (type: 'Texto' | 'Imagem/Banner' | 'Vídeo' | 'Link') => {
@@ -455,7 +455,7 @@ const AdminMarketing = () => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Kit de Marketing Dinâmico</h1>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Dynamic Marketing Kit</h1>
           <p className="text-slate-500 font-medium">Library of promotional assets and copy templates to promote ConnectBoat.</p>
         </div>
         
@@ -466,14 +466,14 @@ const AdminMarketing = () => {
               className="bg-slate-100 text-slate-700 font-bold text-sm px-6 py-3.5 rounded-2xl hover:bg-slate-200 transition-all flex items-center gap-2 border border-slate-200"
             >
               <Tag size={18} className="text-indigo-600" />
-              Categorias
+              Categories
             </button>
             <button
               onClick={openCreateModal}
               className="bg-indigo-600 text-white font-bold text-sm px-6 py-3.5 rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center gap-2"
             >
               <Plus size={18} />
-              Novo Material
+              New Asset
             </button>
           </div>
         )}
@@ -491,7 +491,7 @@ const AdminMarketing = () => {
                 : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
             }`}
           >
-            {cat === 'all' ? 'Ver Todos' : cat}
+            {cat === 'all' ? 'View All' : cat}
           </button>
         ))}
       </div>
@@ -536,7 +536,7 @@ const AdminMarketing = () => {
                   />
                   <div className="absolute inset-0 bg-slate-900/50 group-hover:bg-slate-900/30 transition-all duration-300" />
                   <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/60 backdrop-blur-md rounded text-[9px] font-black text-white/95 uppercase tracking-wide">
-                    Passar p/ Reproduzir
+                    Hover to Play
                   </div>
                 </>
               ) : (
@@ -566,7 +566,7 @@ const AdminMarketing = () => {
                   <button
                     onClick={() => openEditModal(material)}
                     className="p-2 bg-white/90 backdrop-blur-sm rounded-xl text-slate-700 hover:text-indigo-600 transition-all shadow-md"
-                    title="Editar Material"
+                    title="Edit Asset"
                   >
                     <Edit size={14} />
                   </button>
@@ -574,7 +574,7 @@ const AdminMarketing = () => {
                     <button
                       onClick={() => handleDelete(material.id, material.title)}
                       className="p-2 bg-white/90 backdrop-blur-sm rounded-xl text-slate-700 hover:text-red-600 transition-all shadow-md"
-                      title="Eliminar Material"
+                      title="Delete Asset"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -593,7 +593,7 @@ const AdminMarketing = () => {
                 {material.createdAt && (
                   <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
                     <Clock size={10} />
-                    {new Date(material.createdAt).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })}
+                    {new Date(material.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                   </span>
                 )}
               </div>
@@ -606,10 +606,10 @@ const AdminMarketing = () => {
                 <div className="mb-4 space-y-2">
                   <div className="bg-slate-50 border border-slate-100 p-2.5 rounded-2xl flex items-center gap-2">
                     <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg uppercase tracking-wider">
-                      Mídia
+                      Media
                     </span>
                     <span className="text-xs text-slate-500 font-semibold truncate flex-1 font-mono">
-                      {material.mediaUrl.split('/').pop()?.split('?')[0] || 'ficheiro'}
+                      {material.mediaUrl.split('/').pop()?.split('?')[0] || 'file'}
                     </span>
                   </div>
                   
@@ -618,18 +618,18 @@ const AdminMarketing = () => {
                       <button
                         onClick={() => setLightboxMedia({ type: material.type, url: material.mediaUrl!, title: material.title })}
                         className="py-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-100 text-slate-600 hover:text-indigo-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-                        title="Visualizar mídia em tamanho maior"
+                        title="View media in full size"
                       >
                         <Eye size={12} className="shrink-0" />
-                        Ver
+                        View
                       </button>
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(material.mediaUrl!);
-                          alert('Link do ficheiro copiado para a área de transferência!');
+                          alert('File link copied to clipboard!');
                         }}
                         className="py-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-100 text-slate-600 hover:text-indigo-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-                        title="Copiar link direto"
+                        title="Copy direct link"
                       >
                         <Copy size={12} className="shrink-0" />
                         Link
@@ -637,10 +637,10 @@ const AdminMarketing = () => {
                       <button
                         onClick={() => handleDownload(material.mediaUrl!, material.title)}
                         className="py-2.5 bg-slate-50 hover:bg-indigo-50 border border-slate-100 text-slate-600 hover:text-indigo-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-                        title="Descarregar ficheiro"
+                        title="Download file"
                       >
                         <Download size={12} className="shrink-0" />
-                        Baixar
+                        Download
                       </button>
                     </div>
                   ) : (
@@ -652,7 +652,7 @@ const AdminMarketing = () => {
                         className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-xl hover:bg-indigo-100 transition-all"
                       >
                         <Link2 size={12} />
-                        Abrir Link Externo
+                        Open External Link
                       </a>
                     </div>
                   )}
@@ -662,7 +662,7 @@ const AdminMarketing = () => {
               {/* Created By badge */}
               <div className="mb-4 flex items-center gap-1.5 text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
                 <User size={10} />
-                <span>Criado por: {material.createdBy}</span>
+                <span>Created by: {material.createdBy}</span>
               </div>
 
               {/* Copy Block & Action Buttons */}
@@ -674,7 +674,7 @@ const AdminMarketing = () => {
                   <button 
                     onClick={() => handleCopy(material.content, material.id)}
                     className="absolute top-2 right-2 p-2 bg-white shadow-sm border border-slate-100 rounded-xl text-slate-400 hover:text-indigo-600 transition-all opacity-0 group-hover/copy:opacity-100"
-                    title="Copiar Texto"
+                    title="Copy Text"
                   >
                     {copiedId === material.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                   </button>
@@ -688,19 +688,19 @@ const AdminMarketing = () => {
                     {copiedId === material.id ? (
                       <>
                         <Check size={16} />
-                        Copiado!
+                        Copied!
                       </>
                     ) : (
                       <>
                         <Share2 size={16} />
-                        Partilhar / Copiar
+                        Share / Copy
                       </>
                     )}
                   </button>
                   <button
                     onClick={() => handleCopy(material.content, material.id)}
                     className="p-3 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all flex items-center justify-center"
-                    title="Copiar Texto"
+                    title="Copy Text"
                   >
                     {copiedId === material.id ? <Check size={18} className="text-emerald-500" /> : <Copy size={18} />}
                   </button>
@@ -719,9 +719,9 @@ const AdminMarketing = () => {
             <div className="w-16 h-16 bg-white rounded-3xl shadow-sm flex items-center justify-center text-slate-400 group-hover:text-indigo-500 transition-all mb-4">
               <Plus size={32} />
             </div>
-            <h4 className="font-bold text-slate-500 group-hover:text-indigo-600 transition-all">Adicionar Material</h4>
+            <h4 className="font-bold text-slate-500 group-hover:text-indigo-600 transition-all">Add Asset</h4>
             <p className="text-slate-400 text-xs mt-2 max-w-[200px]">
-              Crie um novo template promocional com copy, banners, vídeos ou links importantes.
+              Create a new promotional template with ad copy, banners, videos or key links.
             </p>
           </motion.button>
         )}
@@ -731,15 +731,15 @@ const AdminMarketing = () => {
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
         <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
           <MessageSquare className="text-indigo-600" size={24} />
-          Dicas de Divulgação para a Equipa
+          Team Marketing Tips
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="space-y-3">
             <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
               <Facebook size={20} />
             </div>
-            <h4 className="font-bold text-slate-900">Grupos Segmentados</h4>
-            <p className="text-slate-500 text-sm">Partilhe materiais específicos nos grupos certos. Templates de carros funcionam maravilhosamente em grupos automóveis do Facebook.</p>
+            <h4 className="font-bold text-slate-900">Targeted Groups</h4>
+            <p className="text-slate-500 text-sm">Share specific assets in targeted groups. Marine & boating templates perform best in dedicated nautical groups.</p>
           </div>
           <div className="space-y-3">
             <div className="w-10 h-10 bg-pink-50 text-pink-600 rounded-xl flex items-center justify-center">
@@ -752,8 +752,8 @@ const AdminMarketing = () => {
             <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
               <Send size={20} />
             </div>
-            <h4 className="font-bold text-slate-900">Mensagens & Status</h4>
-            <p className="text-slate-500 text-sm font-medium">Copie o convite de testes rápido e partilhe no Status do WhatsApp ou envie aos seus contactos principais para trazer feedback valioso.</p>
+            <h4 className="font-bold text-slate-900">Messaging & Status</h4>
+            <p className="text-slate-500 text-sm font-medium">Copy the test invitation and share on WhatsApp Status or send to key contacts to bring valuable feedback.</p>
           </div>
         </div>
       </div>
@@ -782,7 +782,7 @@ const AdminMarketing = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Tag className="text-indigo-600 animate-pulse" size={24} />
-                    <h2 className="text-xl font-black text-slate-900 tracking-tight">Gerir Categorias</h2>
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">Manage Categories</h2>
                   </div>
                   <button 
                     onClick={() => {
@@ -800,7 +800,7 @@ const AdminMarketing = () => {
                   <input 
                     type="text"
                     required
-                    placeholder="Adicionar nova categoria..."
+                    placeholder="Add new category..."
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                     className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 font-medium transition-all"
@@ -810,15 +810,15 @@ const AdminMarketing = () => {
                     className="bg-indigo-600 text-white font-bold p-3 px-5 rounded-2xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 flex items-center justify-center gap-1 text-sm"
                   >
                     <Plus size={16} />
-                    Adicionar
+                    Add
                   </button>
                 </form>
 
                 <div className="border-t border-slate-100 pt-4 space-y-3 max-h-[300px] overflow-y-auto">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Categorias Ativas</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Categories</p>
                   
                   {categories.length === 0 ? (
-                    <p className="text-sm text-slate-400 font-medium py-4 text-center">Nenhuma categoria criada.</p>
+                    <p className="text-sm text-slate-400 font-medium py-4 text-center">No categories created.</p>
                   ) : (
                     <div className="space-y-2">
                       {categories.map((cat) => (
@@ -838,7 +838,7 @@ const AdminMarketing = () => {
                                 type="button"
                                 onClick={() => handleSaveCategoryEdit(cat.id)}
                                 className="p-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg"
-                                title="Gravar"
+                                title="Save"
                               >
                                 <Save size={14} />
                               </button>
@@ -846,7 +846,7 @@ const AdminMarketing = () => {
                                 type="button"
                                 onClick={() => setEditingCategoryId(null)}
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg"
-                                title="Cancelar"
+                                title="Cancel"
                               >
                                 <Undo size={14} />
                               </button>
@@ -862,7 +862,7 @@ const AdminMarketing = () => {
                                   type="button"
                                   onClick={() => handleStartEditCategory(cat)}
                                   className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all"
-                                  title="Editar categoria"
+                                  title="Edit category"
                                 >
                                   <Edit size={14} />
                                 </button>
@@ -870,7 +870,7 @@ const AdminMarketing = () => {
                                   type="button"
                                   onClick={() => handleDeleteCategory(cat.id, cat.name)}
                                   className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-slate-100 rounded-lg transition-all"
-                                  title="Eliminar categoria"
+                                  title="Delete category"
                                 >
                                   <Trash2 size={14} />
                                 </button>
@@ -892,7 +892,7 @@ const AdminMarketing = () => {
                     }}
                     className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-6 py-2.5 rounded-2xl text-sm transition-all text-center"
                   >
-                    Fechar
+                    Close
                   </button>
                 </div>
               </motion.div>
@@ -926,10 +926,10 @@ const AdminMarketing = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                      {editingMaterial ? 'Editar Material de Marketing' : 'Criar Novo Material de Marketing'}
+                      {editingMaterial ? 'Edit Marketing Asset' : 'Create New Marketing Asset'}
                     </h2>
                     <p className="text-sm font-medium text-slate-400">
-                      Preencha o formulário para expandir a biblioteca oficial da equipa.
+                      Fill in the form to expand the team's official library.
                     </p>
                   </div>
                   <button 
@@ -944,20 +944,20 @@ const AdminMarketing = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {/* Title */}
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Título do Material *</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Asset Title *</label>
                       <input 
                         type="text" 
                         required
                         value={formTitle}
                         onChange={(e) => setFormTitle(e.target.value)}
-                        placeholder="Ex: Novo Canal de Empregos"
+                        placeholder="e.g. New Boating Listings"
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 font-medium transition-all"
                       />
                     </div>
 
                     {/* Category */}
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Categoria</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Category</label>
                       <select 
                         value={formCategory}
                         onChange={(e) => setFormCategory(e.target.value)}
@@ -975,22 +975,22 @@ const AdminMarketing = () => {
 
                     {/* Type selection */}
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Tipo de Material</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Asset Type</label>
                       <select 
                         value={formType}
                         onChange={(e) => setFormType(e.target.value as any)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 font-semibold transition-all"
                       >
-                        <option value="Texto">Texto / Mensagem</option>
-                        <option value="Imagem/Banner">Imagem / Banner</option>
-                        <option value="Vídeo">Vídeo</option>
-                        <option value="Link">Link Externo</option>
+                        <option value="Texto">Text / Message</option>
+                        <option value="Imagem/Banner">Image / Banner</option>
+                        <option value="Vídeo">Video</option>
+                        <option value="Link">External Link</option>
                       </select>
                     </div>
 
                     {/* Background Visual Design Choice */}
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Estilo de Gradiente (Preview)</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-sans">Gradient Style (Preview)</label>
                       <select 
                         value={formVisualValue}
                         onChange={(e) => setFormVisualValue(e.target.value)}
@@ -1005,13 +1005,13 @@ const AdminMarketing = () => {
 
                   {/* Short Description */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Breve Descrição *</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Short Description *</label>
                     <input 
                       type="text" 
                       required
                       value={formDescription}
                       onChange={(e) => setFormDescription(e.target.value)}
-                      placeholder="Ex: Resumo sobre onde partilhar este material."
+                      placeholder="e.g. Overview of where to share this asset."
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 font-medium transition-all"
                     />
                   </div>
@@ -1019,30 +1019,30 @@ const AdminMarketing = () => {
                   {/* Attachment/Media File link */}
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
-                      Ficheiro / Link de Mídia (Opcional)
+                      Media File / Link (Optional)
                     </label>
                     <input 
                       type="text" 
                       value={formMediaUrl}
                       onChange={(e) => setFormMediaUrl(e.target.value)}
-                      placeholder="Ex: https://assets.mercadoluso.com/flyer.png"
+                      placeholder="e.g. https://assets.connectboat.com/flyer.png"
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 font-medium transition-all font-mono"
                     />
-                    <p className="text-[10px] text-slate-400 font-semibold">Anexe o link do design no Canva, vídeo explicativo ou imagem promocional.</p>
+                    <p className="text-[10px] text-slate-400 font-semibold">Attach the Canva design link, explainer video, or promotional image.</p>
                   </div>
 
                   {/* Interactive Firebase Drag-and-Drop / File Upload Zone depending on Type */}
                   {(formType === 'Imagem/Banner' || formType === 'Vídeo') && (
                     <div className="space-y-2 mt-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block font-sans">
-                        Enviar Ficheiro (Firebase Storage)
+                        Upload File (Firebase Storage)
                       </label>
                       <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-slate-50/50 hover:bg-slate-50 transition-all relative">
                         {uploadProgress !== null ? (
                           <div className="w-full text-center space-y-2 py-2">
                             <div className="flex items-center justify-center gap-2">
                               <span className="w-4 h-4 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin"></span>
-                              <span className="text-sm font-bold text-slate-700 font-sans mt-0.5">A carregar ficheiro... {uploadProgress}%</span>
+                              <span className="text-sm font-bold text-slate-700 font-sans mt-0.5">Uploading file... {uploadProgress}%</span>
                             </div>
                             <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                               <div className="bg-indigo-600 h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
@@ -1066,10 +1066,10 @@ const AdminMarketing = () => {
                                       onClick={() => setFormMediaUrl('')}
                                       className="text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg transition-all"
                                     >
-                                      Remover/Limpar
+                                      Remove / Clear
                                     </button>
                                     <label className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-all cursor-pointer">
-                                      Substituir Ficheiro
+                                      Replace File
                                       <input 
                                         type="file" 
                                         accept={formType === 'Imagem/Banner' ? '.jpg,.jpeg,.png,.webp' : '.mp4'} 
@@ -1084,11 +1084,11 @@ const AdminMarketing = () => {
                                   <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100 text-slate-400 hover:text-indigo-500 transition-all mb-2">
                                     {formType === 'Imagem/Banner' ? <ImageIcon size={24} /> : <Video size={24} />}
                                   </div>
-                                  <span className="text-xs font-bold text-indigo-600 hover:text-indigo-700">Selecionar ficheiro</span>
+                                  <span className="text-xs font-bold text-indigo-600 hover:text-indigo-700">Select file</span>
                                   <span className="text-[10px] text-slate-400 font-medium mt-1">
                                     {formType === 'Imagem/Banner' 
-                                      ? 'Imagens suportadas: JPG, JPEG, PNG, WEBP' 
-                                      : 'Vídeos suportados: MP4'}
+                                      ? 'Supported images: JPG, JPEG, PNG, WEBP' 
+                                      : 'Supported videos: MP4'}
                                   </span>
                                   <input 
                                     type="file" 
@@ -1104,7 +1104,7 @@ const AdminMarketing = () => {
                         {uploadSuccess && (
                           <div className="absolute top-2 right-2 bg-emerald-50 text-emerald-600 rounded-xl px-2.5 py-1 text-[10px] font-bold flex items-center gap-1">
                             <Check size={12} />
-                            Sucesso!
+                            Success!
                           </div>
                         )}
                         {uploadError && (
@@ -1118,13 +1118,13 @@ const AdminMarketing = () => {
 
                   {/* Main Content (Text / Template copy) */}
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Conteúdo / Texto de Copy para Cópia *</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Content / Ad Copy Text *</label>
                     <textarea 
                       required
                       rows={5}
                       value={formContent}
                       onChange={(e) => setFormContent(e.target.value)}
-                      placeholder={`Escreva aqui o copy do anúncio.\nDica: Use emojis e mencione o link de forma natural.`}
+                      placeholder={`Write the ad copy here.\nTip: Use emojis and include links naturally.`}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-900 focus:outline-none focus:border-indigo-500 font-medium transition-all font-sans leading-relaxed"
                     />
                   </div>
@@ -1136,13 +1136,13 @@ const AdminMarketing = () => {
                       onClick={() => setIsModalOpen(false)}
                       className="w-full sm:w-auto bg-slate-100 text-slate-600 font-bold px-6 py-3 rounded-2xl hover:bg-slate-200 transition-all text-sm"
                     >
-                      Cancelar
+                      Cancel
                     </button>
                     <button
                       type="submit"
                       className="w-full sm:w-auto bg-indigo-600 text-white font-bold px-8 py-3 rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 text-sm sm:ml-auto"
                     >
-                      {editingMaterial ? 'Atualizar Material' : 'Gravar Material'}
+                      {editingMaterial ? 'Update Asset' : 'Save Asset'}
                     </button>
                   </div>
                 </form>
@@ -1203,19 +1203,19 @@ const AdminMarketing = () => {
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(lightboxMedia.url);
-                    alert('Link do ficheiro copiado para a área de transferência!');
+                    alert('File link copied to clipboard!');
                   }}
                   className="bg-slate-100 text-slate-700 font-bold px-6 py-3 rounded-2xl text-sm hover:bg-slate-200 transition-all flex items-center justify-center gap-2 font-sans"
                 >
                   <Copy size={16} />
-                  Copiar Link do Ficheiro
+                  Copy File Link
                 </button>
                 <button
                   onClick={() => handleDownload(lightboxMedia.url, lightboxMedia.title)}
                   className="bg-indigo-600 text-white font-bold px-8 py-3 rounded-2xl text-sm hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 font-sans"
                 >
                   <Download size={16} />
-                  Descarregar Ficheiro
+                  Download File
                 </button>
               </div>
             </motion.div>

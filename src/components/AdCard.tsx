@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Ad } from '../types';
 import { MapPin, MessageCircle, Clock, X, User, Phone, AlertTriangle, Heart, Flag, Search, ChevronLeft, ChevronRight, Tag, Star, ShoppingBag, Mail, Globe, Share2, ExternalLink, Anchor, Gauge, Ruler, Bed, Calendar } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { enGB } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatPrice, getAdUrl, getAdLocationLabel } from '../utils';
 import { sendEmailGeneric, getSellerEmail } from '../utils/emailService';
@@ -267,7 +267,7 @@ const AdCard: React.FC<AdCardProps> = ({
 
       const profileData: any = {
         uid: ad.sellerId,
-        displayName: hasSourceUrl ? 'Parceiro' : (ad.sellerName || 'Vendedor'),
+        displayName: hasSourceUrl ? 'Partner' : (ad.sellerName || 'Seller'),
         city: ad.city || '',
         country: ad.country || 'Portugal',
         ratingAverage,
@@ -343,15 +343,15 @@ const AdCard: React.FC<AdCardProps> = ({
     e.preventDefault();
     e.stopPropagation();
     if (ad.demoListing) {
-      showToastMsg('error', 'Este é um anúncio de demonstração e não está disponível para contacto ou compra.');
+      showToastMsg('error', 'This is a demo listing and is not available for contact or purchase.');
       return;
     }
     if (ad.adStatus === 'sold') {
-      showToastMsg('error', 'Este anúncio já foi vendido. Não é possível contactar o vendedor.');
+      showToastMsg('error', 'This listing has already been sold. The seller cannot be contacted.');
       return;
     }
     if (!user) {
-      navigate(`/login?message=${encodeURIComponent('Para contactar o vendedor, faça login ou crie uma conta gratuita.')}`);
+      navigate(`/login?message=${encodeURIComponent('To contact the seller, please sign in or create a free account.')}`);
       return;
     }
 
@@ -359,19 +359,19 @@ const AdCard: React.FC<AdCardProps> = ({
     if (accepted) {
       console.log('[AdCard] Safety terms already accepted. Registering interest directly.');
       incrementClicks();
-      showToastMsg('loading', 'A registar o seu interesse no anúncio...');
+      showToastMsg('loading', 'Registering your interest in this listing...');
       registerInterest().then((res: any) => {
         if (res.success) {
           if (res.bypassed) {
-            showToastMsg('success', hasSourceUrl ? 'A abrir o link de contacto...' : 'A abrir o WhatsApp...', 2000);
+            showToastMsg('success', hasSourceUrl ? 'Opening contact link...' : 'Opening WhatsApp...', 2000);
           } else {
-            showToastMsg('success', hasSourceUrl ? '👥 Interesse registado! A abrir o contacto...' : '👥 Interesse registado! A abrir o WhatsApp...', 3000);
+            showToastMsg('success', hasSourceUrl ? '👥 Interest registered! Opening contact...' : '👥 Interest registered! Opening WhatsApp...', 3000);
           }
           setTimeout(() => {
             window.open(targetContactUrl, '_blank', 'noopener,noreferrer');
           }, 1000);
         } else {
-          showToastMsg('error', `⚠️ Erro na BD: ${res.error || 'Falha ao registar'}. A abrir contacto...`, 6000);
+          showToastMsg('error', `⚠️ DB Error: ${res.error || 'Failed to register'}. Opening contact...`, 6000);
           setTimeout(() => {
             window.open(targetContactUrl, '_blank', 'noopener,noreferrer');
           }, 2500);
@@ -385,7 +385,7 @@ const AdCard: React.FC<AdCardProps> = ({
   const registerInterest = async (): Promise<{ success: boolean; error?: string; bypassed?: boolean }> => {
     if (!user) {
       console.warn('[AdCard] Cannot register interest: No authenticated user.');
-      return { success: false, error: 'Utilizador não autenticado. Faça login primeiro.' };
+      return { success: false, error: 'User not authenticated. Please sign in first.' };
     }
 
     // 3. Em adInterests: não usar sellerId vazio. se ad.sellerId estiver ausente, não gravar adInterest e registrar erro claro no console. não tentar notification. abrir WhatsApp normalmente.
@@ -431,8 +431,8 @@ const AdCard: React.FC<AdCardProps> = ({
           const notifId = `interest_${ad.id}_${user.uid}_${Date.now()}`;
           const notifData = {
             userId: ad.sellerId.trim(),
-            title: 'Novo interesse em ' + ad.title.substring(0, 25) + '...',
-            message: `${truncatedName} clicou no botão para o contactar via WhatsApp para o anúncio "${ad.title}".`,
+            title: 'New interest in ' + ad.title.substring(0, 25) + '...',
+            message: `${truncatedName} clicked the button to contact you via WhatsApp regarding listing "${ad.title}".`,
             createdAt: serverTimestamp(),
             read: false,
             adId: ad.id,
@@ -449,7 +449,7 @@ const AdCard: React.FC<AdCardProps> = ({
         getSellerEmail(ad.sellerId.trim()).then((sellerEmail) => {
           if (sellerEmail) {
             sendEmailGeneric('interesse_contacto', sellerEmail, {
-              sellerName: ad.sellerName || 'Anunciante',
+              sellerName: ad.sellerName || 'Seller',
               adTitle: ad.title,
               interestedName: truncatedName,
               adId: ad.id
@@ -468,26 +468,26 @@ const AdCard: React.FC<AdCardProps> = ({
 
   const confirmContact = async () => {
     if (ad.adStatus === 'sold') {
-      showToastMsg('error', 'Este anúncio já foi vendido. Não é possível contactar o vendedor.');
+      showToastMsg('error', 'This listing has already been sold. The seller cannot be contacted.');
       return;
     }
     if (acceptedContactTerms) {
       localStorage.setItem('safety_terms_accepted', 'true');
       incrementClicks();
       if (user) {
-        showToastMsg('loading', 'A registar o seu interesse no anúncio...');
+        showToastMsg('loading', 'Registering your interest in this listing...');
         const res = await registerInterest();
         if (res.success) {
           if (res.bypassed) {
-            showToastMsg('success', hasSourceUrl ? 'A abrir o link de contacto...' : 'A abrir o WhatsApp...', 2000);
+            showToastMsg('success', hasSourceUrl ? 'Opening contact link...' : 'Opening WhatsApp...', 2000);
           } else {
-            showToastMsg('success', hasSourceUrl ? '👥 Interesse registado! A abrir o contacto...' : '👥 Interesse registado! A abrir o WhatsApp...', 3000);
+            showToastMsg('success', hasSourceUrl ? '👥 Interest registered! Opening contact...' : '👥 Interest registered! Opening WhatsApp...', 3000);
           }
           setTimeout(() => {
             window.open(targetContactUrl, '_blank', 'noopener,noreferrer');
           }, 1000);
         } else {
-          showToastMsg('error', `⚠️ Erro na BD: ${res.error || 'Falha ao registar'}. A abrir contacto...`, 6000);
+          showToastMsg('error', `⚠️ DB Error: ${res.error || 'Failed to register'}. Opening contact...`, 6000);
           setTimeout(() => {
             window.open(targetContactUrl, '_blank', 'noopener,noreferrer');
           }, 2500);
@@ -502,11 +502,11 @@ const AdCard: React.FC<AdCardProps> = ({
   const handleReport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
-      alert('Faça login para denunciar!');
+      alert('Please sign in to report this listing!');
       return;
     }
     if (!reportReason) {
-      alert('Selecione um motivo para a denúncia.');
+      alert('Please select a reason for reporting.');
       return;
     }
 
@@ -590,7 +590,7 @@ const AdCard: React.FC<AdCardProps> = ({
           {(ad.status === 'sold' || ad.adStatus === 'sold') && (
             <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-900/60 z-30 flex items-center justify-center backdrop-blur-[1.5px] pointer-events-none">
               <span className="bg-rose-600 text-white text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-lg border border-rose-500 flex items-center gap-1.5 animate-scale-in">
-                <ShoppingBag size={12} className="fill-current text-white shrink-0" /> VENDIDO
+                <ShoppingBag size={12} className="fill-current text-white shrink-0" /> SOLD
               </span>
             </div>
           )}
@@ -730,7 +730,7 @@ const AdCard: React.FC<AdCardProps> = ({
                           ? 'text-indigo-400 hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600'
                           : 'text-slate-400 hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-600'
                       } ${isFeaturedVariant ? 'p-1.5' : 'p-2'}`}
-                      title={hasSourceUrl ? "Contato" : "Contactar via WhatsApp"}
+                      title={hasSourceUrl ? "Contact" : "Contact via WhatsApp"}
                     >
                       {hasSourceUrl ? (
                         <ExternalLink size={isFeaturedVariant ? 12 : 14} className="text-indigo-600" />
@@ -747,13 +747,13 @@ const AdCard: React.FC<AdCardProps> = ({
                 {ad.listingType === 'informativo' ? (
                   <div className="flex flex-col items-center justify-center">
                     <span className="text-[9px] sm:text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 flex items-center gap-1">
-                      💡 Links Úteis
+                      💡 Useful Links
                     </span>
                   </div>
                 ) : (ad.category === '💚 Doações & Solidariedade' || ad.donationBadge) ? (
                   <div className="flex flex-col items-center justify-center">
                     <span className="text-[9px] sm:text-[10px] font-black text-emerald-700 uppercase tracking-widest bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-150 flex items-center gap-1">
-                      Grátis 💚
+                      Free 💚
                     </span>
                   </div>
                 ) : hasPrice ? (
@@ -765,7 +765,7 @@ const AdCard: React.FC<AdCardProps> = ({
                     </div>
                     {(ad.status === 'sold' || ad.adStatus === 'sold') && ad.price !== undefined && Number(ad.price) > 0 && (
                       <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-tight flex items-center justify-center gap-1 mt-1">
-                        <ShoppingBag size={10} /> Vendido
+                        <ShoppingBag size={10} /> Sold
                       </span>
                     )}
                   </div>
@@ -774,7 +774,7 @@ const AdCard: React.FC<AdCardProps> = ({
                     <div className={`font-extrabold text-[#111111] uppercase tracking-wide leading-none ${
                       isFeaturedVariant ? 'text-[10px] md:text-xs' : 'text-xs md:text-sm'
                     }`}>
-                      Sob Consulta
+                      Upon Request
                     </div>
                   </div>
                 )}
@@ -878,7 +878,7 @@ const AdCard: React.FC<AdCardProps> = ({
                             : 'bg-amber-500 text-white'
                       } text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider shadow-sm flex items-center gap-1 animate-pulse`}>
                         <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? '💚' : isNationalHighlight ? '👑' : '⭐'}</span>
-                        <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? 'Doação' : isNationalHighlight ? 'Destaque Nacional' : 'Destaque Local'}</span>
+                        <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? 'Donation' : isNationalHighlight ? 'National Featured' : 'Local Featured'}</span>
                       </span>
                     )}
                     <span className="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border border-indigo-100">
@@ -886,12 +886,12 @@ const AdCard: React.FC<AdCardProps> = ({
                     </span>
                     {(ad.category === 'Serviços' || ad.category?.startsWith('Serviços') || ad.category?.includes('Serviços')) && ad.serviceCoverage === 'online' && (
                       <span className="bg-gradient-to-r from-blue-50 to-indigo-50 text-indigo-700 text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border border-indigo-100 shadow-sm flex items-center gap-1">
-                        <span>💻</span> Atendimento Online
+                        <span>💻</span> Online Service
                       </span>
                     )}
                     {(ad.category === 'Serviços' || ad.category?.startsWith('Serviços') || ad.category?.includes('Serviços')) && (ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal') && (
                       <span className="bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700 text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border border-emerald-100 shadow-sm flex items-center gap-1">
-                        <span>🌍</span> Atendimento Nacional
+                        <span>🌍</span> UK-Wide Service
                       </span>
                     )}
                   </div>
@@ -903,11 +903,11 @@ const AdCard: React.FC<AdCardProps> = ({
                       <div className="flex items-center gap-3 text-slate-500 text-xs font-medium">
                         <div className="flex items-center gap-1">
                           {(ad.category === 'Serviços' || ad.category?.startsWith('Serviços') || ad.category?.includes('Serviços')) && ad.serviceCoverage === 'online' ? (
-                            <span className="text-sm font-bold text-indigo-600">💻 Atendimento Online</span>
+                            <span className="text-sm font-bold text-indigo-600">💻 Online Service</span>
                           ) : (ad.category === 'Serviços' || ad.category?.startsWith('Serviços') || ad.category?.includes('Serviços')) && ad.serviceCoverage === 'uk' ? (
-                            <span className="text-sm font-bold text-indigo-600">🌍 Todo o Reino Unido</span>
+                            <span className="text-sm font-bold text-indigo-600">🌍 UK-Wide</span>
                           ) : (ad.category === 'Serviços' || ad.category?.startsWith('Serviços') || ad.category?.includes('Serviços')) && ad.serviceCoverage === 'portugal' ? (
-                            <span className="text-sm font-bold text-indigo-600">🇵🇹 Todo Portugal</span>
+                            <span className="text-sm font-bold text-indigo-600">🇵🇹 Portugal-Wide</span>
                           ) : (
                             <>
                               <MapPin size={14} className="text-indigo-600" />
@@ -920,7 +920,7 @@ const AdCard: React.FC<AdCardProps> = ({
                     {ad.category !== 'Imigração' && (
                       <div className="text-2xl md:text-3xl font-black text-indigo-600 flex items-center justify-center">
                         {ad.category === '💚 Doações & Solidariedade' ? (
-                          <span className="text-emerald-600 font-extrabold flex items-center gap-1.5">Grátis 💚</span>
+                          <span className="text-emerald-600 font-extrabold flex items-center gap-1.5">Free 💚</span>
                         ) : (
                           formatPrice(ad.price, ad.country)
                         )}
@@ -930,7 +930,7 @@ const AdCard: React.FC<AdCardProps> = ({
 
                   <div className="space-y-4">
                     <div>
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Descrição</h4>
+                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Description</h4>
                       <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-hidden">
                         {ad.description.length > 200 && !descriptionExpanded
                           ? `${ad.description.substring(0, 200).trim()}...`
@@ -941,7 +941,7 @@ const AdCard: React.FC<AdCardProps> = ({
                           onClick={() => setDescriptionExpanded(!descriptionExpanded)}
                           className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors mt-1 active:scale-95 duration-200"
                         >
-                          {descriptionExpanded ? 'Ver menos' : 'Ver mais'}
+                          {descriptionExpanded ? 'Show less' : 'Show more'}
                         </button>
                       )}
                     </div>
@@ -952,9 +952,9 @@ const AdCard: React.FC<AdCardProps> = ({
                           <User size={20} />
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Vendedor</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Seller</p>
                           <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                            <span className="text-base font-bold text-slate-900">{hasSourceUrl ? 'Parceiro' : ad.sellerName}</span>
+                            <span className="text-base font-bold text-slate-900">{hasSourceUrl ? 'Partner' : ad.sellerName}</span>
                             <div className="flex items-center gap-0.5 text-amber-500" title={`${sellerProfile?.ratingAverage || sellerProfile?.rating || 0} / 5`}>
                               {[1, 2, 3, 4, 5].map((star) => {
                                 const ratingVal = sellerProfile?.ratingAverage || sellerProfile?.rating || 0;
@@ -993,7 +993,7 @@ const AdCard: React.FC<AdCardProps> = ({
                             ) : (
                               <MessageCircle size={18} className="flex-shrink-0" />
                             )}
-                            <span className="leading-tight">{hasSourceUrl ? 'Contato' : 'Contactar via WhatsApp'}</span>
+                            <span className="leading-tight">{hasSourceUrl ? 'Contact' : 'Contact via WhatsApp'}</span>
                           </button>
                         )}
                       </div>
@@ -1004,8 +1004,8 @@ const AdCard: React.FC<AdCardProps> = ({
                             onClick={() => setShowReviewsSection(!showReviewsSection)}
                             className="flex items-center justify-between w-full text-xs font-bold text-indigo-600 uppercase tracking-wider"
                           >
-                            <span>Avaliações do Vendedor ({sellerReviews.length})</span>
-                            <span className="text-slate-400">{showReviewsSection ? 'Ocultar' : 'Mostrar'}</span>
+                            <span>Seller Reviews ({sellerReviews.length})</span>
+                            <span className="text-slate-400">{showReviewsSection ? 'Hide' : 'Show'}</span>
                           </button>
                           
                           {showReviewsSection && (
@@ -1023,10 +1023,10 @@ const AdCard: React.FC<AdCardProps> = ({
                                   {rev.comment ? (
                                     <p className="text-slate-600 italic">"{rev.comment}"</p>
                                   ) : (
-                                    <p className="text-slate-400 italic">Sem comentário escrito.</p>
+                                    <p className="text-slate-400 italic">No written review.</p>
                                   )}
                                   <div className="text-[9px] text-slate-400 mt-1">
-                                    {rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recentemente'}
+                                    {rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: enGB }) : 'Recently'}
                                   </div>
                                 </div>
                               ))}
@@ -1051,16 +1051,16 @@ const AdCard: React.FC<AdCardProps> = ({
           adTitle={ad.title}
           adCategory={ad.category}
           sellerId={ad.sellerId}
-          sellerName={hasSourceUrl ? 'Parceiro' : ad.sellerName}
+          sellerName={hasSourceUrl ? 'Partner' : ad.sellerName}
           isBuyerRating={true}
           onSuccess={() => {
-            alert('A sua avaliação foi enviada com sucesso!');
+            alert('Your review was submitted successfully!');
             fetchSellerProfile();
           }}
         />
       )}
 
-      {/* Modal de Aviso de Contacto (Simpificado para o código não ficar gigante) */}
+      {/* Contact Warning Modal */}
       <AnimatePresence>
         {showContactWarning && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -1078,7 +1078,7 @@ const AdCard: React.FC<AdCardProps> = ({
               className="relative bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl text-center"
             >
               <AlertTriangle className="mx-auto text-amber-500 mb-4" size={48} />
-              <h3 className="text-xl font-bold mb-4">Aviso de Segurança</h3>
+              <h3 className="text-xl font-bold mb-4">Safety Warning</h3>
               <p className="text-slate-600 mb-6 text-sm">
                 When contacting the seller, remember that ConnectBoat only facilitates the initial connection. 
                 Never send payments in advance without verifying the vessel or equipment in person.

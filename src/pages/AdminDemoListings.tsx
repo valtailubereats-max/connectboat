@@ -102,7 +102,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     images: ['https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80'],
     city: 'Plymouth',
     country: 'United Kingdom',
-    category: 'Veleiros',
+    category: 'Boats for Sale',
     sellerId: 'connectboat-external-partner',
     sellerName: 'ConnectBoat External Partner',
     sellerPhone: '',
@@ -137,7 +137,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     images: ['https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80'],
     city: 'Poole',
     country: 'United Kingdom',
-    category: 'Semi-Rígidos & Insufláveis',
+    category: 'Boats for Sale',
     sellerId: 'connectboat-external-partner',
     sellerName: 'ConnectBoat External Partner',
     sellerPhone: '',
@@ -168,7 +168,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     images: ['https://images.unsplash.com/photo-1520255870062-bd79d3865de7?auto=format&fit=crop&w=1200&q=80'],
     city: 'Lymington',
     country: 'United Kingdom',
-    category: 'Barcos de Pesca',
+    category: 'Boats for Sale',
     sellerId: 'connectboat-external-partner',
     sellerName: 'ConnectBoat External Partner',
     sellerPhone: '',
@@ -197,7 +197,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     images: ['https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80'],
     city: 'London',
     country: 'United Kingdom',
-    category: 'Barcos de Recreio',
+    category: 'Boats for Sale',
     sellerId: 'connectboat-external-partner',
     sellerName: 'ConnectBoat External Partner',
     sellerPhone: '',
@@ -228,7 +228,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     images: ['https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1200&q=80'],
     city: 'Portsmouth',
     country: 'United Kingdom',
-    category: 'Motas de Água & Jet Skis',
+    category: 'Boats for Sale',
     sellerId: 'connectboat-demo-seller',
     sellerName: 'ConnectBoat Example Seller',
     sellerPhone: '',
@@ -251,7 +251,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     images: ['https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80'],
     city: 'Falmouth',
     country: 'United Kingdom',
-    category: 'Motores & Peças',
+    category: 'Boat Engines',
     sellerId: 'connectboat-demo-seller',
     sellerName: 'ConnectBoat Example Seller',
     sellerPhone: '',
@@ -272,7 +272,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     images: ['https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80'],
     city: 'Southampton',
     country: 'United Kingdom',
-    category: 'Acessórios & Atrelados',
+    category: 'Trailers',
     sellerId: 'connectboat-demo-seller',
     sellerName: 'ConnectBoat Example Seller',
     sellerPhone: '',
@@ -291,7 +291,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     images: ['https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?auto=format&fit=crop&w=1200&q=80'],
     city: 'Brighton',
     country: 'United Kingdom',
-    category: 'Eletrónica & Navegação',
+    category: 'Marine Electronics',
     sellerId: 'connectboat-demo-seller',
     sellerName: 'ConnectBoat Example Seller',
     sellerPhone: '',
@@ -310,7 +310,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     images: ['https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80'],
     city: 'Cowes',
     country: 'United Kingdom',
-    category: 'Serviços & Manutenção',
+    category: 'Boat Services',
     sellerId: 'connectboat-demo-seller',
     sellerName: 'ConnectBoat Example Seller',
     sellerPhone: '',
@@ -392,12 +392,12 @@ const AdminDemoListings: React.FC = () => {
   const handlePublishSelected = async () => {
     const selectedItems = items.filter(i => i.selected);
     if (selectedItems.length === 0) {
-      setStatusMsg({ type: 'error', text: 'Selecione pelo menos um anúncio para publicar.' });
+      setStatusMsg({ type: 'error', text: 'Please select at least one listing to publish.' });
       return;
     }
 
     setPublishing(true);
-    setStatusMsg({ type: 'info', text: `A publicar ${selectedItems.length} anúncio(s)...` });
+    setStatusMsg({ type: 'info', text: `Publishing ${selectedItems.length} listing(s)...` });
 
     try {
       let publishedCount = 0;
@@ -450,14 +450,14 @@ const AdminDemoListings: React.FC = () => {
 
       setStatusMsg({
         type: 'success',
-        text: `Sucesso! ${publishedCount} anúncio(s) de demonstração/externos criados no Firestore com sucesso.`
+        text: `Success! ${publishedCount} demo/external listing(s) created in Firestore successfully.`
       });
 
       // Refresh duplicate check to show newly published items
       await checkDuplicateListings();
     } catch (err: any) {
       console.error('[AdminDemoListings] Batch publish error:', err);
-      setStatusMsg({ type: 'error', text: `Erro ao criar anúncios: ${err.message || String(err)}` });
+      setStatusMsg({ type: 'error', text: `Error creating listings: ${err.message || String(err)}` });
     } finally {
       setPublishing(false);
     }
@@ -465,7 +465,7 @@ const AdminDemoListings: React.FC = () => {
 
   const handleDeleteAllDemoContent = async () => {
     setDeleting(true);
-    setStatusMsg({ type: 'info', text: 'A pesquisar e remover anúncios de demonstração no Firestore...' });
+    setStatusMsg({ type: 'info', text: 'Searching and removing demo listings from Firestore...' });
 
     try {
       const adsRef = collection(db, 'ads');
@@ -484,21 +484,21 @@ const AdminDemoListings: React.FC = () => {
 
       setStatusMsg({
         type: 'success',
-        text: `Remoção Concluída! ${removedCount} anúncio(s) de demonstração/externos foram eliminados do banco de dados.`
+        text: `Removal Complete! ${removedCount} demo/external listing(s) removed from database.`
       });
 
       setShowDeleteModal(false);
       await checkDuplicateListings();
     } catch (err: any) {
       console.error('[AdminDemoListings] Error deleting demo content:', err);
-      setStatusMsg({ type: 'error', text: `Erro ao eliminar conteúdo: ${err.message || String(err)}` });
+      setStatusMsg({ type: 'error', text: `Error deleting content: ${err.message || String(err)}` });
     } finally {
       setDeleting(false);
     }
   };
 
   if (!isAdmin) {
-    return <div className="p-8 text-center font-bold text-slate-700">Acesso restrito a administradores.</div>;
+    return <div className="p-8 text-center font-bold text-slate-700">Access restricted to administrators.</div>;
   }
 
   const selectedCount = items.filter(i => i.selected).length;
@@ -510,13 +510,13 @@ const AdminDemoListings: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 text-white p-6 md:p-8 rounded-3xl shadow-xl border border-slate-800">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-xs font-bold border border-indigo-400/30">
-            <Sparkles size={14} /> Ferramenta de População de Mercado
+            <Sparkles size={14} /> Marketplace Population Tool
           </div>
           <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
-            Criar Conteúdo Demo de Mercado
+            Create Demo & External Listings
           </h1>
           <p className="text-slate-300 text-xs md:text-sm font-medium max-w-2xl">
-            Popule a ConnectBoat com 10 anúncios seguros e de alta qualidade (5 anúncios externos reais do Reino Unido com links de origem + 5 exemplos fictícios identificados como demonstração).
+            Populate ConnectBoat with 10 high-quality listings (5 real UK external listings with source links + 5 demo examples identified as demo content).
           </p>
         </div>
 
@@ -527,7 +527,7 @@ const AdminDemoListings: React.FC = () => {
             className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-slate-700 disabled:opacity-50 cursor-pointer"
           >
             <RefreshCcw size={14} className={checkingDuplicates ? 'animate-spin' : ''} />
-            Verificar BD
+            Check DB
           </button>
           
           <button
@@ -535,7 +535,7 @@ const AdminDemoListings: React.FC = () => {
             className="px-4 py-2.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border border-rose-500/30 cursor-pointer"
           >
             <Trash2 size={14} />
-            Eliminar Conteúdo Demo
+            Delete Demo Content
           </button>
         </div>
       </div>
@@ -569,10 +569,10 @@ const AdminDemoListings: React.FC = () => {
             className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition cursor-pointer"
           >
             {selectedCount === items.length ? <CheckSquare size={16} className="text-indigo-600" /> : <Square size={16} />}
-            {selectedCount === items.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+            {selectedCount === items.length ? 'Deselect All' : 'Select All'}
           </button>
           <span className="text-xs font-bold text-slate-500">
-            {selectedCount} de {items.length} selecionados ({existingCount} já na BD)
+            {selectedCount} of {items.length} selected ({existingCount} in DB)
           </span>
         </div>
 
@@ -582,7 +582,7 @@ const AdminDemoListings: React.FC = () => {
           className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-indigo-200 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
         >
           <Sparkles size={16} />
-          {publishing ? 'A Criar Anúncios...' : `Criar ${selectedCount} Anúncios Selecionados`}
+          {publishing ? 'Creating Listings...' : `Create ${selectedCount} Selected Listings`}
         </button>
       </div>
 
@@ -627,7 +627,7 @@ const AdminDemoListings: React.FC = () => {
 
                     {item.existsInDb && (
                       <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase px-2 py-0.5 rounded border border-emerald-200">
-                        ✓ Já na BD
+                        ✓ In DB
                       </span>
                     )}
                   </div>
@@ -647,7 +647,7 @@ const AdminDemoListings: React.FC = () => {
                   className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-1 transition cursor-pointer"
                 >
                   <Edit3 size={12} />
-                  {item.expanded ? 'Ocultar Edição' : 'Editar Detalhes'}
+                  {item.expanded ? 'Hide Edit' : 'Edit Details'}
                   {item.expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
               </div>
@@ -658,7 +658,7 @@ const AdminDemoListings: React.FC = () => {
               <div className="p-4 md:p-6 border-t border-slate-100 bg-white space-y-4 text-xs font-sans">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   <div>
-                    <label className="font-bold text-slate-600 block mb-1">Título</label>
+                    <label className="font-bold text-slate-600 block mb-1">Title</label>
                     <input
                       type="text"
                       value={item.title}
@@ -668,7 +668,7 @@ const AdminDemoListings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="font-bold text-slate-600 block mb-1">Preço (£ / €)</label>
+                    <label className="font-bold text-slate-600 block mb-1">Price (£ / €)</label>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -679,7 +679,7 @@ const AdminDemoListings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="font-bold text-slate-600 block mb-1">Categoria</label>
+                    <label className="font-bold text-slate-600 block mb-1">Category</label>
                     <input
                       type="text"
                       value={item.category}
@@ -689,7 +689,7 @@ const AdminDemoListings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="font-bold text-slate-600 block mb-1">Cidade</label>
+                    <label className="font-bold text-slate-600 block mb-1">City</label>
                     <input
                       type="text"
                       value={item.city}
@@ -699,18 +699,18 @@ const AdminDemoListings: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="font-bold text-slate-600 block mb-1">Tipo de Barco</label>
+                    <label className="font-bold text-slate-600 block mb-1">Boat Type</label>
                     <input
                       type="text"
                       value={item.boatType || ''}
                       onChange={(e) => updateItemField(item.id, 'boatType', e.target.value)}
                       className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
-                      placeholder="Ex: Motorboat, Sailboat, RIB"
+                      placeholder="e.g. Motorboat, Sailboat, RIB"
                     />
                   </div>
 
                   <div>
-                    <label className="font-bold text-slate-600 block mb-1">Fabricante / Marca</label>
+                    <label className="font-bold text-slate-600 block mb-1">Manufacturer / Brand</label>
                     <input
                       type="text"
                       value={item.manufacturer || ''}
@@ -721,7 +721,7 @@ const AdminDemoListings: React.FC = () => {
 
                   {item.externalListing && (
                     <div className="sm:col-span-2 md:col-span-3">
-                      <label className="font-bold text-indigo-700 block mb-1">URL de Origem Externa (sourceUrl)</label>
+                      <label className="font-bold text-indigo-700 block mb-1">External Source URL (sourceUrl)</label>
                       <input
                         type="text"
                         value={item.sourceUrl || ''}
@@ -732,7 +732,7 @@ const AdminDemoListings: React.FC = () => {
                   )}
 
                   <div className="sm:col-span-2 md:col-span-3">
-                    <label className="font-bold text-slate-600 block mb-1">Descrição</label>
+                    <label className="font-bold text-slate-600 block mb-1">Description</label>
                     <textarea
                       rows={3}
                       value={item.description}
@@ -754,23 +754,23 @@ const AdminDemoListings: React.FC = () => {
             <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center font-bold">
               <Trash2 size={24} />
             </div>
-            <h3 className="text-xl font-black text-slate-900">Remover Anúncios Demo?</h3>
+            <h3 className="text-xl font-black text-slate-900">Remove Demo Listings?</h3>
             <p className="text-xs text-slate-600 leading-relaxed font-medium">
-              Esta ação irá pesquisar e eliminar do Firestore todos os anúncios marcados como <code className="bg-slate-100 px-1 py-0.5 rounded font-bold">demoListing: true</code> ou <code className="bg-slate-100 px-1 py-0.5 rounded font-bold">externalListing: true</code>.
+              This action will search and delete from Firestore all listings marked as <code className="bg-slate-100 px-1 py-0.5 rounded font-bold">demoListing: true</code> or <code className="bg-slate-100 px-1 py-0.5 rounded font-bold">externalListing: true</code>.
             </p>
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowDeleteModal(false)}
                 className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition cursor-pointer"
               >
-                Cancelar
+                Cancel
               </button>
               <button
                 onClick={handleDeleteAllDemoContent}
                 disabled={deleting}
                 className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition shadow-md disabled:opacity-50 cursor-pointer"
               >
-                {deleting ? 'A Eliminar...' : 'Confirmar Eliminação'}
+                {deleting ? 'Deleting...' : 'Confirm Delete'}
               </button>
             </div>
           </div>

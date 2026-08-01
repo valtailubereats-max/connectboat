@@ -67,15 +67,15 @@ const AdminManualTecnico: React.FC = () => {
   // Pre-defined type filter buttons
   const typesList: (ManualItemType | 'All')[] = [
     'All',
-    'Página',
-    'Botão',
-    'Formulário',
-    'Fluxo',
+    'Page',
+    'Button',
+    'Form',
+    'Flow',
     'Admin',
     'Firestore',
-    'Monetização',
-    'Vitrine',
-    'Anúncios'
+    'Monetisation',
+    'Showcase',
+    'Listings'
   ];
 
   // Search filter logic
@@ -151,15 +151,15 @@ const AdminManualTecnico: React.FC = () => {
 
   const getTypeBadgeColor = (type: ManualItemType) => {
     switch (type) {
-      case 'Página': return 'bg-sky-50 text-sky-700 border-sky-100';
-      case 'Botão': return 'bg-amber-50 text-amber-700 border-amber-100';
-      case 'Formulário': return 'bg-violet-50 text-violet-700 border-violet-100';
-      case 'Fluxo': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+      case 'Page': return 'bg-sky-50 text-sky-700 border-sky-100';
+      case 'Button': return 'bg-amber-50 text-amber-700 border-amber-100';
+      case 'Form': return 'bg-violet-50 text-violet-700 border-violet-100';
+      case 'Flow': return 'bg-emerald-50 text-emerald-700 border-emerald-100';
       case 'Admin': return 'bg-rose-50 text-rose-700 border-rose-100';
       case 'Firestore': return 'bg-indigo-50 text-indigo-700 border-indigo-100';
-      case 'Monetização': return 'bg-yellow-50 text-yellow-800 border-yellow-200';
-      case 'Vitrine': return 'bg-pt-green/10 text-emerald-800 border-emerald-100';
-      case 'Anúncios': return 'bg-blue-50 text-blue-700 border-blue-100';
+      case 'Monetisation': return 'bg-yellow-50 text-yellow-800 border-yellow-200';
+      case 'Showcase': return 'bg-pt-green/10 text-emerald-800 border-emerald-100';
+      case 'Listings': return 'bg-blue-50 text-blue-700 border-blue-100';
       default: return 'bg-slate-50 text-slate-700 border-slate-100';
     }
   };

@@ -136,7 +136,7 @@ export function validateSearchPageUrl(urlInput: string): SearchPageValidationRes
     return {
       isValid: false,
       errorCode: 'INVALID_URL',
-      errorMessage: 'Por favor, introduza um URL válido.'
+      errorMessage: 'Please enter a valid URL.'
     };
   }
 
@@ -147,7 +147,7 @@ export function validateSearchPageUrl(urlInput: string): SearchPageValidationRes
     return {
       isValid: false,
       errorCode: 'INVALID_URL',
-      errorMessage: 'O URL fornecido não é válido. Verifique a sintaxe.'
+      errorMessage: 'The provided URL is invalid. Please check the syntax.'
     };
   }
 
@@ -155,7 +155,7 @@ export function validateSearchPageUrl(urlInput: string): SearchPageValidationRes
     return {
       isValid: false,
       errorCode: 'INVALID_URL',
-      errorMessage: 'Apenas são suportados URLs com protocolo HTTP ou HTTPS.'
+      errorMessage: 'Only HTTP or HTTPS protocol URLs are supported.'
     };
   }
 
@@ -179,7 +179,7 @@ export function validateSearchPageUrl(urlInput: string): SearchPageValidationRes
     return {
       isValid: false,
       errorCode: 'UNSUPPORTED_MARKETPLACE',
-      errorMessage: 'Marketplace não suportado para Importação de Resultados. Apenas Apollo Duck e Boats and Outboards são permitidos nesta versão.'
+      errorMessage: 'Marketplace not supported for Search Results Import. Only Apollo Duck and Boats and Outboards are allowed in this version.'
     };
   }
 
@@ -192,7 +192,7 @@ export function validateSearchPageUrl(urlInput: string): SearchPageValidationRes
       return {
         isValid: false,
         errorCode: 'INDIVIDUAL_LISTING_URL',
-        errorMessage: 'O URL fornecido é um anúncio individual, não uma página de resultados de pesquisa. Utilize a importação por URL individual.'
+        errorMessage: 'The provided URL is an individual listing, not a search results page. Please use individual URL import.'
       };
     }
   }
@@ -202,7 +202,7 @@ export function validateSearchPageUrl(urlInput: string): SearchPageValidationRes
       return {
         isValid: false,
         errorCode: 'INDIVIDUAL_LISTING_URL',
-        errorMessage: 'O URL fornecido é um anúncio individual, não uma página de resultados de pesquisa. Utilize a importação por URL individual.'
+        errorMessage: 'The provided URL is an individual listing, not a search results page. Please use individual URL import.'
       };
     }
   }

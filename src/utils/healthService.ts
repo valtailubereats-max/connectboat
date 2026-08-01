@@ -36,7 +36,7 @@ export async function logHealthEvent(type: 'import_failure' | 'email_failure' | 
 export async function runHealthChecks(): Promise<{
   alerts: SystemHealthAlert[];
   percentage: number;
-  level: 'Saudável' | 'Atenção' | 'Alerta' | 'Crítico';
+  level: 'Healthy' | 'Warning' | 'Alert' | 'Critical' | 'Saudável' | 'Atenção' | 'Alerta' | 'Crítico';
 }> {
   const alertsToCreate: Omit<SystemHealthAlert, 'id' | 'status' | 'createdAt'>[] = [];
   const now = new Date();
@@ -75,7 +75,7 @@ export async function runHealthChecks(): Promise<{
     console.warn('[HealthCheck] Ads check failed', err);
   }
 
-  // 2. Duplicados
+  // 2. Duplicates
   try {
     const adsSnap = await getDocs(collection(db, 'ads'));
     const allAds = adsSnap.docs.map(d => d.data() as any);
@@ -83,11 +83,11 @@ export async function runHealthChecks(): Promise<{
 
     if (suspectedDuplicates.length > 3) {
       alertsToCreate.push({
-        title: 'Múltiplos anúncios duplicados suspeitos',
-        description: `Existem ${suspectedDuplicates.length} anúncios ativos detetados como possíveis duplicados pelo analisador anti-spam.`,
+        title: 'Multiple suspected duplicate listings',
+        description: `There are ${suspectedDuplicates.length} active listings flagged as potential duplicates by anti-spam analysis.`,
         severity: 'warning',
         source: 'ads',
-        recommendedAction: 'Analise os anúncios duplicados marcados na área de administração para arquivar itens repetidos.',
+        recommendedAction: 'Review flagged duplicate listings in the admin panel to archive repetitive entries.',
         relatedLink: '/admin/ads'
       });
     }
@@ -95,7 +95,7 @@ export async function runHealthChecks(): Promise<{
     console.warn('[HealthCheck] Duplicates check failed', err);
   }
 
-  // 3. Destaques
+  // 3. Featured
   try {
     const adsSnap = await getDocs(collection(db, 'ads'));
     const allAds = adsSnap.docs.map(d => d.data() as any);
@@ -118,19 +118,19 @@ export async function runHealthChecks(): Promise<{
 
     if (paidFeatured.length === 0 && permanentFeatured.length === 0) {
       alertsToCreate.push({
-        title: 'Nenhum Destaque Visível na Home',
-        description: 'Não existem destaques pagos ativos nem destaques permanentes administrativos configurados no carrossel da Home.',
+        title: 'No Featured Listings Visible on Homepage',
+        description: 'There are no active paid featured listings or admin permanent featured listings configured on the Home carousel.',
         severity: 'critical',
         source: 'destaque',
-        recommendedAction: 'Crie pelo menos um anúncio com destaque permanente para preencher esteticamente o carrossel, ou ative destaques pagos.',
+        recommendedAction: 'Create at least one listing with permanent featured status or activate paid highlights.',
         relatedLink: '/create-ad'
       });
     }
   } catch (err) {
-    console.warn('[HealthCheck] Destaques check failed', err);
+    console.warn('[HealthCheck] Featured check failed', err);
   }
 
-  // 4. Importações OLX/Gumtree
+  // 4. Imports
   try {
     const eventsSnap = await getDocs(query(
       collection(db, 'system_health_events'),
@@ -143,11 +143,11 @@ export async function runHealthChecks(): Promise<{
 
     if (recentFailures.length >= 3) {
       alertsToCreate.push({
-        title: 'Várias falhas em importações recentes',
-        description: `Detetou-se ${recentFailures.length} falha(s) de importação automática através de links OLX/Gumtree nas últimas 24 h.`,
+        title: 'Multiple recent import failures',
+        description: `Detected ${recentFailures.length} automated import failure(s) in the past 24 hours.`,
         severity: 'alert',
         source: 'import',
-        recommendedAction: 'Verifique se as páginas de origem sofreram alterações em suas estruturas CSS ou se há bloqueios cloud.',
+        recommendedAction: 'Check if source pages changed their structure or if cloud rate limits apply.',
         relatedLink: '/admin/import'
       });
     }
@@ -155,7 +155,7 @@ export async function runHealthChecks(): Promise<{
     console.warn('[HealthCheck] Import failure check failed', err);
   }
 
-  // 5. E-mails
+  // 5. Emails
   try {
     const eventsSnap = await getDocs(query(
       collection(db, 'system_health_events'),
@@ -168,11 +168,11 @@ export async function runHealthChecks(): Promise<{
 
     if (recentEmailFailures.length > 0) {
       alertsToCreate.push({
-        title: 'Falhas recentes de envio de e-mail',
-        description: `Ocorreu ${recentEmailFailures.length} falha(s) nos disparos do servidor de e-mail automático nas últimas 24 h.`,
+        title: 'Recent email dispatch failures',
+        description: `Encountered ${recentEmailFailures.length} failure(s) during automatic email dispatches in the past 24 hours.`,
         severity: 'alert',
         source: 'email',
-        recommendedAction: 'Verifique as quotas e credenciais das chaves de API do Resend/SendGrid nas Definições.',
+        recommendedAction: 'Verify API key quotas and credentials in Admin Settings.',
         relatedLink: '/admin/settings'
       });
     }
@@ -180,7 +180,7 @@ export async function runHealthChecks(): Promise<{
     console.warn('[HealthCheck] Email failure check failed', err);
   }
 
-  // Firestore
+  // 6. Firestore
   try {
     const eventsSnap = await getDocs(query(
       collection(db, 'system_health_events'),
@@ -193,11 +193,11 @@ export async function runHealthChecks(): Promise<{
 
     if (recentFireErrors.length > 0) {
       alertsToCreate.push({
-        title: 'Erro de permissão recente no Firestore',
-        description: `Foram detetados erros do tipo "Missing or insufficient permissions" nas últimas 24 horas.`,
+        title: 'Recent Firestore permission error',
+        description: `Detected "Missing or insufficient permissions" errors in the past 24 hours.`,
         severity: 'critical',
         source: 'firestore',
-        recommendedAction: 'Examine as regras em firestore.rules para assegurar que os leitores/escritores de staff estão autorizados.',
+        recommendedAction: 'Examine security rules in firestore.rules to ensure staff permissions are authorized.',
         relatedLink: '/admin/manual-tecnico'
       });
     }
@@ -259,11 +259,11 @@ export async function runHealthChecks(): Promise<{
   // - Amarelo (Atenção): 65% a 84%
   // - Laranja (Alerta): 40% a 64%
   // - Vermelho (Crítico): 0% a 39%
-  let level: 'Saudável' | 'Atenção' | 'Alerta' | 'Crítico' = 'Saudável';
-  if (percentage >= 85) level = 'Saudável';
-  else if (percentage >= 65) level = 'Atenção';
-  else if (percentage >= 40) level = 'Alerta';
-  else level = 'Crítico';
+  let level: 'Healthy' | 'Warning' | 'Alert' | 'Critical' | 'Saudável' | 'Atenção' | 'Alerta' | 'Crítico' = 'Healthy';
+  if (percentage >= 85) level = 'Healthy';
+  else if (percentage >= 65) level = 'Warning';
+  else if (percentage >= 40) level = 'Alert';
+  else level = 'Critical';
 
   // Log running snapshot metadata
   console.log('[DEBUG_HEALTH] All 8 sub-checks completed successfully. Alerts count:', alertsToCreate.length);
@@ -302,11 +302,11 @@ export async function runHealthChecks(): Promise<{
 // Handle sending email alerts, respecting anti-spam logic
 async function handleHealthLevelChangeEmails(
   currentPercentage: number,
-  currentLevel: 'Saudável' | 'Atenção' | 'Alerta' | 'Crítico',
+  currentLevel: 'Healthy' | 'Warning' | 'Alert' | 'Critical' | 'Saudável' | 'Atenção' | 'Alerta' | 'Crítico',
   openAlerts: SystemHealthAlert[]
 ) {
-  // We only trigger emails when the level is Amarelo, Laranja, or Vermelho (i.e. not Saudável)
-  if (currentLevel === 'Saudável') return;
+  // We only trigger emails when the level is not Healthy / Saudável
+  if (currentLevel === 'Healthy' || currentLevel === 'Saudável') return;
 
   try {
     // Read the last sent email level configuration from settings to avoid repetitions

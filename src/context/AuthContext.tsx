@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           inviterId: inviterId,
           inviterCode: refCode,
           referredUserId: uid,
-          referredName: userProfile.name || 'Utilizador',
+          referredName: userProfile.name || 'User',
           createdAt: new Date()
         });
 

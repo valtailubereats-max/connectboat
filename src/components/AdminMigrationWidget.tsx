@@ -32,11 +32,11 @@ export const AdminMigrationWidget = () => {
     setUpdatedCount(null);
     setShowConfirm(false);
     setLogs([]);
-    addLog('A iniciar análise da base de dados de anúncios...');
+    addLog('Starting listing database analysis...');
 
     try {
       const adsSnap = await getDocs(collection(db, 'ads'));
-      addLog(`Encontrados no total ${adsSnap.size} anúncios no Firestore.`);
+      addLog(`Found a total of ${adsSnap.size} listings in Firestore.`);
       
       let blankCount = 0;
       adsSnap.forEach((docSnap) => {
@@ -48,11 +48,11 @@ export const AdminMigrationWidget = () => {
 
       setTotalAds(adsSnap.size);
       setMissingCountryCount(blankCount);
-      addLog(`Análise concluída: ${blankCount} anúncios não possuem o campo "country".`);
+      addLog(`Analysis complete: ${blankCount} listings do not have the "country" field.`);
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(`Erro ao analisar anúncios: ${err.message || err}`);
-      addLog(`ERRO: ${err.message || err}`);
+      setErrorMessage(`Error analyzing listings: ${err.message || err}`);
+      addLog(`ERROR: ${err.message || err}`);
     } finally {
       setAnalyzing(false);
     }
@@ -62,7 +62,7 @@ export const AdminMigrationWidget = () => {
     if (missingCountryCount === null || missingCountryCount === 0) return;
     setMigrating(true);
     setErrorMessage(null);
-    addLog('A iniciar processo de migração para o país "Portugal"...');
+    addLog('Starting migration process...');
 
     try {
       const adsSnap = await getDocs(collection(db, 'ads'));
@@ -75,7 +75,7 @@ export const AdminMigrationWidget = () => {
         }
       });
 
-      addLog(`Confirmados ${oldAdsToMigrate.length} anúncios sem país para migrar.`);
+      addLog(`Confirmed ${oldAdsToMigrate.length} listings without country field to migrate.`);
       
       let batch = writeBatch(db);
       let countInBatch = 0;
@@ -84,14 +84,14 @@ export const AdminMigrationWidget = () => {
 
       for (const adId of oldAdsToMigrate) {
         const adRef = doc(db, 'ads', adId);
-        batch.update(adRef, { country: 'Portugal' });
+        batch.update(adRef, { country: 'United Kingdom' });
         countInBatch++;
         totalUpdated++;
 
         if (countInBatch === CHUNK_SIZE) {
-          addLog(`A enviar lote de ${countInBatch} atualizações para o Firestore...`);
+          addLog(`Sending batch of ${countInBatch} updates to Firestore...`);
           await batch.commit();
-          addLog(`Lote de ${countInBatch} enviado com sucesso! Progresso: ${totalUpdated}/${oldAdsToMigrate.length}`);
+          addLog(`Batch of ${countInBatch} sent successfully! Progress: ${totalUpdated}/${oldAdsToMigrate.length}`);
           batch = writeBatch(db);
           countInBatch = 0;
         }
@@ -99,19 +99,19 @@ export const AdminMigrationWidget = () => {
 
       // Commit remaining updates in last batch
       if (countInBatch > 0) {
-        addLog(`A enviar lote final de ${countInBatch} atualizações...`);
+        addLog(`Sending final batch of ${countInBatch} updates...`);
         await batch.commit();
-        addLog(`Lote final enviado com sucesso!`);
+        addLog(`Final batch sent successfully!`);
       }
 
       setUpdatedCount(totalUpdated);
       setMissingCountryCount(0);
       setShowConfirm(false);
-      addLog(`Migração finalizada! Total de ${totalUpdated} anúncios preenchidos com "Portugal".`);
+      addLog(`Migration finished! Total of ${totalUpdated} listings updated with country field.`);
     } catch (err: any) {
       console.error(err);
-      setErrorMessage(`Erro durante a migração: ${err.message || err}`);
-      addLog(`ERRO DE MIGRAÇÃO: ${err.message || err}`);
+      setErrorMessage(`Error during migration: ${err.message || err}`);
+      addLog(`MIGRATION ERROR: ${err.message || err}`);
     } finally {
       setMigrating(false);
     }
@@ -124,16 +124,16 @@ export const AdminMigrationWidget = () => {
           <Database size={20} />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Migração de Dados (Manutenção)</h2>
-          <p className="text-xs text-slate-500 font-medium">Rotina administrativa para preencher anúncios legados sem o campo "país" como "Portugal".</p>
+          <h2 className="text-xl font-bold text-slate-900">Data Migration (Maintenance)</h2>
+          <p className="text-xs text-slate-500 font-medium">Administrative routine to populate legacy listings missing location details.</p>
         </div>
       </div>
 
       <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
         <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
         <div className="space-y-1 text-xs text-amber-800 font-medium leading-relaxed">
-          <p className="font-extrabold text-amber-900">Informação Importante antes de Otimizar a Home por País:</p>
-          <p>Para otimizar as consultas e buscas filtrando diretamente pelo país ativo no Firestore, todos os anúncios antigos devem possuir o atributo <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">country</code>. Esta rotina identifica os anúncios criados antes do lançamento multi-países e preenche com <code className="bg-amber-100 px-1 py-0.5 font-bold rounded">"Portugal"</code> com segurança.</p>
+          <p className="font-extrabold text-amber-900">Important System Information:</p>
+          <p>To optimize queries and location filters in Firestore, all legacy listings must possess the <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">country</code> attribute. This routine identifies legacy listings and safely sets the location property.</p>
         </div>
       </div>
 
@@ -178,10 +178,10 @@ export const AdminMigrationWidget = () => {
                 {missingCountryCount}
               </p>
               {missingCountryCount > 0 ? (
-                <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold">Pendente</span>
+                <span className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold">Pending</span>
               ) : (
                 <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-bold flex items-center gap-1">
-                  <Check size={10} /> Ok
+                  <Check size={10} /> OK
                 </span>
               )}
             </div>
@@ -194,8 +194,8 @@ export const AdminMigrationWidget = () => {
           <div className="flex items-start gap-3">
             <HelpCircle className="text-rose-500 shrink-0 mt-0.5" size={20} />
             <div className="space-y-1">
-              <h4 className="text-sm font-black text-rose-900">Tem certeza que deseja aplicar a migração automática?</h4>
-              <p className="text-xs text-rose-700 font-medium">Os {missingCountryCount} anúncios listados acima receberão de forma definitiva o país <code className="bg-rose-100 px-1 py-0.5 rounded font-mono font-bold">"Portugal"</code>. Esta operação é segura, protege anúncios criados anteriormente e NÃO remove nenhum dado.</p>
+              <h4 className="text-sm font-black text-rose-900">Are you sure you want to run automatic migration?</h4>
+              <p className="text-xs text-rose-700 font-medium">The {missingCountryCount} listings listed above will be updated safely without deleting any data.</p>
             </div>
           </div>
           <div className="flex items-center gap-3 pl-8">
@@ -210,7 +210,7 @@ export const AdminMigrationWidget = () => {
               ) : (
                 <Check size={14} />
               )}
-              {migrating ? 'A migrar...' : 'Confirmar e Migrar'}
+              {migrating ? 'Migrating...' : 'Confirm and Migrate'}
             </button>
             <button
               type="button"
@@ -218,7 +218,7 @@ export const AdminMigrationWidget = () => {
               disabled={migrating}
               className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition-all"
             >
-              Cancelar
+              Cancel
             </button>
           </div>
         </div>
@@ -227,7 +227,7 @@ export const AdminMigrationWidget = () => {
       {updatedCount !== null && (
         <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl flex items-center gap-3 font-bold text-sm shadow-sm animate-fade-in">
           <CheckCircle2 className="text-emerald-500 shrink-0" size={20} />
-          <span>Sucesso! Foram atualizados no total {updatedCount} anúncios com o país "Portugal".</span>
+          <span>Success! A total of {updatedCount} listings were updated.</span>
         </div>
       )}
 
@@ -239,7 +239,7 @@ export const AdminMigrationWidget = () => {
 
       {logs.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Histórico de execução</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Execution Log</p>
           <div className="p-4 bg-slate-900 text-slate-300 text-[11px] font-mono rounded-xl max-h-48 overflow-y-auto space-y-1 border border-slate-800">
             {logs.map((log, i) => (
               <div key={`log-line-${i}`} className="truncate">{log}</div>

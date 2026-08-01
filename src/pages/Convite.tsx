@@ -129,15 +129,15 @@ const Convite: React.FC = () => {
           </p>
         </div>
 
-        {/* BENEFÍCIOS RÁPIDOS */}
+        {/* QUICK BENEFITS */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 py-2 text-left">
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-start gap-3">
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
               <Compass size={16} />
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 text-sm">Comunidade</h4>
-              <p className="text-xs text-slate-500 font-medium leading-normal mt-0.5">Conectado em qualquer país comercial.</p>
+              <h4 className="font-bold text-slate-900 text-sm">Community</h4>
+              <p className="text-xs text-slate-500 font-medium leading-normal mt-0.5">Connected across international markets.</p>
             </div>
           </div>
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-start gap-3">
@@ -145,8 +145,8 @@ const Convite: React.FC = () => {
               <Shield size={16} />
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 text-sm">Segurança</h4>
-              <p className="text-xs text-slate-500 font-medium leading-normal mt-0.5">Autenticação real e suporte integrado.</p>
+              <h4 className="font-bold text-slate-900 text-sm">Security</h4>
+              <p className="text-xs text-slate-500 font-medium leading-normal mt-0.5">Verified accounts and dedicated support.</p>
             </div>
           </div>
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-start gap-3">
@@ -154,20 +154,20 @@ const Convite: React.FC = () => {
               <Heart size={16} />
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 text-sm">Vitrina Digital</h4>
-              <p className="text-xs text-slate-500 font-medium leading-normal mt-0.5">Página exclusiva para o teu negócio.</p>
+              <h4 className="font-bold text-slate-900 text-sm">Marine Showcase</h4>
+              <p className="text-xs text-slate-500 font-medium leading-normal mt-0.5">Dedicated pages for marine businesses.</p>
             </div>
           </div>
         </div>
 
-        {/* BOTÕES DE AÇÃO */}
+        {/* ACTION BUTTONS */}
         <div className="flex flex-col sm:flex-row items-stretch justify-center gap-4 max-w-md mx-auto">
           <button
             onClick={() => handleActionClick('register_click', '/login?mode=register')}
             disabled={loading}
             className="flex-1 bg-[#046a38] text-white py-4 px-6 rounded-2xl font-black text-base hover:bg-[#03552d] transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-800/10 cursor-pointer"
           >
-            <span>Criar Conta</span>
+            <span>Create Account</span>
             <ArrowRight size={18} />
           </button>
           
@@ -176,18 +176,18 @@ const Convite: React.FC = () => {
             disabled={loading}
             className="flex-1 bg-slate-100 text-slate-800 py-4 px-6 rounded-2xl font-black text-base hover:bg-slate-200 transition-all cursor-pointer"
           >
-            Entrar
+            Sign In
           </button>
         </div>
 
-        {/* LINK PARA HOME PRINCIPAL */}
+        {/* LINK TO HOME */}
         <div className="pt-4 border-t border-slate-100 flex flex-col items-center gap-1.5">
-          <p className="text-xs text-slate-400 font-bold">Queres apenas dar uma vista de olhos?</p>
+          <p className="text-xs text-slate-400 font-bold">Just browsing around?</p>
           <Link
             to="/"
             className="text-xs font-black text-slate-600 hover:text-[#046a38] transition-colors underline uppercase tracking-wider"
           >
-            Entrar como Visitante
+            Browse as Guest
           </Link>
         </div>
       </div>

@@ -637,13 +637,13 @@ const AdDetails = () => {
         <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
           <AlertCircle size={32} />
         </div>
-        <h1 className="text-2xl font-black text-slate-900 mb-2">Ops! Ocorreu um problema</h1>
-        <p className="text-slate-600 mb-8 leading-relaxed">{errorMsg || 'Anúncio indisponível.'}</p>
+        <h1 className="text-2xl font-black text-slate-900 mb-2">Oops! A problem occurred</h1>
+        <p className="text-slate-600 mb-8 leading-relaxed">{errorMsg || 'Listing unavailable.'}</p>
         <Link 
           to="/"
           className="inline-flex items-center justify-center bg-indigo-600 font-bold text-white px-6 py-3 rounded-2xl shadow-md hover:bg-indigo-700 transition"
         >
-          Voltar para a Home
+          Return to Home
         </Link>
       </div>
     );
@@ -720,13 +720,13 @@ const AdDetails = () => {
         </Helmet>
       )}
 
-      {/* Botão Voltar */}
+      {/* Back Button */}
       <div className="mb-6">
         <button 
           onClick={() => navigate(-1)} 
           className="inline-flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition-all p-2 hover:bg-slate-50 rounded-xl"
         >
-          <ChevronLeft size={20} /> Voltar
+          <ChevronLeft size={20} /> Back
         </button>
       </div>
 
@@ -766,7 +766,7 @@ const AdDetails = () => {
             {/* Favorito Button */}
             <button
               onClick={handleToggleFavorite}
-              aria-label={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+              aria-label={isFavorite ? 'Remove from favourites' : 'Add to favourites'}
               className={`absolute top-4 right-4 p-3 rounded-full z-20 backdrop-blur-md transition-all shadow-md ${
                 isFavorite ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-white/90 text-slate-400 hover:text-red-500 hover:bg-white'
               }`}
@@ -1033,23 +1033,23 @@ const AdDetails = () => {
                 <MapPin size={22} />
               </div>
               <div>
-                <h2 className="text-xl font-black text-slate-900 leading-none">📍 Localização Aproximada</h2>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5 font-sans">Região de referência do anúncio</p>
+                <h2 className="text-xl font-black text-slate-900 leading-none">📍 Approximate Location</h2>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5 font-sans">Reference region for the listing</p>
               </div>
             </div>
 
             <div className="flex flex-row items-center justify-between gap-4 bg-slate-50 p-4 md:p-5 rounded-2xl border border-slate-100 font-sans">
               <div className="space-y-0.5">
                 <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider text-left">
-                  {isService ? 'Área de Atendimento' : 'Cidade'}
+                  {isService ? 'Service Area' : 'City'}
                 </span>
                 <span className="text-sm sm:text-lg font-extrabold text-slate-900 block text-left">
                   {isService && ad.serviceCoverage === 'online' ? (
-                    '💻 Atendimento Online'
+                    '💻 Online Service'
                   ) : isService && ad.serviceCoverage === 'uk' ? (
-                    '🌍 Todo o Reino Unido'
+                    '🌍 Entire UK'
                   ) : isService && ad.serviceCoverage === 'portugal' ? (
-                    '🇵🇹 Todo Portugal'
+                    '🇵🇹 Entire Portugal'
                   ) : (
                     getAdLocationLabel(ad)
                   )}
@@ -1057,9 +1057,9 @@ const AdDetails = () => {
               </div>
               {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
                 <div className="space-y-0.5 text-right">
-                  <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">País</span>
+                  <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Country</span>
                   <span className="text-sm sm:text-lg font-extrabold text-slate-900 block">
-                    {ad.country === 'Reino Unido' ? 'Reino Unido' : 'Portugal'}
+                    {ad.country === 'Reino Unido' ? 'United Kingdom' : 'Portugal'}
                   </span>
                 </div>
               )}
@@ -1068,20 +1068,20 @@ const AdDetails = () => {
             {isService && ad.serviceCoverage === 'online' ? (
               <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl text-center space-y-2">
                 <span className="text-4xl">💻</span>
-                <p className="text-base font-extrabold text-indigo-900">Serviço 100% Online / Remoto</p>
-                <p className="text-xs text-indigo-700/80 font-semibold max-w-md">Este profissional atende de forma totalmente digital. Não há necessidade de deslocações físicas ou mapas.</p>
+                <p className="text-base font-extrabold text-indigo-900">100% Online / Remote Service</p>
+                <p className="text-xs text-indigo-700/80 font-semibold max-w-md">This professional operates entirely digitally. No physical travel or map coordinates required.</p>
               </div>
             ) : isService && (ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal') ? (
               <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-r from-teal-50 to-emerald-50 border border-emerald-100 rounded-2xl text-center space-y-2">
                 <span className="text-4xl">🌍</span>
-                <p className="text-base font-extrabold text-emerald-900">Cobertura Nacional Ativa</p>
-                <p className="text-xs text-emerald-700/80 font-semibold max-w-md">Este profissional atende em todo o país ({ad.country === 'Reino Unido' ? 'Reino Unido' : 'Portugal'}). Não há restrição de cidade ou região.</p>
+                <p className="text-base font-extrabold text-emerald-900">Active National Coverage</p>
+                <p className="text-xs text-emerald-700/80 font-semibold max-w-md">This professional provides services nationwide ({ad.country === 'Reino Unido' ? 'United Kingdom' : 'Portugal'}).</p>
               </div>
             ) : (
               ad.city && ad.city.trim() !== '' && ad.city.toLowerCase() !== 'todas' && (
                 <div className="w-full h-64 md:h-80 rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-100 relative">
                   <iframe
-                    title={`Mapa de ${ad.city}`}
+                    title={`Map of ${ad.city}`}
                     width="100%"
                     height="100%"
                     style={{ border: 0 }}
@@ -1098,10 +1098,10 @@ const AdDetails = () => {
               <span className="text-amber-500 text-lg leading-none mt-0.5">⚠️</span>
               <div className="space-y-1">
                 <p className="leading-relaxed text-amber-900">
-                  A localização apresentada é aproximada e serve apenas como referência.
+                  The location shown is approximate and serves strictly as a reference point.
                 </p>
                 <p className="leading-relaxed text-amber-800/80">
-                  Localização aproximada baseada na cidade informada pelo anunciante.
+                  Approximate location based on the city provided by the seller.
                 </p>
               </div>
             </div>
@@ -1132,17 +1132,17 @@ const AdDetails = () => {
               <div className="flex flex-wrap gap-2 animate-fade-in">
                 {(ad.claimStatus === 'unclaimed' || !ad.claimStatus) && (
                   <span className="bg-amber-50 text-amber-605 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-amber-200 flex items-center gap-1">
-                    <AlertCircle size={12} /> Aguardando ativação do proprietário
+                    <AlertCircle size={12} /> Awaiting owner activation
                   </span>
                 )}
                 {ad.claimStatus === 'pending' && (
                   <span className="bg-indigo-50 text-indigo-600 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-indigo-200 flex items-center gap-1 animate-pulse">
-                    <Clock size={12} /> Ativação Pendente de Verificação
+                    <Clock size={12} /> Activation Pending Verification
                   </span>
                 )}
                 {ad.claimStatus === 'claimed' && (
                   <span className="bg-emerald-50 text-emerald-700 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-emerald-200 flex items-center gap-1">
-                    <Award size={12} /> Negócio Verificado & Ativo
+                    <Award size={12} /> Verified & Active Business
                   </span>
                 )}
               </div>
@@ -1172,7 +1172,7 @@ const AdDetails = () => {
                   </div>
                   <div className="space-y-1 text-xs text-amber-950">
                     <span className="font-extrabold text-amber-900 block text-sm">
-                      Example Listing (Demonstração)
+                      Example Listing (Demonstration)
                     </span>
                     <p className="text-amber-800 leading-relaxed font-medium">
                       This is an example listing created for demonstration purposes and is not available for purchase.
@@ -1186,21 +1186,21 @@ const AdDetails = () => {
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-1.5 text-slate-500 font-bold text-sm">
                   {isService && ad.serviceCoverage === 'online' ? (
-                    <span>💻 Atendimento Online</span>
+                    <span>💻 Online Service</span>
                   ) : isService && ad.serviceCoverage === 'uk' ? (
-                    <span>🌍 Todo o Reino Unido</span>
+                    <span>🌍 Entire UK</span>
                   ) : isService && ad.serviceCoverage === 'portugal' ? (
-                    <span>🇵🇹 Todo Portugal</span>
+                    <span>🇵🇹 Entire Portugal</span>
                   ) : (
                     <>
                       <MapPin size={16} className="text-indigo-600" />
-                      <span>{ad.country === 'Reino Unido' ? '🇬🇧' : '🇵🇹'} {getAdLocationLabel(ad)}, {ad.country || 'Portugal'}</span>
+                      <span>{ad.country === 'Reino Unido' ? '🇬🇧' : '🇵🇹'} {getAdLocationLabel(ad)}, {ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country || 'Portugal'}</span>
                     </>
                   )}
                 </div>
                 {ad.category === '💚 Doações & Solidariedade' ? (
                   <div className="text-3.5xl font-black text-emerald-600 bg-emerald-50 py-1.5 px-4 rounded-2xl border border-emerald-200 flex items-center justify-center animate-pulse">
-                    Grátis 💚
+                    Free 💚
                   </div>
                 ) : hasPrice ? (
                   <div className="text-3.5xl font-black text-indigo-600 bg-indigo-50/50 py-1.5 px-4 rounded-2xl border border-indigo-100/50 flex items-center justify-center">
@@ -1208,7 +1208,7 @@ const AdDetails = () => {
                   </div>
                 ) : (
                   <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-100 flex items-center justify-center">
-                    Sob Consulta
+                    Price on Request
                   </span>
                 )}
               </div>
@@ -1216,7 +1216,7 @@ const AdDetails = () => {
 
             {/* Descrição */}
             <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Descrição detalhada</h3>
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Detailed Description</h3>
               <p className="text-slate-600 text-[15px] leading-relaxed whitespace-pre-line break-words overflow-hidden bg-slate-50/40 p-4 rounded-2xl border border-slate-50">
                 {normalizedDescription.length > 400 && !descriptionExpanded
                   ? `${normalizedDescription.substring(0, 400).trim()}...`
@@ -1227,7 +1227,7 @@ const AdDetails = () => {
                   onClick={() => setDescriptionExpanded(!descriptionExpanded)}
                   className="text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
                 >
-                  {descriptionExpanded ? 'Ver Menor' : 'Ler mais completo'}
+                  {descriptionExpanded ? 'Show Less' : 'Read Full Description'}
                 </button>
               )}
             </div>
@@ -1237,11 +1237,11 @@ const AdDetails = () => {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/60">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-indigo-600/10 text-indigo-700 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0">
-                    {(hasSourceUrl ? 'Parceiro' : ad.sellerName).slice(0, 2).toUpperCase()}
+                    {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <h4 className="font-extrabold text-slate-900 leading-tight flex items-center gap-1 truncate">
-                      {hasSourceUrl ? 'Parceiro' : ad.sellerName}
+                      {hasSourceUrl ? 'Partner' : ad.sellerName}
                       <Award size={14} className="text-indigo-500 flex-shrink-0" />
                     </h4>
                     
@@ -1261,7 +1261,7 @@ const AdDetails = () => {
                         })}
                       </div>
                       <span className="text-[10px] text-slate-500 font-bold ml-1">
-                        ({sellerProfile?.ratingCount || 0} avs.)
+                        ({sellerProfile?.ratingCount || 0} reviews)
                       </span>
                     </div>
                   </div>
@@ -1273,7 +1273,7 @@ const AdDetails = () => {
                     onClick={() => setShowReviewModal(true)}
                     className="text-[11px] font-black bg-indigo-50 text-indigo-600 py-1.5 px-3.5 rounded-xl border border-indigo-100 hover:bg-indigo-100/80 hover:text-indigo-700 font-bold transition-all text-center w-full sm:w-auto self-start sm:self-center flex-shrink-0"
                   >
-                    Avaliar Vendedor
+                    Rate Seller
                   </button>
                 )}
               </div>
@@ -1298,7 +1298,7 @@ const AdDetails = () => {
                 ) : ad.adStatus === 'sold' || ad.status === 'sold' ? (
                   <div className="flex items-center justify-center gap-2 bg-slate-100 text-slate-500 py-3.5 px-6 rounded-2xl font-black text-sm border border-slate-200">
                     <ShoppingBag size={20} className="flex-shrink-0 text-slate-400" />
-                    <span className="leading-tight">Anúncio Vendido</span>
+                    <span className="leading-tight">Listing Sold</span>
                   </div>
                 ) : (
                   <button
@@ -1306,7 +1306,7 @@ const AdDetails = () => {
                     className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center"
                   >
                     <MessageCircle size={20} className="flex-shrink-0" />
-                    <span className="leading-tight">Contactar via WhatsApp</span>
+                    <span className="leading-tight">Contact via WhatsApp</span>
                   </button>
                 )}
 
@@ -1321,7 +1321,7 @@ const AdDetails = () => {
                     }`}
                   >
                     <Share2 size={16} className={shareCopied ? 'text-emerald-500 animate-bounce' : ''} />
-                    <span>{shareCopied ? 'Link copiado!' : 'Partilhar'}</span>
+                    <span>{shareCopied ? 'Link copied!' : 'Share'}</span>
                   </button>
 
                   {/* Report Button */}
@@ -1329,7 +1329,7 @@ const AdDetails = () => {
                     onClick={() => setShowReportModal(true)}
                     className="flex items-center justify-center gap-1.5 border border-rose-100 hover:border-rose-200 text-rose-500 bg-rose-50/50 hover:bg-rose-50 py-3 px-4 rounded-xl font-bold text-xs transition"
                   >
-                    <ShieldAlert size={16} /> Denunciar
+                    <ShieldAlert size={16} /> Report
                   </button>
                 </div>
               </div>
@@ -1341,8 +1341,8 @@ const AdDetails = () => {
                     onClick={() => setShowReviewsSection(!showReviewsSection)}
                     className="flex items-center justify-between w-full text-xs font-bold text-indigo-600 uppercase tracking-widest"
                   >
-                    <span>Avaliações do Vendedor ({sellerReviews.length})</span>
-                    <span className="text-slate-400 text-[10px] uppercase font-bold">{showReviewsSection ? 'Recolher' : 'Expandir'}</span>
+                    <span>Seller Reviews ({sellerReviews.length})</span>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold">{showReviewsSection ? 'Collapse' : 'Expand'}</span>
                   </button>
 
                   <AnimatePresence>
@@ -1366,11 +1366,11 @@ const AdDetails = () => {
                             {rev.comment ? (
                               <p className="text-slate-600 italic">"{rev.comment}"</p>
                             ) : (
-                              <p className="text-slate-400 italic">Classificou sem comentário escrito.</p>
+                              <p className="text-slate-400 italic">Rated without written comment.</p>
                             )}
                             <div className="text-[9px] text-slate-400 mt-1 flex justify-between">
-                              <span className="font-semibold text-emerald-600">{rev.success ? '✓ Negócio Correto' : 'ℹ Incompleto'}</span>
-                              <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recentemente'}</span>
+                              <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
+                              <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
                             </div>
                           </div>
                         ))}
@@ -1388,9 +1388,9 @@ const AdDetails = () => {
               <div className="flex gap-3.5 items-start">
                 <span className="text-3xl">💼</span>
                 <div className="space-y-1">
-                  <p className="font-extrabold text-[#030d32] text-base">É o proprietário deste negócio?</p>
+                  <p className="font-extrabold text-[#030d32] text-base">Are you the owner of this business?</p>
                   <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                    Ative e reivindique gratuitamente este anúncio para começar a receber contactos de interessados direto no seu WhatsApp!
+                    Activate and claim this listing for free to start receiving direct WhatsApp enquiries!
                   </p>
                 </div>
               </div>
@@ -1398,7 +1398,7 @@ const AdDetails = () => {
                 onClick={handleOpenClaimModal}
                 className="w-full text-center py-3.5 px-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-md active:scale-95"
               >
-                Sou o proprietário deste negócio
+                I am the owner of this business
               </button>
             </div>
           )}
@@ -1525,17 +1525,17 @@ const AdDetails = () => {
             <div className="flex flex-wrap gap-1.5 pt-1 animate-fade-in">
               {(ad.claimStatus === 'unclaimed' || !ad.claimStatus) && (
                 <span className="bg-amber-50 text-amber-640 text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-wider border border-amber-200 flex items-center gap-1">
-                  <AlertCircle size={10} /> Aguardando ativação
+                  <AlertCircle size={10} /> Awaiting owner activation
                 </span>
               )}
               {ad.claimStatus === 'pending' && (
                 <span className="bg-indigo-50 text-indigo-600 text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-wider border border-indigo-200 flex items-center gap-1 animate-pulse">
-                  <Clock size={10} /> Ativação Pendente
+                  <Clock size={10} /> Activation Pending
                 </span>
               )}
               {ad.claimStatus === 'claimed' && (
                 <span className="bg-emerald-50 text-emerald-700 text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-wider border border-emerald-200 flex items-center gap-1">
-                  <Award size={10} /> Verificado & Ativo
+                  <Award size={10} /> Verified & Active
                 </span>
               )}
             </div>
@@ -1549,21 +1549,21 @@ const AdDetails = () => {
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-1 text-slate-500 font-bold text-xs truncate">
                 {isService && ad.serviceCoverage === 'online' ? (
-                  <span className="truncate">💻 Atendimento Online</span>
+                  <span className="truncate">💻 Online Service</span>
                 ) : isService && ad.serviceCoverage === 'uk' ? (
-                  <span className="truncate">🌍 Todo o Reino Unido</span>
+                  <span className="truncate">🌍 Entire UK</span>
                 ) : isService && ad.serviceCoverage === 'portugal' ? (
-                  <span className="truncate">🇵🇹 Todo Portugal</span>
+                  <span className="truncate">🇵🇹 Entire Portugal</span>
                 ) : (
                   <>
                     <MapPin size={13} className="text-indigo-600 shrink-0" />
-                    <span className="truncate">{getAdLocationLabel(ad)}, {ad.country || 'Portugal'}</span>
+                    <span className="truncate">{getAdLocationLabel(ad)}, {ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country || 'Portugal'}</span>
                   </>
                 )}
               </div>
               {ad.category === '💚 Doações & Solidariedade' ? (
                 <div className="text-lg sm:text-xl font-black text-emerald-600 bg-emerald-50 py-0.5 px-2.5 rounded-lg border border-emerald-200 flex-shrink-0">
-                  Grátis 💚
+                  Free 💚
                 </div>
               ) : hasPrice ? (
                 <div className="text-lg sm:text-xl font-black text-indigo-600 bg-indigo-50/50 py-0.5 px-2.5 rounded-lg border border-indigo-100/30 flex-shrink-0">
@@ -1571,7 +1571,7 @@ const AdDetails = () => {
                 </div>
               ) : (
                 <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-100 flex-shrink-0">
-                  Sob Consulta
+                  Price on Request
                 </span>
               )}
             </div>
@@ -1579,7 +1579,7 @@ const AdDetails = () => {
 
           {/* Descrição detalhada compacta */}
           <div className="space-y-1">
-            <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Descrição detalhada</h3>
+            <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Detailed Description</h3>
             <p className="text-slate-650 text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words bg-slate-50/40 p-3 rounded-xl border border-slate-50">
               {normalizedDescription.length > 250 && !descriptionExpanded
                 ? `${normalizedDescription.substring(0, 250).trim()}...`
@@ -1590,7 +1590,7 @@ const AdDetails = () => {
                 onClick={() => setDescriptionExpanded(!descriptionExpanded)}
                 className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
               >
-                {descriptionExpanded ? 'Ver Menor' : 'Ler mais completo'}
+                {descriptionExpanded ? 'Show Less' : 'Read Full Description'}
               </button>
             )}
           </div>
@@ -1604,8 +1604,8 @@ const AdDetails = () => {
                     <Anchor size={16} />
                   </div>
                   <div>
-                    <h2 className="text-xs font-black text-slate-900 leading-none">⚓ Ficha Técnica Náutica</h2>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Especificações ConnectBoat</p>
+                    <h2 className="text-xs font-black text-slate-900 leading-none">⚓ Technical Specifications</h2>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">ConnectBoat Specs</p>
                   </div>
                 </div>
                 {ad.condition && (
@@ -1618,29 +1618,29 @@ const AdDetails = () => {
               {/* Embarcação */}
               {(ad.boatType || ad.manufacturer || ad.model || ad.year) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-sky-800 tracking-wider block">Embarcação</span>
+                  <span className="text-[10px] font-black uppercase text-sky-800 tracking-wider block">Vessel</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.boatType && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Tipo</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Type</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.boatType}</span>
                       </div>
                     )}
                     {ad.manufacturer && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Marca</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Make</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.manufacturer}</span>
                       </div>
                     )}
                     {ad.model && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Modelo</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Model</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.model}</span>
                       </div>
                     )}
                     {ad.year && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Ano</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Year</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.year}</span>
                       </div>
                     )}
@@ -1651,29 +1651,29 @@ const AdDetails = () => {
               {/* Dimensões */}
               {(ad.length || ad.beam || ad.draft || ad.hullMaterial) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider block">Dimensões</span>
+                  <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider block">Dimensions</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.length && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Comprimento</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Length</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.length}</span>
                       </div>
                     )}
                     {ad.beam && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Boca</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Beam</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.beam}</span>
                       </div>
                     )}
                     {ad.draft && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Calado</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Draft</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.draft}</span>
                       </div>
                     )}
                     {ad.hullMaterial && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Casco</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Hull</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.hullMaterial}</span>
                       </div>
                     )}
@@ -1684,29 +1684,29 @@ const AdDetails = () => {
               {/* Motor */}
               {(ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider block">Motorização</span>
+                  <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider block">Engine</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.engineBrand && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Marca</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Make</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.engineBrand}</span>
                       </div>
                     )}
                     {ad.horsepower && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Potência</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Power</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.horsepower}</span>
                       </div>
                     )}
                     {ad.engineHours && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Horas</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Hours</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.engineHours}</span>
                       </div>
                     )}
                     {ad.fuelType && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Combustível</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Fuel</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.fuelType}</span>
                       </div>
                     )}
@@ -1717,30 +1717,30 @@ const AdDetails = () => {
               {/* Acomodações e Conformidade */}
               {(ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-indigo-800 tracking-wider block">Habitabilidade & Extras</span>
+                  <span className="text-[10px] font-black uppercase text-indigo-800 tracking-wider block">Accommodations & Extras</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.cabins && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Cabines</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Cabins</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.cabins}</span>
                       </div>
                     )}
                     {ad.berths && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Camas</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Berths</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.berths}</span>
                       </div>
                     )}
                     {ad.bathrooms && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">WCs</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Toilets</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.bathrooms}</span>
                       </div>
                     )}
                     {ad.trailerIncluded && (
                       <div className="bg-white p-2 rounded-xl border border-slate-100">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Reboque</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.trailerIncluded === 'Yes' ? 'Sim' : ad.trailerIncluded === 'No' ? 'Não' : ad.trailerIncluded}</span>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Trailer</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.trailerIncluded === 'Yes' ? 'Yes' : ad.trailerIncluded === 'No' ? 'No' : ad.trailerIncluded}</span>
                       </div>
                     )}
                   </div>
@@ -1748,12 +1748,12 @@ const AdDetails = () => {
                     <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-200/60">
                       {ad.vatPaid === 'Yes' && (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                          <ShieldCheck size={12} className="text-emerald-600" /> IVA Pago
+                          <ShieldCheck size={12} className="text-emerald-600" /> VAT Paid
                         </span>
                       )}
                       {ad.ceCertified === 'Yes' && (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-800 text-[10px] font-bold border border-indigo-200">
-                          <Check size={12} className="text-indigo-600" /> Certificado CE
+                          <Check size={12} className="text-indigo-600" /> CE Certified
                         </span>
                       )}
                     </div>
@@ -1768,11 +1768,11 @@ const AdDetails = () => {
             <div className="flex items-center justify-between gap-2 border-b border-slate-200/50 pb-2.5">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-9 h-9 bg-indigo-600/10 bg-indigo-50 text-indigo-700 rounded-lg flex items-center justify-center font-black text-xs shrink-0">
-                  {(hasSourceUrl ? 'Parceiro' : ad.sellerName).slice(0, 2).toUpperCase()}
+                  {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm leading-tight flex items-center gap-1 truncate">
-                    {hasSourceUrl ? 'Parceiro' : ad.sellerName}
+                    {hasSourceUrl ? 'Partner' : ad.sellerName}
                     <Award size={11} className="text-indigo-500 shrink-0" />
                   </h4>
                   <div className="flex items-center gap-0.5 mt-0.5" title={`${sellerProfile?.ratingAverage || 0} / 5`}>
@@ -1790,7 +1790,7 @@ const AdDetails = () => {
                       })}
                     </div>
                     <span className="text-[9px] text-slate-500 font-bold ml-1">
-                      ({sellerProfile?.ratingCount || 0} avs.)
+                      ({sellerProfile?.ratingCount || 0} reviews)
                     </span>
                   </div>
                 </div>
@@ -1802,7 +1802,7 @@ const AdDetails = () => {
                   onClick={() => setShowReviewModal(true)}
                   className="text-[9px] font-black bg-indigo-50 text-indigo-600 py-1 px-2.5 rounded-lg border border-indigo-100 shrink-0 text-center hover:bg-indigo-100/70"
                 >
-                  Avaliar
+                  Rate
                 </button>
               )}
             </div>
@@ -1813,9 +1813,9 @@ const AdDetails = () => {
                 <div className="flex gap-2 items-start">
                   <span className="text-xl">💼</span>
                   <div className="space-y-0.5">
-                    <p className="font-extrabold text-[#030d32] text-xs">É o proprietário deste negócio?</p>
+                    <p className="font-extrabold text-[#030d32] text-xs">Are you the owner of this business?</p>
                     <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
-                      Ative e reivindique gratuitamente este anúncio para começar a receber contactos de interessados direto no seu WhatsApp!
+                      Activate and claim this listing for free to start receiving direct WhatsApp enquiries!
                     </p>
                   </div>
                 </div>
@@ -1823,7 +1823,7 @@ const AdDetails = () => {
                   onClick={handleOpenClaimModal}
                   className="w-full text-center py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
                 >
-                  Confirmar Propriedade
+                  Confirm Ownership
                 </button>
               </div>
             )}
@@ -1833,7 +1833,7 @@ const AdDetails = () => {
               {ad.adStatus === 'sold' || ad.status === 'sold' ? (
                 <div className="flex items-center justify-center gap-1 bg-slate-100 text-slate-500 py-2.5 px-4 rounded-xl font-black text-xs border border-slate-200">
                   <ShoppingBag size={14} className="text-slate-400" />
-                  <span>Anúncio Vendido</span>
+                  <span>Listing Sold</span>
                 </div>
               ) : (
                 <button
@@ -1843,7 +1843,7 @@ const AdDetails = () => {
                   } text-white py-2.5 px-4 rounded-xl font-black text-xs transition-all shadow-md active:scale-[0.98] w-full text-center`}
                 >
                   {hasSourceUrl ? <ExternalLink size={14} /> : <MessageCircle size={14} />}
-                  <span>{hasSourceUrl ? 'Contato' : 'Contactar via WhatsApp'}</span>
+                  <span>{hasSourceUrl ? 'Contact' : 'Contact via WhatsApp'}</span>
                 </button>
               )}
 
@@ -1857,14 +1857,14 @@ const AdDetails = () => {
                   }`}
                 >
                   <Share2 size={13} className={shareCopied ? 'text-emerald-500' : ''} />
-                  <span>{shareCopied ? 'Copiado!' : 'Partilhar'}</span>
+                  <span>{shareCopied ? 'Copied!' : 'Share'}</span>
                 </button>
 
                 <button
                   onClick={() => setShowReportModal(true)}
                   className="flex items-center justify-center gap-1 border border-rose-100 hover:border-rose-200 text-rose-500 bg-rose-50/50 hover:bg-rose-50 py-2 px-2 rounded-lg font-bold text-[9px] transition"
                 >
-                  <ShieldAlert size={13} /> Denunciar
+                  <ShieldAlert size={13} /> Report
                 </button>
               </div>
             </div>
@@ -1878,23 +1878,23 @@ const AdDetails = () => {
               <MapPin size={14} />
             </div>
             <div>
-              <h2 className="text-sm font-black text-slate-900 leading-none">📍 Localização Aproximada</h2>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 font-sans">Região de referência do anúncio</p>
+              <h2 className="text-sm font-black text-slate-900 leading-none">📍 Approximate Location</h2>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 font-sans">Reference region for the listing</p>
             </div>
           </div>
 
           <div className="flex flex-row items-center justify-between gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100 font-sans">
             <div className="space-y-0.5">
               <span className="block text-[8px] text-slate-400 uppercase font-black tracking-wider text-left">
-                {isService ? 'Área de Atendimento' : 'Cidade'}
+                {isService ? 'Service Area' : 'City'}
               </span>
               <span className="text-xs sm:text-sm font-extrabold text-slate-900 block text-left truncate">
                 {isService && ad.serviceCoverage === 'online' ? (
-                  '💻 Atendimento Online'
+                  '💻 Online Service'
                 ) : isService && ad.serviceCoverage === 'uk' ? (
-                  '🌍 Todo o Reino Unido'
+                  '🌍 Entire UK'
                 ) : isService && ad.serviceCoverage === 'portugal' ? (
-                  '🇵🇹 Todo Portugal'
+                  '🇵🇹 Entire Portugal'
                 ) : (
                   getAdLocationLabel(ad)
                 )}
@@ -1902,9 +1902,9 @@ const AdDetails = () => {
             </div>
             {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
               <div className="space-y-0.5 text-right">
-                <span className="block text-[8px] text-slate-400 uppercase font-black tracking-wider">País</span>
+                <span className="block text-[8px] text-slate-400 uppercase font-black tracking-wider">Country</span>
                 <span className="text-xs sm:text-sm font-extrabold text-slate-900 block truncate">
-                  {ad.country === 'Reino Unido' ? 'Reino Unido' : 'Portugal'}
+                  {ad.country === 'Reino Unido' ? 'United Kingdom' : 'Portugal'}
                 </span>
               </div>
             )}
@@ -1913,20 +1913,20 @@ const AdDetails = () => {
           {isService && ad.serviceCoverage === 'online' ? (
             <div className="flex flex-col items-center justify-center p-6 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl text-center space-y-1">
               <span className="text-3xl">💻</span>
-              <p className="text-sm font-extrabold text-indigo-900">Serviço 100% Online</p>
-              <p className="text-[10px] text-indigo-700/85 font-semibold max-w-xs leading-normal">Este serviço é prestado remotamente / online.</p>
+              <p className="text-sm font-extrabold text-indigo-900">100% Online Service</p>
+              <p className="text-[10px] text-indigo-700/85 font-semibold max-w-xs leading-normal">This service is provided remotely / online.</p>
             </div>
           ) : isService && (ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal') ? (
             <div className="flex flex-col items-center justify-center p-6 bg-gradient-to-r from-teal-50 to-emerald-50 border border-emerald-100 rounded-xl text-center space-y-1">
               <span className="text-3xl">🌍</span>
-              <p className="text-sm font-extrabold text-emerald-900">Cobertura Nacional</p>
-              <p className="text-[10px] text-emerald-700/85 font-semibold max-w-xs leading-normal">Este serviço possui atendimento em todo o país ({ad.country === 'Reino Unido' ? 'Reino Unido' : 'Portugal'}).</p>
+              <p className="text-sm font-extrabold text-emerald-900">National Coverage</p>
+              <p className="text-[10px] text-emerald-700/85 font-semibold max-w-xs leading-normal">This service provides nationwide coverage ({ad.country === 'Reino Unido' ? 'United Kingdom' : 'Portugal'}).</p>
             </div>
           ) : (
             ad.city && ad.city.trim() !== '' && ad.city.toLowerCase() !== 'todas' && (
               <div className="w-full h-40 rounded-xl overflow-hidden border border-slate-100 shadow-sm bg-slate-100 relative">
                 <iframe
-                  title={`Mapa de ${ad.city}`}
+                  title={`Map of ${ad.city}`}
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
@@ -1942,7 +1942,7 @@ const AdDetails = () => {
           <div className="flex items-start gap-1.5 text-slate-500 bg-amber-50/20 border border-amber-100/60 rounded-xl p-2.5 text-[10px] font-sans">
             <span className="text-amber-500 text-xs leading-none mt-0.5">⚠️</span>
             <p className="leading-relaxed text-amber-900">
-              A localização real baseia-se na cidade informada pelo anunciante e serve estritamente como ponto de referência aproximado.
+              The location shown is approximate based on the city provided by the seller and serves strictly as a reference point.
             </p>
           </div>
         </div>
@@ -1954,8 +1954,8 @@ const AdDetails = () => {
               <Star size={14} className="text-amber-500" />
             </div>
             <div>
-              <h2 className="text-sm font-black text-slate-900 leading-none">⭐️ Avaliações do Vendedor</h2>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 font-sans">Feedback real de outros clientes</p>
+              <h2 className="text-sm font-black text-slate-900 leading-none">⭐️ Seller Reviews</h2>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 font-sans">Real feedback from other customers</p>
             </div>
           </div>
 
@@ -1974,11 +1974,11 @@ const AdDetails = () => {
                   {rev.comment ? (
                     <p className="text-slate-600 text-[11px] italic leading-relaxed">"{rev.comment}"</p>
                   ) : (
-                    <p className="text-slate-400 text-[10px] italic">Classificou sem comentário escrito.</p>
+                    <p className="text-slate-400 text-[10px] italic">Rated without written comment.</p>
                   )}
                   <div className="text-[8px] text-slate-400 mt-2 flex justify-between items-center">
-                    <span className="font-semibold text-emerald-600">{rev.success ? '✓ Negócio Correto' : 'ℹ Incompleto'}</span>
-                    <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recentemente'}</span>
+                    <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
+                    <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
                   </div>
                 </div>
               ))}
@@ -1986,9 +1986,9 @@ const AdDetails = () => {
           ) : (
             <div className="text-center py-5 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-3.5">
               <span className="text-lg block mb-1">💬</span>
-              <h4 className="text-xs font-bold text-slate-800">Sem avaliações ainda</h4>
+              <h4 className="text-xs font-bold text-slate-800">No reviews yet</h4>
               <p className="text-[9px] text-slate-400 mt-0.5 leading-normal">
-                Faça negócio em segurança com o vendedor e seja o primeiro comprador a partilhar feedback!
+                Transact safely with the seller and be the first buyer to leave feedback!
               </p>
             </div>
           )}
@@ -2002,17 +2002,17 @@ const AdDetails = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                ⛵ Embarcações Semelhantes
+                ⛵ Similar Vessels
               </h2>
               <p className="text-xs text-slate-500 font-bold mt-1">
-                Anúncios recomendados com características e especificações parecidas
+                Recommended listings with similar features and specifications
               </p>
             </div>
             <Link
               to={`/marcas-modelos`}
               className="text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors hidden sm:inline-flex items-center gap-1"
             >
-              Ver Mercado Náutico <ChevronRight size={14} />
+              Browse Nautical Market <ChevronRight size={14} />
             </Link>
           </div>
 
@@ -2027,9 +2027,9 @@ const AdDetails = () => {
       {/* STICKY MOBILE CONTACT BAR */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 shadow-2xl flex items-center justify-between gap-3">
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Preço</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Price</span>
           <span className="text-sm font-black text-indigo-600">
-            {hasPrice ? formatPrice(ad.price, ad.country) : 'Sob Consulta'}
+            {hasPrice ? formatPrice(ad.price, ad.country) : 'Price on Request'}
           </span>
         </div>
         <button
@@ -2052,7 +2052,7 @@ const AdDetails = () => {
           }`}
         >
           <MessageCircle size={16} />
-          <span>{hasSourceUrl ? 'Contactar Vendedor' : 'Contactar via WhatsApp'}</span>
+          <span>{hasSourceUrl ? 'Contact Seller' : 'Contact via WhatsApp'}</span>
         </button>
       </div>
 
@@ -2065,10 +2065,10 @@ const AdDetails = () => {
           adTitle={ad.title}
           adCategory={ad.category}
           sellerId={ad.sellerId}
-          sellerName={hasSourceUrl ? 'Parceiro' : ad.sellerName}
+          sellerName={hasSourceUrl ? 'Partner' : ad.sellerName}
           isBuyerRating={true}
           onSuccess={() => {
-            alert('A sua avaliação foi enviada com sucesso!');
+            alert('Your review was submitted successfully!');
             fetchSellerDetails(ad.sellerId);
           }}
         />
@@ -2120,9 +2120,9 @@ const AdDetails = () => {
               className="relative bg-white w-full max-w-md rounded-3xl p-6 md:p-8 shadow-2xl text-center z-10"
             >
               <AlertCircle className="mx-auto text-amber-500 mb-4" size={48} />
-              <h3 className="text-xl font-black text-slate-950 mb-2">Aviso de Segurança</h3>
+              <h3 className="text-xl font-black text-slate-950 mb-2">Safety Notice</h3>
               <p className="text-slate-600 text-sm leading-relaxed mb-6">
-                Ao contactar este anunciante, tenha em conta que o Mercado Luso funciona apenas como um classificado gratuito local. Nunca realize pagamentos de reservas ou adiantados sem inspecionar pessoalmente o produto e o vendedor.
+                When contacting this seller, please note that ConnectBoat operates strictly as a free classifieds platform. Never send advance payments or deposits without inspecting the item and verifying the seller in person.
               </p>
               <div className="flex flex-col gap-4">
                 <label className="flex items-center gap-2 cursor-pointer text-left text-xs text-slate-500">
@@ -2132,14 +2132,14 @@ const AdDetails = () => {
                     onChange={(e) => setAcceptedContactTerms(e.target.checked)}
                     className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
                   />
-                  <span>Compreendo plenamente e aceito seguir as diretrizes de segurança.</span>
+                  <span>I fully understand and agree to follow these safety guidelines.</span>
                 </label>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowContactWarning(false)}
                     className="flex-1 py-3 text-sm font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition"
                   >
-                    Voltar
+                    Back
                   </button>
                   <button
                     disabled={!acceptedContactTerms}
@@ -2150,7 +2150,7 @@ const AdDetails = () => {
                         : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                     }`}
                   >
-                    {hasSourceUrl ? 'Abrir Contato' : 'Abrir WhatsApp'}
+                    {hasSourceUrl ? 'Open Contact' : 'Open WhatsApp'}
                   </button>
                 </div>
               </div>
@@ -2177,7 +2177,7 @@ const AdDetails = () => {
               className="relative bg-white w-full max-w-lg rounded-3xl p-6 md:p-8 shadow-2xl z-10"
             >
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-black text-slate-900">Denunciar Anúncio</h3>
+                <h3 className="text-xl font-black text-slate-900">Report Listing</h3>
                 <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-slate-600 p-1 bg-slate-50 rounded-full border border-slate-200">
                   <X size={20} />
                 </button>
@@ -2185,29 +2185,29 @@ const AdDetails = () => {
 
               <form onSubmit={handleReportSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Motivo principal</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Primary reason</label>
                   <select
                     required
                     value={reportReason}
                     onChange={(e) => setReportReason(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-sm font-medium focus:ring-2 focus:ring-red-500 focus:bg-white focus:outline-none transition"
                   >
-                    <option value="">-- Escolha um motivo --</option>
-                    <option value="fraude">Anúncio Falso ou Fraude</option>
-                    <option value="spam">Spam / Conteúdo Irrelevante</option>
-                    <option value="arma">Armas, drogas ou violência</option>
-                    <option value="ofensivo">Linguagem Ofensiva / Racismo</option>
-                    <option value="outro">Outro Motivo</option>
+                    <option value="">-- Select a reason --</option>
+                    <option value="fraude">Fake Listing or Fraud</option>
+                    <option value="spam">Spam / Irrelevant Content</option>
+                    <option value="arma">Weapons, drugs or violence</option>
+                    <option value="ofensivo">Offensive Language / Racism</option>
+                    <option value="outro">Other Reason</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Detalhes adicionais (opcional)</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Additional details (optional)</label>
                   <textarea
                     value={reportDetails}
                     onChange={(e) => setReportDetails(e.target.value)}
                     rows={4}
-                    placeholder="Explique resumidamente o que está incorreto neste anúncio..."
+                    placeholder="Briefly explain what is wrong with this listing..."
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm font-medium focus:ring-2 focus:ring-red-500 focus:bg-white focus:outline-none transition resize-none"
                   />
                 </div>
@@ -2218,14 +2218,14 @@ const AdDetails = () => {
                     onClick={() => setShowReportModal(false)}
                     className="py-2.5 px-5 text-sm font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition"
                   >
-                    Cancelar
+                    Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={reporting}
                     className="py-2.5 px-6 text-sm font-extrabold bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-md transition disabled:opacity-50"
                   >
-                    {reporting ? 'A Enviar...' : 'Denunciar Anúncio'}
+                    {reporting ? 'Sending...' : 'Report Listing'}
                   </button>
                 </div>
               </form>
@@ -2255,12 +2255,12 @@ const AdDetails = () => {
               </div>
 
               <div className="space-y-2 text-left">
-                <h3 className="text-xl font-black text-slate-950">Contacto Indisponível</h3>
+                <h3 className="text-xl font-black text-slate-950">Contact Unavailable</h3>
                 <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                  Este anúncio foi criado para prestadores de serviços no Mercado Luso e está **aguardando a ativação por parte do seu proprietário**. O contacto direto via WhatsApp estará disponível assim que o negócio for ativado.
+                  This listing was created for service providers on ConnectBoat and is **awaiting activation by its owner**. Direct WhatsApp contact will be enabled as soon as the business is activated.
                 </p>
                 <p className="text-xs text-indigo-950 font-extrabold leading-relaxed bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100">
-                  💡 Se é o proprietário ou gestor deste negócio, clique em "Reivindicar Negócio" abaixo para ativá-lo gratuitamente!
+                  💡 If you are the owner or manager of this business, click "Claim Business" below to activate it for free!
                 </p>
               </div>
 
@@ -2272,13 +2272,13 @@ const AdDetails = () => {
                   }}
                   className="flex-1 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs uppercase tracking-wider text-center transition cursor-pointer shadow-md"
                 >
-                  Reivindicar Negócio 💼
+                  Claim Business 💼
                 </button>
                 <button
                   onClick={() => setShowUnclaimedContactModal(false)}
                   className="py-3 px-5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl font-black text-xs uppercase border border-slate-150 text-center transition cursor-pointer"
                 >
-                  Voltar
+                  Back
                 </button>
               </div>
             </motion.div>
@@ -2298,8 +2298,8 @@ const AdDetails = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">💼</span>
                   <div className="text-left">
-                    <h3 className="text-lg font-black text-slate-950">Ativar meu Negócio</h3>
-                    <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Formulário de Verificação</p>
+                    <h3 className="text-lg font-black text-slate-950">Activate my Business</h3>
+                    <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Verification Form</p>
                   </div>
                 </div>
                 <button
@@ -2312,55 +2312,55 @@ const AdDetails = () => {
 
               <div className="bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100 text-left">
                 <p className="text-xs text-indigo-950 font-semibold leading-relaxed">
-                  Para garantir a segurança da nossa comunidade, os pedidos de ativação de negócios são verificados manualmente pela gerência do Mercado Luso antes de serem homologados.
+                  To ensure community safety, business activation requests are verified manually by ConnectBoat management before being approved.
                 </p>
               </div>
 
               <form onSubmit={handleClaimSubmit} className="space-y-4 text-left">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-bold">O meu nome *</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-bold">My Name *</label>
                     <input
                       required
                       type="text"
                       value={claimName}
                       onChange={(e) => setClaimName(e.target.value)}
-                      placeholder="Ex: João Silva"
+                      placeholder="e.g. John Smith"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Telemóvel / WhatsApp *</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Mobile / WhatsApp *</label>
                     <input
                       required
                       type="tel"
                       value={claimPhone}
                       onChange={(e) => setClaimPhone(e.target.value)}
-                      placeholder="Ex: +351 912 345 678"
+                      placeholder="e.g. +44 7123 456789"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Email de contacto *</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Contact Email *</label>
                   <input
                     required
                     type="email"
                     value={claimEmail}
                     onChange={(e) => setClaimEmail(e.target.value)}
-                    placeholder="Ex: joao.silva@exemplo.com"
+                    placeholder="e.g. john.smith@example.com"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-bold font-bold">Mensagem adicional (opcional)</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 font-bold font-bold">Additional message (optional)</label>
                   <textarea
                     value={claimMessage}
                     onChange={(e) => setClaimMessage(e.target.value)}
                     rows={3}
-                    placeholder="Especifique redes sociais ou o seu website para acelerar o processo de aprovação..."
+                    placeholder="Specify social media accounts or your website to speed up approval..."
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-semibold focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition resize-none"
                   />
                 </div>
@@ -2371,14 +2371,14 @@ const AdDetails = () => {
                     onClick={() => setShowClaimModal(false)}
                     className="py-2.5 px-5 text-xs font-black uppercase tracking-wider text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-150 transition cursor-pointer"
                   >
-                    Voltar
+                    Back
                   </button>
                   <button
                     type="submit"
                     disabled={claimSubmitting}
                     className="py-2.5 px-6 text-xs font-black uppercase tracking-wider bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md transition disabled:opacity-50 cursor-pointer"
                   >
-                    {claimSubmitting ? 'A Enviar...' : 'Ativar e Reivindicar'}
+                    {claimSubmitting ? 'Sending...' : 'Activate & Claim'}
                   </button>
                 </div>
               </form>
@@ -2402,7 +2402,7 @@ const AdDetails = () => {
           <div className="flex-1 font-sans">
             <p className="text-xs font-bold tracking-tight">{toast.message}</p>
             {toast.type === 'success' && (
-              <p className="text-[10px] text-slate-400 mt-0.5 font-medium">O vendedor foi notificado no Mercado Luso.</p>
+              <p className="text-[10px] text-slate-400 mt-0.5 font-medium">The seller has been notified on ConnectBoat.</p>
             )}
           </div>
         </div>

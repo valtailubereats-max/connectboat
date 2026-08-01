@@ -27,11 +27,11 @@ interface AdminSearchPageDiscoveryProps {
 }
 
 const LOADING_STEPS = [
-  'A ler página de resultados de pesquisa...',
-  'A identificar anúncios de barcos...',
-  'A remover duplicados da página...',
-  'A verificar anúncios existentes no ConnectBoat...',
-  'A preparar pré-visualização dos anúncios...'
+  'Reading search results page...',
+  'Identifying boat listings...',
+  'Removing duplicate listings...',
+  'Checking existing listings on ConnectBoat...',
+  'Preparing listing preview...'
 ];
 
 export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> = ({
@@ -110,20 +110,20 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
     switch (errCode) {
       case 'INVALID_RESULTS_PAGE':
       case 'INVALID_SEARCH_URL':
-        return 'Página de pesquisa inválida. Certifique-se de introduzir um URL de resultados de pesquisa do Apollo Duck ou Boats & Outboards.';
+        return 'Invalid search page. Please ensure you enter a search results URL from Apollo Duck or Boats & Outboards.';
       case 'INDIVIDUAL_LISTING_URL':
-        return 'Este URL é um anúncio individual de barco. Utilize a aba "URLs Manuais" para importar este anúncio individual.';
+        return 'This URL is an individual boat listing. Please use the "Manual URLs" tab to import this single listing.';
       case 'PAGE_BLOCKED':
       case 'PAGE_ACCESS_DENIED':
-        return 'Esta página está protegida ou temporariamente indisponível (Cloudflare/Access Denied). Tente novamente mais tarde.';
+        return 'This page is protected or temporarily unavailable (Cloudflare/Access Denied). Please try again later.';
       case 'UNSUPPORTED_MARKETPLACE':
-        return 'Apenas o Apollo Duck e Boats & Outboards são suportados para desambiguação de páginas de pesquisa.';
+        return 'Only Apollo Duck and Boats & Outboards are supported for search page discovery.';
       case 'UNAUTHORIZED':
-        return 'Não possui autorização para efetuar a descoberta de anúncios.';
+        return 'You do not have permission to perform listing discovery.';
       case 'NO_LISTINGS_FOUND':
-        return 'Nenhum anúncio de barco foi encontrado nesta página de resultados.';
+        return 'No boat listings were found on this results page.';
       default:
-        return fallbackMsg || 'Ocorreu um erro temporário no servidor ao ler a página. Por favor, tente novamente.';
+        return fallbackMsg || 'A temporary server error occurred while reading the page. Please try again.';
     }
   };
 
@@ -138,7 +138,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
 
     const trimmedUrl = searchUrl.trim();
     if (!trimmedUrl) {
-      setErrorMessage('Por favor, introduza o URL da página de resultados de pesquisa.');
+      setErrorMessage('Please enter the search results page URL.');
       return;
     }
 
@@ -178,7 +178,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
         data = await resp.json();
       } catch (jsonErr) {
         console.error('[AdminSearchPageDiscovery] Response was not valid JSON:', jsonErr, { status: resp.status, statusText: resp.statusText });
-        setErrorMessage('Ocorreu um erro temporário no servidor ao ler a página. Por favor, tente novamente.');
+        setErrorMessage('A temporary server error occurred while reading the page. Please try again.');
         return;
       }
 
@@ -215,7 +215,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
           sourceUrl: l.sourceUrl,
           normalizedSourceUrl: l.normalizedSourceUrl || l.sourceUrl,
           externalId: l.externalId,
-          title: l.title || 'Anúncio de Barco',
+          title: l.title || 'Boat Listing',
           image: l.image,
           priceText: l.priceText,
           locationText: l.locationText,
@@ -250,7 +250,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
 
     } catch (err: any) {
       console.error('[AdminSearchPageDiscovery] Error:', err);
-      setErrorMessage('Erro de comunicação com o servidor de descoberta. Por favor, tente novamente.');
+      setErrorMessage('Communication error with the discovery server. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -320,7 +320,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
       .map(l => l.normalizedSourceUrl);
 
     if (selectedUrls.length === 0) {
-      alert('Por favor, selecione pelo menos um anúncio para importar.');
+      alert('Please select at least one listing to import.');
       return;
     }
 
@@ -361,10 +361,10 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
               <Loader2 size={32} className="animate-spin" />
             </div>
             <h3 className="text-xl font-black text-slate-900">
-              A Importar {handoffCount} Anúncios
+              Importing {handoffCount} Listings
             </h3>
             <p className="text-xs text-slate-600 font-medium">
-              A transferir a lista de anúncios selecionados para o pipeline de extração e análise automática por IA...
+              Transferring selected listings to the AI extraction and analysis pipeline...
             </p>
           </div>
         </div>
@@ -373,13 +373,13 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
       {/* Explanation Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl shadow-lg border border-slate-800 space-y-3">
         <div className="flex items-center gap-2 text-indigo-400 font-extrabold text-xs uppercase tracking-wider">
-          <Sparkles size={16} /> Importação por Página de Resultados
+          <Sparkles size={16} /> Results Page Bulk Import
         </div>
         <h2 className="text-xl md:text-2xl font-black text-white">
-          Descobrir Anúncios em Lote via URL de Pesquisa
+          Discover Boat Listings via Search URL
         </h2>
         <p className="text-slate-300 text-xs md:text-sm font-medium leading-relaxed max-w-4xl">
-          Cole o URL de uma página de resultados de pesquisa do <strong className="text-white">Apollo Duck</strong> ou <strong className="text-white">Boats and Outboards</strong>. O sistema descobre automaticamente os anúncios de barcos, remove duplicados e permite selecionar até 20 anúncios por lote para extração.
+          Paste the URL of a search results page from <strong className="text-white">Apollo Duck</strong> or <strong className="text-white">Boats and Outboards</strong>. The system automatically discovers boat listings, removes duplicates, and allows selecting up to 20 listings per batch for extraction.
         </p>
       </div>
 
@@ -387,7 +387,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
         <label className="text-xs md:text-sm font-extrabold text-slate-900 flex items-center gap-2">
           <Search size={18} className="text-indigo-600" />
-          URL da Página de Resultados de Pesquisa:
+          Search Results Page URL:
         </label>
 
         <div className="flex flex-col md:flex-row gap-3">
@@ -396,7 +396,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
             value={searchUrl}
             onChange={(e) => setSearchUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleDiscoverListings()}
-            placeholder="https://www.apolloduck.co.uk/boats/power-boats ou https://www.boatsandoutboards.co.uk/boats-for-sale/"
+            placeholder="https://www.apolloduck.co.uk/boats/power-boats or https://www.boatsandoutboards.co.uk/boats-for-sale/"
             className="flex-1 px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs md:text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
           />
 
@@ -408,12 +408,12 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
             {isLoading ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                <span>A Processar...</span>
+                <span>Processing...</span>
               </>
             ) : (
               <>
                 <Search size={16} />
-                <span>Descobrir Anúncios</span>
+                <span>Discover Listings</span>
               </>
             )}
           </button>
@@ -446,15 +446,15 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
             </div>
             {errorRequestId && (
               <div className="pt-2 border-t border-rose-200/80 flex flex-wrap items-center justify-between text-[11px] text-rose-800 font-mono font-normal">
-                <span>Código do erro: <strong className="font-bold select-all bg-rose-100 px-1.5 py-0.5 rounded">{errorRequestId}</strong></span>
+                <span>Error code: <strong className="font-bold select-all bg-rose-100 px-1.5 py-0.5 rounded">{errorRequestId}</strong></span>
               </div>
             )}
             {errorDebug && (
               <details className="mt-2 text-left text-[11px] font-mono text-slate-700 bg-white p-3 rounded-xl border border-rose-200">
-                <summary className="cursor-pointer font-bold text-rose-900">Detalhes de Diagnóstico (Admin)</summary>
+                <summary className="cursor-pointer font-bold text-rose-900">Diagnostic Details (Admin)</summary>
                 <div className="mt-2 space-y-1">
-                  <div><strong>Estágio:</strong> {errorDebug.stage}</div>
-                  <div><strong>Erro:</strong> {errorDebug.errorName} - {errorDebug.errorMessage}</div>
+                  <div><strong>Stage:</strong> {errorDebug.stage}</div>
+                  <div><strong>Error:</strong> {errorDebug.errorName} - {errorDebug.errorMessage}</div>
                   {errorDebug.stack && (
                     <pre className="text-[10px] overflow-x-auto p-2 bg-slate-100 rounded text-slate-800">{errorDebug.stack}</pre>
                   )}
@@ -488,7 +488,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
                   <ShieldCheck size={14} /> {discoveryResult.marketplace}
                 </div>
                 <h3 className="text-base font-extrabold text-white truncate max-w-lg">
-                  Resumo da Descoberta
+                  Discovery Summary
                 </h3>
                 <p className="text-xs text-slate-400 font-mono truncate max-w-md">
                   {discoveryResult.pageUrl}
@@ -497,9 +497,9 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
 
               <div className="flex items-center gap-2 bg-slate-800/90 p-3 rounded-2xl border border-slate-700">
                 <div className="text-right">
-                  <span className="block text-[10px] text-slate-400 font-extrabold uppercase">Lote Atual</span>
+                  <span className="block text-[10px] text-slate-400 font-extrabold uppercase">Current Batch</span>
                   <span className="text-lg font-black text-indigo-400">
-                    {selectedCount} / 20 <span className="text-xs text-slate-400">selecionados</span>
+                    {selectedCount} / 20 <span className="text-xs text-slate-400">selected</span>
                   </span>
                 </div>
               </div>
@@ -508,22 +508,22 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
             {/* Metrics Breakdown Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
               <div className="bg-slate-800/70 p-3.5 rounded-2xl border border-slate-700/60">
-                <span className="block text-[10px] text-slate-400 font-bold uppercase">Anúncios no Site</span>
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Listings on Site</span>
                 <span className="text-lg font-black text-white">{discoveryResult.totalCandidates}</span>
               </div>
 
               <div className="bg-slate-800/70 p-3.5 rounded-2xl border border-slate-700/60">
-                <span className="block text-[10px] text-slate-400 font-bold uppercase">Disponíveis p/ Revisão</span>
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Available for Review</span>
                 <span className="text-lg font-black text-emerald-400">{discoveryResult.totalFound}</span>
               </div>
 
               <div className="bg-slate-800/70 p-3.5 rounded-2xl border border-slate-700/60">
-                <span className="block text-[10px] text-slate-400 font-bold uppercase">Já no ConnectBoat</span>
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">Already on ConnectBoat</span>
                 <span className="text-lg font-black text-amber-400">{discoveryResult.alreadyImportedCount}</span>
               </div>
 
               <div className="bg-slate-800/70 p-3.5 rounded-2xl border border-slate-700/60">
-                <span className="block text-[10px] text-slate-400 font-bold uppercase">Novos Selecionáveis</span>
+                <span className="block text-[10px] text-slate-400 font-bold uppercase">New Selectable</span>
                 <span className="text-lg font-black text-indigo-300">
                   {Math.max(0, discoveryResult.totalFound - discoveryResult.alreadyImportedCount)}
                 </span>
@@ -534,7 +534,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
           {/* Quick Filters Toolbar */}
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
             <div className="flex items-center gap-2 text-slate-900 font-black text-xs uppercase tracking-wider">
-              <Filter size={14} className="text-indigo-600" /> Filtros Rápidos
+              <Filter size={14} className="text-indigo-600" /> Quick Filters
             </div>
 
             <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-slate-700">
@@ -545,7 +545,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
                   onChange={(e) => setFilterOnlyNew(e.target.checked)}
                   className="rounded text-indigo-600 focus:ring-indigo-500"
                 />
-                <span>Ocultar Já Importados</span>
+                <span>Hide Already Imported</span>
               </label>
 
               <label className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-indigo-300 transition-all select-none">
@@ -555,7 +555,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
                   onChange={(e) => setFilterOnlyWithPrice(e.target.checked)}
                   className="rounded text-indigo-600 focus:ring-indigo-500"
                 />
-                <span>Apenas com Preço</span>
+                <span>Price Only</span>
               </label>
 
               {hasLocationData && (
@@ -566,7 +566,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
                     onChange={(e) => setFilterUkOnly(e.target.checked)}
                     className="rounded text-indigo-600 focus:ring-indigo-500"
                   />
-                  <span>Apenas Reino Unido (UK)</span>
+                  <span>UK Only</span>
                 </label>
               )}
             </div>
@@ -578,10 +578,10 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
               <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 <h5 className="font-extrabold text-amber-900 text-xs">
-                  Limite Máximo de 20 Anúncios Por Lote Requerido
+                  Maximum Limit of 20 Listings Per Batch Required
                 </h5>
                 <p className="text-amber-800 text-xs">
-                  Para garantir elevada precisão na extração de dados via Inteligência Artificial e evitar sobrecargas de rede, o limite por lote é de 20 anúncios. Por favor, desmarque alguns itens para selecionar este anúncio ou processe em múltiplos lotes.
+                  To ensure high accuracy in data extraction via AI and avoid network overload, the batch limit is 20 listings. Please uncheck some items or process in multiple batches.
                 </p>
               </div>
             </div>
@@ -594,21 +594,21 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
                 onClick={handleSelectAllNew}
                 className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <CheckSquare size={14} className="text-indigo-600" /> Selecionar Novos (máx. 20)
+                <CheckSquare size={14} className="text-indigo-600" /> Select New (max. 20)
               </button>
 
               <button
                 onClick={handleInvertSelection}
                 className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <ArrowLeftRight size={14} className="text-slate-600" /> Inverter Seleção
+                <ArrowLeftRight size={14} className="text-slate-600" /> Invert Selection
               </button>
 
               <button
                 onClick={handleClearSelection}
                 className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <Square size={14} className="text-slate-500" /> Limpar Seleção
+                <Square size={14} className="text-slate-500" /> Clear Selection
               </button>
             </div>
 
@@ -617,7 +617,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
               disabled={selectedCount === 0 || selectedCount > 20}
               className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-md hover:shadow-emerald-200 disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer"
             >
-              <span>Importar Selecionados ({selectedCount})</span>
+              <span>Import Selected ({selectedCount})</span>
               <ArrowRight size={16} />
             </button>
           </div>
@@ -625,7 +625,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
           {/* Discovered Cards Table Layout */}
           {filteredListings.length === 0 ? (
             <div className="p-8 text-center text-slate-500 font-bold text-xs bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-              Nenhum anúncio corresponde aos filtros ativos.
+              No listings match the active filters.
             </div>
           ) : (
             <div className="space-y-3">
@@ -645,7 +645,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
                         ? 'bg-indigo-50/60 border-indigo-300 shadow-sm cursor-pointer'
                         : 'bg-white border-slate-200 hover:border-slate-300 cursor-pointer'
                     }`}
-                    title={item.alreadyImported ? "Este anúncio já existe no ConnectBoat." : `Clique para selecionar: ${item.title}`}
+                    title={item.alreadyImported ? "This listing already exists on ConnectBoat." : `Click to select: ${item.title}`}
                   >
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       {/* Checkbox */}
@@ -678,7 +678,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
                       ) : (
                         <div className="w-16 h-12 bg-slate-100 rounded-xl border border-slate-200 flex flex-col items-center justify-center shrink-0 text-slate-400 text-[10px] font-bold">
                           <Anchor size={14} />
-                          <span>Sem Foto</span>
+                          <span>No Photo</span>
                         </div>
                       )}
 
@@ -695,7 +695,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
                             </span>
                           ) : (
                             <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md text-[11px]">
-                              Sob Consulta
+                              POA
                             </span>
                           )}
 
@@ -720,13 +720,13 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
                       {item.alreadyImported ? (
                         <span
                           className="px-3 py-1 bg-amber-100 text-amber-900 rounded-lg text-xs font-black border border-amber-200"
-                          title="Este anúncio já existe no ConnectBoat."
+                          title="This listing already exists on ConnectBoat."
                         >
-                          Já Importado
+                          Already Imported
                         </span>
                       ) : (
                         <span className="px-3 py-1 bg-indigo-100 text-indigo-900 rounded-lg text-xs font-black border border-indigo-200">
-                          Novo
+                          New
                         </span>
                       )}
 
@@ -736,7 +736,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         className="p-2 text-slate-400 hover:text-indigo-600 transition-colors cursor-pointer"
-                        title={`Abrir anúncio original: ${item.normalizedSourceUrl}`}
+                        title={`Open original listing: ${item.normalizedSourceUrl}`}
                       >
                         <ExternalLink size={16} />
                       </a>

@@ -11,7 +11,7 @@ import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, MessageSquare, MapPin, ShoppingBag, Star, Plus, X } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { enGB } from 'date-fns/locale';
 import { formatPrice, parsePrice } from '../utils';
 import OptimizedImage from '../components/OptimizedImage';
 import { getCardFramingStyle } from '../utils/imageFraming';
@@ -144,7 +144,7 @@ const Profile = () => {
   const handleAddProductClick = () => {
     const limitMax = 6;
     if (showcaseProducts.length >= limitMax) {
-      alert(`Atingiu o limite de ${limitMax} produtos/serviços ativos.`);
+      alert(`You have reached the limit of ${limitMax} active products/services.`);
       return;
     }
     const newDocRef = doc(collection(db, 'sellerPublicProfiles', user!.uid, 'products'));
@@ -181,7 +181,7 @@ const Profile = () => {
 
   const handleDeleteProduct = async (productId: string) => {
     if (!user) return;
-    if (!window.confirm('Tem a certeza que deseja eliminar este item?')) return;
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
     try {
       const existingProd = showcaseProducts.find(p => p.id === productId);
       const wasActive = existingProd ? existingProd.active !== false : false;
@@ -198,7 +198,7 @@ const Profile = () => {
       }
 
       await deleteDoc(doc(db, 'sellerPublicProfiles', user.uid, 'products', productId));
-      alert('Item eliminado com sucesso!');
+      alert('Item deleted successfully!');
       fetchShowcaseProducts();
     } catch (err) {
       console.error('Error deleting product:', err);
@@ -225,7 +225,7 @@ const Profile = () => {
       setProductImages(cleanedImages);
     } catch (err) {
       console.error('Error uploading product image:', err);
-      alert('Erro ao carregar imagem: ' + err);
+      alert('Error uploading image: ' + err);
     } finally {
       const updatedUploadingDone = [...isUploadingProductImg];
       updatedUploadingDone[index] = false;
@@ -242,20 +242,19 @@ const Profile = () => {
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !editingProduct) return;
-    if (isSavingProduct) return; // Impedir duplo clique / múltiplos envios simultâneos
+    if (isSavingProduct) return;
 
     if (!productName.trim()) {
-      alert('O nome do item é mandatório.');
+      alert('Item name is required.');
       return;
     }
     if (!productDescription.trim()) {
-      alert('A descrição do item é mandatória.');
+      alert('Item description is required.');
       return;
     }
 
     setIsSavingProduct(true);
     try {
-      // 1. Validar e atualizar productsCount na sellerPublicProfiles/{userId} antes de guardar
       const profileRef = doc(db, 'sellerPublicProfiles', user.uid);
       const profileSnap = await getDoc(profileRef);
       let currentCount = 0;
@@ -280,9 +279,8 @@ const Profile = () => {
         }
       }
 
-      // Validar limite de 6 produtos/serviços ativos
       if (countDiff > 0 && currentCount >= 6) {
-        alert("Não é possível mudar o estado para ativo ou criar este produto/serviço. Já atingiu o limite de 6 itens ativos na sua Vitrine Digital.");
+        alert("Cannot set status to active or create this product/service. You have reached the limit of 6 active items in your Showcase.");
         setIsSavingProduct(false);
         return;
       }
@@ -303,7 +301,6 @@ const Profile = () => {
         updatedAt: serverTimestamp()
       };
 
-      // Atualizar o productsCount da Vitrine
       const nextProductsCount = Math.max(0, currentCount + countDiff);
       await setDoc(profileRef, { productsCount: nextProductsCount }, { merge: true });
 
@@ -325,7 +322,7 @@ const Profile = () => {
 
   const handleVerifyClaimCode = async (claimId: string, enteredCode: string, actualCode: string) => {
     if (!enteredCode || enteredCode.trim() === '') {
-      setClaimVerificationError(prev => ({ ...prev, [claimId]: 'Por favor, digite o código de confirmação.' }));
+      setClaimVerificationError(prev => ({ ...prev, [claimId]: 'Please enter the confirmation code.' }));
       return;
     }
 
@@ -342,11 +339,11 @@ const Profile = () => {
 
         setClaimVerificationSuccess(prev => ({ ...prev, [claimId]: true }));
       } else {
-        setClaimVerificationError(prev => ({ ...prev, [claimId]: 'Código inválido. Tente novamente.' }));
+        setClaimVerificationError(prev => ({ ...prev, [claimId]: 'Invalid code. Please try again.' }));
       }
     } catch (err: any) {
-      console.error('Erro ao verificar o código da reivindicação:', err);
-      setClaimVerificationError(prev => ({ ...prev, [claimId]: `Erro ao salvar confirmação: ${err?.message || String(err)}` }));
+      console.error('Error verifying claim code:', err);
+      setClaimVerificationError(prev => ({ ...prev, [claimId]: `Error saving confirmation: ${err?.message || String(err)}` }));
     } finally {
       setVerifyingClaimId(null);
     }
@@ -514,7 +511,7 @@ const Profile = () => {
     
     const credits = profile.referralCredits || 0;
     if (credits <= 0) {
-      alert("Não possui Créditos de Destaque disponíveis. Convide mais amigos para ganhar!");
+      alert("You have no Featured Credits available. Invite more friends to earn!");
       return;
     }
     
@@ -536,7 +533,7 @@ const Profile = () => {
         referralCredits: credits - 1
       });
       
-      alert("Anúncio destacado com sucesso por 24 horas!");
+      alert("Listing highlighted successfully for 24 hours!");
       
       await refreshProfile();
       await fetchUserAds();
@@ -808,8 +805,8 @@ const Profile = () => {
       const downloadUrl = await getDownloadURL(uploadSnapshot.ref);
       return downloadUrl;
     } catch (err) {
-      console.error('Erro no upload de showcase file:', err);
-      alert('Ocorreu um erro ao fazer upload do ficheiro para o Firebase Storage.');
+      console.error('Error uploading showcase file:', err);
+      alert('An error occurred while uploading the file to Firebase Storage.');
       throw err;
     } finally {
       if (isLogo) setUploadingLogo(false);
@@ -821,7 +818,7 @@ const Profile = () => {
     e.preventDefault();
     if (!user) return;
     if (!country) {
-      alert('Por favor, selecione primeiro o país.');
+      alert('Please select your country first.');
       return;
     }
     setLoading(true);
@@ -829,13 +826,13 @@ const Profile = () => {
       const docRef = doc(db, 'users', user.uid);
       const digitsOnly = phone.replace(/\D/g, '').trim();
       if (digitsOnly.length < 7) {
-        alert('Por favor, insira um número de telemóvel válido.');
+        alert('Please enter a valid phone number.');
         setLoading(false);
         return;
       }
       const fullPhone = `${countryCode}${digitsOnly}`.trim();
 
-      // Verificar se o telemóvel já se encontra registado por outro utilizador
+      // Check if phone is already registered to another user
       const usersQuery = query(
         collection(db, 'users'),
         where('phone', '==', fullPhone)
@@ -843,7 +840,7 @@ const Profile = () => {
       const querySnap = await getDocs(usersQuery);
       const duplicateUser = querySnap.docs.find(doc => doc.id !== user.uid);
       if (duplicateUser) {
-        alert('Este número de telemóvel já está associado a outro utilizador. Por favor, utilize outro número.');
+        alert('This phone number is already associated with another user. Please use a different number.');
         setLoading(false);
         return;
       }
@@ -851,27 +848,27 @@ const Profile = () => {
       let generatedSlug = '';
       if (showcaseActive) {
         if (!showcaseName.trim()) {
-          alert('Nome do negócio da Vitrine Digital é obrigatório.');
+          alert('Business name for Digital Showcase is required.');
           setLoading(false);
           return;
         }
         if (!showcaseCategory.trim()) {
-          alert('Categoria principal do negócio é obrigatória.');
+          alert('Primary business category is required.');
           setLoading(false);
           return;
         }
         if (!showcaseLogo) {
-          alert('Logotipo do negócio é obrigatório.');
+          alert('Business logo is required.');
           setLoading(false);
           return;
         }
         if (!showcaseDescription.trim()) {
-          alert('Descrição do negócio é obrigatória.');
+          alert('Business description is required.');
           setLoading(false);
           return;
         }
         if (!showcaseWhatsapp.trim()) {
-          alert('Telemóvel (WhatsApp) do negócio é obrigatório.');
+          alert('Business mobile / WhatsApp number is required.');
           setLoading(false);
           return;
         }
@@ -911,7 +908,7 @@ const Profile = () => {
         ...showcasePayload
       }, { merge: true });
       
-      // Sincronizar para o perfil público (sellerPublicProfiles)
+      // Synchronise to public profile (sellerPublicProfiles)
       try {
         const publicRef = doc(db, 'sellerPublicProfiles', user.uid);
         const publicSnap = await getDoc(publicRef);
@@ -936,7 +933,7 @@ const Profile = () => {
         
         await setDoc(publicRef, publicPayload, { merge: true });
       } catch (syncErr) {
-        console.error('[Sync] Erro ao sincronizar para sellerPublicProfiles:', syncErr);
+        console.error('[Sync] Error synchronising to sellerPublicProfiles:', syncErr);
       }
 
       localStorage.setItem('selectedCountry', country);
@@ -954,20 +951,20 @@ const Profile = () => {
   };
 
   const handleDeleteAd = async (id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este anúncio?')) return;
+    if (!window.confirm('Are you sure you want to delete this listing?')) return;
     try {
       await deleteDoc(doc(db, 'ads', id));
       clearHomeCache();
       setAds(prev => prev.filter(ad => ad.id !== id));
-      alert('Anúncio eliminado com sucesso!');
+      alert('Listing deleted successfully!');
     } catch (err) {
-      console.error('Erro ao excluir anúncio:', err);
+      console.error('Error deleting listing:', err);
       handleFirestoreError(err, OperationType.DELETE, `ads/${id}`);
     }
   };
 
   const handleRelistAd = async (ad: Ad) => {
-    if (!window.confirm('Deseja relistar este anúncio? Ele voltará para a fila de aprovação.')) return;
+    if (!window.confirm('Do you want to relist this item? It will be submitted for review.')) return;
     try {
       const adRef = doc(db, 'ads', ad.id);
       
@@ -999,7 +996,7 @@ const Profile = () => {
       }, { merge: true });
       clearHomeCache();
       
-      alert('Anúncio enviado para aprovação!');
+      alert('Listing submitted for review!');
       fetchUserAds();
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `ads/${ad.id}`);
@@ -1007,7 +1004,7 @@ const Profile = () => {
   };
 
   const handleMarkAsAvailable = async (adId: string) => {
-    if (!window.confirm('Deseja marcar este anúncio como disponível de novo?')) return;
+    if (!window.confirm('Do you want to mark this listing as available again?')) return;
     try {
       const adRef = doc(db, 'ads', adId);
       await updateDoc(adRef, {
@@ -1016,7 +1013,7 @@ const Profile = () => {
         updatedAt: serverTimestamp()
       });
       clearHomeCache();
-      alert('Anúncio marcado como disponível de novo!');
+      alert('Listing marked as available again!');
       fetchUserAds();
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
@@ -1024,7 +1021,7 @@ const Profile = () => {
   };
 
   const handleMarkAsSoldOutside = async (adId: string) => {
-    if (!window.confirm('Deseja marcar este anúncio como vendido fora da plataforma? O anúncio ficará com status de vendido e não exigirá avaliações.')) return;
+    if (!window.confirm('Do you want to mark this listing as sold outside the platform? It will be marked as sold and will not require reviews.')) return;
     try {
       const adRef = doc(db, 'ads', adId);
       await updateDoc(adRef, {
@@ -1035,14 +1032,14 @@ const Profile = () => {
         updatedAt: serverTimestamp()
       });
       clearHomeCache();
-      alert('Anúncio marcado como vendido fora da plataforma!');
+      alert('Listing marked as sold outside the platform!');
       fetchUserAds();
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
     }
   };
 
-  if (!user) return <div className="text-center py-20">Por favor, faça login para ver seu perfil.</div>;
+  if (!user) return <div className="text-center py-20">Please log in to view your profile.</div>;
 
   const pointsFromAds = (profile as any)?.pointsFromAds || 0;
   const pointsFromReferrals = (referralsLoading ? 0 : referralsCount) * POINTS_PER_REFERRAL;
@@ -1064,14 +1061,14 @@ const Profile = () => {
           }`}
           id="btn-tab-perfil"
         >
-          👤 Meu Perfil
+          👤 My Profile
         </button>
         <button
           onClick={() => navigate('/campanhas')}
           className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap text-slate-500 hover:text-slate-800"
           id="btn-tab-campanhas-page"
         >
-          🎁 Campanhas
+          🎁 Campaigns
         </button>
         <button
           onClick={() => navigate('/profile?tab=anuncios')}
@@ -1082,7 +1079,7 @@ const Profile = () => {
           }`}
           id="btn-tab-anuncios"
         >
-          Meus Anúncios <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'anuncios' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{ads.length}</span>
+          My Listings <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'anuncios' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{ads.length}</span>
         </button>
         <button
           onClick={() => navigate('/profile?tab=reviews')}
@@ -1093,7 +1090,7 @@ const Profile = () => {
           }`}
           id="btn-tab-reviews"
         >
-          Avaliações <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'reviews' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{reviews.length}</span>
+          Reviews <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'reviews' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{reviews.length}</span>
         </button>
         <button
           onClick={() => navigate('/profile?tab=compras')}
@@ -1104,7 +1101,7 @@ const Profile = () => {
           }`}
           id="btn-tab-compras"
         >
-          Compras <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'compras' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{purchasedAds.length}</span>
+          Purchases <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'compras' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{purchasedAds.length}</span>
         </button>
         <button
           onClick={() => navigate('/profile?tab=favorites')}
@@ -1115,7 +1112,7 @@ const Profile = () => {
           }`}
           id="btn-tab-favorites"
         >
-          Favoritos <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'favorites' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{favorites?.length || 0}</span>
+          Favourites <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'favorites' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{favorites?.length || 0}</span>
         </button>
         <button
           onClick={() => navigate('/profile?tab=reivindicacoes')}
@@ -1126,7 +1123,7 @@ const Profile = () => {
           }`}
           id="btn-tab-reivindicacoes"
         >
-          🛡️ Reivindicações <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'reivindicacoes' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{userClaims.length}</span>
+          🛡️ Claims <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'reivindicacoes' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{userClaims.length}</span>
         </button>
       </div>
 
@@ -1144,7 +1141,7 @@ const Profile = () => {
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-bold text-slate-900">Meu Perfil</h1>
+              <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
               {profile?.ratingCount ? (
                 <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full text-xs font-black border border-amber-100">
                   <Star size={12} className="fill-amber-400 text-amber-400" />
@@ -1159,7 +1156,7 @@ const Profile = () => {
 
         <form onSubmit={handleUpdateProfile} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Nome Completo</label>
+            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Full Name</label>
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
               <input
@@ -1168,12 +1165,12 @@ const Profile = () => {
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                placeholder="Seu nome"
+                placeholder="Your name"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Telemóvel (WhatsApp)</label>
+            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Mobile / Phone (WhatsApp)</label>
             <div className="flex gap-2">
               <div className="relative w-32 shrink-0">
                 <Globe className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -1195,14 +1192,14 @@ const Profile = () => {
                   onChange={(e) => setPhone(e.target.value)}
                   required
                   className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                  placeholder="Ex: 912345678"
+                  placeholder="e.g. 07123456789"
                 />
               </div>
             </div>
-            <p className="text-xs text-slate-400 mt-1">Necessário para que os compradores entrem em contacto.</p>
+            <p className="text-xs text-slate-400 mt-1">Required so buyers can get in touch.</p>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">País / Comunidade</label>
+            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Country / Region</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base leading-none select-none pointer-events-none z-10">
                 {country === 'Portugal' ? '🇵🇹' : country === 'Reino Unido' ? '🇬🇧' : '🌍'}
@@ -1222,21 +1219,21 @@ const Profile = () => {
                 required
                 className="w-full pl-12 pr-10 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all appearance-none font-bold text-slate-800 cursor-pointer"
               >
-                <option value="" disabled className="text-slate-400">Selecione o seu país</option>
+                <option value="" disabled className="text-slate-400">Select your country</option>
                 <option value="Portugal">🇵🇹 Portugal</option>
-                <option value="Reino Unido">🇬🇧 Reino Unido</option>
+                <option value="Reino Unido">🇬🇧 United Kingdom</option>
               </select>
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">▼</span>
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Cidade</label>
+            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">City / Town</label>
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={20} />
               <SearchableCitySelect
                 value={city}
                 onChange={(val) => setCity(val)}
-                placeholder="Escreva ou escolha a sua cidade"
+                placeholder="Type or select your city"
                 country={country}
               />
             </div>
@@ -1255,10 +1252,10 @@ const Profile = () => {
               {profileSaved ? (
                 <>
                   <CheckCircle size={20} />
-                  <span>✓ Alterações Guardadas!</span>
+                  <span>✓ Changes Saved!</span>
                 </>
               ) : (
-                <span>{loading ? 'A guardar...' : 'Guardar Alterações'}</span>
+                <span>{loading ? 'Saving...' : 'Save Changes'}</span>
               )}
             </button>
           </div>
@@ -1273,7 +1270,7 @@ const Profile = () => {
           <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            Meus Anúncios
+            My Listings
             <span className="bg-slate-200 text-slate-600 text-sm px-3 py-1 rounded-full">{ads.length}</span>
           </h2>
 
@@ -1304,7 +1301,7 @@ const Profile = () => {
               }`}
               id="btn-sub-tab-uk"
             >
-              <span>🇬🇧</span> Reino Unido
+              <span>🇬🇧</span> United Kingdom
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
                 adsCountryTab === 'Reino Unido' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200/80 text-slate-600'
               }`}>
@@ -1315,19 +1312,19 @@ const Profile = () => {
         </div>
 
         {adsLoading ? (
-          <div className="text-center py-12 text-slate-400">A carregar anúncios...</div>
+          <div className="text-center py-12 text-slate-400">Loading listings...</div>
         ) : (adsCountryTab === 'Portugal' ? ptAds : ukAds).length === 0 ? (
           <div className="bg-white p-12 rounded-3xl text-center border-2 border-dashed border-slate-200">
             <p className="text-slate-500 mb-4">
               {ads.length === 0 
-                ? 'Ainda não publicou nenhum anúncio.' 
-                : `Ainda não publicou nenhum anúncio em ${adsCountryTab}.`}
+                ? "You haven't posted any listings yet." 
+                : `You haven't posted any listings in ${adsCountryTab}.`}
             </p>
             <button
               onClick={() => navigate('/create-ad')}
               className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all"
             >
-              Criar Primeiro Anúncio
+              Create First Listing
             </button>
           </div>
         ) : (
@@ -1367,7 +1364,7 @@ const Profile = () => {
                         <button 
                           onClick={() => {
                             if (ad.status === 'approved') {
-                              alert('Atenção: Qualquer alteração fará com que o anúncio volte para a fila de aprovação do administrador.');
+                              alert('Notice: Any changes will send the listing back to the administrator review queue.');
                             }
                             navigate(`/edit-ad/${ad.id}`);
                           }} 
@@ -1381,56 +1378,56 @@ const Profile = () => {
                       </div>
                     </div>
                     {ad.category === '💚 Doações & Solidariedade' ? (
-                      <p className="text-emerald-600 font-extrabold mt-1">Grátis 💚</p>
+                      <p className="text-emerald-600 font-extrabold mt-1">Free 💚</p>
                     ) : (
                       <p className="text-indigo-600 font-bold mt-1">{formatPrice(ad.price, ad.country)}</p>
                     )}
                     <div className="mt-2 flex flex-wrap gap-2">
                       {isAdFeatured && (
                         <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 shadow-sm animate-pulse">
-                          ✨ Destacado 24h
+                          ✨ Featured 24h
                         </span>
                       )}
                       {ad.status === 'pending' && (
                         <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">
-                          <Clock size={14} /> Pendente
+                          <Clock size={14} /> Pending
                         </span>
                       )}
                       {ad.status === 'approved' && ad.adStatus === 'active' && (
                         <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
-                          <CheckCircle size={14} /> Aprovado
+                          <CheckCircle size={14} /> Approved
                         </span>
                       )}
                       {ad.adStatus === 'near_expiration' && ad.status === 'approved' && (
                         <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">
-                          <AlertTriangle size={14} /> Expira em breve
+                          <AlertTriangle size={14} /> Expiring soon
                         </span>
                       )}
                       {(ad.status === 'expired' || ad.adStatus === 'expired') && (
                         <span className="flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-lg">
-                          <XCircle size={14} /> Expirado
+                          <XCircle size={14} /> Expired
                         </span>
                       )}
                       {ad.status === 'archived' && (
                         <span className="flex items-center gap-1 text-xs font-bold text-slate-600 bg-slate-50 px-2 py-1 rounded-lg">
-                          <Archive size={14} /> Arquivado
+                          <Archive size={14} /> Archived
                         </span>
                       )}
                       {ad.status === 'rejected' && (
                         <span className="flex items-center gap-1 text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-lg">
-                          <XCircle size={14} /> Rejeitado
+                          <XCircle size={14} /> Rejected
                         </span>
                       )}
                       {(ad.status === 'sold' || ad.adStatus === 'sold') && ad.category !== 'Imigração' && ad.price !== undefined && Number(ad.price) > 0 && (
                         <span className="flex items-center gap-1 text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
-                          <ShoppingBag size={14} /> Vendido
+                          <ShoppingBag size={14} /> Sold
                         </span>
                       )}
                     </div>
                     
                     {ad.expirationDate && (
                       <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase tracking-wider">
-                        Expira em: {format(ad.expirationDate.toDate(), "dd 'de' MMMM", { locale: pt })}
+                        Expires on: {format(ad.expirationDate.toDate(), "dd MMMM", { locale: enGB })}
                       </p>
                     )}
 
@@ -1449,13 +1446,13 @@ const Profile = () => {
                           }}
                           className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-all border border-emerald-100 cursor-pointer"
                         >
-                          <ShoppingBag size={14} /> Marcar como Vendido (com avaliação)
+                          <ShoppingBag size={14} /> Mark as Sold (with review)
                         </button>
                         <button
                           onClick={() => handleMarkAsSoldOutside(ad.id)}
                           className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold bg-slate-50 text-slate-600 hover:bg-slate-100 transition-all border border-slate-200 cursor-pointer"
                         >
-                          <Globe size={14} /> Vendido fora da plataforma
+                          <Globe size={14} /> Sold outside platform
                         </button>
                       </div>
                     )}
@@ -1470,7 +1467,7 @@ const Profile = () => {
                         }`}
                       >
                         <span>✨</span>
-                        <span>Destacar Anúncio (1 crédito)</span>
+                        <span>Feature Listing (1 credit)</span>
                       </button>
                     )}
 
@@ -1479,7 +1476,7 @@ const Profile = () => {
                       onClick={() => handleMarkAsAvailable(ad.id)}
                       className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all border border-indigo-100"
                     >
-                      <RefreshCcw size={14} /> Reverter para Disponível
+                      <RefreshCcw size={14} /> Revert to Available
                     </button>
                   )}
 
@@ -1493,18 +1490,18 @@ const Profile = () => {
                       }`}
                     >
                       <RefreshCcw size={14} /> 
-                      {ad.adStatus === 'near_expiration' ? 'Renovar Anúncio' : 'Relistar Anúncio'}
+                      {ad.adStatus === 'near_expiration' ? 'Renew Listing' : 'Relist Listing'}
                     </button>
                   )}
 
-                  {/* Interessados Section */}
+                  {/* Interested Users Section */}
                   <button
                     onClick={() => handleToggleInterests(ad.id)}
                     className="mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold bg-indigo-50/50 text-indigo-700 hover:bg-indigo-50 border border-slate-200 transition-all cursor-pointer"
                   >
                     <span>👥</span>
                     <span>
-                      {expandedInterestsAdId === ad.id ? 'Ocultar Interessados' : 'Ver Interessados'}
+                      {expandedInterestsAdId === ad.id ? 'Hide Interested Users' : 'View Interested Users'}
                     </span>
                   </button>
 
@@ -1512,23 +1509,23 @@ const Profile = () => {
                   {expandedInterestsAdId === ad.id && (
                     <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs">
                       <div className="flex justify-between items-center mb-2 font-bold text-slate-700">
-                        <span>Interessados ({adInterests[ad.id]?.data?.length || 0})</span>
+                        <span>Interested Users ({adInterests[ad.id]?.data?.length || 0})</span>
                       </div>
                       {adInterests[ad.id]?.loading ? (
-                        <div className="py-3 text-center text-slate-400">Aprimorando consulta...</div>
+                        <div className="py-3 text-center text-slate-400">Loading details...</div>
                       ) : !adInterests[ad.id]?.data || adInterests[ad.id]?.data.length === 0 ? (
-                        <div className="py-3 text-center text-slate-400">Ainda sem interessados registados neste anúncio.</div>
+                        <div className="py-3 text-center text-slate-400">No interested users recorded for this listing yet.</div>
                       ) : (
                         <div className="max-h-40 overflow-y-auto space-y-2">
                           {adInterests[ad.id].data.map((interest: any, subIdx: number) => {
                             const contactDate = interest.createdAt?.toDate 
                               ? format(interest.createdAt.toDate(), "dd/MM/yyyy HH:mm")
-                              : 'Recentemente';
+                              : 'Recently';
                             return (
                               <div key={interest.id || subIdx} className="bg-white p-2 rounded-xl border border-slate-100 flex justify-between items-center gap-2">
                                 <div className="min-w-0">
                                   <p className="font-semibold text-slate-800 truncate">{interest.interestedUserName}</p>
-                                  <p className="text-[10px] text-slate-400">Contacto: {contactDate}</p>
+                                  <p className="text-[10px] text-slate-400">Contacted: {contactDate}</p>
                                 </div>
                                 <span className="text-[10px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0">
                                   WhatsApp
@@ -1553,16 +1550,16 @@ const Profile = () => {
       {currentTab === 'reviews' && (
         <div className="space-y-6" id="reviews-tab-content">
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            Avaliações Recebidas
+            Reviews Received
             <span className="bg-amber-100 text-amber-800 text-sm px-3 py-1 rounded-full">{reviews.length}</span>
           </h2>
 
           {reviewsLoading ? (
-            <div className="text-center py-12 text-slate-400">A carregar avaliações...</div>
+            <div className="text-center py-12 text-slate-400">Loading reviews...</div>
           ) : reviews.length === 0 ? (
             <div className="bg-white p-16 rounded-3xl text-center border-2 border-dashed border-slate-200" id="no-reviews-box">
               <span className="text-4xl text-amber-400">★</span>
-              <p className="text-slate-500 mt-4 font-semibold">Ainda não recebeu nenhuma avaliação.</p>
+              <p className="text-slate-500 mt-4 font-semibold">You haven't received any reviews yet.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1592,15 +1589,15 @@ const Profile = () => {
                     {rev.comment ? (
                       <p className="text-slate-600 text-xs leading-relaxed italic">"{rev.comment}"</p>
                     ) : (
-                      <p className="text-slate-400 text-xs italic">Sem comentário escrito.</p>
+                      <p className="text-slate-400 text-xs italic">No written comment.</p>
                     )}
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-slate-50 text-[10px]">
                     <span className={`px-2 py-0.5 rounded-full font-bold ${rev.success ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                      {rev.success ? 'Negócio Fechado ✓' : 'Negócio Incompleto'}
+                      {rev.success ? 'Transaction Completed ✓' : 'Incomplete Transaction'}
                     </span>
                     <span className="text-slate-400 font-medium">
-                      {rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recentemente'}
+                      {rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: enGB }) : 'Recently'}
                     </span>
                   </div>
                 </div>
@@ -1613,21 +1610,21 @@ const Profile = () => {
       {currentTab === 'favorites' && (
         <div className="space-y-6" id="favorites-tab-content">
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            Anúncios Favoritos
+            Favourite Listings
             <span className="bg-[#bfead0] text-emerald-800 text-sm px-3 py-1 rounded-full font-bold">{favoriteAds.length}</span>
           </h2>
 
           {favoritesLoading ? (
-            <div className="text-center py-12 text-slate-400">A carregar anúncios favoritos...</div>
+            <div className="text-center py-12 text-slate-400">Loading favourite listings...</div>
           ) : favoriteAds.length === 0 ? (
             <div className="bg-white p-16 rounded-3xl text-center border-2 border-dashed border-slate-200" id="no-favorites-box">
               <span className="text-4xl">❤️</span>
-              <p className="text-slate-500 mt-4 mb-4 font-semibold">Ainda não marcou nenhum anúncio como favorito.</p>
+              <p className="text-slate-500 mt-4 mb-4 font-semibold">You haven't saved any favourite listings yet.</p>
               <button
                 onClick={() => navigate('/')}
                 className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all cursor-pointer shadow-md shadow-indigo-100"
               >
-                Ver Anúncios
+                Browse Listings
               </button>
             </div>
           ) : (
@@ -1643,21 +1640,21 @@ const Profile = () => {
       {currentTab === 'compras' && (
         <div className="space-y-6" id="compras-tab-content">
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            Minhas Compras
+            My Purchases
             <span className="bg-indigo-100 text-indigo-800 text-sm px-3 py-1 rounded-full font-bold">{purchasedAds.length}</span>
           </h2>
 
           {purchasedAdsLoading ? (
-            <div className="text-center py-12 text-slate-400">A carregar o seu histórico de compras...</div>
+            <div className="text-center py-12 text-slate-400">Loading your purchase history...</div>
           ) : purchasedAds.length === 0 ? (
             <div className="bg-white p-16 rounded-3xl text-center border-2 border-dashed border-slate-200" id="no-compras-box">
               <span className="text-4xl">🛍️</span>
-              <p className="text-slate-500 mt-4 mb-4 font-semibold">Ainda não efetuou nenhuma compra na plataforma.</p>
+              <p className="text-slate-500 mt-4 mb-4 font-semibold">You haven't made any purchases on the platform yet.</p>
               <button
                 onClick={() => navigate('/')}
                 className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all cursor-pointer shadow-md shadow-indigo-100"
               >
-                Ver Anúncios
+                Browse Listings
               </button>
             </div>
           ) : (
@@ -1665,8 +1662,8 @@ const Profile = () => {
               {purchasedAds.map((ad, idx) => {
                 const soldDate = ad.soldAt?.toDate ? ad.soldAt.toDate() : (ad.soldAt ? new Date(ad.soldAt) : null);
                 const dateLabel = soldDate 
-                  ? format(soldDate, "dd 'de' MMMM 'de' yyyy", { locale: pt }) 
-                  : 'Recém-adquirido';
+                  ? format(soldDate, "dd MMMM yyyy", { locale: enGB }) 
+                  : 'Recently acquired';
 
                 return (
                   <div key={`purchased-ad-${ad.id || idx}`} className="bg-white rounded-3xl border border-slate-100 shadow-lg hover:shadow-xl transition-all overflow-hidden flex flex-col h-full">
@@ -1679,11 +1676,11 @@ const Profile = () => {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-400">
-                          Sem Imagem
+                          No Image
                         </div>
                       )}
                       <span className="absolute top-4 right-4 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full shadow-lg">
-                        Adquirido
+                        Purchased
                       </span>
                     </div>
 
@@ -1697,17 +1694,17 @@ const Profile = () => {
                       
                       {ad.price !== undefined && (
                         <p className="font-extrabold text-[#006600] text-xl">
-                          {ad.category === '💚 Doações & Solidariedade' ? 'Grátis 💚' : formatPrice(ad.price, ad.country || 'Portugal')}
+                          {ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country || 'Portugal')}
                         </p>
                       )}
 
                       <div className="border-t border-slate-100 my-2 pt-3 flex flex-col gap-1 text-xs text-slate-500">
                         <div className="flex justify-between">
-                          <span>Vendedor:</span>
-                          <span className="font-bold text-slate-800">{ad.sellerName || 'Vendedor'}</span>
+                          <span>Seller:</span>
+                          <span className="font-bold text-slate-800">{ad.sellerName || 'Seller'}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Data da compra:</span>
+                          <span>Purchase date:</span>
                           <span className="font-medium text-slate-400">{dateLabel}</span>
                         </div>
                       </div>
@@ -1718,7 +1715,7 @@ const Profile = () => {
                           className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                         >
                           <CheckCircle size={14} className="text-slate-400" /> 
-                          Já avaliado
+                          Already reviewed
                         </button>
                       ) : (
                         <button
@@ -1730,7 +1727,7 @@ const Profile = () => {
                           className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-xs font-black bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all border border-indigo-100 group"
                         >
                           <Star size={14} className="fill-indigo-100 group-hover:fill-indigo-200 group-hover:scale-110 transition-all text-indigo-600" /> 
-                          Avaliar vendedor
+                          Review seller
                         </button>
                       )}
                     </div>
@@ -1745,28 +1742,28 @@ const Profile = () => {
       {currentTab === 'reivindicacoes' && (
         <div className="space-y-6" id="reivindicacoes-tab-content">
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            Meus Pedidos de Reivindicação
+            My Business Claim Requests
             <span className="bg-indigo-100 text-indigo-800 text-sm px-3 py-1 rounded-full font-bold">{userClaims.length}</span>
           </h2>
 
           {userClaimsLoading ? (
-            <div className="text-center py-12 text-slate-400">A carregar os seus pedidos de reivindicação...</div>
+            <div className="text-center py-12 text-slate-400">Loading your claim requests...</div>
           ) : userClaims.length === 0 ? (
             <div className="bg-white p-16 rounded-3xl text-center border-2 border-dashed border-slate-200" id="no-reivindicacoes-box">
               <span className="text-4xl">🛡️</span>
-              <p className="text-slate-500 mt-4 font-semibold">Ainda não solicitou a reivindicação de nenhum negócio.</p>
+              <p className="text-slate-500 mt-4 font-semibold">You haven't submitted any business claims yet.</p>
             </div>
           ) : (
             <div className="space-y-4" id="user-claims-list">
               {userClaims.map((claim) => {
-                const claimDate = claim.createdAt?.toDate ? format(claim.createdAt.toDate(), "dd 'de' MMMM 'de' yyyy", { locale: pt }) : 'Recentemente';
+                const claimDate = claim.createdAt?.toDate ? format(claim.createdAt.toDate(), "dd MMMM yyyy", { locale: enGB }) : 'Recently';
                 
                 return (
                   <div key={claim.id} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
                     <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-50 pb-3">
                       <div>
                         <h3 className="font-bold text-slate-900 text-base">{claim.adTitle}</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">Solicitado em: {claimDate}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Requested on: {claimDate}</p>
                       </div>
                       
                       <div className="flex flex-wrap items-center gap-2">
@@ -1778,9 +1775,9 @@ const Profile = () => {
                             ? 'bg-rose-50 text-rose-700 border border-rose-100'
                             : 'bg-amber-50 text-amber-700 border border-amber-100'
                         }`}>
-                          {claim.status === 'approved' && '✓ Aprovado'}
-                          {claim.status === 'rejected' && '✗ Recusado'}
-                          {claim.status === 'pending' && '⏳ Em Análise'}
+                          {claim.status === 'approved' && '✓ Approved'}
+                          {claim.status === 'rejected' && '✗ Rejected'}
+                          {claim.status === 'pending' && '⏳ Under Review'}
                         </span>
 
                         {/* Verification Status Badge */}
@@ -1792,9 +1789,9 @@ const Profile = () => {
                               ? 'bg-blue-50 text-blue-700 border border-blue-100'
                               : 'bg-rose-50 text-rose-700 border border-rose-100'
                           }`}>
-                            {claim.verificationStatus === 'confirmed' && '🟢 Código Confirmado'}
-                            {claim.verificationStatus === 'sent' && '🟡 Código Enviado'}
-                            {claim.verificationStatus === 'invalid' && '🔴 Código Inválido'}
+                            {claim.verificationStatus === 'confirmed' && '🟢 Code Confirmed'}
+                            {claim.verificationStatus === 'sent' && '🟡 Code Sent'}
+                            {claim.verificationStatus === 'invalid' && '🔴 Invalid Code'}
                           </span>
                         )}
                       </div>
@@ -1802,35 +1799,35 @@ const Profile = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                       <div>
-                        <span className="block text-slate-400 font-bold uppercase text-[9px] tracking-wide">Nome Completo</span>
+                        <span className="block text-slate-400 font-bold uppercase text-[9px] tracking-wide">Full Name</span>
                         <span className="text-slate-800 font-extrabold">{claim.name}</span>
                       </div>
                       <div>
-                        <span className="block text-slate-400 font-bold uppercase text-[9px] tracking-wide">Email fornecido</span>
-                        <span className="text-slate-800 font-extrabold">{claim.email || 'Não fornecido'}</span>
+                        <span className="block text-slate-400 font-bold uppercase text-[9px] tracking-wide">Provided Email</span>
+                        <span className="text-slate-800 font-extrabold">{claim.email || 'Not provided'}</span>
                       </div>
                       <div>
-                        <span className="block text-slate-400 font-bold uppercase text-[9px] tracking-wide">Telefone / WhatsApp</span>
-                        <span className="text-slate-800 font-extrabold">{claim.phone || 'Não fornecido'}</span>
+                        <span className="block text-slate-400 font-bold uppercase text-[9px] tracking-wide">Phone / WhatsApp</span>
+                        <span className="text-slate-800 font-extrabold">{claim.phone || 'Not provided'}</span>
                       </div>
                     </div>
 
-                    {/* Area do Utilizador - Confirmar Código Section */}
+                    {/* User Area - Confirm Code Section */}
                     {claim.status === 'pending' && claim.verificationCode && claim.verificationStatus === 'sent' && (
                       <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3 mt-2">
                         <h4 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
-                          🔑 Confirmar Código de Verificação
+                          🔑 Confirm Verification Code
                         </h4>
                         <p className="text-xs text-slate-500 leading-relaxed">
-                          Foi-lhe atribuído um código de verificação para confirmar a propriedade deste negócio por 
+                          A verification code was assigned to confirm ownership of this business via 
                           <span className="font-bold text-slate-700"> {claim.verificationMethod === 'email' ? 'Email' : 'WhatsApp'}</span>. 
-                          Insira o código abaixo para prosseguir com a análise do pedido.
+                          Enter the code below to proceed with the claim review.
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-2 max-w-md">
                           <input
                             type="text"
-                            placeholder="Digite o código recebido (ex: ML-123456)"
+                            placeholder="Enter code received (e.g. CB-123456)"
                             value={claimVerificationCode[claim.id] || ''}
                             onChange={(e) => setClaimVerificationCode(prev => ({ ...prev, [claim.id]: e.target.value }))}
                             disabled={verifyingClaimId === claim.id || claimVerificationSuccess[claim.id] || claim.verificationStatus === 'confirmed'}
@@ -1842,7 +1839,7 @@ const Profile = () => {
                             onClick={() => handleVerifyClaimCode(claim.id, claimVerificationCode[claim.id], claim.verificationCode)}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider disabled:bg-indigo-300 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow"
                           >
-                            {verifyingClaimId === claim.id ? 'A verificar...' : 'Confirmar Código'}
+                            {verifyingClaimId === claim.id ? 'Verifying...' : 'Confirm Code'}
                           </button>
                         </div>
 
@@ -1854,7 +1851,7 @@ const Profile = () => {
                         {claimVerificationSuccess[claim.id] && (
                           <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl space-y-1">
                             <p className="text-xs font-black text-emerald-800">
-                              ✅ Código confirmado com sucesso.
+                              ✅ Code confirmed successfully.
                             </p>
                             <p className="text-[11px] text-emerald-600 font-semibold leading-snug">
                               Your business claim is ready for review by the ConnectBoat team.
@@ -1869,7 +1866,7 @@ const Profile = () => {
                       <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-2 text-emerald-800 text-xs">
                         <span>✅</span>
                         <div>
-                          <p className="font-black">Código confirmado com sucesso.</p>
+                          <p className="font-black">Code confirmed successfully.</p>
                           <p className="font-semibold text-emerald-600">Your business claim is ready for review by the ConnectBoat team.</p>
                         </div>
                       </div>
@@ -1898,10 +1895,10 @@ const Profile = () => {
           onSuccess={() => {
             if (isBuyerRating) {
               fetchPurchasedAds();
-              alert('Obrigado! Avaliação enviada com sucesso.');
+              alert('Thank you! Review submitted successfully.');
             } else {
               fetchUserAds();
-              alert('Parabéns pela venda! O seu anúncio foi finalizado com sucesso.');
+              alert('Congratulations on your sale! Your listing has been completed.');
             }
           }}
         />
@@ -1918,7 +1915,7 @@ const Profile = () => {
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between shrink-0">
               <h3 className="text-lg font-bold text-slate-900">
-                {productName ? `Editar: ${productName}` : 'Adicionar Item à Vitrine'}
+                {productName ? `Edit: ${productName}` : 'Add Item to Showcase'}
               </h3>
               <button
                 type="button"
@@ -1936,46 +1933,46 @@ const Profile = () => {
             <form onSubmit={handleSaveProduct} className="p-6 overflow-y-auto space-y-4">
               {/* Nome */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Nome do Produto/Serviço *</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Product/Service Name *</label>
                 <input
                   type="text"
                   value={productName}
                   onChange={(e) => setProductName(e.target.value)}
                   required
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-semibold"
-                  placeholder="Ex: Bolo de Chocolate Personalizado"
+                  placeholder="e.g. Marine Maintenance Service"
                 />
               </div>
 
               {/* Descrição */}
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Descrição *</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Description *</label>
                 <textarea
                   value={productDescription}
                   onChange={(e) => setProductDescription(e.target.value)}
                   required
                   rows={3}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all text-sm resize-none"
-                  placeholder="Descreva detalhes como ingredientes, prazos ou especificações..."
+                  placeholder="Describe details such as specifications or turnaround time..."
                 />
               </div>
 
               {/* Preço & Ordem & Ativo em uma fila */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Preço Opcional (€ / £)</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Optional Price (€ / £)</label>
                   <input
                     type="text"
                     inputMode="decimal"
                     value={productPrice}
                     onChange={(e) => setProductPrice(e.target.value)}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-semibold"
-                    placeholder="Ex: 799,950 ou £799,950.00 (sob consulta se vazio)"
+                    placeholder="e.g. £150.00 (upon request if empty)"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Ordem de Exibição (0, 1...)</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Display Order (0, 1...)</label>
                   <input
                     type="number"
                     min="0"
@@ -1989,8 +1986,8 @@ const Profile = () => {
               {/* Status Ativo/Inativo */}
               <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
                 <div>
-                  <span className="text-sm font-bold text-slate-700 block">Item Ativo</span>
-                  <span className="text-[10px] text-slate-400">Itens inativos não serão exibidos aos clientes.</span>
+                  <span className="text-sm font-bold text-slate-700 block">Active Item</span>
+                  <span className="text-[10px] text-slate-400">Inactive items will not be displayed to customers.</span>
                 </div>
                 <button
                   type="button"
@@ -2009,7 +2006,7 @@ const Profile = () => {
 
               {/* Fotos (Até 2) */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Fotos do Item (Até 2)</label>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block">Item Photos (Up to 2)</label>
                 <div className="grid grid-cols-2 gap-4">
                   {[0, 1].map((idx) => {
                     const currentImg = productImages[idx];
@@ -2018,21 +2015,21 @@ const Profile = () => {
                       <div key={`product-img-upload-${idx}`} className="border-2 border-dashed border-slate-200 rounded-2xl aspect-[4/3] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
                         {currentImg ? (
                           <>
-                            <img src={currentImg} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                            <img src={currentImg} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
                             <div className="absolute top-2 right-2 flex gap-1">
                               <button
                                 type="button"
                                 onClick={() => removeProductImage(idx)}
                                 className="p-1 px-2 text-[10px] font-black uppercase text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow"
                               >
-                                Remover
+                                Remove
                               </button>
                             </div>
                           </>
                         ) : (
                           <div className="p-3 text-center space-y-2 flex flex-col items-center">
                             <span className="text-2xl">📸</span>
-                            <span className="text-[9px] font-bold text-slate-400 block line-clamp-2">Foto {idx + 1}</span>
+                            <span className="text-[9px] font-bold text-slate-400 block line-clamp-2">Photo {idx + 1}</span>
                             <input
                               type="file"
                               accept="image/*"
@@ -2050,7 +2047,7 @@ const Profile = () => {
                               onClick={() => document.getElementById(`product-image-picker-${idx}`)?.click()}
                               className="px-2 py-1 text-[9px] font-black rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-600 disabled:opacity-50"
                             >
-                              {isUploading ? 'A carregar...' : 'Fazer Upload'}
+                              {isUploading ? 'Uploading...' : 'Upload File'}
                             </button>
                           </div>
                         )}
@@ -2070,7 +2067,7 @@ const Profile = () => {
                   }}
                   className="w-1/2 py-3 bg-slate-150 text-slate-700 font-bold rounded-xl text-sm hover:bg-slate-200 transition-colors"
                 >
-                  Cancelar
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -2084,10 +2081,10 @@ const Profile = () => {
                   {productSavedSuccess ? (
                     <>
                       <CheckCircle size={16} />
-                      <span>✓ Item Guardado!</span>
+                      <span>✓ Item Saved!</span>
                     </>
                   ) : (
-                    <span>{isSavingProduct ? 'A guardar...' : 'Guardar Item'}</span>
+                    <span>{isSavingProduct ? 'Saving...' : 'Save Item'}</span>
                   )}
                 </button>
               </div>
@@ -2117,8 +2114,8 @@ const Profile = () => {
                 <div className="flex items-center gap-2 text-indigo-400 font-black tracking-widest text-[10px] uppercase">
                   <span>Stripe Secure Subscription</span>
                 </div>
-                <h3 className="text-xl font-bold mt-2">Ativar Minha Vitrine Digital</h3>
-                <p className="text-xs text-slate-300 mt-1">Coloque o seu negócio num nível profissional por apenas {country === 'Reino Unido' ? '£8.99' : '€8.99'} por mês.</p>
+                <h3 className="text-xl font-bold mt-2">Activate My Digital Showcase</h3>
+                <p className="text-xs text-slate-300 mt-1">Take your business to a professional level for just {country === 'Reino Unido' || country === 'United Kingdom' ? '£8.99' : '€8.99'} per month.</p>
               </div>
 
               {/* Body */}
@@ -2126,31 +2123,31 @@ const Profile = () => {
                 {/* Summary */}
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
                   <div className="flex justify-between text-xs text-slate-600">
-                    <span>Subscrição Vitrine Digital (Mensal)</span>
+                    <span>Digital Showcase Subscription (Monthly)</span>
                     <span className="font-bold text-slate-900">
-                      {country === 'Reino Unido' ? '£8.99/mês' : '€8.99/mês'}
+                      {country === 'Reino Unido' || country === 'United Kingdom' ? '£8.99/month' : '€8.99/month'}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs text-slate-600">
-                    <span>Configuração e ativação única</span>
-                    <span className="font-semibold text-emerald-600">Grátis</span>
+                    <span>One-time setup & activation</span>
+                    <span className="font-semibold text-emerald-600">Free</span>
                   </div>
                   <div className="border-t border-slate-200/50 pt-2 flex justify-between text-sm font-bold text-slate-900">
-                    <span>Total Debitável Hoje</span>
+                    <span>Total Chargeable Today</span>
                     <span className="text-indigo-600">
-                      {country === 'Reino Unido' ? '£8.99' : '€8.99'}
+                      {country === 'Reino Unido' || country === 'United Kingdom' ? '£8.99' : '€8.99'}
                     </span>
                   </div>
                 </div>
 
                 {/* Card Fields */}
                 <div className="space-y-3">
-                  <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider">Dados do Cartão</span>
+                  <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider">Card Details</span>
                   
                   <div className="border-2 border-slate-200 focus-within:border-indigo-600 rounded-2xl px-4 py-3 bg-white space-y-3 transition-all shadow-sm">
                     {/* Card Number */}
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Número do Cartão</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Card Number</label>
                       <input
                         type="text"
                         value={showcaseCardNumber}
@@ -2163,13 +2160,13 @@ const Profile = () => {
                     <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-2">
                       {/* Exp */}
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Validade</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expiry Date</label>
                         <input
                           type="text"
                           value={showcaseCardExpiry}
                           onChange={(e) => setShowcaseCardExpiry(e.target.value)}
                           className="w-full bg-transparent border-none p-0 outline-none text-sm text-slate-900 font-medium placeholder-slate-300"
-                          placeholder="MM/AA"
+                          placeholder="MM/YY"
                         />
                       </div>
                       {/* CVC */}
@@ -2188,20 +2185,20 @@ const Profile = () => {
 
                   {/* Name on Card */}
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Nome do Titular</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cardholder Name</label>
                     <input
                       type="text"
                       value={showcaseCardName}
                       onChange={(e) => setShowcaseCardName(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600 text-sm"
-                      placeholder="Ex: Manuel Silva"
+                      placeholder="e.g. John Smith"
                     />
                   </div>
                 </div>
 
                 {/* Security trust badges */}
                 <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1">🔒 Processamento 256-bit SSL</span>
+                  <span className="flex items-center gap-1">🔒 256-bit SSL Processing</span>
                   <div className="flex gap-1.5 opacity-60">
                     <span className="px-1 py-0.5 border border-slate-200 rounded bg-slate-50 font-black text-[8px]">VISA</span>
                     <span className="px-1 py-0.5 border border-slate-200 rounded bg-slate-50 font-black text-[8px]">MC</span>
@@ -2218,10 +2215,10 @@ const Profile = () => {
                   >
                     {showcasePaymentLoading ? (
                       <span className="flex items-center gap-2">
-                        <RefreshCcw className="animate-spin" size={16} /> A processar subscrição...
+                        <RefreshCcw className="animate-spin" size={16} /> Processing subscription...
                       </span>
                     ) : (
-                      <span>Subscrever por {country === 'Reino Unido' ? '£8.99/mês' : '€8.99/mês'}</span>
+                      <span>Subscribe for {country === 'Reino Unido' || country === 'United Kingdom' ? '£8.99/month' : '€8.99/month'}</span>
                     )}
                   </button>
                   
@@ -2229,7 +2226,7 @@ const Profile = () => {
                     onClick={() => setShowShowcasePaymentModal(false)}
                     className="w-full text-center py-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-all"
                   >
-                    Mudar de ideias
+                    Cancel
                   </button>
                 </div>
               </div>

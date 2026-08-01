@@ -380,7 +380,7 @@ export interface GiveawayWinner {
   name: string;
   email: string;
   drawDate: any; // Firestore Timestamp or Date ISO string
-  status: 'Aguardando Contacto' | 'Contactado' | 'Prémio Entregue';
+  status: 'Awaiting Contact' | 'Contacted' | 'Prize Delivered' | 'Aguardando Contacto' | 'Prémio Entregue';
   prizeImage?: string;
   prizeTitle?: string;
   country?: string;

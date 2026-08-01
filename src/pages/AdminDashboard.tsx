@@ -494,7 +494,7 @@ const AdminDashboard = () => {
     <div className="space-y-8 pb-20">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Dashboard de Métricas</h1>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Metrics Dashboard</h1>
           <p className="text-slate-500 font-medium">Monitor performance and growth metrics across ConnectBoat.</p>
         </div>
         
@@ -504,7 +504,7 @@ const AdminDashboard = () => {
             onClick={() => navigate('/admin/bulk-import')}
             className="h-11 px-5 flex items-center gap-2 font-bold text-xs rounded-2xl transition-all bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02] active:scale-[0.98] text-white shadow-md shadow-indigo-100 cursor-pointer"
           >
-            <span>✨ Importação em Massa</span>
+            <span>✨ Bulk Import</span>
           </button>
 
           {/* Download Backup Button */}
@@ -518,7 +518,7 @@ const AdminDashboard = () => {
             }`}
           >
             <Download size={15} className={backupLoading ? 'animate-spin' : ''} />
-            <span>{backupLoading ? 'A processar Backup...' : 'Download Backup'}</span>
+            <span>{backupLoading ? 'Processing Backup...' : 'Download Backup'}</span>
           </button>
 
           <div className="flex bg-slate-100 p-1 rounded-2xl">
@@ -528,7 +528,7 @@ const AdminDashboard = () => {
                 onClick={() => setTimeRange(range)}
                 className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${timeRange === range ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                {range === '7d' ? '7 Dias' : range === '30d' ? '30 Dias' : 'Tudo'}
+                {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : 'All'}
               </button>
             ))}
           </div>
@@ -548,15 +548,15 @@ const AdminDashboard = () => {
                 <Bell size={20} className="animate-bounce" />
               </div>
               <div>
-                <h2 className="text-lg font-black text-slate-900">Anúncios Pendentes</h2>
-                <p className="text-slate-500 text-sm font-medium">Existem anúncios aguardando a sua aprovação.</p>
+                <h2 className="text-lg font-black text-slate-900">Pending Listings</h2>
+                <p className="text-slate-500 text-sm font-medium">There are listings awaiting your approval.</p>
               </div>
             </div>
             <button 
               onClick={() => navigate('/admin/ads?status=pending')}
               className="text-amber-600 font-bold text-sm hover:underline"
             >
-              Ver todos
+              View all
             </button>
           </div>
 
@@ -571,10 +571,10 @@ const AdminDashboard = () => {
                 />
                 <div className="min-w-0">
                   <h3 className="font-bold text-slate-900 truncate text-xs">{ad.title}</h3>
-                  <p className="text-[10px] text-slate-500 mt-0.5 truncate">Vendedor: {ad.sellerName}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5 truncate">Seller: {ad.sellerName}</p>
                   <p className="text-[9px] text-amber-600 font-bold uppercase tracking-wider mt-1 flex items-center gap-1">
                     <Clock size={10} />
-                    {ad.createdAt?.toDate ? formatDistanceToNow(ad.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recentemente'}
+                    {ad.createdAt?.toDate ? formatDistanceToNow(ad.createdAt.toDate(), { addSuffix: true }) : 'Recently'}
                   </p>
                 </div>
               </div>
@@ -583,7 +583,7 @@ const AdminDashboard = () => {
         </motion.div>
       )}
 
-      {/* Real-time precise indicators requested by the user */}
+      {/* Real-time precise indicators */}
       <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -591,36 +591,36 @@ const AdminDashboard = () => {
               <ShieldCheck size={22} />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900 leading-none">Visão Geral do Sistema</h2>
-              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5">Métricas em tempo real da base de dados</p>
+              <h2 className="text-xl font-black text-slate-900 leading-none">System Overview</h2>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5">Real-time database metrics</p>
             </div>
           </div>
           <span className="text-[10px] sm:text-xs font-bold text-slate-500 bg-slate-100 px-4 py-2 rounded-xl flex items-center gap-1.5 self-start sm:self-auto">
             <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
-            Dados Sincronizados Live
+            Live Data Synchronised
           </span>
         </div>
 
         {realtimeStats.loading ? (
           <div className="py-12 flex flex-col items-center justify-center gap-3">
             <div className="w-8 h-8 rounded-full border-4 border-slate-200 border-t-indigo-600 animate-spin"></div>
-            <p className="text-slate-400 text-xs font-bold">A recolher dados da base de dados...</p>
+            <p className="text-slate-400 text-xs font-bold">Fetching database metrics...</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             
-            {/* Total de anúncios */}
+            {/* Total Listings */}
             <div className="p-5 bg-indigo-50/40 border border-indigo-100 rounded-2.5xl flex flex-col justify-between hover:border-indigo-200 transition-all">
               <div className="w-9 h-9 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
                 <ShoppingBag size={18} />
               </div>
               <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Total Anúncios</span>
+                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Total Listings</span>
                 <span className="text-2xl font-black text-slate-900">{realtimeStats.totalAds}</span>
               </div>
             </div>
 
-            {/* Anúncios Pendentes */}
+            {/* Pending Listings */}
             <div 
               onClick={() => navigate(realtimeStats.pendingAds > 0 ? '/admin/ads?status=pending&selectAll=true' : '/admin/ads?status=pending')}
               className={`p-5 rounded-2.5xl border flex flex-col justify-between transition-all cursor-pointer hover:scale-[1.02] hover:shadow-md ${realtimeStats.pendingAds > 0 ? 'animate-pending-highlight text-amber-950 border-amber-300' : 'bg-slate-50/40 border-slate-200 text-slate-500 hover:border-slate-350'}`}
@@ -629,34 +629,34 @@ const AdminDashboard = () => {
                 <Clock size={18} />
               </div>
               <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Pendentes</span>
+                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Pending</span>
                 <span className="text-2xl font-black text-slate-900">{realtimeStats.pendingAds}</span>
               </div>
             </div>
 
-            {/* Anúncios aprovados */}
+            {/* Approved Listings */}
             <div className="p-5 bg-emerald-50/40 border border-emerald-100 rounded-2.5xl flex flex-col justify-between hover:border-emerald-200 transition-all">
               <div className="w-9 h-9 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
                 <CheckCircle2 size={18} />
               </div>
               <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Aprovados</span>
+                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Approved</span>
                 <span className="text-2xl font-black text-slate-900">{realtimeStats.approvedAds}</span>
               </div>
             </div>
 
-            {/* Utilizadores */}
+            {/* Users */}
             <div className="p-5 bg-sky-50/40 border border-sky-100 rounded-2.5xl flex flex-col justify-between hover:border-sky-200 transition-all">
               <div className="w-9 h-9 bg-sky-100 text-sky-600 rounded-xl flex items-center justify-center mb-4">
                 <Users size={18} />
               </div>
               <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Utilizadores</span>
+                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Users</span>
                 <span className="text-2xl font-black text-slate-900">{realtimeStats.totalUsers}</span>
               </div>
             </div>
 
-            {/* Moderadores/Admins */}
+            {/* Staff / Admins */}
             <div className="p-5 bg-purple-50/40 border border-purple-100 rounded-2.5xl flex flex-col justify-between hover:border-purple-200 transition-all">
               <div className="w-9 h-9 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-4">
                 <ShieldCheck size={18} />
@@ -667,40 +667,40 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Destaques Locais */}
+            {/* Local Highlights */}
             <div className="p-5 bg-amber-50/40 border border-amber-100 rounded-2.5xl flex flex-col justify-between hover:border-amber-200 transition-all" id="admin-featured-local">
               <div className="w-9 h-9 bg-amber-100 text-amber-500 rounded-xl flex items-center justify-center mb-4">
                 <Star size={18} />
               </div>
               <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Destaques Locais (£/€4.99)</span>
+                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Local Featured (£4.99)</span>
                 <span className="text-2xl font-black text-amber-600">{realtimeStats.featuredLocalCount}</span>
               </div>
             </div>
 
-            {/* Destaques Nacionais */}
+            {/* National Highlights */}
             <div className="p-5 bg-indigo-50/40 border border-indigo-100 rounded-2.5xl flex flex-col justify-between hover:border-indigo-200 transition-all" id="admin-featured-national">
               <div className="w-9 h-9 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
                 <Crown size={18} />
               </div>
               <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Destaques Nacionais (£/€7.99)</span>
+                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">National Featured (£7.99)</span>
                 <span className="text-2xl font-black text-indigo-650">{realtimeStats.featuredNationalCount}</span>
               </div>
             </div>
 
-            {/* Interesses/Leads */}
+            {/* Leads */}
             <div className="p-5 bg-teal-50/40 border border-teal-100 rounded-2.5xl flex flex-col justify-between hover:border-teal-200 transition-all">
               <div className="w-9 h-9 bg-teal-100 text-teal-600 rounded-xl flex items-center justify-center mb-4">
                 <MousePointer2 size={18} />
               </div>
               <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Leads (Interesses)</span>
+                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Leads (Interests)</span>
                 <span className="text-2xl font-black text-slate-900">{realtimeStats.leadsCount}</span>
               </div>
             </div>
 
-            {/* Materiais de Marketing */}
+            {/* Marketing */}
             <div className="p-5 bg-amber-50/40 border border-amber-100 rounded-2.5xl flex flex-col justify-between hover:border-amber-200 transition-all">
               <div className="w-9 h-9 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center mb-4">
                 <Megaphone size={18} />
@@ -711,15 +711,15 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Notificações do Sistema */}
+            {/* Notifications */}
             <div className="p-5 bg-slate-50/40 border border-slate-200 rounded-2.5xl flex flex-col justify-between hover:border-slate-350 transition-all relative overflow-hidden">
               <div className="w-9 h-9 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center mb-4">
                 <Bell size={18} />
               </div>
               <div>
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Notificações</span>
+                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Notifications</span>
                 <span className="text-2xl font-black text-slate-900">{realtimeStats.notificationsCount}</span>
-                <span className="block text-[9px] text-slate-400 mt-1 font-bold">Admin Pessoal</span>
+                <span className="block text-[9px] text-slate-400 mt-1 font-bold">Personal Admin</span>
               </div>
             </div>
 
@@ -728,50 +728,50 @@ const AdminDashboard = () => {
       </div>
 
       {loading ? (
-        <div className="text-center py-20 text-slate-400 font-bold animate-pulse">Carregando métricas...</div>
+        <div className="text-center py-20 text-slate-400 font-bold animate-pulse">Loading metrics...</div>
       ) : !latest ? (
         <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
           <Calendar className="mx-auto text-slate-300 mb-4" size={48} />
-          <p className="text-slate-500 font-bold">Nenhuma métrica disponível ainda.</p>
-          <p className="text-slate-400 text-sm">Aguarde o processamento diário do sistema.</p>
+          <p className="text-slate-500 font-bold">No metrics available yet.</p>
+          <p className="text-slate-400 text-sm">Please wait for daily system processing.</p>
         </div>
       ) : (
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <MetricCard 
-              title="Total Usuários" 
+              title="Total Users" 
               value={latest.users.total} 
               icon={<Users />} 
               color="indigo"
-              subtitle={`${latest.users.activeLast7Days} ativos (7d)`}
+              subtitle={`${latest.users.activeLast7Days} active (7d)`}
             />
             <MetricCard 
-              title="Total Anúncios" 
+              title="Total Listings" 
               value={latest.ads.total} 
               icon={<ShoppingBag />} 
               color="emerald"
-              subtitle={`${latest.ads.createdToday} criados hoje`}
+              subtitle={`${latest.ads.createdToday} created today`}
             />
             <MetricCard 
-              title="Cliques WhatsApp" 
+              title="WhatsApp Clicks" 
               value={latest.interactions.whatsappClicks} 
               icon={<MousePointer2 />} 
               color="amber"
-              subtitle={`Taxa de conv: ${conversionRate}%`}
+              subtitle={`Conversion rate: ${conversionRate}%`}
             />
             <MetricCard 
-              title="Avisos Enviados" 
+              title="Warnings Sent" 
               value={latest.notifications.warningsSent} 
               icon={<Bell />} 
               color="rose"
-              subtitle={`Eficiência: ${notificationEfficiency}%`}
+              subtitle={`Efficiency: ${notificationEfficiency}%`}
             />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Growth Chart */}
-            <ChartContainer title="Crescimento da Plataforma" icon={<TrendingUp />}>
+            <ChartContainer title="Platform Growth" icon={<TrendingUp />}>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={growthData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -781,14 +781,14 @@ const AdminDashboard = () => {
                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   />
                   <Legend iconType="circle" />
-                  <Line type="monotone" dataKey="users" name="Usuários" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#6366f1' }} activeDot={{ r: 6 }} />
-                  <Line type="monotone" dataKey="ads" name="Anúncios" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="users" name="Users" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, fill: '#6366f1' }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="ads" name="Listings" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
 
             {/* Interaction Chart */}
-            <ChartContainer title="Engajamento Diário" icon={<MousePointer2 />}>
+            <ChartContainer title="Daily Engagement" icon={<MousePointer2 />}>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={interactionData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -798,14 +798,14 @@ const AdminDashboard = () => {
                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   />
                   <Legend iconType="circle" />
-                  <Bar dataKey="clicks" name="Cliques" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="views" name="Visualizações" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="clicks" name="Clicks" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="views" name="Views" fill="#6366f1" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
 
             {/* Ad Status Distribution */}
-            <ChartContainer title="Status dos Anúncios" icon={<ShoppingBag />}>
+            <ChartContainer title="Listings Status Distribution" icon={<ShoppingBag />}>
               <div className="flex flex-col md:flex-row items-center justify-around">
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -837,14 +837,14 @@ const AdminDashboard = () => {
             </ChartContainer>
 
             {/* Geographic Distribution */}
-            <ChartContainer title="Distribuição por Cidade (Top 5)" icon={<MapPin />}>
+            <ChartContainer title="City Distribution (Top 5)" icon={<MapPin />}>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={cityData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                   <XAxis type="number" hide />
                   <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: '#475569', fontSize: 12, fontWeight: 'bold' }} width={100} />
                   <Tooltip />
-                  <Bar dataKey="value" name="Usuários" fill="#6366f1" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="value" name="Users" fill="#6366f1" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -854,23 +854,23 @@ const AdminDashboard = () => {
           <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100">
             <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
               <TrendingUp className="text-indigo-600" />
-              Eficiência das Notificações
+              Notification Efficiency
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Renovações após Aviso</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Renewals after Warning</p>
                 <p className="text-3xl font-black text-emerald-600">{latest.notifications.renewalsAfterWarning}</p>
-                <p className="text-xs text-slate-500 mt-1">Usuários que relistaram após receber alerta.</p>
+                <p className="text-xs text-slate-500 mt-1">Users who relisted after receiving alert.</p>
               </div>
               <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Avisos Ignorados</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Ignored Warnings</p>
                 <p className="text-3xl font-black text-rose-600">{latest.notifications.ignoresAfterWarning}</p>
-                <p className="text-xs text-slate-500 mt-1">Anúncios que expiraram sem ação do usuário.</p>
+                <p className="text-xs text-slate-500 mt-1">Listings that expired without user action.</p>
               </div>
               <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Total de Renovações</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Total Renewals</p>
                 <p className="text-3xl font-black text-indigo-600">{latest.interactions.renewals}</p>
-                <p className="text-xs text-slate-500 mt-1">Histórico total de renovações na plataforma.</p>
+                <p className="text-xs text-slate-500 mt-1">Total renewal history across platform.</p>
               </div>
             </div>
           </div>

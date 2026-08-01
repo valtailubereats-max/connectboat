@@ -33,7 +33,7 @@ const Suggestions = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim() || !message.trim()) {
-      setSubmitError('Por favor, preencha todos os campos obrigatórios.');
+      setSubmitError('Please fill in all required fields.');
       return;
     }
 
@@ -41,7 +41,7 @@ const Suggestions = () => {
     setSubmitError('');
 
     try {
-      // Gerar ID de documento único na coleção 'suggestions'
+      // Generate unique document ID in 'suggestions' collection
       const suggestionCollectionRef = collection(db, 'suggestions');
       const newDocRef = doc(suggestionCollectionRef);
 
@@ -70,8 +70,8 @@ const Suggestions = () => {
       setEmail('');
       setMessage('');
     } catch (error: any) {
-      console.error('Erro ao enviar sugestão:', error);
-      setSubmitError('Houve um problema de conexão. Por favor, tente novamente mais tarde.');
+      console.error('Error submitting suggestion:', error);
+      setSubmitError('There was a connection issue. Please try again later.');
     } finally {
       setIsSubmitting(false);
     }
@@ -84,12 +84,12 @@ const Suggestions = () => {
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-[2rem] p-8 md:p-12 shadow-xl border border-slate-100 relative"
       >
-        {/* Botão de Fechar / Voltar */}
+        {/* Close / Back button */}
         <button
           onClick={() => navigate(-1)}
           className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all cursor-pointer z-10"
-          aria-label="Voltar"
-          title="Voltar"
+          aria-label="Back"
+          title="Back"
           id="close-suggestions-btn"
         >
           <X size={20} />
@@ -101,7 +101,7 @@ const Suggestions = () => {
           </div>
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-              Sugestões
+              Suggestions
               <Sparkles size={24} className="text-amber-500 animate-pulse" />
             </h1>
             <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider font-semibold">
@@ -120,21 +120,21 @@ const Suggestions = () => {
             <div className="w-16 h-16 bg-[#bfead0] rounded-full flex items-center justify-center text-pt-green mx-auto mb-6 shadow-sm">
               <CheckCircle2 size={36} />
             </div>
-            <h2 className="text-2xl font-black text-slate-900 mb-2">Muito Obrigado!</h2>
+            <h2 className="text-2xl font-black text-slate-900 mb-2">Thank You!</h2>
             <p className="text-slate-600 text-sm leading-relaxed mb-6">
-              Obrigado! A sua sugestão foi enviada com sucesso e será analisada com muito carinho pela nossa equipa de desenvolvimento.
+              Thank you! Your suggestion has been submitted successfully and will be carefully reviewed by our team.
             </p>
 
             {user ? (
               <div className="mb-6 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl flex items-center justify-center gap-2 max-w-sm mx-auto shadow-sm">
                 <span className="text-xl">✨</span>
                 <span className="text-xs font-black text-indigo-700 uppercase tracking-wider">
-                  Ganhou +5 pontos de Destaque!
+                  You earned +5 Highlight points!
                 </span>
               </div>
             ) : (
               <p className="text-slate-500 text-xs mb-6">
-                Inicie sessão no ConnectBoat para receber pontos ao enviar sugestões.
+                Sign in to ConnectBoat to earn points when submitting suggestions.
               </p>
             )}
 
@@ -142,16 +142,16 @@ const Suggestions = () => {
               onClick={() => setIsSubmitted(false)}
               className="px-6 py-3 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl shadow-md border border-slate-200 transition-all text-sm cursor-pointer"
             >
-              Enviar outra sugestão
+              Submit another suggestion
             </button>
           </motion.div>
         ) : (
           <div className="grid md:grid-cols-12 gap-8 md:gap-12">
-            {/* Informações da Esquerda */}
+            {/* Left Info Column */}
             <div className="md:col-span-5 space-y-6">
               <div className="bg-slate-50 p-6 rounded-[1.5rem] border border-slate-100">
                 <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-3 text-sm">
-                  💡 Tem uma Ideia?
+                  💡 Have an Idea?
                 </h3>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Have an idea to improve ConnectBoat? Send us your suggestion. We want to hear your feedback on new features, design, ease of use, or any improvement that makes our marine marketplace better for everyone!
@@ -168,7 +168,7 @@ const Suggestions = () => {
               </div>
             </div>
 
-            {/* Formulário da Direita */}
+            {/* Right Form Column */}
             <form onSubmit={handleSubmit} className="md:col-span-7 space-y-5" id="suggestion-form">
               {submitError && (
                 <div className="bg-rose-50 border border-rose-100 text-rose-700 p-4 rounded-xl text-xs font-semibold">
@@ -177,39 +177,39 @@ const Suggestions = () => {
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Seu Nome *</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Your Name *</label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Seu nome completo"
+                  placeholder="Your full name"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-pt-green/20 focus:border-pt-green outline-none text-sm transition-all"
                   id="suggestion-name-input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Seu E-mail *</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Your Email *</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Ex: exemplo@gmail.com"
+                  placeholder="e.g. example@gmail.com"
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-pt-green/20 focus:border-pt-green outline-none text-sm transition-all"
                   id="suggestion-email-input"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Mensagem/Sugestão *</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Message / Suggestion *</label>
                 <textarea
                   required
                   rows={6}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Descreva detalhadamente a sua ideia ou melhoria..."
+                  placeholder="Please describe your idea or feedback in detail..."
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-pt-green/20 focus:border-pt-green outline-none text-sm transition-all resize-none"
                   id="suggestion-message-textarea"
                 />
@@ -218,12 +218,12 @@ const Suggestions = () => {
               {user ? (
                 <div className="p-3.5 bg-indigo-50 border border-indigo-100/50 rounded-xl flex items-center gap-2 text-xs text-indigo-700 font-bold uppercase tracking-wider">
                   <span>✨</span>
-                  <span>As a ConnectBoat member, you earn +5 Feature points upon submission!</span>
+                  <span>As a ConnectBoat member, you earn +5 Highlight points upon submission!</span>
                 </div>
               ) : (
                 <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-2 text-xs text-slate-500 font-bold uppercase tracking-wider">
                   <span>💡</span>
-                  <span>Inicie sessão para ganhar +5 pontos de Destaque ao submeter!</span>
+                  <span>Sign in to earn +5 Highlight points upon submission!</span>
                 </div>
               )}
 
@@ -236,7 +236,7 @@ const Suggestions = () => {
                 id="suggestion-submit-button"
               >
                 <Send size={16} />
-                {isSubmitting ? 'A enviar...' : 'Enviar sugestão'}
+                {isSubmitting ? 'Submitting...' : 'Submit Suggestion'}
               </button>
             </form>
           </div>

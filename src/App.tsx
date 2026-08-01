@@ -50,7 +50,7 @@ import { triggerShare } from './utils/shareUtils';
 
 import { Ad } from './types';
 import { formatDistanceToNow } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { enGB } from 'date-fns/locale';
 import { useClickOutside } from './hooks/useClickOutside';
 
 const Navbar = () => {
@@ -144,18 +144,18 @@ const Navbar = () => {
         let message = '';
 
         if (type === 'ad_pending') {
-          title = 'ANÚNCIOS PENDENTES';
-          message = `🔔 ${list.length} anúncios aguardam aprovação`;
+          title = 'PENDING LISTINGS';
+          message = `🔔 ${list.length} listings awaiting approval`;
         } else if (type === 'review' || type === 'rating' || representative.title?.toLowerCase().includes('avaliação')) {
-          title = 'AVALIAÇÕES';
-          message = `⭐ Você recebeu ${list.length} novas avaliações`;
+          title = 'REVIEWS';
+          message = `⭐ You received ${list.length} new reviews`;
         } else if (type === 'whatsapp_interest' || representative.title?.toLowerCase().includes('interesse')) {
-          title = 'INTERESSE NOS ANÚNCIOS';
-          message = `💬 ${list.length} pessoas demonstraram interesse nos seus anúncios`;
+          title = 'LISTING INTEREST';
+          message = `💬 ${list.length} people expressed interest in your listings`;
         } else {
-          const rawTitle = representative.title || 'NOTIFICAÇÃO';
+          const rawTitle = representative.title || 'NOTIFICATION';
           title = rawTitle.toUpperCase();
-          message = `🔔 Tem ${list.length} novas notificações de: ${rawTitle}`;
+          message = `🔔 You have ${list.length} new notifications from: ${rawTitle}`;
         }
 
         result.push({
@@ -230,7 +230,7 @@ const Navbar = () => {
       setNotifications(unreadList);
       setUserNotificationCount(unreadList.length);
     }, (err) => {
-      console.error('Erro ao ouvir notificações:', err);
+      console.error('Error listening to notifications:', err);
     });
     return () => unsubscribe();
   }, [user]);
@@ -268,8 +268,8 @@ const Navbar = () => {
     if (path === '/links') {
       triggerShare({
         type: 'links',
-        title: 'Links Úteis - Guia de Integração Lusa',
-        description: 'Uma coleção oficial de portais governamentais, redes profissionais e recursos públicos selecionados para apoiar a nossa comunidade lusa.',
+        title: 'Useful Links - Guide & Resources',
+        description: 'An official collection of UK marine, harbour, and public resources selected for our boating community.',
         url: `${window.location.origin}/links`
       });
     } else {
@@ -350,7 +350,7 @@ const Navbar = () => {
                                 )}
                               </div>
                               <p className="text-sm text-slate-700 leading-relaxed">{notif.message}</p>
-                              <p className="text-[10px] text-slate-400 mt-2">{notif.createdAt?.toDate ? formatDistanceToNow(notif.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</p>
+                              <p className="text-[10px] text-slate-400 mt-2">{notif.createdAt?.toDate ? formatDistanceToNow(notif.createdAt.toDate(), { addSuffix: true, locale: enGB }) : 'Recently'}</p>
                             </div>
                           ))
                         }

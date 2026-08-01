@@ -83,7 +83,7 @@ const FAQ = () => {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Procure por uma pergunta ou tema..."
+            placeholder="Search for a question or topic..."
             className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-11 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all shadow-sm"
             id="faq-search-input"
           />
@@ -94,7 +94,7 @@ const FAQ = () => {
         <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-xl border border-slate-100 divide-y divide-slate-100" id="faq-accordion-container">
           {filteredFaq.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-sm font-medium">
-              Nenhuma pergunta corresponde à sua pesquisa.
+              No questions match your search query.
             </div>
           ) : (
             filteredFaq.map((item, index) => {
@@ -136,9 +136,9 @@ const FAQ = () => {
 
         {/* Still need help? */}
         <div className="bg-[#bfead0]/30 rounded-[2.5rem] p-8 border border-[#a8dec0]/40 text-center max-w-xl mx-auto mt-12">
-          <h3 className="font-bold text-slate-800 mb-2">Ainda precisa de esclarecimento?</h3>
+          <h3 className="font-bold text-slate-800 mb-2">Still need assistance?</h3>
           <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-            Se não encontrou o que procurava, a nossa equipa de apoio está sempre pronta para responder aos seus contactos.
+            If you couldn't find what you were looking for, our support team is always ready to assist you.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <a
@@ -148,14 +148,14 @@ const FAQ = () => {
               className="flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 shadow-sm transition-all uppercase tracking-wider cursor-pointer"
               id="faq-whatsapp-support-link"
             >
-              <MessageCircle size={16} /> Suporte WhatsApp
+              <MessageCircle size={16} /> WhatsApp Support
             </a>
             <a
               href="mailto:connectboatuk@gmail.com"
               className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-50 shadow-sm transition-all uppercase tracking-wider cursor-pointer"
               id="faq-email-support-link"
             >
-              <Mail size={16} /> Enviar E-mail
+              <Mail size={16} /> Send Email
             </a>
           </div>
         </div>

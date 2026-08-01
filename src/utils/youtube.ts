@@ -35,7 +35,7 @@ export interface YoutubeMetadata {
 export const fetchYoutubeMetadata = async (url: string): Promise<YoutubeMetadata> => {
   const videoId = extractYoutubeId(url);
   if (!videoId) {
-    throw new Error('URL do YouTube inválido.');
+    throw new Error('Invalid YouTube URL.');
   }
 
   // Use YouTube's public oEmbed API which supports CORS
@@ -46,25 +46,25 @@ export const fetchYoutubeMetadata = async (url: string): Promise<YoutubeMetadata
   try {
     const response = await fetch(oembedUrl);
     if (!response.ok) {
-      throw new Error('Falha ao obter metadados do YouTube.');
+      throw new Error('Failed to fetch YouTube metadata.');
     }
     const data = await response.json();
     return {
       videoId,
       thumbnailUrl: data.thumbnail_url || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-      title: data.title || 'Vídeo do YouTube',
-      channelName: data.author_name || 'Canal do YouTube',
+      title: data.title || 'YouTube Video',
+      channelName: data.author_name || 'YouTube Channel',
       channelUrl: data.author_url || `https://www.youtube.com`,
       channelId: null, // oEmbed doesn't return channelId, but we can store null/empty
     };
   } catch (error) {
-    console.error('Erro ao buscar oembed:', error);
+    console.error('Error fetching oembed:', error);
     // Return fallback metadata derived from URL/ID if oEmbed request fails
     return {
       videoId,
       thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-      title: 'Vídeo do YouTube',
-      channelName: 'Canal do YouTube',
+      title: 'YouTube Video',
+      channelName: 'YouTube Channel',
       channelUrl: `https://www.youtube.com`,
       channelId: null,
     };

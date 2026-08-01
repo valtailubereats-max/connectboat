@@ -151,8 +151,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       items: [
         { icon: MessageSquare, label: 'Suggestions', path: '/admin/suggestions' },
         { icon: Camera, label: 'Marine Gallery', path: '/admin/fotos' },
-        { icon: Settings, label: 'Definições', path: '/admin/settings' },
-        { icon: BookOpen, label: 'Manual Técnico', path: '/admin/manual-tecnico' },
+        { icon: Settings, label: 'Settings', path: '/admin/settings' },
+        { icon: BookOpen, label: 'Technical Manual', path: '/admin/manual-tecnico' },
       ]
     }
   ];
@@ -185,13 +185,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <X size={32} />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Acesso Negado</h1>
-          <p className="text-slate-500 mb-6">Você não tem permissões suficientes para aceder a esta área.</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
+          <p className="text-slate-500 mb-6">You do not have sufficient permissions to access this area.</p>
           <button 
             onClick={() => navigate('/')}
             className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all"
           >
-            Voltar ao Início
+            Return to Home
           </button>
         </div>
       </div>
@@ -220,7 +220,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full transition-all ${menuModel === 'grouped' ? 'bg-indigo-600' : 'bg-transparent'}`} />
-            Agrupado
+            Grouped
           </button>
           <button
             onClick={() => handleSetMenuModel('classic')}
@@ -229,7 +229,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full transition-all ${menuModel === 'classic' ? 'bg-indigo-600' : 'bg-transparent'}`} />
-            Clássico
+            Classic
           </button>
         </div>
       </div>

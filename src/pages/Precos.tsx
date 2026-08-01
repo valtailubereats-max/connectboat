@@ -90,19 +90,19 @@ export default function Precos() {
                   For a limited time, key ConnectBoat promotion features are complimentary during our launch phase.
                 </p>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 pt-1">
-                  <span className="text-slate-500 text-[10px] font-black uppercase tracking-wider">Inclui:</span>
+                  <span className="text-slate-500 text-[10px] font-black uppercase tracking-wider">Includes:</span>
                   <div className="flex flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
-                      ⭐ Destaque Local
+                      ⭐ Local Featured
                     </span>
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
-                      👑 Destaque Nacional
+                      👑 National Featured
                     </span>
                   </div>
                 </div>
               </div>
               <div className="bg-emerald-100/70 border border-emerald-200 text-[#046a38] p-4 rounded-2xl md:max-w-xs shrink-0 self-stretch flex items-center justify-center font-bold text-xs text-center leading-relaxed">
-                Os preços apresentados entrarão em vigor numa fase futura.
+                Prices shown will take effect in a future phase.
               </div>
             </div>
           </motion.div>
@@ -116,29 +116,29 @@ export default function Precos() {
         >
           <div className="space-y-1">
             <h3 className="font-brand font-black text-slate-900 text-lg flex items-center gap-2">
-              <ShieldCheck className="text-emerald-600" size={22} /> Navegue com Confiança
+              <ShieldCheck className="text-emerald-600" size={22} /> Browse with Confidence
             </h3>
             <p className="text-slate-500 text-sm font-medium">
-              Transparência total. Nunca cobramos nada sem o seu consentimento explícito.
+              Full transparency. We never charge anything without your explicit consent.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-x-8 md:gap-y-3 shrink-0">
             <div className="flex items-center gap-2.5 text-slate-700 text-xs sm:text-sm font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px]">✓</span>
-              <span>Criar conta é gratuito.</span>
+              <span>Creating an account is free.</span>
             </div>
             <div className="flex items-center gap-2.5 text-slate-700 text-xs sm:text-sm font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px]">✓</span>
-              <span>Publicar anúncios normais é gratuito.</span>
+              <span>Posting standard listings is free.</span>
             </div>
             <div className="flex items-center gap-2.5 text-slate-700 text-xs sm:text-sm font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px]">✓</span>
-              <span>Só paga se optar por funcionalidades premium.</span>
+              <span>Only pay if you choose premium features.</span>
             </div>
             <div className="flex items-center gap-2.5 text-slate-700 text-xs sm:text-sm font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px]">✓</span>
-              <span>Não existem cobranças automáticas.</span>
+              <span>No automatic recurring charges.</span>
             </div>
           </div>
         </motion.div>
@@ -170,7 +170,7 @@ export default function Precos() {
                   : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              🇬🇧 Reino Unido (£)
+              🇬🇧 United Kingdom (£)
             </button>
           </div>
         </div>
@@ -190,7 +190,7 @@ export default function Precos() {
 
             <div className="mb-6 flex justify-between items-center">
               <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-wider">
-                Grátis
+                Free
               </span>
               <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-500">
                 <Smile size={20} />
@@ -198,37 +198,37 @@ export default function Precos() {
             </div>
 
             <div className="mb-6">
-              <h3 className="text-xl font-brand font-black text-slate-900 mb-2">Anúncio Normal</h3>
+              <h3 className="text-xl font-brand font-black text-slate-900 mb-2">Standard Listing</h3>
               <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Opção ideal para vender itens esporádicos, usados ou serviços locais simples.
+                Ideal option to sell occasional items, used boats, or simple local services.
               </p>
             </div>
 
             <div className="mb-8 text-center bg-slate-50 rounded-2xl py-5 border border-slate-100">
-              <span className="text-3xl font-brand font-black text-[#046a38] tracking-tight">GRÁTIS</span>
-              <span className="block text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-wider">Sem Limite de Tempo</span>
+              <span className="text-3xl font-brand font-black text-[#046a38] tracking-tight">FREE</span>
+              <span className="block text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-wider">No Time Limit</span>
             </div>
 
             <div className="space-y-4 mb-8 flex-1">
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Até 2 fotos</span>
+                <span className="text-xs text-slate-600 font-semibold leading-snug">Up to 2 photos</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Aparece nas listagens normais</span>
+                <span className="text-xs text-slate-600 font-semibold leading-snug">Appears in standard listings</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Pesquisa normal</span>
+                <span className="text-xs text-slate-600 font-semibold leading-snug">Standard search</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Favoritos</span>
+                <span className="text-xs text-slate-600 font-semibold leading-snug">Favorites</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">WhatsApp / Interesse direto</span>
+                <span className="text-xs text-slate-600 font-semibold leading-snug">WhatsApp / Direct interest</span>
               </div>
             </div>
 
@@ -236,7 +236,7 @@ export default function Precos() {
               onClick={handlePublishClick}
               className="w-full py-3.5 px-4 bg-slate-900 border border-slate-900 text-white hover:bg-slate-800 rounded-2xl font-black text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <span>Criar Anúncio Grátis</span>
+              <span>Create Free Listing</span>
               <ArrowRight size={14} />
             </button>
           </motion.div>
@@ -253,7 +253,7 @@ export default function Precos() {
 
             <div className="mb-6 flex justify-between items-center">
               <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider border border-amber-100">
-                Mais Popular
+                Most Popular
               </span>
               <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
                 <Star size={20} className="fill-amber-500 text-amber-500" />
@@ -262,38 +262,38 @@ export default function Precos() {
 
             <div className="mb-6">
               <h3 className="text-xl font-brand font-black text-slate-900 mb-2 flex items-center gap-1.5">
-                ⭐ Destaque Local
+                ⭐ Local Featured
               </h3>
               <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Aumente as suas vendas locais aparecendo em carrosséis prioritários específicos da sua região.
+                Boost your local sales by appearing in priority carousels specific to your region.
               </p>
             </div>
 
             <div className="mb-8 text-center bg-amber-50/50 rounded-2xl py-4 border border-amber-100/50">
               {renderPrice('4.99', '4.99')}
-              <span className="block text-[10px] font-bold text-amber-600 uppercase mt-1.5 tracking-wider">Por 30 Dias</span>
+              <span className="block text-[10px] font-bold text-amber-600 uppercase mt-1.5 tracking-wider">For 30 Days</span>
             </div>
 
             <div className="space-y-4 mb-8 flex-1">
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Até 4 fotos</span>
+                <span className="text-xs text-slate-600 font-semibold leading-snug">Up to 4 photos</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Carrossel de Destaques</span>
+                <span className="text-xs text-slate-600 font-semibold leading-snug">Featured Carousel</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Destaque apenas na cidade do anúncio</span>
+                <span className="text-xs text-slate-600 font-semibold leading-snug">Featured in listing city</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug font-bold text-slate-900">Maior visibilidade local</span>
+                <span className="text-xs text-slate-600 font-semibold leading-snug font-bold text-slate-900">Higher local visibility</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Etiqueta visual de Destaque</span>
+                <span className="text-xs text-slate-600 font-semibold leading-snug">Visual Featured Badge</span>
               </div>
             </div>
 
@@ -301,7 +301,7 @@ export default function Precos() {
               onClick={handlePublishClick}
               className="w-full py-3.5 px-4 bg-amber-500 text-white hover:bg-amber-600 rounded-2xl font-black text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <span>Destacar meu Anúncio</span>
+              <span>Highlight My Listing</span>
               <ArrowRight size={14} />
             </button>
           </motion.div>
@@ -318,7 +318,7 @@ export default function Precos() {
 
             <div className="mb-6 flex justify-between items-center">
               <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-[10px] font-black uppercase tracking-wider border border-indigo-500/20">
-                Maior Alcance
+                Highest Reach
               </span>
               <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
                 <Crown size={20} className="fill-indigo-500 text-indigo-400" />
@@ -327,10 +327,10 @@ export default function Precos() {
 
             <div className="mb-6">
               <h3 className="text-xl font-brand font-black text-white mb-2 flex items-center gap-1.5">
-                👑 Destaque Nacional
+                👑 National Featured
               </h3>
               <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Alcance compradores em qualquer ponto do país com a máxima visibilidade e prioridade nacional.
+                Reach buyers across the entire nation with maximum visibility and national priority.
               </p>
             </div>
 
@@ -341,29 +341,29 @@ export default function Precos() {
                 </div>
                 <span className="text-xs text-slate-400 font-semibold mt-1">~ {isUK ? '€7.99' : '£7.99'}</span>
               </div>
-              <span className="block text-[10px] font-bold text-indigo-400 uppercase mt-1.5 tracking-wider">Por 30 Dias</span>
+              <span className="block text-[10px] font-bold text-indigo-400 uppercase mt-1.5 tracking-wider">For 30 Days</span>
             </div>
 
             <div className="space-y-4 mb-8 flex-1">
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-350 font-semibold leading-snug">Até 6 fotos</span>
+                <span className="text-xs text-slate-350 font-semibold leading-snug">Up to 6 photos</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-350 font-semibold leading-snug">Carrossel de Destaques nacional</span>
+                <span className="text-xs text-slate-350 font-semibold leading-snug">National Featured Carousel</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-350 font-semibold leading-snug">Visibilidade em todas as cidades</span>
+                <span className="text-xs text-slate-350 font-semibold leading-snug">Visibility across all cities</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-300 font-bold leading-snug">Prioridade superior ao Destaque Local</span>
+                <span className="text-xs text-slate-300 font-bold leading-snug">Higher priority than Local Featured</span>
               </div>
               <div className="flex items-start gap-2.5">
                 <Check size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-350 font-semibold leading-snug">Etiqueta Premium de alto destaque</span>
+                <span className="text-xs text-slate-350 font-semibold leading-snug">High-visibility Premium Badge</span>
               </div>
             </div>
 
@@ -371,7 +371,7 @@ export default function Precos() {
               onClick={handlePublishClick}
               className="w-full py-3.5 px-4 bg-indigo-600 text-white hover:bg-indigo-700 rounded-2xl font-black text-sm transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <span>Ativar Destaque Nacional</span>
+              <span>Activate National Featured</span>
               <ArrowRight size={14} />
             </button>
           </motion.div>
@@ -391,10 +391,10 @@ export default function Precos() {
 
           <div className="relative max-w-2xl mx-auto flex flex-col items-center">
             <h2 className="text-2xl md:text-3xl font-brand font-black tracking-tight mb-4 leading-tight">
-              Pronto para divulgar o seu negócio ou aumentar a visibilidade dos seus anúncios?
+              Ready to promote your business or boost listing visibility?
             </h2>
             <p className="text-slate-350 text-sm font-medium mb-8 max-w-lg">
-              Em apenas alguns minutos, pode configurar a sua vitrine ou ativar destaques para receber mais interessados diretamente no WhatsApp.
+              In just a few minutes, set up your showcase or activate features to receive inquiries directly on WhatsApp.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
@@ -402,7 +402,7 @@ export default function Precos() {
                 onClick={handlePublishClick}
                 className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black text-sm md:text-base transition-all shadow-lg shadow-emerald-500/20 hover:scale-105 cursor-pointer"
               >
-                Criar Anúncio
+                Create Listing
               </button>
             </div>
           </div>

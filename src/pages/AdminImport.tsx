@@ -212,37 +212,37 @@ const AdminImport = () => {
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div className="bg-slate-50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase">Título</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase">Title</p>
                     <p className="text-slate-900 font-bold">{result.title}</p>
                   </div>
                   <div className="bg-slate-50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase">Preço</p>
-                    <p className="text-indigo-600 font-black text-lg">{result.price ? formatPrice(result.price) : 'N/D'}</p>
+                    <p className="text-xs font-bold text-slate-400 uppercase">Price</p>
+                    <p className="text-indigo-600 font-black text-lg">{result.price ? formatPrice(result.price) : 'N/A'}</p>
                   </div>
                   {(result.manufacturer || result.model || result.year || result.boatType) && (
                     <div className="bg-sky-50/50 border border-sky-100 p-4 rounded-2xl md:col-span-2">
                       <p className="text-xs font-extrabold text-sky-800 uppercase mb-2 flex items-center gap-1.5">
-                        ⚓ Detalhes Naúticos Extraídos
+                        ⚓ Extracted Nautical Details
                       </p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs text-slate-700">
-                        {result.boatType && <div><span className="font-semibold text-slate-500">Tipo:</span> {result.boatType}</div>}
-                        {result.manufacturer && <div><span className="font-semibold text-slate-500">Fabricante:</span> {result.manufacturer}</div>}
-                        {result.model && <div><span className="font-semibold text-slate-500">Modelo:</span> {result.model}</div>}
-                        {result.year && <div><span className="font-semibold text-slate-500">Ano:</span> {result.year}</div>}
-                        {result.length && <div><span className="font-semibold text-slate-500">Comprimento:</span> {result.length}</div>}
-                        {result.beam && <div><span className="font-semibold text-slate-500">Boca:</span> {result.beam}</div>}
-                        {result.draft && <div><span className="font-semibold text-slate-500">Calado:</span> {result.draft}</div>}
-                        {result.engineBrand && <div><span className="font-semibold text-slate-500">Motor:</span> {result.engineBrand}</div>}
-                        {result.horsepower && <div><span className="font-semibold text-slate-500">Potência:</span> {result.horsepower}</div>}
-                        {result.engineHours && <div><span className="font-semibold text-slate-500">Horas:</span> {result.engineHours}</div>}
-                        {result.fuelType && <div><span className="font-semibold text-slate-500">Combustível:</span> {result.fuelType}</div>}
-                        {result.cabins && <div><span className="font-semibold text-slate-500">Cabines:</span> {result.cabins}</div>}
+                        {result.boatType && <div><span className="font-semibold text-slate-500">Type:</span> {result.boatType}</div>}
+                        {result.manufacturer && <div><span className="font-semibold text-slate-500">Manufacturer:</span> {result.manufacturer}</div>}
+                        {result.model && <div><span className="font-semibold text-slate-500">Model:</span> {result.model}</div>}
+                        {result.year && <div><span className="font-semibold text-slate-500">Year:</span> {result.year}</div>}
+                        {result.length && <div><span className="font-semibold text-slate-500">Length:</span> {result.length}</div>}
+                        {result.beam && <div><span className="font-semibold text-slate-500">Beam:</span> {result.beam}</div>}
+                        {result.draft && <div><span className="font-semibold text-slate-500">Draft:</span> {result.draft}</div>}
+                        {result.engineBrand && <div><span className="font-semibold text-slate-500">Engine:</span> {result.engineBrand}</div>}
+                        {result.horsepower && <div><span className="font-semibold text-slate-500">Power:</span> {result.horsepower}</div>}
+                        {result.engineHours && <div><span className="font-semibold text-slate-500">Hours:</span> {result.engineHours}</div>}
+                        {result.fuelType && <div><span className="font-semibold text-slate-500">Fuel:</span> {result.fuelType}</div>}
+                        {result.cabins && <div><span className="font-semibold text-slate-500">Cabins:</span> {result.cabins}</div>}
                         {result.berths && <div><span className="font-semibold text-slate-500">Berths:</span> {result.berths}</div>}
-                        {result.bathrooms && <div><span className="font-semibold text-slate-500">Casas de Banho:</span> {result.bathrooms}</div>}
+                        {result.bathrooms && <div><span className="font-semibold text-slate-500">Bathrooms:</span> {result.bathrooms}</div>}
                         {result.hullMaterial && <div><span className="font-semibold text-slate-500">Material:</span> {result.hullMaterial}</div>}
-                        {result.trailerIncluded && <div><span className="font-semibold text-slate-500">Reboque:</span> {result.trailerIncluded}</div>}
-                        {result.vatPaid && <div><span className="font-semibold text-slate-500">IVA Pago:</span> {result.vatPaid}</div>}
-                        {result.ceCertified && <div><span className="font-semibold text-slate-500">Certif. CE:</span> {result.ceCertified}</div>}
+                        {result.trailerIncluded && <div><span className="font-semibold text-slate-500">Trailer:</span> {result.trailerIncluded}</div>}
+                        {result.vatPaid && <div><span className="font-semibold text-slate-500">VAT Paid:</span> {result.vatPaid}</div>}
+                        {result.ceCertified && <div><span className="font-semibold text-slate-500">CE Certified:</span> {result.ceCertified}</div>}
                       </div>
                     </div>
                   )}
@@ -252,7 +252,7 @@ const AdminImport = () => {
                   onClick={confirmAndRedirect}
                   className="w-full bg-emerald-500 text-white py-4 rounded-2xl font-bold text-lg hover:bg-emerald-600 transition-all shadow-xl"
                 >
-                  Confirmar e Criar Anúncio
+                  Confirm and Create Listing
                 </button>
               </motion.div>
             )}

@@ -68,7 +68,7 @@ const Campanhas = () => {
 
   // Share invite via WhatsApp
   const inviteUrl = `${window.location.origin}/login?mode=register&ref=${profile?.referralCode || user?.uid || ''}`;
-  const whatsappShareText = `Olá! 👋 Recomendo o Marketplace da nossa Comunidade Lusófona! Regista-te pelo meu link de convite para começares já a ver anúncios ou criar publicações, e ganharmos pontos de destaque grátis! 🎉 Abraço!\n\n${inviteUrl}`;
+  const whatsappShareText = `Hello! 👋 I recommend the ConnectBoat marketplace! Register using my referral link to start viewing listings or creating posts, and earn free featured listing points! 🎉 Best wishes!\n\n${inviteUrl}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(inviteUrl);
@@ -101,15 +101,15 @@ const Campanhas = () => {
             <Gift size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">🎁 Campanhas & Indicações</h1>
-            <p className="text-xs text-slate-500 font-medium">Convide amigos, acumule pontos de impacto comunitário e ganhe destaques gratuitos para os seus anúncios!</p>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">🎁 Campaigns & Referrals</h1>
+            <p className="text-xs text-slate-500 font-medium">Invite friends, accumulate community points, and earn free featured listings for your posts!</p>
           </div>
         </div>
         <button
           onClick={() => navigate('/profile')}
-          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all"
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
         >
-          ← Voltar ao Perfil
+          ← Return to Profile
         </button>
       </div>
 
@@ -120,13 +120,13 @@ const Campanhas = () => {
           <div className="flex items-start gap-4">
             <span className="text-3xl animate-bounce shrink-0 mt-1">🎉</span>
             <div>
-              <h3 className="text-lg font-black uppercase tracking-tight">Crédito de Destaque Ativo!</h3>
-              <p className="font-bold text-sm">Dispõe presentemente de {profile.referralCredits} destaque(s) de 24 horas pronto(s) a aplicar nos seus anúncios.</p>
+              <h3 className="text-lg font-black uppercase tracking-tight">Active Featured Credit!</h3>
+              <p className="font-bold text-sm">You currently have {profile.referralCredits} 24-hour featured credit(s) ready to apply to your listings.</p>
               <button
                 onClick={() => navigate('/profile?tab=anuncios')}
-                className="mt-3 px-4 py-2 bg-slate-900 text-white font-extrabold text-xs rounded-lg hover:bg-slate-800 transition-all"
+                className="mt-3 px-4 py-2 bg-slate-900 text-white font-extrabold text-xs rounded-lg hover:bg-slate-800 transition-all cursor-pointer"
               >
-                Promover um Anúncio Agora
+                Promote a Listing Now
               </button>
             </div>
           </div>
@@ -139,10 +139,10 @@ const Campanhas = () => {
         <div className="md:col-span-7 bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 text-xs font-black text-slate-400 uppercase tracking-widest">
-              <Share2 size={12} /> Partilhar Link Pessoal
+              <Share2 size={12} /> Share Personal Link
             </div>
-            <h3 className="text-base font-extrabold text-slate-900 leading-relaxed">Divulgue o seu código de convite único</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">Copie o link abaixo ou use as partilhas sociais diretas para que novos registos sejam atribuídos automaticamente ao seu perfil.</p>
+            <h3 className="text-base font-extrabold text-slate-900 leading-relaxed">Share your unique referral code</h3>
+            <p className="text-xs text-slate-500 leading-relaxed">Copy the link below or use direct social sharing so new registrations are automatically credited to your profile.</p>
             
             <div className="space-y-2 mt-4 pt-2">
               <input
@@ -157,13 +157,13 @@ const Campanhas = () => {
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className={`px-5 py-3.5 rounded-xl font-bold text-xs flex-1 transition-all ${
+                  className={`px-5 py-3.5 rounded-xl font-bold text-xs flex-1 transition-all cursor-pointer ${
                     copiedReferral 
                       ? 'bg-emerald-600 text-white shadow-emerald-100' 
                       : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
                 >
-                  {copiedReferral ? 'Copiado!' : 'Copiar Link'}
+                  {copiedReferral ? 'Copied!' : 'Copy Link'}
                 </button>
                 <a
                   href={`https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappShareText)}`}
@@ -172,12 +172,12 @@ const Campanhas = () => {
                   className="px-5 py-3.5 rounded-xl font-bold text-xs bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer whitespace-nowrap flex-1"
                 >
                   <MessageSquare size={14} />
-                  <span>whatsapp</span>
+                  <span>WhatsApp</span>
                 </a>
                 <button
                   onClick={handleShareNavigator}
-                  className="px-4 py-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs shrink-0 flex items-center justify-center"
-                  title="Partilha Geral"
+                  className="px-4 py-3.5 rounded-xl border border-slate-200 hover:bg-slate-50 font-bold text-xs shrink-0 flex items-center justify-center cursor-pointer"
+                  title="Share Link"
                 >
                   <Share2 size={14} />
                 </button>
@@ -186,17 +186,17 @@ const Campanhas = () => {
           </div>
 
           <div className="border-t border-slate-100 pt-4 mt-4 space-y-2 text-[11px] text-slate-400 font-semibold leading-relaxed">
-            <span className="text-emerald-600 font-extrabold uppercase tracking-wider block">Como funciona?</span>
-            <p>1. Partilha o teu link pessoal. </p>
-            <p>2. Cada amigo que se registe pelo teu link soma 50 pontos à tua conta.</p>
-            <p>3. Conquistas 24h de destaque de anúncios a cada 150 pontos!</p>
+            <span className="text-emerald-600 font-extrabold uppercase tracking-wider block">How it works</span>
+            <p>1. Share your personal link.</p>
+            <p>2. Each friend who registers via your link adds 50 points to your account.</p>
+            <p>3. Earn a 24-hour featured listing for every 150 points!</p>
           </div>
         </div>
 
         {/* Right Side: QR Code Generator Card */}
         <div className="md:col-span-5 bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col items-center justify-center gap-4 text-center">
           <div className="flex items-center gap-1 text-[10px] text-purple-600 font-black uppercase tracking-wider">
-            <QrCode size={12} /> QR Code de Convite
+            <QrCode size={12} /> Referral QR Code
           </div>
           
           <div className="p-4 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center">
@@ -210,8 +210,8 @@ const Campanhas = () => {
           </div>
 
           <div className="space-y-1 px-1 mt-1">
-            <h4 className="text-xs font-bold text-slate-800">Partilha Presencial</h4>
-            <p className="text-[10px] text-slate-500 leading-normal">Basta que o seu amigo digitalize este QR Code com a câmara do telemóvel para se registar pela sua recomendação.</p>
+            <h4 className="text-xs font-bold text-slate-800">In-Person Sharing</h4>
+            <p className="text-[10px] text-slate-500 leading-normal">Your friend simply scans this QR Code with their smartphone camera to register through your referral.</p>
           </div>
         </div>
       </div>
@@ -220,34 +220,34 @@ const Campanhas = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm text-center flex flex-col justify-between">
           <div>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Pontos de Convites</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Referral Points</span>
             <span className="text-xl font-black text-emerald-600 block mt-1.5">{referralsLoading ? '...' : `${pointsFromReferrals} pts`}</span>
           </div>
-          <span className="text-[10px] text-slate-500 font-bold block mt-3 border-t border-slate-50 pt-1.5">{referralsCount} convites ({POINTS_PER_REFERRAL} pts/cada)</span>
+          <span className="text-[10px] text-slate-500 font-bold block mt-3 border-t border-slate-50 pt-1.5">{referralsCount} referrals ({POINTS_PER_REFERRAL} pts/each)</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm text-center flex flex-col justify-between">
           <div>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Pontos de Anúncios</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Listing Points</span>
             <span className="text-xl font-black text-indigo-600 block mt-1.5">{adsLoading ? '...' : `${pointsFromAds} pts`}</span>
           </div>
-          <span className="text-[10px] text-slate-500 font-bold block mt-3 border-t border-slate-50 pt-1.5">Aprovados ({POINTS_PER_AD} pts/cada)</span>
+          <span className="text-[10px] text-slate-500 font-bold block mt-3 border-t border-slate-50 pt-1.5">Approved ({POINTS_PER_AD} pts/each)</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm text-center flex flex-col justify-between">
           <div>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Próximo Destaque</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Next Feature Credit</span>
             <span className="text-xl font-black text-amber-500 block mt-1.5">{referralsLoading ? '...' : `${progressPoints} / 150`}</span>
           </div>
-          <span className="text-[10px] text-slate-500 font-bold block mt-3 border-t border-slate-50 pt-1.5">Faltam {pointsNeeded} pts para o destaque</span>
+          <span className="text-[10px] text-slate-500 font-bold block mt-3 border-t border-slate-50 pt-1.5">{pointsNeeded} pts remaining for featured listing</span>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm text-center flex flex-col justify-between">
           <div>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Destaques Ganhos</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Features Earned</span>
             <span className="text-xl font-black text-indigo-700 block mt-1.5">{profile?.referralCredits || 0}</span>
           </div>
-          <span className="text-[10px] text-slate-500 font-bold block mt-3 border-t border-slate-50 pt-1.5">Créditos de destaque ativos</span>
+          <span className="text-[10px] text-slate-500 font-bold block mt-3 border-t border-slate-50 pt-1.5">Active feature credits</span>
         </div>
       </div>
 
@@ -255,11 +255,11 @@ const Campanhas = () => {
       <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
         <div className="flex justify-between items-center flex-wrap gap-2">
           <div className="space-y-0.5">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Progresso do Destaque</span>
-            <h4 className="text-xs font-bold text-slate-700">Faltam {pointsNeeded} pontos para resgatar 1 destaque grátis.</h4>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Feature Progress</span>
+            <h4 className="text-xs font-bold text-slate-700">{pointsNeeded} points left to redeem 1 free featured listing.</h4>
           </div>
           <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
-            {progressPercent}% CONCLUÍDO
+            {progressPercent}% COMPLETED
           </span>
         </div>
 

@@ -19,7 +19,7 @@ import {
   Award
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { enGB } from 'date-fns/locale';
 import { useAuth } from '../context/AuthContext';
 
 const AdminTeam = () => {
@@ -43,8 +43,8 @@ const AdminTeam = () => {
         <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
           <ShieldAlert size={32} />
         </div>
-        <h1 className="text-2xl font-black text-slate-900 mb-2">Acesso Restrito</h1>
-        <p className="text-slate-500 font-medium mb-6">Apenas utilizadores com o cargo de Administrador possuem permissões para gerir a equipa.</p>
+        <h1 className="text-2xl font-black text-slate-900 mb-2">Restricted Access</h1>
+        <p className="text-slate-500 font-medium mb-6">Only users with Administrator role have permissions to manage the team.</p>
       </div>
     );
   }
@@ -70,16 +70,16 @@ const AdminTeam = () => {
       setUsers(usersData);
     } catch (err: any) {
       console.error("Error loading users:", err);
-      let message = "Ocorreu um erro ao carregar os utilizadores.";
+      let message = "An error occurred while loading users.";
       if (err?.code === 'permission-denied') {
-        message = "Erro de Permissão (Firestore Rules): A sua conta de administrador não tem privilégios delegados nas regras de segurança para listar utilizadores.";
+        message = "Permission Error (Firestore Rules): Your administrator account does not have delegated privileges in security rules to list users.";
       } else if (err?.code === 'resource-exhausted') {
-        message = "Erro de Limite (Quota): O marketplace atingiu a cota diária de leitura gratuita do Firebase. Por favor, tente novamente amanhã.";
+        message = "Quota Limit Error: The marketplace has reached the daily free reading quota for Firebase. Please try again tomorrow.";
       } else if (err instanceof Error) {
         try {
           // Parse the error message as JSON if possible to understand more details
           const details = JSON.parse(err.message);
-          message = `Erro: ${details.error || err.message}`;
+          message = `Error: ${details.error || err.message}`;
         } catch {
           message = err.message;
         }
@@ -94,12 +94,12 @@ const AdminTeam = () => {
     if (newRole === currentRole) return;
     
     const roleLabels = {
-      user: 'Utilizador Comum',
-      moderator: 'Moderador',
-      admin: 'Administrador'
+      user: 'Standard User',
+      moderator: 'Moderator',
+      admin: 'Administrator'
     };
 
-    if (!window.confirm(`Tem a certeza que deseja alterar o cargo deste utilizador para ${roleLabels[newRole]}?`)) return;
+    if (!window.confirm(`Are you sure you want to change this user's role to ${roleLabels[newRole]}?`)) return;
 
     setUpdatingUserId(userId);
     try {
@@ -140,9 +140,9 @@ const AdminTeam = () => {
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
             <Briefcase className="text-indigo-600 h-8 w-8" />
-            <span>Gestão de Equipe</span>
+            <span>Team Management</span>
           </h1>
-          <p className="text-slate-500 font-medium">Controle os níveis e permissões de acesso da equipe do marketplace.</p>
+          <p className="text-slate-500 font-medium">Control access levels and permissions for the marketplace team.</p>
         </div>
       </div>
 
@@ -153,7 +153,7 @@ const AdminTeam = () => {
             <Users size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase text-slate-400">Total Utilizadores</p>
+            <p className="text-[10px] font-black uppercase text-slate-400">Total Users</p>
             <p className="text-2xl font-black text-slate-950 mt-0.5">{teamStats.total}</p>
           </div>
         </div>
@@ -163,7 +163,7 @@ const AdminTeam = () => {
             <Shield size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase text-indigo-500">Administradores</p>
+            <p className="text-[10px] font-black uppercase text-indigo-500">Administrators</p>
             <p className="text-2xl font-black text-indigo-950 mt-0.5">{teamStats.admins}</p>
           </div>
         </div>
@@ -173,7 +173,7 @@ const AdminTeam = () => {
             <ShieldCheck size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase text-amber-500">Moderadores</p>
+            <p className="text-[10px] font-black uppercase text-amber-500">Moderators</p>
             <p className="text-2xl font-black text-amber-950 mt-0.5">{teamStats.moderators}</p>
           </div>
         </div>
@@ -183,7 +183,7 @@ const AdminTeam = () => {
             <User size={20} />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase text-slate-400">Utilizadores Comuns</p>
+            <p className="text-[10px] font-black uppercase text-slate-400">Standard Users</p>
             <p className="text-2xl font-black text-slate-950 mt-0.5">{teamStats.regularUsers}</p>
           </div>
         </div>
@@ -193,7 +193,7 @@ const AdminTeam = () => {
         <div className="bg-red-50 border border-red-200 text-red-700 p-5 rounded-2xl flex items-start gap-3.5 text-sm font-bold shadow-sm">
           <AlertCircle size={20} className="shrink-0 text-red-600 mt-0.5" />
           <div className="space-y-1">
-            <p className="font-extrabold text-red-950">Falha ao obter lista (Firestore ERROR)</p>
+            <p className="font-extrabold text-red-950">Failed to fetch list (Firestore ERROR)</p>
             <p className="font-medium text-red-700 leading-relaxed text-xs">{errorMsg}</p>
           </div>
         </div>
@@ -205,7 +205,7 @@ const AdminTeam = () => {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input 
             type="text"
-            placeholder="Pesquisar utilizador por nome ou email..."
+            placeholder="Search user by name or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-11 pr-4 py-3 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
@@ -214,9 +214,9 @@ const AdminTeam = () => {
         <div className="flex bg-slate-100 p-1 rounded-xl self-start md:self-auto shrink-0">
           {(['all', 'admin', 'moderator', 'user'] as const).map((roleVal) => {
             const labelStr = 
-              roleVal === 'all' ? 'Ver Todos' : 
+              roleVal === 'all' ? 'All Users' : 
               roleVal === 'admin' ? 'Admins' : 
-              roleVal === 'moderator' ? 'Moderadores' : 'Comuns';
+              roleVal === 'moderator' ? 'Moderators' : 'Standard Users';
             return (
               <button
                 key={roleVal}
@@ -238,7 +238,7 @@ const AdminTeam = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 text-slate-400 font-bold space-y-3">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
-          <p className="animate-pulse">A carregar equipe e utilizadores...</p>
+          <p className="animate-pulse">Loading team and users...</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
@@ -246,11 +246,11 @@ const AdminTeam = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/75 border-b border-slate-200">
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Utilizador</th>
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Contacto</th>
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Cargo Atual</th>
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Registo</th>
-                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Atribuir Nível / Permissões</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">User</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Contact</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Current Role</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Registered</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Assign Role / Permissions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -272,9 +272,9 @@ const AdminTeam = () => {
                           </div>
                           <div className="min-w-0">
                             <p className="font-bold text-slate-900 truncate flex items-center gap-1.5">
-                              {item.name || 'Sem nome'}
-                              {currentRole === 'admin' && <Shield size={14} className="text-indigo-600" title="Administrador" />}
-                              {currentRole === 'moderator' && <ShieldCheck size={14} className="text-amber-500" title="Moderador" />}
+                              {item.name || 'Unnamed'}
+                              {currentRole === 'admin' && <Shield size={14} className="text-indigo-600" title="Administrator" />}
+                              {currentRole === 'moderator' && <ShieldCheck size={14} className="text-amber-500" title="Moderator" />}
                             </p>
                             <p className="text-xs text-slate-500 truncate flex items-center gap-1 mt-0.5">
                               <Mail size={12} className="text-slate-400" />
@@ -286,7 +286,7 @@ const AdminTeam = () => {
 
                       {/* Contact phone */}
                       <td className="px-6 py-4">
-                        <span className="text-xs font-bold text-slate-700">{item.phone || 'Sem telefone'}</span>
+                        <span className="text-xs font-bold text-slate-700">{item.phone || 'No phone'}</span>
                       </td>
 
                       {/* Role representation badges */}
@@ -301,7 +301,7 @@ const AdminTeam = () => {
                           {currentRole === 'admin' && <Shield size={10} />}
                           {currentRole === 'moderator' && <ShieldCheck size={10} />}
                           {currentRole === 'user' && <User size={10} />}
-                          {currentRole === 'admin' ? 'Admin' : currentRole === 'moderator' ? 'Moderador' : 'Comum'}
+                          {currentRole === 'admin' ? 'Admin' : currentRole === 'moderator' ? 'Moderator' : 'Standard'}
                         </span>
                       </td>
 
@@ -326,9 +326,9 @@ const AdminTeam = () => {
                               <button
                                 onClick={() => handleUpdateRole(item.id || item.uid, 'user', currentRole)}
                                 className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-xs rounded-xl transition-all"
-                                title="Atribuir Utilizador Comum"
+                                title="Assign Standard User"
                               >
-                                Rebaixar a Comum
+                                Demote to Standard
                               </button>
                             )}
                             
@@ -337,9 +337,9 @@ const AdminTeam = () => {
                               <button
                                 onClick={() => handleUpdateRole(item.id || item.uid, 'moderator', currentRole)}
                                 className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 font-bold text-xs rounded-xl transition-all border border-amber-100/50"
-                                title="Atribuir Moderador"
+                                title="Assign Moderator"
                               >
-                                Tornar Moderador
+                                Make Moderator
                               </button>
                             )}
 
@@ -348,9 +348,9 @@ const AdminTeam = () => {
                               <button
                                 onClick={() => handleUpdateRole(item.id || item.uid, 'admin', currentRole)}
                                 className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-xl transition-all border border-indigo-100/50"
-                                title="Atribuir Administrador"
+                                title="Assign Administrator"
                               >
-                                Tornar Admin
+                                Make Admin
                               </button>
                             )}
                           </div>
@@ -366,7 +366,7 @@ const AdminTeam = () => {
           {filteredUsers.length === 0 && (
             <div className="p-16 text-center text-slate-400">
               <AlertCircle size={24} className="mx-auto text-slate-300 mb-2" />
-              <p className="font-medium text-sm">Nenhum utilizador encontrado com os filtros atuais.</p>
+              <p className="font-medium text-sm">No users found matching current filters.</p>
             </div>
           )}
         </div>

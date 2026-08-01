@@ -17,119 +17,119 @@ interface CategoryLinks {
 
 const UK_LINKS: CategoryLinks[] = [
   {
-    category: '🛂 Imigração',
+    category: '🛂 Immigration',
     icon: '🛂',
     links: [
       {
         name: 'GOV.UK Visas and Immigration',
-        description: 'Serviço oficial do governo britânico para pedidos de visto, residência e cidadania no Reino Unido.',
+        description: 'Official British government portal for visas, residence, and citizenship applications in the UK.',
         url: 'https://www.gov.uk/browse/visas-immigration',
       },
       {
         name: 'Office of the Immigration Services Commissioner (OISC)',
-        description: 'Órgão público que regula consultores de imigração para garantir aconselhamento seguro e legal.',
+        description: 'Public body regulating immigration advisers to ensure safe, lawful advice.',
         url: 'https://www.gov.uk/government/organisations/office-of-the-immigration-services-commissioner',
       },
       {
         name: 'Migrant Help',
-        description: 'Organização de caridade britânica que oferece apoio e aconselhamento gratuito a migrantes e refugiados.',
+        description: 'UK charity offering free advice and support to migrants and refugees.',
         url: 'https://www.migranthelpuk.org/',
       }
     ]
   },
   {
-    category: '💼 Trabalho',
+    category: '💼 Employment',
     icon: '💼',
     links: [
       {
         name: 'Indeed UK',
-        description: 'O maior portal de emprego do Reino Unido para pesquisa de vagas de trabalho em múltiplos setores.',
+        description: 'The UK\'s largest job site for finding employment opportunities across all sectors.',
         url: 'https://uk.indeed.com/',
       },
       {
         name: 'LinkedIn UK',
-        description: 'Rede profissional líder para conectar-se com recrutadores e candidatar-se a vagas corporativas.',
+        description: 'Leading professional network for connecting with recruiters and applying for corporate roles.',
         url: 'https://www.linkedin.com/',
       },
       {
         name: 'National Careers Service',
-        description: 'Portal do governo que oferece aconselhamento profissional gratuito, ajuda com currículos e carreiras.',
+        description: 'Government portal providing free careers advice, CV assistance, and skills guidance.',
         url: 'https://nationalcareersservice.direct.gov.uk/',
       }
     ]
   },
   {
-    category: '🏠 Habitação',
+    category: '🏠 Housing',
     icon: '🏠',
     links: [
       {
         name: 'Rightmove',
-        description: 'O principal portal imobiliário do Reino Unido para arrendamento ou compra de casas e apartamentos.',
+        description: 'The UK\'s leading property portal for renting or buying homes.',
         url: 'https://www.rightmove.co.uk/',
       },
       {
         name: 'Zoopla',
-        description: 'Excelente plataforma para consultar preços de propriedades, casas para arrendar e valores de mercado.',
+        description: 'Property search engine for market valuations, homes for sale, and rental properties.',
         url: 'https://www.zoopla.co.uk/',
       }
     ]
   },
   {
-    category: '💰 Finanças',
+    category: '💰 Finance',
     icon: '💰',
     links: [
       {
         name: 'HM Revenue & Customs (HMRC)',
-        description: 'Autoridade fiscal do Reino Unido. Use para obter o seu National Insurance Number (NINo) e impostos.',
+        description: 'UK tax authority. Used for managing National Insurance Numbers (NINo) and taxes.',
         url: 'https://www.gov.uk/government/organisations/hm-revenue-customs',
       },
       {
         name: 'Wise',
-        description: 'Serviço líder de transferências internacionais com excelentes taxas de câmbio entre GBP e EUR.',
+        description: 'Leading international transfer service offering competitive exchange rates between GBP and EUR.',
         url: 'https://wise.com/',
       }
     ]
   },
   {
-    category: '🏥 Saúde',
+    category: '🏥 Health',
     icon: '🏥',
     links: [
       {
         name: 'National Health Service (NHS)',
-        description: 'Portal do serviço de saúde pública do Reino Unido. Encontre o seu médico de família (GP) local.',
+        description: 'Official UK public healthcare portal. Find your local GP surgery or medical services.',
         url: 'https://www.nhs.uk/',
       }
     ]
   },
   {
-    category: '🚗 Veículos',
+    category: '🚗 Vehicles',
     icon: '🚗',
     links: [
       {
         name: 'DVLA',
-        description: 'Agência de licenciamento de condutores e veículos. Essencial para registar carros ou converter carta de condução.',
+        description: 'Driver and Vehicle Licensing Agency. Essential for vehicle registration and driving licences.',
         url: 'https://www.gov.uk/government/organisations/driver-and-vehicle-licensing-agency',
       }
     ]
   },
   {
-    category: '⚖️ Apoio Jurídico',
+    category: '⚖️ Legal Support',
     icon: '⚖️',
     links: [
       {
         name: 'Citizens Advice',
-        description: 'Rede de caridade independente que oferece apoio confidencial gratuito sobre direitos laborais, dívidas e lei civil.',
+        description: 'Independent charity offering free, confidential advice on employment rights, debt, and housing.',
         url: 'https://www.citizensadvice.org.uk/',
       }
     ]
   },
   {
-    category: '🏛️ Governo',
+    category: '🏛️ Government',
     icon: '🏛️',
     links: [
       {
         name: 'GOV.UK',
-        description: 'O portal oficial centralizado de todos os serviços públicos e ministérios do governo do Reino Unido.',
+        description: 'The central official portal for all UK government services and public departments.',
         url: 'https://www.gov.uk/',
       }
     ]
@@ -138,114 +138,114 @@ const UK_LINKS: CategoryLinks[] = [
 
 const PT_LINKS: CategoryLinks[] = [
   {
-    category: '🛂 Imigração',
+    category: '🛂 Immigration',
     icon: '🛂',
     links: [
       {
         name: 'Agência para a Integração, Migrações e Asilo (AIMA)',
-        description: 'Entidade governamental portuguesa responsável pelas questões de entrada, permanência, asilo e migração.',
+        description: 'Portuguese government agency responsible for entry, stay, asylum, and migration matters.',
         url: 'https://aima.gov.pt/',
       },
       {
         name: 'Centros Locais de Apoio à Integração de Migrantes (CLAIM)',
-        description: 'Rede nacional que acolhe e apoia os cidadãos migrantes no seu processo de integração local em todo o país.',
+        description: 'National network supporting migrant integration in local communities across Portugal.',
         url: 'https://www.acm.gov.pt/-/claim-centros-locais-de-apoio-a-integracao-de-migrantes',
       },
       {
         name: 'Centros Nacionais de Apoio à Integração de Migrantes (CNAIM)',
-        description: 'Centros integrados de serviços públicos para fornecer respostas céleres a imigrantes em Lisboa, Porto, Algarve e Beja.',
+        description: 'Integrated public service centres providing support to immigrants in Lisbon, Porto, Algarve, and Beja.',
         url: 'https://www.acm.gov.pt/-/cnaim-centros-nacionais-de-apoio-a-integracao-de-migrantes',
       }
     ]
   },
   {
-    category: '💼 Trabalho',
+    category: '💼 Employment',
     icon: '💼',
     links: [
       {
         name: 'Instituto do Emprego e Formação Profissional (IEFP)',
-        description: 'Serviço público de emprego responsável por apoiar a contratação, reinserção profissional e formação profissional.',
+        description: 'Public employment service providing job placement, training, and hiring assistance.',
         url: 'https://www.iefp.pt/',
       },
       {
         name: 'LinkedIn Portugal',
-        description: 'Ferramenta profissional essencial para expandir o seu networking e encontrar ofertas de trabalho em Portugal.',
+        description: 'Essential professional tool to expand networking and find job offers in Portugal.',
         url: 'https://www.linkedin.com/',
       }
     ]
   },
   {
-    category: '🏠 Habitação',
+    category: '🏠 Housing',
     icon: '🏠',
     links: [
       {
         name: 'Idealista Portugal',
-        description: 'O maior portal de imóveis do país para comprar, vender ou arrendar apartamentos, quartos e moradias.',
+        description: 'The largest property portal in Portugal for buying, selling, or renting properties.',
         url: 'https://www.idealista.pt/',
       },
       {
         name: 'Imovirtual',
-        description: 'Famosa plataforma online dedicada a classificados de casas e imobiliários para arrendar e vender.',
+        description: 'Popular online platform for property classifieds, homes for sale, and rentals.',
         url: 'https://www.imovirtual.com/',
       }
     ]
   },
   {
-    category: '💰 Finanças',
+    category: '💰 Finance',
     icon: '💰',
     links: [
       {
         name: 'Portal das Finanças',
-        description: 'Site oficial da Autoridade Tributária e Aduaneira (AT) para gerir NIF, declaração de IRS, passaportes fiscais e faturas.',
+        description: 'Official tax authority portal (AT) to manage NIF tax numbers, IRS tax declarations, and invoices.',
         url: 'https://www.portaldasfinancas.gov.pt/',
       },
       {
         name: 'Segurança Social Direta',
-        description: 'Canal oficial para consultar carreiras contributivas, obter número de segurança social (NISS) e requerer apoios.',
+        description: 'Official portal for Social Security (NISS), contribution history, and social benefits.',
         url: 'https://direta.seg-social.pt/',
       }
     ]
   },
   {
-    category: '🏥 Saúde',
+    category: '🏥 Health',
     icon: '🏥',
     links: [
       {
         name: 'SNS 24',
-        description: 'Contacto oficial e portal do Serviço Nacional de Saúde português para triagem, agendamento de consultas e guias médicos.',
+        description: 'Official Portuguese National Health Service (SNS) portal for triage, appointments, and medical guides.',
         url: 'https://www.sns24.gov.pt/',
       }
     ]
   },
   {
-    category: '🚗 Veículos',
+    category: '🚗 Vehicles',
     icon: '🚗',
     links: [
       {
         name: 'Instituto da Mobilidade e dos Transportes (IMT)',
-        description: 'Autoridade para registo de cartas de condução, homologações de veículos, matrículas e conversão de títulos estrangeiros.',
+        description: 'Institute for Mobility and Transport. Authority for driving licences, vehicle registration, and conversions.',
         url: 'https://www.imt-ip.pt/',
       }
     ]
   },
   {
-    category: '⚖️ Apoio Jurídico',
+    category: '⚖️ Legal Support',
     icon: '⚖️',
     links: [
       {
         name: 'Justiça.gov.pt',
-        description: 'Portal oficial central para requerer nacionalidade, consultar atos jurídicos, registo civil, comercial e de propriedades.',
+        description: 'Central portal for nationality requests, legal acts, civil, commercial, and property registries.',
         url: 'https://justica.gov.pt/',
       }
     ]
   },
   {
-    category: '🏛️ Governo',
+    category: '🏛️ Government',
     icon: '🏛️',
     links: [
       {
         name: 'Portal do Cidadão (ePortugal)',
-        description: 'Ponto único de contacto para cidadãos e empresas obterem serviços públicos online simplificados em Portugal.',
+        description: 'Single point of contact for citizens and businesses to access online public services in Portugal.',
         url: 'https://eportugal.gov.pt/',
       }
     ]
@@ -257,7 +257,7 @@ export default function Links() {
   const [activeCountry, setActiveCountry] = useState<'Portugal' | 'Reino Unido'>('Reino Unido');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sincronizar com o país selecionado pelo utilizador globalmente
+  // Sync with global user-selected country
   useEffect(() => {
     const saved = localStorage.getItem('selectedCountry') as 'Portugal' | 'Reino Unido' | null;
     if (saved === 'Portugal' || saved === 'Reino Unido') {
@@ -267,7 +267,7 @@ export default function Links() {
 
   const linksData = activeCountry === 'Portugal' ? PT_LINKS : UK_LINKS;
 
-  // Filtragem dos links por pesquisa
+  // Search filter
   const filteredCategories = linksData
     .map((cat) => {
       const matchingLinks = cat.links.filter(
@@ -292,7 +292,7 @@ export default function Links() {
           className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition-colors cursor-pointer text-sm"
           id="btn-back-links"
         >
-          <ArrowLeft size={16} /> Voltar
+          <ArrowLeft size={16} /> Back
         </button>
 
         {/* Country Picker Tabs */}
@@ -323,7 +323,7 @@ export default function Links() {
             }`}
             id="tab-uk"
           >
-            <span>🇬🇧</span> Reino Unido
+            <span>🇬🇧</span> United Kingdom
           </button>
         </div>
       </div>
@@ -338,13 +338,13 @@ export default function Links() {
         <div className="space-y-4 text-center sm:text-left max-w-xl">
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md text-indigo-300 font-black text-[10px] uppercase tracking-wider py-1.5 px-3.5 rounded-full border border-white/10" id="hero-badge">
             <Compass size={12} />
-            Guia de Integração Lusa
+            Marine & Community Guide
           </div>
           <h1 className="text-3xl sm:text-4xl font-brand font-black tracking-tight" id="hero-title">
-            Links Úteis {activeCountry === 'Portugal' ? 'Portugal 🇵🇹' : 'Reino Unido 🇬🇧'}
+            Useful Links ({activeCountry === 'Portugal' ? 'Portugal 🇵🇹' : 'United Kingdom 🇬🇧'})
           </h1>
           <p className="text-slate-300 text-sm max-w-lg leading-relaxed" id="hero-subtitle">
-            Uma coleção oficial de portais governamentais, redes profissionais e recursos públicos selecionados para apoiar a nossa comunidade lusa em {activeCountry === 'Portugal' ? 'Portugal' : 'terras britânicas'}.
+            A curated collection of official government portals, marine organisations, professional networks, and public resources.
           </p>
         </div>
         <div className="text-6xl sm:text-8xl select-none filter drop-shadow-md animate-pulse shrink-0" id="hero-flag">
@@ -356,7 +356,7 @@ export default function Links() {
       <div className="relative max-w-md mx-auto" id="search-links-container">
         <input
           type="text"
-          placeholder="Pesquisar por sites, categorias, vistos..."
+          placeholder="Search websites, categories, services..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-white border-2 border-slate-100 rounded-2xl py-3.5 pl-12 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-600/50 focus:border-indigo-600 transition-all shadow-md shadow-indigo-50/20"
@@ -369,8 +369,8 @@ export default function Links() {
       {filteredCategories.length === 0 ? (
         <div className="bg-white p-16 rounded-3xl text-center border-2 border-dashed border-slate-200" id="no-links-found">
           <span className="text-4xl">🔍</span>
-          <h3 className="text-lg font-black text-slate-700 mt-4">Nenhum link encontrado</h3>
-          <p className="text-slate-400 text-xs mt-1">Experimente pesquisar por termos diferentes ou selecione outra comunidade.</p>
+          <h3 className="text-lg font-black text-slate-700 mt-4">No links found</h3>
+          <p className="text-slate-400 text-xs mt-1">Try searching for different terms or select another region.</p>
         </div>
       ) : (
         <div className="space-y-12" id="links-grid-blocks">
@@ -413,7 +413,7 @@ export default function Links() {
                       id={`btn-visit-${catIdx}-${linkIdx}`}
                     >
                       <ExternalLink size={12} />
-                      <span>Visitar Site</span>
+                      <span>Visit Website</span>
                     </a>
                   </div>
                 ))}

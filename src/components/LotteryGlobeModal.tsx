@@ -724,7 +724,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
                 name: b1.name,
                 email: b1.email,
                 drawDate: Timestamp.now(),
-                status: 'Aguardando Contacto',
+                status: 'Awaiting Contact',
                 prizeTitle: giveaway.title,
                 prizeImage: giveaway.prizeImage,
                 country: giveaway.country
@@ -967,7 +967,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
         ctx.textAlign = 'center';
         ctx.fillStyle = '#fbbf24';
         ctx.font = '900 13px Inter, sans-serif';
-        ctx.fillText('🏆 GANHADOR SORTEADO 🏆', CX, py + 26);
+        ctx.fillText('🏆 DRAWN WINNER 🏆', CX, py + 26);
 
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 22px Inter, sans-serif';
@@ -1001,11 +1001,11 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
 
         ctx.fillStyle = '#fbbf24';
         ctx.font = '900 18px Inter, sans-serif';
-        ctx.fillText(isDemo ? '🏆 SORTEIO Num: 0 🏆' : `🏆 REVELAÇÃO DO PÓDIO DE SUCESSO #${num} 🏆`, CX, 102);
+        ctx.fillText(isDemo ? '🏆 DRAW Num: 0 🏆' : `🏆 SUCCESS PODIUM REVEAL #${num} 🏆`, CX, 102);
 
         ctx.fillStyle = '#ffffff';
         ctx.font = '600 11.5px Inter, sans-serif';
-        ctx.fillText(isDemo ? 'Vídeo instrucional demonstrativo para guiar os participantes' : 'Parabéns aos grandes ganhadores e a todos os participantes do sorteio!', CX, 126);
+        ctx.fillText(isDemo ? 'Instructional demo video to guide participants' : 'Congratulations to all the winners and participants!', CX, 126);
         ctx.restore();
 
         const groundY = 410;
@@ -1035,7 +1035,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
         ctx.fillText('2', x2, y2 + h2/2 - 6);
         ctx.font = 'bold 10px Inter, sans-serif';
         ctx.fillStyle = '#e2e8f0';
-        ctx.fillText('LUGAR', x2, y2 + h2/2 + 28);
+        ctx.fillText('PLACE', x2, y2 + h2/2 + 28);
 
         ctx.save();
         if (winners[1]) {
@@ -1075,7 +1075,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
         ctx.fillText('3', x3, y3 + h3/2 - 8);
         ctx.font = 'bold 9px Inter, sans-serif';
         ctx.fillStyle = '#f59e0b';
-        ctx.fillText('LUGAR', x3, y3 + h3/2 + 22);
+        ctx.fillText('PLACE', x3, y3 + h3/2 + 22);
 
         ctx.save();
         if (winners[2]) {
@@ -1121,7 +1121,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
         ctx.fillText('1', x1, y1 + h1/2 + 10);
         ctx.font = '900 13px Inter, sans-serif';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText('VENCEDOR', x1, y1 + h1 - 25);
+        ctx.fillText('WINNER', x1, y1 + h1 - 25);
 
         ctx.save();
         if (winners[0]) {
@@ -1138,7 +1138,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
         } else {
           ctx.font = 'italic 12px Inter, sans-serif';
           ctx.fillStyle = 'rgba(255,255,255,0.2)';
-          ctx.fillText('Ninguém', x1, y1 - 15);
+          ctx.fillText('Nobody', x1, y1 - 15);
         }
         ctx.restore();
 
@@ -1147,9 +1147,9 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
           ctx.textAlign = 'center';
           ctx.fillStyle = '#94a3b8';
           ctx.font = 'bold 10px Inter, sans-serif';
-          let exTxt = "Vencedores adicionais sorteados: ";
+          let exTxt = "Additional winners drawn: ";
           for (let k = 3; k < winners.length; k++) {
-            exTxt += `${k+1}º: ${maskName(winners[k].name)}${k < winners.length - 1 ? ' | ' : ''}`;
+            exTxt += `${k+1}th: ${maskName(winners[k].name)}${k < winners.length - 1 ? ' | ' : ''}`;
           }
           ctx.fillText(exTxt, CX, groundY + 22);
           ctx.restore();
@@ -1159,7 +1159,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
         ctx.textAlign = 'center';
         ctx.fillStyle = '#38bdf8';
         ctx.font = '900 15px Inter, sans-serif';
-        ctx.fillText('☘️ ATÉ A PRÓXIMA ☘️', CX, groundY + 45);
+        ctx.fillText('☘️ UNTIL NEXT TIME ☘️', CX, groundY + 45);
         ctx.restore();
 
         // DESENHAR FOTO DO PRODUTO SORTEADO EM ESTILO POLAROID NO CANTO DIREITO
@@ -1217,12 +1217,12 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
           ctx.fillText('🎁', px + pw/2, py + (ph - 26)/2 + 2);
         }
 
-        // Subtítulo descritivo no corpo inferior do Polaroid
+        // Descriptive subtitle in lower Polaroid body
         ctx.fillStyle = '#475569';
         ctx.font = 'bold 8px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('PRÉMIO', px + pw/2, py + ph - 11);
+        ctx.fillText('PRIZE', px + pw/2, py + ph - 11);
         ctx.restore();
 
         if (confettiList.length < 90) {
@@ -1274,7 +1274,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
         }
         ctx.fillText(`CONNECTBOAT: ${prefix}${titleText}`, 26, 40);
 
-        // Indicador vermelho de gravação ativa ("REC PWA") posicionado no meio com excelente margem
+        // Red active recording indicator ("REC PWA ACTIVE")
         if (isRecordingRef.current) {
           ctx.fillStyle = '#ef4444';
           ctx.beginPath();
@@ -1284,15 +1284,15 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
           ctx.fillStyle = '#ef4444';
           ctx.font = 'bold 8.5px Inter, sans-serif';
           ctx.textAlign = 'left';
-          ctx.fillText("REC PWA ATIVO", 370, 39.5);
+          ctx.fillText("REC PWA ACTIVE", 370, 39.5);
         }
 
-        // Marcador de estatísticas do sorteio alinhado estritamente à direita
+        // Draw statistics marker right-aligned
         ctx.fillStyle = '#94a3b8';
         ctx.font = '600 10.5px Inter, sans-serif';
         ctx.textAlign = 'right';
         ctx.fillText(
-          `Sorteados: ${drawnWinnersRef.current.length + (drawStateRef.current === 'revealing' ? 1 : 0)} de ${giveaway.winnersCount}`, 
+          `Drawn: ${drawnWinnersRef.current.length + (drawStateRef.current === 'revealing' ? 1 : 0)} of ${giveaway.winnersCount}`, 
           canvas.width - 26, 40
         );
       }
@@ -1439,29 +1439,27 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
 
       if (winnerBall) {
         winnerBall.isWinner = true;
-        winnerBall.name = currentTargetWinner.userName || currentTargetWinner.name || 'Ganhador';
+        winnerBall.name = currentTargetWinner.userName || currentTargetWinner.name || 'Winner';
         winnerBall.email = currentTargetWinner.userEmail || currentTargetWinner.email || '';
         winnerBall.userId = currentTargetWinner.userId;
       } else {
-        // Fallback defensivo crítico se faltar bolinhas
-        alert("Erro no alinhamento das bolinhas física.");
+        alert("Physical tickets alignment error.");
         updateDrawState('idle');
       }
     }, 4500);
   };
 
-  // Finalização do sorteio inteiro e persistência síncrona no Firebase
+  // Draw completion and persistence to Firebase
   const handlePersistResults = async () => {
     setLoading(true);
     try {
       let base64Video: string | undefined = undefined;
       
-      // Converte o vídeo gravado para Base64 para ser guardado no documento do Firestore elegivelmente
       if (recordedChunksRef.current && recordedChunksRef.current.length > 0) {
         try {
           const mimeType = customRecorderRef.current?.mimeType || 'video/webm';
           const blob = new Blob(recordedChunksRef.current, { type: mimeType });
-          console.log(`[PWAVideo] Gravado: ${(blob.size / 1024).toFixed(1)} KB`);
+          console.log(`[PWAVideo] Recorded: ${(blob.size / 1024).toFixed(1)} KB`);
           
           base64Video = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
@@ -1470,7 +1468,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
             reader.readAsDataURL(blob);
           });
         } catch (convErr) {
-          console.error("Erro ao converter pedaços do vídeo para Base64:", convErr);
+          console.error("Error converting video chunks to Base64:", convErr);
         }
       } else if (videoUrl) {
         try {
@@ -1485,51 +1483,51 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
             reader.readAsDataURL(blob);
           });
         } catch (fetchErr) {
-          console.error("Erro ao descarregar blob URL do vídeo:", fetchErr);
+          console.error("Error fetching video blob URL:", fetchErr);
         }
       }
 
       await onDrawComplete(drawnWinners, base64Video);
-      alert("Resultados do Sorteio, lista de ganhadores e vídeo do sorteio foram persistidos com sucesso no Firestore!");
+      alert("Draw results, winner list, and draw video successfully saved to Firestore!");
       onClose();
     } catch (err) {
       console.error(err);
-      alert("Falta de permissão para gravar na base de dados no momento.");
+      alert("Permission error saving draw results to database at this time.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Compartilhamento móvel/desktop do vídeo do sorteio em formato WebM nativo
+  // Mobile/desktop sharing of draw video in native WebM format
   const handleShareVideo = async () => {
     if (!videoUrl) return;
     try {
       const response = await fetch(videoUrl);
       const blob = await response.blob();
-      const filename = `sorteio-${giveaway.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}.webm`;
+      const filename = `draw-${giveaway.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}.webm`;
       const file = new File([blob], filename, { type: blob.type || 'video/webm' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
-          title: `Sorteio: ${giveaway.title}`,
-          text: `Confira o vídeo de apuramento oficial dos vencedores do sorteio: ${giveaway.title}! 🏆`
+          title: `Draw: ${giveaway.title}`,
+          text: `Check out the official winners draw video for: ${giveaway.title}! 🏆`
         });
       } else if (navigator.share) {
         await navigator.share({
-          title: `Sorteio: ${giveaway.title}`,
-          text: `Confira o sorteio oficial dos vencedores do sorteio: ${giveaway.title}! 🏆`,
+          title: `Draw: ${giveaway.title}`,
+          text: `Check out the official winners draw video for: ${giveaway.title}! 🏆`,
           url: window.location.href
         });
       } else {
         await navigator.clipboard.writeText(window.location.href);
-        alert("O link foi copiado para a área de transferência! Por favor, divulgue aos seus parceiros.");
+        alert("The link has been copied to your clipboard!");
       }
     } catch (err) {
-      console.warn("Erro ao compartilhar vídeo:", err);
+      console.warn("Error sharing video:", err);
       try {
         await navigator.clipboard.writeText(window.location.href);
-        alert("O link foi copiado para a área de transferência!");
+        alert("The link has been copied to your clipboard!");
       } catch (clipErr) {
         console.error(clipErr);
       }
@@ -1559,7 +1557,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
               className={`p-2 rounded-xl transition-all ${
                 soundEnabled ? 'bg-indigo-600/20 text-indigo-400' : 'bg-slate-800 text-slate-500'
               }`}
-              title={soundEnabled ? "Desativar Sons" : "Ativar Sons"}
+              title={soundEnabled ? "Disable Sound" : "Enable Sound"}
             >
               <Volume2 size={18} />
             </button>
@@ -1580,20 +1578,20 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
           {loading ? (
             <div className="py-24 flex flex-col items-center justify-center gap-3.5 text-slate-400">
               <RefreshCw className="animate-spin text-indigo-500" size={36} />
-              <p className="text-sm font-bold">A calibrar globo e carregar bilhetes...</p>
+              <p className="text-sm font-bold">Calibrating globe and loading tickets...</p>
             </div>
           ) : participants.length === 0 ? (
             <div className="py-16 text-center text-slate-400 space-y-3">
               <Users size={48} className="mx-auto text-slate-600" />
-              <p className="font-bold text-base text-slate-300">Sem participações registadas</p>
+              <p className="font-bold text-base text-slate-300">No entries registered</p>
               <p className="text-xs max-w-xs mx-auto text-slate-500">
-                Os utilizadores necessitam de realizar partilhas válidas na página pública para que existam bilhetes físicos no globo de sorteio.
+                Users need to share valid entries on the public page so physical tickets are loaded in the draw globe.
               </p>
               <button
                 onClick={onClose}
                 className="mt-2 text-xs px-4 py-2 border border-slate-700 hover:border-slate-500 text-slate-300 rounded-xl"
               >
-                Voltar
+                Back
               </button>
             </div>
           ) : (
@@ -1615,9 +1613,9 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
                       <Sparkles size={32} />
                     </div>
                     <div className="space-y-1">
-                      <h4 className="text-lg font-black text-white tracking-tight">Pronto para Misturar e Extrair</h4>
+                      <h4 className="text-lg font-black text-white tracking-tight">Ready to Mix and Extract</h4>
                       <p className="text-xs text-slate-300 max-w-sm font-medium">
-                        Foram carregados <strong className="text-indigo-400">{ballsRef.current.length} bilhetes físicos</strong> no globo para este sorteio correspondentes às partilhas dos participantes.
+                        Loaded <strong className="text-indigo-400">{ballsRef.current.length} physical tickets</strong> into the globe for this draw corresponding to participant entries.
                       </p>
                     </div>
 
@@ -1627,15 +1625,15 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
                         className="w-full px-6 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.02] cursor-pointer"
                       >
                         <Play size={16} fill="white" />
-                        <span>Iniciar Sorteio e Gravar Vídeo</span>
+                        <span>Start Draw and Record Video</span>
                       </button>
 
                       <button
                         onClick={() => generateFictitiousParticipants(50)}
                         className="w-full px-4 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs rounded-xl transition border border-slate-700/80 hover:border-slate-600 flex items-center justify-center gap-1.5 cursor-pointer"
-                        title="Zere todos os participantes atuais e gere 50 novos participantes completamente aleatórios."
+                        title="Clear all current participants and generate 50 new random participants."
                       >
-                        🔄 Regerar 50 Participantes (Novo Vídeo)
+                        🔄 Regenerate 50 Participants (New Video)
                       </button>
                     </div>
                   </div>
@@ -1645,14 +1643,14 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
               {/* Action Toolbar */}
               <div className="w-full max-w-[640px] flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-950/60 border border-slate-800 rounded-2xl">
                 <div>
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Métrica de Probabilidades</span>
+                  <span className="text-[10px] text-slate-500 font-bold block uppercase tracking-wider">Probability Metrics</span>
                   <div className="flex items-center gap-1.5 mt-0.5 mt-1">
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-500/10 text-indigo-400 text-xs font-black rounded-lg">
                       <Users size={12} />
-                      {participants.length} Participantes
+                      {participants.length} Participants
                     </span>
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 text-amber-300 text-xs font-black rounded-lg">
-                      🎟️ {ballsRef.current.filter(x => x.userId !== 'dummy').length} Bilhetes Totais
+                      🎟️ {ballsRef.current.filter(x => x.userId !== 'dummy').length} Total Tickets
                     </span>
                   </div>
                 </div>
@@ -1663,16 +1661,16 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
                       <button
                         onClick={() => generateFictitiousParticipants(50)}
                         className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-xs rounded-xl transition border border-slate-700 flex items-center gap-1 cursor-pointer"
-                        title="Zere todos os participantes atuais e gere 50 novos participantes completamente aleatórios."
+                        title="Clear all current participants and generate 50 new random participants."
                       >
-                        🔄 Regerar 50 Fictícios
+                        🔄 Regenerate 50 Random
                       </button>
                       <button
                         onClick={startRecordingAndDrawSequence}
                         className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl transition flex items-center gap-1.5 shadow-lg shadow-indigo-900/50 hover:scale-[1.02] cursor-pointer"
                       >
                         <Play size={14} fill="white" />
-                        <span>Iniciar Sorteio 🎟️</span>
+                        <span>Start Draw 🎟️</span>
                       </button>
                     </>
                   )}
@@ -1681,7 +1679,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
                     <>
                       <a
                         href={videoUrl}
-                        download={`sorteio-${giveaway.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now()}.webm`}
+                        download={`draw-${giveaway.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}-${Date.now()}.webm`}
                         className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl transition shadow hover:scale-[1.01]"
                       >
                         <Download size={14} />
@@ -1704,7 +1702,7 @@ export default function LotteryGlobeModal({ giveaway, onClose, onDrawComplete }:
                       className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs rounded-xl transition flex items-center gap-1.5"
                     >
                       <Trophy size={14} />
-                      <span>Confirmar e Divulgar Ganhadores</span>
+                      <span>Confirm & Announce Winners</span>
                     </button>
                   )}
                 </div>

@@ -36,8 +36,8 @@ export default function Fotos() {
         });
         setPhotos(list);
       } catch (err) {
-        console.error('Erro ao buscar fotos:', err);
-        setError('Não foi possível carregar o catálogo de fotos digitais. Por favor, tente novamente mais tarde.');
+        console.error('Error fetching photos:', err);
+        setError('Unable to load digital photo catalogue. Please try again later.');
         try {
           handleFirestoreError(err, OperationType.LIST, colPath);
         } catch (_) {}
@@ -63,7 +63,7 @@ export default function Fotos() {
           <Camera size={40} className="stroke-[1.5]" />
         </div>
         <h1 className="text-3xl font-brand font-black text-slate-900 tracking-tight">
-          Secção de Fotos Indisponível
+          Photo Store Unavailable
         </h1>
         <p className="text-slate-500 mt-2 font-medium max-w-md mx-auto leading-relaxed text-sm">
           This section is temporarily disabled by the ConnectBoat team. Please check back soon.
@@ -87,8 +87,8 @@ export default function Fotos() {
               <ShoppingBag size={20} />
             </div>
             <div>
-              <p className="font-black text-sm">Compra online em breve.</p>
-              <p className="text-xs text-slate-300 mt-0.5">Estamos a preparar a infraestrutura financeira de pagamento!</p>
+              <p className="font-black text-sm">Online purchasing coming soon.</p>
+              <p className="text-xs text-slate-300 mt-0.5">We are setting up secure payment processing!</p>
             </div>
           </motion.div>
         )}
@@ -100,17 +100,17 @@ export default function Fotos() {
           <Camera size={32} className="stroke-[1.5]" />
         </div>
         <h1 className="text-4xl font-brand font-black text-slate-900 tracking-tight" id="titulo-loja-fotos">
-          Loja de Fotos
+          Photo Gallery Store
         </h1>
         <p className="text-slate-600 mt-2 font-medium">
-          Descubra e adquira fotografias digitais fantásticas capturadas pela nossa comunidade. Apoie os talentos locais e dê vida aos seus ecrãs.
+          Explore and purchase high-quality digital marine photography. Support creators and bring stunning nautical visuals to your displays.
         </p>
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="animate-spin text-pt-green mb-4" size={40} />
-          <p className="text-sm font-bold text-slate-500 animate-pulse">A carregar fotos incríveis...</p>
+          <p className="text-sm font-bold text-slate-500 animate-pulse">Loading photos...</p>
         </div>
       ) : error ? (
         <div className="bg-red-50 border border-red-200 rounded-3xl p-6 text-center max-w-md mx-auto">
@@ -122,9 +122,9 @@ export default function Fotos() {
           <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
             <ImageIcon size={28} />
           </div>
-          <h3 className="text-xl font-black text-slate-900">Nenhuma foto de momento</h3>
+          <h3 className="text-xl font-black text-slate-900">No photos available</h3>
           <p className="text-slate-500 text-sm mt-2 leading-relaxed">
-            A nossa loja de fotos digitais ainda não tem itens ativos disponíveis. Volte a visitar esta secção em breve!
+            Our digital photo gallery does not have active items yet. Please check back soon!
           </p>
         </div>
       ) : (

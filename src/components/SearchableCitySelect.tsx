@@ -15,7 +15,7 @@ interface SearchableCitySelectProps {
 export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
   value,
   onChange,
-  placeholder = "Escreva ou escolha a sua cidade",
+  placeholder = "Type or select your location",
   required = false,
   country = 'Portugal',
   disabled = false,
@@ -83,7 +83,7 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
         onClick={() => {
           if (disabled) return;
           if (!country) {
-            alert('Por favor, selecione primeiro o país.');
+            alert('Please select a country first.');
             return;
           }
           setIsOpen(!isOpen);
@@ -111,7 +111,7 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
             transition={{ duration: 0.15 }}
             className="absolute left-0 right-0 mt-2 bg-white rounded-2xl border-2 border-slate-100 shadow-2xl overflow-hidden z-50 flex flex-col max-h-80"
           >
-            {/* Campo de Pesquisa no topo da lista */}
+            {/* Search field */}
             <div className="p-3 border-b border-slate-100 sticky top-0 bg-white z-10" id="searchable-city-search-container">
               <div className="relative font-sans">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -130,15 +130,15 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
                       }
                     }
                   }}
-                  placeholder="Pesquisar ou digitar nova cidade..."
+                  placeholder="Search or enter location..."
                   className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all text-sm font-medium text-slate-900 font-sans"
                 />
               </div>
             </div>
 
-            {/* Lista das Cidades */}
+            {/* City / Location list */}
             <div className="overflow-y-auto flex-1 py-1 max-h-56 divide-y divide-slate-50 scrollbar-thin scrollbar-thumb-slate-200" id="searchable-city-list">
-              {/* Opção para adicionar valor personalizado/novo se não houver correspondência exata */}
+              {/* Option to add custom location */}
               {search.trim() && !exactMatchExists && (
                 <button
                   type="button"
@@ -146,11 +146,11 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
                   className="w-full px-4 py-3 text-left text-sm font-semibold text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 transition-colors duration-150"
                 >
                   <Plus size={16} />
-                  <span>Usar nova: "{search.trim()}"</span>
+                  <span>Use new location: "{search.trim()}"</span>
                 </button>
               )}
 
-              {/* Cidades filtradas */}
+              {/* Filtered locations */}
               {filteredCities.map((city) => {
                 const isSelected = value === city;
                 return (
@@ -168,17 +168,17 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
                 );
               })}
 
-              {/* Caso de lista vazia sem pesquisa */}
+              {/* Empty state */}
               {filteredCities.length === 0 && !search.trim() && (
                 <div className="px-4 py-4 text-center text-xs text-slate-400 font-medium">
-                  Nenhuma cidade encontrada na lista padrão.
+                  No default locations found.
                 </div>
               )}
 
-              {/* Caso de lista vazia com pesquisa */}
+              {/* Empty list with search */}
               {filteredCities.length === 0 && search.trim() && !exactMatchExists && (
                 <div className="px-4 py-2 text-xs text-slate-400 font-medium bg-slate-50/50">
-                  Pressione Enter ou clique em "Usar nova" para confirmar.
+                  Press Enter or click "Use new location" to confirm.
                 </div>
               )}
             </div>
