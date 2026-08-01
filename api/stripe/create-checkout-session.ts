@@ -90,7 +90,6 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     }
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
       mode: 'payment',
       customer_email: userEmail && typeof userEmail === 'string' && userEmail.includes('@') ? userEmail : undefined,
       line_items: [
