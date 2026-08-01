@@ -27,11 +27,13 @@ function getStripe(): Stripe | null {
 let dbInstance: admin.firestore.Firestore | null = null;
 
 function getAdminDb(): admin.firestore.Firestore {
+  const firebaseAdmin = (admin as any).default || admin;
   const hasServiceAccount = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
   console.log(`[Stripe Webhook getAdminDb] FIREBASE_SERVICE_ACCOUNT present: ${hasServiceAccount}`);
 
   if (!dbInstance) {
-    if (!admin.apps.length) {
+    const apps = firebaseAdmin.apps || [];
+    if (!apps.length) {
       const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
       if (serviceAccountJson) {
         try {
@@ -42,23 +44,23 @@ function getAdminDb(): admin.firestore.Firestore {
             const decoded = Buffer.from(serviceAccountJson, 'base64').toString('utf-8');
             serviceAccount = JSON.parse(decoded);
           }
-          admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
+          firebaseAdmin.initializeApp({
+            credential: firebaseAdmin.credential.cert(serviceAccount),
             projectId: PROJECT_ID,
           });
           console.log(`[Stripe Webhook getAdminDb] admin.initializeApp() initialized using Service Account.`);
         } catch (e: any) {
           console.error(`[Stripe Webhook getAdminDb] Service Account init failed: ${e.message}. Falling back to default app init.`);
-          admin.initializeApp({ projectId: PROJECT_ID });
+          firebaseAdmin.initializeApp({ projectId: PROJECT_ID });
           console.log(`[Stripe Webhook getAdminDb] admin.initializeApp() initialized using fallback projectId.`);
         }
       } else {
-        admin.initializeApp({ projectId: PROJECT_ID });
+        firebaseAdmin.initializeApp({ projectId: PROJECT_ID });
         console.log(`[Stripe Webhook getAdminDb] admin.initializeApp() initialized using fallback projectId (no service account).`);
       }
     }
 
-    dbInstance = admin.firestore();
+    dbInstance = firebaseAdmin.firestore();
     if (DATABASE_ID) {
       try {
         dbInstance.settings({ databaseId: DATABASE_ID });
@@ -67,7 +69,7 @@ function getAdminDb(): admin.firestore.Firestore {
       }
     }
   }
-  return dbInstance;
+  return dbInstance!;
 }
 
 async function getRawBody(req: Request): Promise<Buffer> {
@@ -149,12 +151,13 @@ export default async function stripeWebhookHandler(req: Request & { rawBody?: Bu
 
           console.log(`[Stripe Webhook] Executing db.collection('ads').doc('${adId}').set(...) with level=${level}...`);
 
+          const firebaseAdmin = (admin as any).default || admin;
           await db.collection('ads').doc(adId).set(
             {
               isFeatured: true,
               featuredLevel: level,
-              featuredUntil: admin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
-              featuredActivatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              featuredUntil: firebaseAdmin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
+              featuredActivatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
             },
             { merge: true }
           );
