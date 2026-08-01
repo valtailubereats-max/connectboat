@@ -367,6 +367,15 @@ service cloud.firestore {
           (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt is timestamp)
         ) ||
 
+        (
+          isAuthenticated() &&
+          resource.data.sellerId == request.auth.uid &&
+          resource.data.status == 'approved' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userNotified']) &&
+          (!('userNotified' in resource.data) || resource.data.userNotified == false) &&
+          request.resource.data.userNotified == true
+        ) ||
+
         isAdmin() ||
         isModerator()
       );
