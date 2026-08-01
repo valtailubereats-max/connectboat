@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 import { normalizeDescription } from '../utils/textFormatter';
-import { parsePrice } from '../utils';
+import { parsePrice, formatPrice } from '../utils';
 import { getSourceSiteFromUrl, getSupportedMarketplace, getSupportedMarketplacesMessage } from '../utils/marketplaces';
 import { isImportedOrExternalAd, normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
 import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../utils/imageFraming';
@@ -90,7 +90,7 @@ const CreateAd = () => {
   const [formData, setFormData] = useState({
     title: prefill?.title || '',
     description: prefill?.description || '',
-    price: prefill?.price?.toString() || '',
+    price: prefill?.price !== undefined && prefill?.price !== null ? (typeof prefill.price === 'number' ? formatPrice(prefill.price) : prefill.price.toString()) : '',
     currency: 'GBP',
     priceOnApplication: false,
     priceRequiresReview: false,
@@ -488,7 +488,7 @@ const CreateAd = () => {
         setFormData({
           title: data.title,
           description: data.description,
-          price: data.price?.toString() || '',
+          price: data.price !== undefined && data.price !== null && data.price !== 0 ? formatPrice(data.price) : (data.price === 0 ? '0' : ''),
           images: fetchedImages.length > 0 ? fetchedImages : (data.images || []),
           city: data.city,
           country: data.country || 'Portugal',
@@ -1319,7 +1319,7 @@ const CreateAd = () => {
             ...prev,
             title: title || prev.title,
             description: description ? normalizeDescription(description) : prev.description,
-            price: price !== undefined && price !== null ? price.toString() : prev.price,
+            price: price !== undefined && price !== null ? formatPrice(parsePrice(price)) : prev.price,
             city: matchedCity || prev.city,
             country: matchedCountry || prev.country,
             category: matchedCategory || prev.category, // fallback nicely but keep empty choice as principal

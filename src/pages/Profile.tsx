@@ -172,7 +172,7 @@ const Profile = () => {
     setEditingProduct(product);
     setProductName(product.name || '');
     setProductDescription(product.description || '');
-    setProductPrice(product.price != null ? String(product.price) : '');
+    setProductPrice(product.price != null && product.price !== 0 ? formatPrice(product.price) : (product.price === 0 ? '0' : ''));
     setProductActive(product.active !== false);
     setProductOrder(product.order || 0);
     setProductImages(product.images || []);

@@ -10,6 +10,7 @@ import { useSettings } from '../context/SettingsContext';
 import { Ad, BOAT_TYPES } from '../types';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { formatPrice, parsePrice } from '../utils';
 
 export interface PresetItem {
   id: string; // local temporary id
@@ -635,7 +636,7 @@ const AdminDemoListings: React.FC = () => {
                     {item.title}
                   </h3>
                   <p className="text-xs text-slate-500 font-semibold truncate">
-                    {item.city}, {item.country} • £{item.price.toLocaleString()}
+                    {item.city}, {item.country} • {formatPrice(item.price, item.country)}
                   </p>
                 </div>
               </div>
@@ -669,9 +670,10 @@ const AdminDemoListings: React.FC = () => {
                   <div>
                     <label className="font-bold text-slate-600 block mb-1">Preço (£ / €)</label>
                     <input
-                      type="number"
-                      value={item.price}
-                      onChange={(e) => updateItemField(item.id, 'price', Number(e.target.value))}
+                      type="text"
+                      inputMode="decimal"
+                      value={item.price !== undefined && item.price !== null ? formatPrice(item.price) : ''}
+                      onChange={(e) => updateItemField(item.id, 'price', parsePrice(e.target.value))}
                       className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
                     />
                   </div>

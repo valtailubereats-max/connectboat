@@ -7,6 +7,7 @@ import { useSettings } from '../context/SettingsContext';
 import { CITIES } from '../types';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { formatPrice } from '../utils';
 
 import AdminDemoListings from './AdminDemoListings';
 import AdminBulkImport from './AdminBulkImport';
@@ -216,7 +217,7 @@ const AdminImport = () => {
                   </div>
                   <div className="bg-slate-50 p-4 rounded-2xl">
                     <p className="text-xs font-bold text-slate-400 uppercase">Preço</p>
-                    <p className="text-indigo-600 font-black text-lg">{result.price ? `${result.price} €` : 'N/D'}</p>
+                    <p className="text-indigo-600 font-black text-lg">{result.price ? formatPrice(result.price) : 'N/D'}</p>
                   </div>
                   {(result.manufacturer || result.model || result.year || result.boatType) && (
                     <div className="bg-sky-50/50 border border-sky-100 p-4 rounded-2xl md:col-span-2">

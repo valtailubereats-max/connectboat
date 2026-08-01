@@ -75,6 +75,9 @@ export const parsePrice = (priceStr: string | number | undefined | null): number
   let str = String(priceStr).trim();
   if (!str) return 0;
 
+  const hasK = /[kK]\b|[kK]$/.test(str);
+  const hasM = /[mM]\b|[mM]$/.test(str);
+
   // Remove currency symbols, letters, spaces, etc., except digits, dots, commas, and minus
   str = str.replace(/[^0-9.,-]/g, '');
   if (!str) return 0;
@@ -93,6 +96,11 @@ export const parsePrice = (priceStr: string | number | undefined | null): number
     str = str.replace(/[,.]/g, '');
   }
 
-  const num = parseFloat(str);
-  return isNaN(num) ? 0 : num;
+  let num = parseFloat(str);
+  if (isNaN(num)) return 0;
+
+  if (hasK) num *= 1000;
+  if (hasM) num *= 1000000;
+
+  return num;
 };

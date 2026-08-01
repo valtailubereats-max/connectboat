@@ -4,6 +4,7 @@ import { db, storage, handleFirestoreError, OperationType, getDocsWithCacheFallb
 import { collection, query, orderBy, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { PhotoStoreItem } from '../types';
+import { formatPrice, parsePrice } from '../utils';
 import { 
   Camera, Plus, Edit, Trash2, Check, X, ShieldAlert, 
   UploadCloud, Loader2, AlertCircle, ShoppingBag, Eye, EyeOff 
@@ -183,7 +184,7 @@ export default function AdminFotos() {
     setEditingItem(item);
     setTitle(item.title);
     setDescription(item.description);
-    setPrice(item.price);
+    setPrice(item.price ? formatPrice(item.price) : '');
     setActive(item.active);
     setImageUrl(item.imageUrl);
     setSelectedFile(null);
@@ -239,7 +240,7 @@ export default function AdminFotos() {
         const updatePayload = {
           title: title.trim(),
           description: description.trim(),
-          price: Number(price),
+          price: parsePrice(price),
           imageUrl: finalUrl,
           active,
           updatedAt: serverTimestamp(),
@@ -253,7 +254,7 @@ export default function AdminFotos() {
         const createPayload = {
           title: title.trim(),
           description: description.trim(),
-          price: Number(price),
+          price: parsePrice(price),
           imageUrl: finalUrl,
           active,
           createdAt: serverTimestamp(),
@@ -387,13 +388,13 @@ export default function AdminFotos() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-1.5">Preço (€)</label>
+                        <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-1.5">Preço (£)</label>
                         <input
-                          type="number"
-                          step="0.01"
-                          placeholder="Ex: 19.99"
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="Ex: £19.99 ou 19,99"
                           value={price}
-                          onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))}
+                          onChange={(e) => setPrice(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-xl py-3 px-4 text-sm font-semibold outline-none transition-all"
                           required
                         />
@@ -577,7 +578,7 @@ export default function AdminFotos() {
                         <p className="text-xs text-slate-500 mt-1 line-clamp-2 max-w-sm">{item.description || 'Sem descrição.'}</p>
                       </td>
                       <td className="py-4 px-4 text-right font-mono font-bold text-slate-800">
-                        {item.price.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' })}
+                        {formatPrice(item.price)}
                       </td>
                       <td className="py-4 px-4 text-center">
                         {item.active ? (

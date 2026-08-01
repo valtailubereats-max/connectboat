@@ -11,6 +11,7 @@ import { useSettings } from '../context/SettingsContext';
 import { Ad, BOAT_TYPES } from '../types';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { formatPrice, parsePrice } from '../utils';
 import { getSourceSiteFromUrl, getSupportedMarketplace } from '../utils/marketplaces';
 import { normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
 import { AdminSearchPageDiscovery } from '../components/AdminSearchPageDiscovery';
@@ -675,7 +676,7 @@ const AdminBulkImport: React.FC = () => {
 
                       {item.status === 'success' && (
                         <p className="text-xs text-slate-500 font-semibold truncate">
-                          {item.city}, {item.country} • £{item.price?.toLocaleString()} • {item.category}
+                          {item.city}, {item.country} • {formatPrice(item.price, item.country)} • {item.category}
                         </p>
                       )}
 
@@ -727,9 +728,10 @@ const AdminBulkImport: React.FC = () => {
                       <div>
                         <label className="font-bold text-slate-600 block mb-1">Preço (£ / €)</label>
                         <input
-                          type="number"
-                          value={item.price || 0}
-                          onChange={(e) => updateItemField(item.id, 'price', Number(e.target.value))}
+                          type="text"
+                          inputMode="decimal"
+                          value={item.price !== undefined && item.price !== null ? formatPrice(item.price) : ''}
+                          onChange={(e) => updateItemField(item.id, 'price', parsePrice(e.target.value))}
                           className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg font-semibold"
                         />
                       </div>

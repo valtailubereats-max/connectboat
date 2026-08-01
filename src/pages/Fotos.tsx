@@ -6,6 +6,7 @@ import { Camera, Image as ImageIcon, AlertCircle, ShoppingBag, Loader2 } from 'l
 import { motion, AnimatePresence } from 'motion/react';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
+import { formatPrice } from '../utils';
 
 export default function Fotos() {
   const { settings } = useSettings();
@@ -144,7 +145,7 @@ export default function Fotos() {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-full text-white font-mono text-sm font-bold flex items-center gap-1.5 shadow-md">
-                  <span>{item.price.toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' })}</span>
+                  <span>{formatPrice(item.price)}</span>
                 </div>
               </div>
 
