@@ -1174,12 +1174,12 @@ const Home = () => {
       <div className="hidden md:flex flex-col gap-4 md:gap-5 max-w-full">
         {/* 1. BARRA DE PESQUISA PRINCIPAL (Estilo OLX / Mercado Livre / Airbnb) */}
         <section className="w-full" id="desktop-search-section">
-          <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2 shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="flex flex-row items-center gap-2 w-full">
+          <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-2.5 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="flex flex-row items-center gap-2.5 w-full">
               
               {/* Campo de Pesquisa Textual */}
-              <div className="flex-1 flex items-center gap-2.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/60 focus-within:ring-2 focus-within:ring-indigo-500/30 focus-within:border-indigo-500 transition-all">
-                <Search size={16} className="text-slate-400 dark:text-slate-300 shrink-0" />
+              <div className="flex-1 min-w-[200px] h-11 flex items-center gap-2.5 px-3.5 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700/60 focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500 transition-all">
+                <Search size={16} className="text-slate-400 dark:text-slate-400 shrink-0" />
                 <input
                   type="text"
                   value={searchTerm}
@@ -1190,13 +1190,13 @@ const Home = () => {
                   }}
                   onBlur={() => setIsSearchFocused(false)}
                   placeholder="Search boats, yachts, engines, parts, electronics, gear..."
-                  className="w-full bg-transparent text-slate-900 dark:text-slate-100 font-extrabold placeholder:text-slate-400 focus:outline-none text-sm"
+                  className="w-full bg-transparent text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:outline-none text-xs lg:text-sm"
                 />
                 {searchTerm && (
                   <button
                     type="button"
                     onClick={() => setSearchTerm('')}
-                    className="text-slate-400 hover:text-slate-600 px-1 font-extrabold text-sm"
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-1 font-semibold text-xs"
                   >
                     ✕
                   </button>
@@ -1204,8 +1204,8 @@ const Home = () => {
               </div>
 
               {/* Seletor de Categoria */}
-              <div className="relative w-40 lg:w-48 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 transition-all">
-                <Tag size={14} className="text-slate-400 dark:text-slate-300 shrink-0 select-none" />
+              <div className="relative h-11 w-44 lg:w-52 flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-3.5 transition-all">
+                <Tag size={15} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
                 <select 
                   value={category} 
                   onChange={(e) => {
@@ -1215,50 +1215,50 @@ const Home = () => {
                     setFilterNational(false);
                     setFilterOnline(false);
                   }} 
-                  className="w-full bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0"
+                  className="w-full bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0 truncate"
                 >
-                  <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">All Categories</option>
+                  <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
                   {categories.map((c, i) => (
-                    <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">{c}</option>
+                    <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
                   ))}
                 </select>
-                <span className="text-[8px] text-slate-400 dark:text-slate-300 absolute right-2 pointer-events-none select-none">▼</span>
+                <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
               </div>
 
               {/* Seletor de Cidade / Região */}
-              <div className="relative w-36 lg:w-44 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2 transition-all">
-                <MapPin size={14} className="text-slate-400 dark:text-slate-300 shrink-0 select-none" />
+              <div className="relative h-11 w-40 lg:w-48 flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-3.5 transition-all">
+                <MapPin size={15} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
                 <select 
                   value={city} 
                   onChange={(e) => setCity(e.target.value)} 
-                  className="w-full bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0"
+                  className="w-full bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0 truncate"
                 >
-                  <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">All Locations</option>
+                  <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
                   {selectableCitiesOnHome.map((c, i) => (
-                    <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">{c}</option>
+                    <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
                   ))}
                 </select>
-                <span className="text-[8px] text-slate-400 dark:text-slate-300 absolute right-2 pointer-events-none select-none">▼</span>
+                <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
               </div>
 
               {/* Seletor de País / Comunidade */}
-              <div className="relative w-16 lg:w-20 shrink-0 flex items-stretch" ref={dropdownRef} id="desktop-country-dropdown-wrapper">
+              <div className="relative h-11 w-16 lg:w-20 shrink-0 flex items-stretch" ref={dropdownRef} id="desktop-country-dropdown-wrapper">
                 <button 
                   type="button"
                   onClick={() => {
                     setCountryDropdownOpen(prev => !prev);
                     setShowTooltip(false);
                   }}
-                  className="w-full flex items-center justify-between gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700/60 rounded-xl px-2 py-2 transition-all cursor-pointer"
+                  className="w-full h-11 flex items-center justify-between gap-1 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-2.5 transition-all cursor-pointer"
                   id="community-toggle-button-search"
                 >
                   <img
                     src={getFlagSvgUrl(country)}
                     alt={country}
-                    className="w-[25px] h-[16px] object-cover rounded-sm pointer-events-none select-none shrink-0"
+                    className="w-[24px] h-[16px] object-cover rounded-sm pointer-events-none select-none shrink-0"
                     referrerPolicy="no-referrer"
                   />
-                  <span className="text-[6px] text-slate-400 dark:text-slate-300 pointer-events-none select-none leading-none">▼</span>
+                  <span className="text-[8px] text-slate-400 dark:text-slate-400 pointer-events-none select-none leading-none">▼</span>
                 </button>
 
                 {/* Dropdown de Países */}
@@ -1269,7 +1269,7 @@ const Home = () => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 4, scale: 0.95 }}
                       transition={{ duration: 0.12 }}
-                      className="absolute right-0 top-full mt-1.5 z-50 w-44 rounded-2xl p-2 shadow-2xl flex flex-col gap-1 border border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+                      className="absolute right-0 top-full mt-1.5 z-50 w-44 rounded-2xl p-2 shadow-2xl flex flex-col gap-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
                       role="menu"
                     >
                       <button
@@ -1279,9 +1279,9 @@ const Home = () => {
                           setCountryDropdownOpen(false);
                         }}
                         role="menuitem"
-                        className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                           country === 'Portugal'
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white'
+                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white font-bold'
                             : 'hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300'
                         }`}
                       >
@@ -1300,9 +1300,9 @@ const Home = () => {
                           setCountryDropdownOpen(false);
                         }}
                         role="menuitem"
-                        className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                           country === 'Reino Unido'
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white'
+                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white font-bold'
                             : 'hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300'
                         }`}
                       >
@@ -1348,48 +1348,48 @@ const Home = () => {
               <button
                 type="button"
                 onClick={() => setFilterDrawerOpen(true)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-black transition-all cursor-pointer shrink-0 ${
+                className={`h-11 flex items-center gap-2 px-3.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer shrink-0 ${
                   activeMarineFilterCount > 0
-                    ? 'bg-sky-600 text-white border-sky-600 shadow-md shadow-sky-600/20'
-                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/60'
+                    ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
+                    : 'bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200/90 dark:border-slate-700/60'
                 }`}
               >
-                <SlidersHorizontal size={14} />
+                <SlidersHorizontal size={14} className="shrink-0" />
                 <span>Filters</span>
                 {activeMarineFilterCount > 0 && (
-                  <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[10px] font-black">
+                  <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
                     {activeMarineFilterCount}
                   </span>
                 )}
               </button>
 
               {/* Ordenação (Sort By) */}
-              <div className="relative flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700/60 rounded-xl px-2.5 py-2 transition-all shrink-0">
-                <ArrowUpDown size={13} className="text-slate-400 dark:text-slate-300 shrink-0" />
+              <div className="relative h-11 flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-3.5 transition-all shrink-0">
+                <ArrowUpDown size={14} className="text-slate-400 dark:text-slate-400 shrink-0" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-transparent text-xs font-black text-slate-900 dark:text-white focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0"
+                  className="bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0"
                 >
-                  <option value="newest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">Newest First</option>
-                  <option value="oldest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">Oldest First</option>
-                  <option value="price_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">Price: Low to High</option>
-                  <option value="price_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">Price: High to Low</option>
-                  <option value="year_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">Year: Newest First</option>
-                  <option value="year_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">Year: Oldest First</option>
-                  <option value="length_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">Length: Longest First</option>
-                  <option value="length_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">Length: Shortest First</option>
+                  <option value="newest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Newest First</option>
+                  <option value="oldest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Oldest First</option>
+                  <option value="price_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Price: Low to High</option>
+                  <option value="price_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Price: High to Low</option>
+                  <option value="year_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Year: Newest First</option>
+                  <option value="year_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Year: Oldest First</option>
+                  <option value="length_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Length: Longest First</option>
+                  <option value="length_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Length: Shortest First</option>
                 </select>
-                <span className="text-[8px] text-slate-400 dark:text-slate-300 absolute right-1.5 pointer-events-none select-none">▼</span>
+                <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
               </div>
 
               {/* Botão de Pesquisa */}
               <button
                 type="button"
                 onClick={() => handleSearchFocus()}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0 active:scale-95 shadow-md shadow-indigo-600/15 cursor-pointer"
+                className="h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-5 rounded-xl transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95 shadow-sm shadow-indigo-600/10 cursor-pointer"
               >
-                <Search size={14} />
+                <Search size={15} />
                 <span>Search</span>
               </button>
 
@@ -1796,10 +1796,12 @@ const Home = () => {
       {/* 📱 LAYOUT MOBILE (Aparece apenas em ecrãs menores que md) */}
       {/* ============================================================== */}
       <div className="flex md:hidden flex-col gap-4 w-full max-w-full overflow-hidden" id="mobile-home-root">
-        {/* 1. PESQUISA MOBILE (Exatamente uma única linha, ultra-compacta) */}
-        <section className="w-full" id="mobile-search-section">
-          <div className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-md">
-            <Search size={18} className="text-slate-400 shrink-0" />
+        {/* 1. BARRA DE PESQUISA E FILTROS MOBILE (Organizada, elegante e responsiva) */}
+        <section className="w-full flex flex-col gap-2.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-2.5 shadow-sm" id="mobile-search-section">
+          
+          {/* Campo de Pesquisa Textual Mobile */}
+          <div className="h-11 flex items-center gap-2.5 px-3.5 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700/60 focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20 transition-all">
+            <Search size={16} className="text-slate-400 dark:text-slate-400 shrink-0" />
             <input
               type="text"
               value={searchTerm}
@@ -1809,27 +1811,24 @@ const Home = () => {
                 setIsSearchFocused(true);
               }}
               placeholder="Search boats, engines, parts, services..."
-              className="w-full bg-transparent text-slate-900 dark:text-white font-black placeholder:text-slate-400 focus:outline-none text-sm"
+              className="w-full bg-transparent text-slate-900 dark:text-white font-medium placeholder:text-slate-400 focus:outline-none text-xs"
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={() => setSearchTerm('')}
-                className="text-slate-400 hover:text-slate-600 px-1 font-extrabold text-sm"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-1 font-semibold text-xs"
               >
                 ✕
               </button>
             )}
           </div>
-        </section>
 
-        {/* 2. FILTROS COMPACTOS EM UMA ÚNICA LINHA (Compacto, Proporcional sem Extravasar Viewport) */}
-        <section className="w-full px-0.5" id="mobile-filters-section">
-          <div className="flex items-stretch gap-1.5 w-full max-w-full overflow-visible">
-            
-            {/* Categoria (~41% de largura) */}
-            <div className="relative flex-1 min-w-0 flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700/60 rounded-xl px-2 py-1.5 transition-all">
-              <Tag size={11} className="text-slate-400 dark:text-slate-300 shrink-0 select-none" />
+          {/* Dropdowns de Categoria e Cidade em 2 Colunas Limpas */}
+          <div className="grid grid-cols-2 gap-2 w-full" id="mobile-filters-section">
+            {/* Categoria */}
+            <div className="relative h-10.5 flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-3 transition-all">
+              <Tag size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
               <select
                 value={category}
                 onChange={(e) => {
@@ -1839,48 +1838,90 @@ const Home = () => {
                   setFilterNational(false);
                   setFilterOnline(false);
                 }}
-                className="w-full bg-transparent text-[10px] md:text-xs font-black text-slate-900 dark:text-white focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0"
+                className="w-full bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0 truncate"
               >
-                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">All Categories</option>
+                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
                 {categories.map((c, i) => (
-                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">{c}</option>
+                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
                 ))}
               </select>
-              <span className="text-[6px] text-slate-400 dark:text-slate-300 absolute right-1.5 pointer-events-none select-none">▼</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-2.5 pointer-events-none select-none">▼</span>
             </div>
 
-            {/* Cidade (~41% de largura) */}
-            <div className="relative flex-1 min-w-0 flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700/60 rounded-xl px-2 py-1.5 transition-all">
-              <MapPin size={11} className="text-slate-400 dark:text-slate-300 shrink-0 select-none" />
+            {/* Cidade / Localização */}
+            <div className="relative h-10.5 flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-3 transition-all">
+              <MapPin size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-transparent text-[10px] md:text-xs font-black text-slate-900 dark:text-white focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0"
+                className="w-full bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0 truncate"
               >
-                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">All Locations</option>
+                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
                 {selectableCitiesOnHome.map((c, i) => (
-                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold">{c}</option>
+                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
                 ))}
               </select>
-              <span className="text-[6px] text-slate-400 dark:text-slate-300 absolute right-1.5 pointer-events-none select-none">▼</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-2.5 pointer-events-none select-none">▼</span>
+            </div>
+          </div>
+
+          {/* Linha adicional com Filtros Avançados, Ordenação e País */}
+          <div className="flex items-center gap-2 w-full">
+            {/* Botão de Filtros */}
+            <button
+              type="button"
+              onClick={() => setFilterDrawerOpen(true)}
+              className={`h-10.5 flex-1 flex items-center justify-center gap-1.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                activeMarineFilterCount > 0
+                  ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                  : 'bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200/90 dark:border-slate-700/60'
+              }`}
+            >
+              <SlidersHorizontal size={14} className="shrink-0" />
+              <span>Filters</span>
+              {activeMarineFilterCount > 0 && (
+                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[10px] font-bold">
+                  {activeMarineFilterCount}
+                </span>
+              )}
+            </button>
+
+            {/* Ordenação (Sort By) */}
+            <div className="relative h-10.5 flex-1 flex items-center gap-1.5 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-2.5 transition-all">
+              <ArrowUpDown size={13} className="text-slate-400 shrink-0" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="w-full bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
+              >
+                <option value="newest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Newest First</option>
+                <option value="oldest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Oldest First</option>
+                <option value="price_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Price: Low to High</option>
+                <option value="price_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Price: High to Low</option>
+                <option value="year_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Year: Newest First</option>
+                <option value="year_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Year: Oldest First</option>
+                <option value="length_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Length: Longest First</option>
+                <option value="length_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Length: Shortest First</option>
+              </select>
+              <span className="text-[9px] text-slate-400 absolute right-2 pointer-events-none select-none">▼</span>
             </div>
 
-            {/* País (~18% de largura) */}
-            <div ref={mobileCountryDropdownRef} className="relative w-[18%] shrink-0 flex items-stretch" id="mobile-country-dropdown-wrapper">
+            {/* Selector de País */}
+            <div ref={mobileCountryDropdownRef} className="relative h-10.5 w-12 shrink-0 flex items-stretch" id="mobile-country-dropdown-wrapper">
               <button
                 type="button"
                 onClick={() => setMobileCountryDropdownOpen(prev => !prev)}
                 aria-expanded={mobileCountryDropdownOpen}
                 aria-haspopup="menu"
-                className="w-full h-full flex items-center justify-between gap-0.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700/60 rounded-xl px-1.5 py-1.5 transition-all cursor-pointer"
+                className="w-full h-full flex items-center justify-center gap-1 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-2 transition-all cursor-pointer"
               >
                 <img
                   src={getFlagSvgUrl(country)}
                   alt={country}
-                  className="w-[25px] h-[16px] object-cover rounded-sm pointer-events-none select-none shrink-0"
+                  className="w-[22px] h-[15px] object-cover rounded-sm pointer-events-none select-none shrink-0"
                   referrerPolicy="no-referrer"
                 />
-                <span className="text-[6px] text-slate-400 dark:text-slate-300 pointer-events-none select-none leading-none">▼</span>
+                <span className="text-[8px] text-slate-400 dark:text-slate-400 pointer-events-none select-none leading-none">▼</span>
               </button>
 
               <AnimatePresence>
@@ -1890,9 +1931,30 @@ const Home = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 4, scale: 0.95 }}
                     transition={{ duration: 0.12 }}
-                    className="absolute right-0 top-full mt-1.5 z-50 w-44 rounded-2xl p-2 shadow-2xl flex flex-col gap-1 border border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
+                    className="absolute right-0 top-full mt-1.5 z-50 w-44 rounded-2xl p-2 shadow-2xl flex flex-col gap-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
                     role="menu"
                   >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCountryChange('Portugal');
+                        setMobileCountryDropdownOpen(false);
+                      }}
+                      role="menuitem"
+                      className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        country === 'Portugal'
+                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white font-bold'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <img
+                        src={getFlagSvgUrl('Portugal')}
+                        alt="Portugal"
+                        className="w-5 h-3.5 object-cover rounded border border-slate-200 dark:border-slate-700 shrink-0"
+                        referrerPolicy="no-referrer"
+                      />
+                      <span>🇵🇹 Portugal</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -1900,7 +1962,11 @@ const Home = () => {
                         setMobileCountryDropdownOpen(false);
                       }}
                       role="menuitem"
-                      className="flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white"
+                      className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        country === 'Reino Unido'
+                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white font-bold'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300'
+                      }`}
                     >
                       <img
                         src={getFlagSvgUrl('Reino Unido')}
@@ -1914,47 +1980,6 @@ const Home = () => {
                 )}
               </AnimatePresence>
             </div>
-
-          </div>
-
-          {/* Linha adicional para Botão de Filtros e Ordenação em Mobile */}
-          <div className="flex items-center gap-2 mt-2">
-            <button
-              type="button"
-              onClick={() => setFilterDrawerOpen(true)}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-black transition-all cursor-pointer ${
-                activeMarineFilterCount > 0
-                  ? 'bg-sky-600 text-white border-sky-600 shadow'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/60'
-              }`}
-            >
-              <SlidersHorizontal size={13} />
-              <span>Marine Filters</span>
-              {activeMarineFilterCount > 0 && (
-                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[9px] font-black">
-                  {activeMarineFilterCount}
-                </span>
-              )}
-            </button>
-
-            <div className="relative flex-1 flex items-center gap-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 rounded-xl px-2 py-1.5 transition-all">
-              <ArrowUpDown size={12} className="text-slate-400 shrink-0" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full bg-transparent text-[11px] font-black text-slate-900 dark:text-white focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="year_desc">Year: Newest</option>
-                <option value="year_asc">Year: Oldest</option>
-                <option value="length_desc">Length: Longest</option>
-                <option value="length_asc">Length: Shortest</option>
-              </select>
-              <span className="text-[6px] text-slate-400 absolute right-1.5 pointer-events-none">▼</span>
-            </div>
           </div>
 
           {/* Filtros expandidos de serviços se categoria for Serviços */}
@@ -1964,12 +1989,12 @@ const Home = () => {
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="w-full mt-2 bg-slate-50 dark:bg-slate-900 rounded-xl p-2.5 border border-slate-200 dark:border-slate-800"
+                className="w-full mt-1 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-2.5 border border-slate-200/80 dark:border-slate-800"
               >
                 <div className="flex flex-col gap-2 text-left">
-                  <span className="text-[10px] font-black uppercase text-slate-400">Service Area:</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Service Area:</span>
                   <div className="flex flex-wrap gap-2">
-                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200">
+                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200">
                       <input type="checkbox" checked={filterRegion} onChange={(e) => setFilterRegion(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
                       <span>Local</span>
                     </label>
