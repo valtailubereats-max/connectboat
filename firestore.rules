@@ -359,9 +359,11 @@ service cloud.firestore {
           resource.data.status == 'approved' &&
           (!('adStatus' in resource.data) || resource.data.adStatus == 'active') &&
           request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['isFeatured', 'featuredUntil', 'updatedAt']) &&
+            .hasOnly(['isFeatured', 'featuredReason', 'featuredActivatedAt', 'featuredUntil', 'updatedAt']) &&
           request.resource.data.isFeatured == true &&
           request.resource.data.featuredUntil is timestamp &&
+          (!('featuredActivatedAt' in request.resource.data) || request.resource.data.featuredActivatedAt is timestamp) &&
+          (!('featuredReason' in request.resource.data) || request.resource.data.featuredReason is string) &&
           (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt is timestamp)
         ) ||
 
