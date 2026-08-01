@@ -1651,10 +1651,10 @@ const Home = () => {
             <motion.div 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-3 sm:pt-6 text-left w-full"
+              className="mt-auto pt-3 sm:pt-6 text-left w-full translate-y-[20px] xs:translate-y-[30px] sm:translate-y-[40px] md:translate-y-[50px]"
             >
-              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3 sm:px-6 py-1.5 xs:py-2 sm:py-3 shadow-2xl max-w-full">
-                <p className="text-[10px] xs:text-xs sm:text-base md:text-lg lg:text-xl text-white/95 font-medium italic tracking-wide leading-snug whitespace-normal lg:whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 shadow-2xl max-w-full">
+                <p className="text-[9px] xs:text-[10.5px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-snug whitespace-normal lg:whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
                   {country === 'Portugal'
                     ? 'Compre, venda e alugue barcos, iates, equipamentos e serviços marítimos.'
                     : 'Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.'}
@@ -2053,10 +2053,10 @@ const Home = () => {
             <motion.div 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-3 sm:pt-6 text-left w-full"
+              className="mt-auto pt-3 sm:pt-6 text-left w-full translate-y-[20px] xs:translate-y-[30px] sm:translate-y-[40px] md:translate-y-[50px]"
             >
-              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3 sm:px-6 py-1.5 xs:py-2 sm:py-3 shadow-2xl max-w-full">
-                <p className="text-[10px] xs:text-xs sm:text-base md:text-lg lg:text-xl text-white/95 font-medium italic tracking-wide leading-snug whitespace-normal lg:whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3 sm:px-6 py-2.5 xs:py-3 sm:py-4 shadow-2xl max-w-full">
+                <p className="text-[9px] xs:text-[10.5px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-snug whitespace-normal lg:whitespace-nowrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
                   {country === 'Portugal'
                     ? 'Compre, venda e alugue barcos, iates, equipamentos e serviços marítimos.'
                     : 'Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.'}
