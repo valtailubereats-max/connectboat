@@ -60,7 +60,9 @@ const Campanhas = () => {
 
   // Points & Rewards Math
   const pointsFromReferrals = (referralsLoading ? 0 : referralsCount) * POINTS_PER_REFERRAL;
-  const pointsFromAds = (adsLoading ? 0 : adsCount) * POINTS_PER_AD;
+  const storedPointsFromAds = profile?.pointsFromAds || 0;
+  const calculatedPointsFromAds = (adsLoading ? 0 : adsCount) * POINTS_PER_AD;
+  const pointsFromAds = Math.max(storedPointsFromAds, calculatedPointsFromAds);
   const totalPoints = calculateTotalPoints(referralsLoading ? 0 : referralsCount, pointsFromAds);
   const progressPoints = calculateProgressPoints(totalPoints);
   const progressPercent = Math.min(100, Math.round((progressPoints / POINTS_THRESHOLD) * 100));

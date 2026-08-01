@@ -92,7 +92,7 @@ const AdminUsers = () => {
   const [debugStatus, setDebugStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [debugLoading, setDebugLoading] = useState(false);
   
-  const { isAdmin } = useAuth();
+  const { user: currentAuthUser, isAdmin, refreshProfile } = useAuth();
 
   // User Profile Editing States
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -363,39 +363,47 @@ const AdminUsers = () => {
       setDebugStatus({ type: 'error', message: 'Selecione um utilizador primeiro.' });
       return;
     }
+
+    const targetUser = users.find(u => u.id === debugSelectedUserId || u.uid === debugSelectedUserId);
+    const targetUserId = targetUser ? (targetUser.uid || targetUser.id) : debugSelectedUserId;
+
+    if (!targetUserId) {
+      setDebugStatus({ type: 'error', message: 'ID de utilizador inválido.' });
+      return;
+    }
+
     setDebugLoading(true);
     setDebugStatus(null);
     try {
-      let success = false;
-      const targetUser = users.find(u => u.id === debugSelectedUserId || u.uid === debugSelectedUserId);
-      const name = targetUser ? (targetUser.name || targetUser.email || debugSelectedUserId) : debugSelectedUserId;
-      
+      const name = targetUser ? (targetUser.name || targetUser.email || targetUserId) : targetUserId;
+
       if (actionType === 'credit') {
-        success = await manualAddCredits(debugSelectedUserId, 1);
-        if (success) {
-          setDebugStatus({ type: 'success', message: `1 Crédito de Destaque adicionado com sucesso a ${name}!` });
-        }
+        await manualAddCredits(targetUserId, 1);
+        setDebugStatus({ type: 'success', message: `1 Crédito de Destaque adicionado com sucesso a ${name} (ID: ${targetUserId})!` });
       } else if (actionType === 'points50') {
-        success = await manualAddPoints(debugSelectedUserId, 50);
-        if (success) {
-          setDebugStatus({ type: 'success', message: `50 Pontos adicionados com sucesso a ${name}!` });
-        }
+        await manualAddPoints(targetUserId, 50);
+        setDebugStatus({ type: 'success', message: `50 Pontos adicionados com sucesso a ${name} (ID: ${targetUserId})!` });
       } else if (actionType === 'points150') {
-        success = await manualAddPoints(debugSelectedUserId, 150);
-        if (success) {
-          setDebugStatus({ type: 'success', message: `150 Pontos adicionados com sucesso a ${name}! (Destaques adicionais gerados se elegível)` });
-        }
+        await manualAddPoints(targetUserId, 150);
+        setDebugStatus({ type: 'success', message: `150 Pontos adicionados com sucesso a ${name} (ID: ${targetUserId})!` });
       }
 
-      if (success) {
-        // Refresh local user list to show changes immediately
-        await fetchUsers();
-      } else {
-        setDebugStatus({ type: 'error', message: `Não foi possível atualizar o utilizador. Verifique as permissões.` });
+      // Refresh local user list to show changes immediately
+      await fetchUsers();
+
+      // If updated user is currently logged in user, refresh context profile immediately
+      if (currentAuthUser?.uid === targetUserId && refreshProfile) {
+        await refreshProfile();
       }
     } catch (err: any) {
-      console.error(err);
-      setDebugStatus({ type: 'error', message: `Erro ao executar ação debug: ${err.message}` });
+      console.error("Reward action error:", err);
+      let errMsg = "Falha ao escrever no Firestore.";
+      if (err?.code === 'permission-denied') {
+        errMsg = "Erro de Permissão (Firestore Rules): Sem privilégios de administrador para atualizar este utilizador.";
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+      setDebugStatus({ type: 'error', message: `Erro ao executar ação de recompensa: ${errMsg}` });
     } finally {
       setDebugLoading(false);
     }
@@ -633,71 +641,98 @@ const AdminUsers = () => {
       </div>
 
       {/* Reward Points Simulation Tool (Admin Only) */}
-      <div className="bg-amber-50/70 border border-amber-200 p-5 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="text-amber-600 animate-pulse" size={18} />
-          <h2 className="text-sm font-black text-amber-900 uppercase tracking-wider">🔬 Ferramenta de Teste de Recompensas (Modo Debug)</h2>
-        </div>
-        <p className="text-xs text-amber-800 font-semibold mb-4 leading-relaxed">
-          Simule as transações de pontos de destaque em tempo real. Cada 150 pontos acumulados convertem-se automaticamente em 1 Crédito de Destaque.
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-          <div className="md:col-span-4 space-y-1">
-            <label className="block text-[10px] font-black text-amber-900 uppercase tracking-widest leading-none">Selecionar Utilizador</label>
-            <select
-              value={debugSelectedUserId}
-              onChange={(e) => setDebugSelectedUserId(e.target.value)}
-              disabled={debugLoading || users.length === 0}
-              className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
-            >
-              {users.length === 0 ? (
-                <option value="">A carregar utilizadores...</option>
-              ) : (
-                users.map(u => (
-                  <option key={u.id || u.uid} value={u.id || u.uid}>
-                    {u.name || 'Sem nome'} ({u.email || u.id})
-                  </option>
-                ))
-              )}
-            </select>
+      {(() => {
+        const selectedUserObj = users.find(u => u.id === debugSelectedUserId || u.uid === debugSelectedUserId);
+        const selectedUserId = selectedUserObj ? (selectedUserObj.uid || selectedUserObj.id) : debugSelectedUserId;
+
+        return (
+          <div className="bg-amber-50/70 border border-amber-200 p-5 rounded-2xl shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="text-amber-600 animate-pulse" size={18} />
+              <h2 className="text-sm font-black text-amber-900 uppercase tracking-wider">🔬 Ferramenta de Teste de Recompensas (Modo Debug)</h2>
+            </div>
+            <p className="text-xs text-amber-800 font-semibold leading-relaxed">
+              Simule as transações de pontos de destaque em tempo real. Cada 150 pontos acumulados convertem-se automaticamente em 1 Crédito de Destaque.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+              <div className="md:col-span-4 space-y-1">
+                <label className="block text-[10px] font-black text-amber-900 uppercase tracking-widest leading-none">Selecionar Utilizador</label>
+                <select
+                  value={debugSelectedUserId}
+                  onChange={(e) => setDebugSelectedUserId(e.target.value)}
+                  disabled={debugLoading || users.length === 0}
+                  className="w-full bg-white border border-amber-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                >
+                  {users.length === 0 ? (
+                    <option value="">A carregar utilizadores...</option>
+                  ) : (
+                    users.map(u => (
+                      <option key={u.id || u.uid} value={u.id || u.uid}>
+                        {u.name || 'Sem nome'} ({u.email || u.id})
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+              
+              <div className="md:col-span-8 flex flex-wrap gap-2 pt-2 md:pt-4">
+                <button
+                  onClick={() => handleDebugAction('points50')}
+                  disabled={debugLoading || !debugSelectedUserId}
+                  className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-sm transition-colors cursor-pointer"
+                >
+                  Adicionar 50 Pontos
+                </button>
+                <button
+                  onClick={() => handleDebugAction('points150')}
+                  disabled={debugLoading || !debugSelectedUserId}
+                  className="px-4 py-2.5 bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-sm transition-colors cursor-pointer"
+                >
+                  Adicionar 150 Pontos (Gera Crédito)
+                </button>
+                <button
+                  onClick={() => handleDebugAction('credit')}
+                  disabled={debugLoading || !debugSelectedUserId}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-sm transition-colors cursor-pointer"
+                >
+                  Adicionar 1 Crédito Destaque
+                </button>
+              </div>
+            </div>
+
+            {selectedUserObj && (
+              <div className="p-3 bg-amber-100/70 border border-amber-200/80 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-amber-950">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-extrabold uppercase text-amber-800 tracking-wider">Utilizador Alvo Confirmado</span>
+                  <div className="font-extrabold text-slate-900">{selectedUserObj.name || 'Sem nome'} ({selectedUserObj.email || 'Sem email'})</div>
+                  <div className="font-mono text-[11px] text-slate-600">User ID: <span className="font-semibold text-slate-900">{selectedUserId}</span></div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase block">Pontos Anúncios</span>
+                    <span className="text-sm font-black text-amber-900">{selectedUserObj.pointsFromAds || 0} pts</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-amber-800 uppercase block">Créditos Destaque</span>
+                    <span className="text-sm font-black text-indigo-900">{selectedUserObj.referralCredits || 0} crd</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {debugStatus && (
+              <div className={`p-3 rounded-xl text-xs font-bold transition-all ${
+                debugStatus.type === 'success' 
+                  ? 'bg-emerald-50 border border-emerald-100 text-emerald-800' 
+                  : 'bg-rose-50 border border-rose-100 text-rose-800'
+              }`}>
+                {debugStatus.message}
+              </div>
+            )}
           </div>
-          
-          <div className="md:col-span-8 flex flex-wrap gap-2 pt-2 md:pt-4">
-            <button
-              onClick={() => handleDebugAction('points50')}
-              disabled={debugLoading || !debugSelectedUserId}
-              className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-sm transition-colors cursor-pointer"
-            >
-              Adicionar 50 Pontos
-            </button>
-            <button
-              onClick={() => handleDebugAction('points150')}
-              disabled={debugLoading || !debugSelectedUserId}
-              className="px-4 py-2.5 bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-sm transition-colors cursor-pointer"
-            >
-              Adicionar 150 Pontos (Gera Crédito)
-            </button>
-            <button
-              onClick={() => handleDebugAction('credit')}
-              disabled={debugLoading || !debugSelectedUserId}
-              className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl font-bold text-xs shadow-sm transition-colors cursor-pointer"
-            >
-              Adicionar 1 Crédito Destaque
-            </button>
-          </div>
-        </div>
-        
-        {debugStatus && (
-          <div className={`mt-4 p-3 rounded-xl text-xs font-bold transition-all ${
-            debugStatus.type === 'success' 
-              ? 'bg-emerald-50 border border-emerald-100 text-emerald-800' 
-              : 'bg-rose-50 border border-rose-100 text-rose-800'
-          }`}>
-            {debugStatus.message}
-          </div>
-        )}
-      </div>
+        );
+      })()}
 
       {/* Main content Area */}
       {loading ? (

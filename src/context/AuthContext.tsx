@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, setDoc, deleteDoc, updateDoc, serverTimestamp, collection, query, where, limit, getDocs } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, updateDoc, serverTimestamp, collection, query, where, limit, getDocs, onSnapshot } from 'firebase/firestore';
 import { auth, db, withTimeout, getDocWithCacheFallback, getDocsWithCacheFallback } from '../firebase';
 import { UserProfile } from '../types';
 
@@ -236,8 +236,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    let profileUnsub: (() => void) | null = null;
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setLoading(true);
+      if (profileUnsub) {
+        profileUnsub();
+        profileUnsub = null;
+      }
+
       if (u) {
         setUser(u);
         try {
@@ -246,12 +252,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error("Erro no fluxo do sync:", e);
         }
         
-        // Carrega Perfil e Favoritos (o fetchProfile utilizará cache)
+        // Carrega Perfil e Favoritos
         await Promise.all([
           fetchProfile(u.uid),
           fetchFavorites(u.uid)
         ]);
         setLoading(false);
+
+        // Real-time listener for current user profile updates (points, credits, role changes, etc.)
+        profileUnsub = onSnapshot(doc(db, 'users', u.uid), (snap) => {
+          if (snap.exists()) {
+            const data = snap.data() as UserProfile;
+            setProfile(data);
+            sessionStorage.setItem(`profile_cache_${u.uid}`, JSON.stringify(data));
+          }
+        }, (err) => {
+          console.error("Profile onSnapshot error:", err);
+        });
 
         updateDoc(doc(db, 'users', u.uid), {
           lastLoginAt: serverTimestamp()
@@ -270,7 +287,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
       }
     });
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      if (profileUnsub) profileUnsub();
+    };
   }, []);
 
   const refreshProfile = async () => {

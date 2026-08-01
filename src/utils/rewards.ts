@@ -90,11 +90,15 @@ export const awardAdApprovalPoints = async (sellerId: string, adId: string): Pro
  * Manually adds highlight credits to a specific user for debug/testing purposes.
  */
 export const manualAddCredits = async (userId: string, amount: number): Promise<boolean> => {
-  if (!userId) return false;
+  if (!userId) {
+    throw new Error('ID de utilizador inválido ou não especificado.');
+  }
   try {
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) return false;
+    if (!userSnap.exists()) {
+      throw new Error(`Utilizador com ID '${userId}' não foi encontrado no Firestore.`);
+    }
     
     const userData = userSnap.data();
     const currentCredits = userData.referralCredits || 0;
@@ -105,7 +109,7 @@ export const manualAddCredits = async (userId: string, amount: number): Promise<
     return true;
   } catch (error) {
     console.error('Error manually adding credits:', error);
-    return false;
+    throw error;
   }
 };
 
@@ -114,11 +118,15 @@ export const manualAddCredits = async (userId: string, amount: number): Promise<
  * Automatically checks and transitions into Destaque credits if thresholds (150 pts multiples) are crossed.
  */
 export const manualAddPoints = async (userId: string, amount: number): Promise<boolean> => {
-  if (!userId) return false;
+  if (!userId) {
+    throw new Error('ID de utilizador inválido ou não especificado.');
+  }
   try {
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) return false;
+    if (!userSnap.exists()) {
+      throw new Error(`Utilizador com ID '${userId}' não foi encontrado no Firestore.`);
+    }
     
     const userData = userSnap.data();
     const referredUsersCount = userData.referredUsersCount || 0;
@@ -140,7 +148,7 @@ export const manualAddPoints = async (userId: string, amount: number): Promise<b
     return true;
   } catch (error) {
     console.error('Error manually adding points:', error);
-    return false;
+    throw error;
   }
 };
 
