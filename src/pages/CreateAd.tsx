@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 import { normalizeDescription } from '../utils/textFormatter';
+import { parsePrice } from '../utils';
 import { getSourceSiteFromUrl, getSupportedMarketplace, getSupportedMarketplacesMessage } from '../utils/marketplaces';
 import { isImportedOrExternalAd, normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
 import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../utils/imageFraming';
@@ -905,7 +906,7 @@ const CreateAd = () => {
         id: adId,
         title: formData.title,
         description: formData.description,
-        price: (formData.category === 'Imigração' || isJob || formData.category === '💚 Doações & Solidariedade') ? 0 : (formData.price ? parseFloat(formData.price) : 0),
+        price: (formData.category === 'Imigração' || isJob || formData.category === '💚 Doações & Solidariedade') ? 0 : (formData.price ? parsePrice(formData.price) : 0),
         imageUrl: cleanFormImages[0] || '', // Primary image
         images: cleanFormImages,
         city: formData.city,
@@ -2420,11 +2421,12 @@ const CreateAd = () => {
                     {formData.country === 'Reino Unido' ? '£' : '€'}
                   </span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="0.00"
+                    placeholder="Ex: 799,950 ou £799,950.00"
                   />
                 </div>
               </div>

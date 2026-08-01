@@ -1,11 +1,17 @@
-export const formatPrice = (price: number | undefined, country?: string): string => {
-  if (price === undefined || price === null || price === 0) return 'Free';
+import { parsePrice } from './utils/textUtils';
+
+export { parsePrice };
+
+export const formatPrice = (price: number | string | undefined | null, country?: string): string => {
+  if (price === undefined || price === null || price === '') return 'Free';
+  const num = typeof price === 'number' ? (isNaN(price) ? 0 : price) : parsePrice(price);
+  if (num === 0) return 'Free';
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: 'GBP',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(price);
+  }).format(num);
 };
 
 export const generateSlug = (title: string): string => {

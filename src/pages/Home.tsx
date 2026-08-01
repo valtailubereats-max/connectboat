@@ -28,6 +28,7 @@ import londonAerialOriginalStandby from '../assets/images/london_aerial_17807554
 const londonAerialSunny = "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=1600&q=80";
 
 import { useClickOutside } from '../hooks/useClickOutside';
+import { parsePrice } from '../utils';
 
 const PAGE_SIZE = 30; 
 
@@ -942,12 +943,12 @@ const Home = () => {
 
       // Min / Max Price
       if (filterMinPrice.trim() !== '') {
-        const minP = parseFloat(filterMinPrice);
-        if (!isNaN(minP) && (ad.price === undefined || ad.price < minP)) return false;
+        const minP = parsePrice(filterMinPrice);
+        if (minP > 0 && (ad.price === undefined || ad.price < minP)) return false;
       }
       if (filterMaxPrice.trim() !== '') {
-        const maxP = parseFloat(filterMaxPrice);
-        if (!isNaN(maxP) && (ad.price === undefined || ad.price > maxP)) return false;
+        const maxP = parsePrice(filterMaxPrice);
+        if (maxP > 0 && (ad.price === undefined || ad.price > maxP)) return false;
       }
 
       // Manufacturer
@@ -2279,7 +2280,8 @@ const Home = () => {
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 mb-1 block">Min Price</span>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="Min (£/€)"
                         value={filterMinPrice}
                         onChange={(e) => setFilterMinPrice(e.target.value)}
@@ -2289,7 +2291,8 @@ const Home = () => {
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 mb-1 block">Max Price</span>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="Max (£/€)"
                         value={filterMaxPrice}
                         onChange={(e) => setFilterMaxPrice(e.target.value)}

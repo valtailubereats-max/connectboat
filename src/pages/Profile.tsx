@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, MessageSquare, MapPin, ShoppingBag, Star, Plus, X } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
-import { formatPrice } from '../utils';
+import { formatPrice, parsePrice } from '../utils';
 import OptimizedImage from '../components/OptimizedImage';
 import { getCardFramingStyle } from '../utils/imageFraming';
 import ReviewModal from '../components/ReviewModal';
@@ -287,7 +287,7 @@ const Profile = () => {
         return;
       }
 
-      const parsedPrice = productPrice.trim() !== '' ? parseFloat(productPrice) : null;
+      const parsedPrice = productPrice.trim() !== '' ? parsePrice(productPrice) : null;
       const productRef = doc(db, 'sellerPublicProfiles', user.uid, 'products', editingProduct.id);
       
       const payload: any = {
@@ -1965,13 +1965,12 @@ const Profile = () => {
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Preço Opcional (€ / £)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={productPrice}
                     onChange={(e) => setProductPrice(e.target.value)}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-semibold"
-                    placeholder="Ex: 25.00 (sob consulta se vazio)"
+                    placeholder="Ex: 799,950 ou £799,950.00 (sob consulta se vazio)"
                   />
                 </div>
 

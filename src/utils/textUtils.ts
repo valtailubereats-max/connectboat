@@ -70,21 +70,26 @@ export const cleanDescription = (desc: string): string => {
 
 export const parsePrice = (priceStr: string | number | undefined | null): number => {
   if (priceStr === undefined || priceStr === null) return 0;
-  if (typeof priceStr === 'number') return priceStr;
+  if (typeof priceStr === 'number') return isNaN(priceStr) ? 0 : priceStr;
   
   let str = String(priceStr).trim();
   if (!str) return 0;
 
-  str = str.replace(/[€$£\s]/g, '');
+  // Remove currency symbols, letters, spaces, etc., except digits, dots, commas, and minus
+  str = str.replace(/[^0-9.,-]/g, '');
+  if (!str) return 0;
 
   const lastComma = str.lastIndexOf(',');
   const lastDot = str.lastIndexOf('.');
-  
+
   if (lastComma > lastDot && (lastComma === str.length - 3 || lastComma === str.length - 2)) {
+    // European style decimal comma e.g. 799.950,00 or 799,50
     str = str.replace(/\./g, '').replace(',', '.');
   } else if (lastDot > lastComma && (lastDot === str.length - 3 || lastDot === str.length - 2)) {
+    // UK/US style decimal dot e.g. 799,950.00 or 799950.00
     str = str.replace(/,/g, '');
   } else {
+    // No decimals or thousands separators only e.g. 799,950 or 799.950 or 799950
     str = str.replace(/[,.]/g, '');
   }
 
