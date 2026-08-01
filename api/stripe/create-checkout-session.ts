@@ -1,0 +1,127 @@
+import type { Request, Response } from 'express';
+import Stripe from 'stripe';
+
+let stripeClient: Stripe | null = null;
+
+function getStripe(): Stripe {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error('STRIPE_SECRET_KEY environment variable is missing.');
+  }
+  if (!stripeClient) {
+    stripeClient = new Stripe(secretKey, {
+      apiVersion: '2025-02-24.acacia' as any,
+    });
+  }
+  return stripeClient;
+}
+
+export default async function createCheckoutSessionHandler(req: Request, res: Response) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method Not Allowed' });
+  }
+
+  try {
+    const {
+      itemType,
+      plan,
+      country,
+      currency: requestedCurrency,
+      userId,
+      userEmail,
+      adId,
+      showcaseData,
+      successUrl,
+      cancelUrl
+    } = req.body || {};
+
+    if (!itemType) {
+      return res.status(400).json({ success: false, error: 'Missing required itemType' });
+    }
+
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      return res.status(400).json({
+        success: false,
+        error: 'STRIPE_NOT_CONFIGURED',
+        errorMessage: 'Stripe Secret Key (STRIPE_SECRET_KEY) is not configured in environment variables.'
+      });
+    }
+
+    const stripe = getStripe();
+
+    // Determine currency: default GBP for UK, EUR for Portugal & rest
+    const isUK = country === 'Reino Unido' || country === 'United Kingdom' || requestedCurrency?.toLowerCase() === 'gbp';
+    const currency = isUK ? 'gbp' : 'eur';
+    const currencySymbol = isUK ? '£' : '€';
+
+    let productName = '';
+    let productDescription = '';
+    let amountCents = 499;
+
+    if (itemType === 'featured_ad') {
+      const isNational = plan === 'national';
+      amountCents = isNational ? 799 : 499;
+      productName = `ConnectBoat - ${isNational ? 'Featured National' : 'Featured Local'} Listing`;
+      productDescription = `30-day highlight boost (${currencySymbol}${(amountCents / 100).toFixed(2)}) for listing ${adId ? '#' + adId : ''}`.trim();
+    } else if (itemType === 'digital_showcase') {
+      amountCents = 899;
+      const name = showcaseData?.showcaseName || 'Business Showcase';
+      productName = `ConnectBoat - Digital Showcase (${name})`;
+      productDescription = `Monthly Digital Showcase subscription (${currencySymbol}8.99/month)`;
+    } else {
+      return res.status(400).json({ success: false, error: 'Invalid itemType specified' });
+    }
+
+    const metadata: Record<string, string> = {
+      itemType: String(itemType),
+      userId: String(userId || ''),
+      adId: String(adId || ''),
+      plan: String(plan || ''),
+      country: String(country || ''),
+    };
+
+    if (showcaseData) {
+      try {
+        metadata.showcaseDataJson = JSON.stringify(showcaseData);
+      } catch (e) {
+        console.warn('[Stripe Session] Failed to stringify showcaseData', e);
+      }
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      customer_email: userEmail && typeof userEmail === 'string' && userEmail.includes('@') ? userEmail : undefined,
+      line_items: [
+        {
+          price_data: {
+            currency,
+            product_data: {
+              name: productName,
+              description: productDescription,
+            },
+            unit_amount: amountCents,
+          },
+          quantity: 1,
+        },
+      ],
+      metadata,
+      success_url: successUrl || `${req.headers.origin || 'http://localhost:3000'}?stripe_success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: cancelUrl || `${req.headers.origin || 'http://localhost:3000'}?stripe_cancel=true`,
+    });
+
+    return res.status(200).json({
+      success: true,
+      url: session.url,
+      sessionId: session.id,
+    });
+  } catch (err: any) {
+    console.error('[Stripe create-checkout-session Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'STRIPE_ERROR',
+      errorMessage: err.message || 'Error creating Stripe checkout session'
+    });
+  }
+}

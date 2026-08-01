@@ -10,7 +10,7 @@ import { sendEmailGeneric } from '../utils/emailService';
 import { CITIES, Ad, MarketplaceSettings, PORTUGAL_CITIES, UK_CITIES, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
-import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles } from 'lucide-react';
+import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 import { normalizeDescription } from '../utils/textFormatter';
 import { parsePrice, formatPrice } from '../utils';
@@ -142,20 +142,35 @@ const CreateAd = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPhotoSourceMenu, setShowPhotoSourceMenu] = useState(false);
   const [pendingAdData, setPendingAdData] = useState<any>(null);
-  const [mockCardNumber, setMockCardNumber] = useState('4242 •••• •••• 4242');
-  const [mockExpiry, setMockExpiry] = useState('12/29');
-  const [mockCVC, setMockCVC] = useState('321');
-  const [mockCardName, setMockCardName] = useState('');
 
   useEffect(() => {
-    const pCategory = new URLSearchParams(location.search).get('category');
+    const searchParams = new URLSearchParams(location.search);
+    const pCategory = searchParams.get('category');
     if (pCategory) {
       setFormData(prev => ({
         ...prev,
         category: pCategory
       }));
     }
-  }, [location.search]);
+
+    const isStripeSuccess = searchParams.get('stripe_success') === 'true';
+    const returnedAdId = searchParams.get('ad_id');
+    const returnedPlan = searchParams.get('plan') || 'local';
+
+    if (isStripeSuccess && returnedAdId) {
+      clearHomeCache();
+      setSaveSuccessMsg('Pagamento de destaque efetuado com sucesso via Stripe Checkout!');
+      
+      // Clear query params from browser URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+
+      setTimeout(() => {
+        setSaveSuccessMsg(null);
+        navigate('/profile?tab=anuncios');
+      }, 2500);
+    }
+  }, [location.search, navigate]);
 
   const [imagePositionX, setImagePositionX] = useState<number>(50);
   const [imagePositionY, setImagePositionY] = useState<number>(50);
@@ -1131,74 +1146,43 @@ const CreateAd = () => {
     }
   };
 
-  const handleMockPaymentSuccess = async () => {
+  const handleStripeCheckout = async () => {
     if (!pendingAdData) return;
     setLoading(true);
     try {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 30); // 30 dias de duração
+      // 1. Guardar o anúncio base primeiro no Firestore para termos um ID válido
+      const finalizedId = pendingAdData.id || `ad_${user?.uid?.substring(0, 5) || 'user'}_${Date.now()}`;
+      const payloadToSave = { ...pendingAdData, id: finalizedId, isFeatured: false };
+      
+      await executeSaveAd(payloadToSave, finalizedId);
 
-      const finalizedAdData = {
-        ...pendingAdData,
-        isFeatured: true,
-        featuredUntil: tomorrow,
-        featuredLevel: formData.plan === 'national' ? 'national' : 'local',
-        featuredActivatedAt: new Date()
-      };
+      // 2. Criar sessão de Stripe Hosted Checkout
+      const isUK = formData.country === 'Reino Unido' || formData.country === 'United Kingdom';
+      const res = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemType: 'featured_ad',
+          plan: formData.plan || 'local',
+          country: formData.country,
+          userId: user?.uid,
+          userEmail: user?.email,
+          adId: finalizedId,
+          successUrl: `${window.location.origin}/create-ad?stripe_success=true&ad_id=${finalizedId}&plan=${formData.plan || 'local'}`,
+          cancelUrl: `${window.location.origin}/create-ad?stripe_cancel=true`
+        })
+      });
 
-      await setDoc(doc(db, 'ads', finalizedAdData.id), finalizedAdData, { merge: true });
-
-      // Create Admin Notifications
-      try {
-        const staffQuery = query(
-          collection(db, 'users'),
-          where('role', 'in', ['admin', 'moderator'])
-        );
-        const staffSnapshot = await getDocs(staffQuery);
-        
-        const staffUids: string[] = [];
-        const creatorUid = user?.uid;
-
-        staffSnapshot.forEach(docSnap => {
-          const uid = docSnap.id;
-          if (uid !== creatorUid) {
-            staffUids.push(uid);
-          }
-        });
-
-        for (const staffUid of staffUids) {
-          const notifId = `pending_${finalizedAdData.id}_${staffUid}_${Date.now()}`;
-          const notifData = {
-            userId: staffUid,
-            title: 'Novo destaque aprovado / pendente',
-            message: `Há um novo destaque pendente de aprovação: "${finalizedAdData.title}"`,
-            createdAt: serverTimestamp(),
-            read: false,
-            adId: finalizedAdData.id,
-            type: 'ad_pending'
-          };
-          await setDoc(doc(db, 'notifications', notifId), notifData);
-        }
-      } catch (notifErr) {
-        console.warn('Notification warning:', notifErr);
+      const data = await res.json();
+      if (data.success && data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.errorMessage || data.error || 'Erro ao iniciar sessão do Stripe Checkout.');
+        setLoading(false);
       }
-
-      clearHomeCache();
-      const priceText = formData.country === 'Reino Unido'
-        ? (formData.plan === 'national' ? '£7.99' : '£4.99')
-        : (formData.plan === 'national' ? '€7.99' : '€4.99');
-      const levelText = formData.plan === 'national' ? 'Destaque Nacional ⭐⭐⭐' : 'Destaque Local ⭐';
-
-      setShowPaymentModal(false);
-      setSaveSuccessMsg(`Pagamento de ${priceText} confirmado com sucesso via Stripe! O seu anúncio agora é ${levelText} por 30 dias!`);
-      setTimeout(() => {
-        setSaveSuccessMsg(null);
-        navigate('/profile?tab=anuncios');
-      }, 2000);
-    } catch (err) {
-      console.error(err);
-      alert('Ocorreu um erro ao concluir o pagamento.');
-    } finally {
+    } catch (err: any) {
+      console.error('[Stripe Checkout Error]', err);
+      alert('Ocorreu um erro ao ligar ao servidor de pagamentos Stripe.');
       setLoading(false);
     }
   };
@@ -2832,7 +2816,7 @@ const CreateAd = () => {
         </form>
       </motion.div>
 
-      {/* Stripe Checkout Modal Simulator */}
+      {/* Stripe Checkout Modal */}
       <AnimatePresence>
         {showPaymentModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -2854,7 +2838,8 @@ const CreateAd = () => {
                   <X size={16} />
                 </button>
                 <div className="flex items-center gap-2 text-indigo-400 font-black tracking-widest text-[10px] uppercase">
-                  <span>Stripe Secure Checkout</span>
+                  <ShieldCheck size={14} />
+                  <span>Stripe Secure Hosted Checkout</span>
                 </div>
                 <h3 className="text-xl font-bold mt-2">Highlight Your Listing</h3>
                 <p className="text-xs text-slate-300 mt-1">Multiply your views by up to 10x and sell faster.</p>
@@ -2865,9 +2850,13 @@ const CreateAd = () => {
                 {/* Summary */}
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
                   <div className="flex justify-between text-xs text-slate-600">
-                    <span>Subscription (30 days Highlight)</span>
+                    <span>
+                      {formData.plan === 'national' ? 'National Highlight (30 days)' : 'Local Highlight (30 days)'}
+                    </span>
                     <span className="font-bold text-slate-900">
-                      {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}
+                      {formData.country === 'Reino Unido' || formData.country === 'United Kingdom'
+                        ? (formData.plan === 'national' ? '£7.99' : '£4.99')
+                        : (formData.plan === 'national' ? '€7.99' : '€4.99')}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs text-slate-600">
@@ -2877,70 +2866,29 @@ const CreateAd = () => {
                   <div className="border-t border-slate-200/50 pt-2 flex justify-between text-sm font-bold text-slate-900">
                     <span>Total due</span>
                     <span className="text-indigo-600">
-                      {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}
+                      {formData.country === 'Reino Unido' || formData.country === 'United Kingdom'
+                        ? (formData.plan === 'national' ? '£7.99' : '£4.99')
+                        : (formData.plan === 'national' ? '€7.99' : '€4.99')}
                     </span>
                   </div>
                 </div>
 
-                {/* Credit Card Fields */}
-                <div className="space-y-3">
-                  <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider">Card Details (Simulation)</span>
-                  
-                  <div className="border-2 border-slate-200 focus-within:border-indigo-600 rounded-2xl px-4 py-3 bg-white space-y-3 transition-all shadow-sm">
-                    {/* Card Number */}
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Card Number</label>
-                      <input
-                        type="text"
-                        value={mockCardNumber}
-                        onChange={(e) => setMockCardNumber(e.target.value)}
-                        className="w-full bg-transparent border-none p-0 outline-none text-sm text-slate-900 font-medium placeholder-slate-300"
-                        placeholder="4242 4242 4242 4242"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-2">
-                      {/* Exp */}
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expiry</label>
-                        <input
-                          type="text"
-                          value={mockExpiry}
-                          onChange={(e) => setMockExpiry(e.target.value)}
-                          className="w-full bg-transparent border-none p-0 outline-none text-sm text-slate-900 font-medium placeholder-slate-300"
-                          placeholder="MM/YY"
-                        />
-                      </div>
-                      {/* CVC */}
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CVC</label>
-                        <input
-                          type="password"
-                          value={mockCVC}
-                          onChange={(e) => setMockCVC(e.target.value)}
-                          className="w-full bg-transparent border-none p-0 outline-none text-sm text-slate-900 font-medium placeholder-slate-300"
-                          placeholder="CVC"
-                        />
-                      </div>
-                    </div>
+                {/* Stripe Hosted Checkout Notice */}
+                <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                    <CreditCard size={20} />
                   </div>
-
-                  {/* Card Holder Name */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cardholder Name</label>
-                    <input
-                      type="text"
-                      value={mockCardName}
-                      onChange={(e) => setMockCardName(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600 text-sm"
-                      placeholder="Ex: John Smith"
-                    />
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900">Encrypted Stripe Checkout</h4>
+                    <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                      You will be redirected securely to Stripe's encrypted payment checkout to complete your transaction with Visa, Mastercard, or Apple Pay.
+                    </p>
                   </div>
                 </div>
 
                 {/* Security and Logos */}
                 <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1">🔒 SSL Secure Processing</span>
+                  <span className="flex items-center gap-1">🔒 256-bit SSL Secure</span>
                   <div className="flex gap-1.5 opacity-60">
                     <span className="px-1 py-0.5 border border-slate-200 rounded bg-slate-50 font-black text-[8px] tracking-tighter">VISA</span>
                     <span className="px-1 py-0.5 border border-slate-200 rounded bg-slate-50 font-black text-[8px] tracking-tighter">MC</span>
@@ -2951,16 +2899,20 @@ const CreateAd = () => {
                 {/* Actions */}
                 <div className="space-y-2 pt-2">
                   <button
-                    onClick={handleMockPaymentSuccess}
+                    onClick={handleStripeCheckout}
                     disabled={loading}
-                    className="w-full bg-indigo-600 text-white font-extrabold py-4 rounded-xl hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-100 flex items-center justify-center gap-2"
+                    className="w-full bg-indigo-600 text-white font-extrabold py-4 rounded-xl hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-100 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {loading ? (
                       <span className="flex items-center gap-2">
-                        <RefreshCcw className="animate-spin" size={16} /> Processing transaction...
+                        <RefreshCcw className="animate-spin" size={16} /> Connecting to Stripe Checkout...
                       </span>
                     ) : (
-                      <span>Pay {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}</span>
+                      <span>
+                        Pay {formData.country === 'Reino Unido' || formData.country === 'United Kingdom'
+                          ? (formData.plan === 'national' ? '£7.99' : '£4.99')
+                          : (formData.plan === 'national' ? '€7.99' : '€4.99')} with Stripe
+                      </span>
                     )}
                   </button>
                   
@@ -2969,7 +2921,7 @@ const CreateAd = () => {
                       setShowPaymentModal(false);
                       setLoading(false);
                     }}
-                    className="w-full text-center py-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-all"
+                    className="w-full text-center py-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
                   >
                     Cancel and return to listing
                   </button>

@@ -13,13 +13,20 @@ import emailSendHandler from './api/email/send.ts';
 import productSeoHandler from './api/product-seo.ts';
 import seoHandler from './api/seo.ts';
 import sitemapHandler from './api/sitemap.ts';
+import createCheckoutSessionHandler from './api/stripe/create-checkout-session.ts';
+import stripeWebhookHandler from './api/stripe/webhook.ts';
 
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
 
-  // Middlewares de parse JSON e URL Encoded para requisições das APIs
-  app.use(express.json({ limit: '20mb' }));
+  // Middlewares de parse JSON e URL Encoded para requisições das APIs (preservando rawBody para webhook do Stripe)
+  app.use(express.json({
+    limit: '20mb',
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    }
+  }));
   app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
   // Middleware para capturar erros de sintaxe de JSON do body-parser em rotas /api/*
@@ -94,6 +101,29 @@ async function startServer() {
       console.error('[Server Error /api/email/send]:', err);
       if (!res.headersSent) {
         res.status(500).json({ success: false, error: err.message || 'Erro interno no servidor' });
+      }
+    }
+  });
+
+  app.post('/api/stripe/create-checkout-session', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      await createCheckoutSessionHandler(req, res);
+    } catch (err: any) {
+      console.error('[Server Error /api/stripe/create-checkout-session]:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: err.message || 'Erro interno no servidor' });
+      }
+    }
+  });
+
+  app.post('/api/stripe/webhook', async (req, res) => {
+    try {
+      await stripeWebhookHandler(req as any, res as any);
+    } catch (err: any) {
+      console.error('[Server Error /api/stripe/webhook]:', err);
+      if (!res.headersSent) {
+        res.status(400).send(`Webhook Error: ${err.message}`);
       }
     }
   });

@@ -9,7 +9,7 @@ import { clearHomeCache } from '../utils/cache';
 import { Ad, UserProfile, COUNTRY_CODES, CITIES } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, MessageSquare, MapPin, ShoppingBag, Star, Plus, X } from 'lucide-react';
+import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, MessageSquare, MapPin, ShoppingBag, Star, Plus, X, CreditCard } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 import { formatPrice, parsePrice } from '../utils';
@@ -69,10 +69,23 @@ const Profile = () => {
   const [showcasePaid, setShowcasePaid] = useState(false);
   const [showShowcasePaymentModal, setShowShowcasePaymentModal] = useState(false);
   const [showcasePaymentLoading, setShowcasePaymentLoading] = useState(false);
-  const [showcaseCardNumber, setShowcaseCardNumber] = useState('4242 •••• •••• 4242');
-  const [showcaseCardExpiry, setShowcaseCardExpiry] = useState('12/29');
-  const [showcaseCardCVC, setShowcaseCardCVC] = useState('789');
-  const [showcaseCardName, setShowcaseCardName] = useState('');
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const isStripeSuccess = searchParams.get('stripe_success') === 'true';
+
+    if (isStripeSuccess && user) {
+      if (refreshProfile) {
+        refreshProfile();
+      }
+
+      alert('Adesão à Vitrine Digital efetuada com sucesso via Stripe Checkout!');
+
+      // Clean query params
+      const newUrl = `${window.location.pathname}?tab=vitrine`;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, [user]);
   const [showcaseProducts, setShowcaseProducts] = useState<any[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
@@ -665,7 +678,7 @@ const Profile = () => {
     healShowcaseData();
   }, [profile, user, country, city]);
 
-  const handleMockShowcasePaymentSuccess = async () => {
+  const handleStripeShowcaseCheckout = async () => {
     if (!user) return;
     setShowcasePaymentLoading(true);
     try {
@@ -687,29 +700,7 @@ const Profile = () => {
       const finalCountry = country || profile?.country || 'Portugal';
       const finalCity = city || profile?.city || '';
 
-      const userRef = doc(db, 'users', user.uid);
-      const updatePayload = {
-        showcasePaid: true,
-        showcasePlan: 'premium',
-        showcaseActive: true,
-        showcaseName: finalShowcaseName,
-        showcaseSlug: generatedSlug,
-        country: finalCountry,
-        city: finalCity
-      };
-      
-      await setDoc(userRef, updatePayload, { merge: true });
-      if (refreshProfile) {
-        await refreshProfile();
-      }
-      
-      const profileRef = doc(db, 'sellerPublicProfiles', user.uid);
-      const isPortugal = finalCountry === 'Portugal';
-      
-      await setDoc(profileRef, {
-        showcasePaid: true,
-        showcasePlan: 'premium',
-        showcaseActive: true,
+      const showcaseData = {
         showcaseName: finalShowcaseName,
         showcaseSlug: generatedSlug,
         showcaseCategory: showcaseCategory || 'Outros',
@@ -719,30 +710,36 @@ const Profile = () => {
         showcaseWhatsapp: showcaseWhatsapp || profile?.phone || '',
         showcaseFacebook: showcaseFacebook || '',
         showcaseInstagram: showcaseInstagram || '',
-        showcaseApproved: true, // Auto approved for test or simulation ease
         country: finalCountry,
         city: finalCity,
         displayName: profile?.name || user?.displayName || 'Empreendedor'
-      }, { merge: true });
+      };
 
-      setShowcasePaid(true);
-      setShowcasePlan('premium');
-      setShowcaseActive(true);
-      
-      if (isPromoActive) {
-        alert('Parabéns! A sua Vitrine Digital foi ativada gratuitamente durante o período de lançamento! 🎁');
+      const res = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          itemType: 'digital_showcase',
+          plan: 'premium',
+          country: finalCountry,
+          userId: user.uid,
+          userEmail: user.email,
+          showcaseData,
+          successUrl: `${window.location.origin}/profile?stripe_success=true&tab=vitrine`,
+          cancelUrl: `${window.location.origin}/profile?stripe_cancel=true&tab=vitrine`
+        })
+      });
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        window.location.href = data.url;
       } else {
-        alert(isPortugal 
-          ? 'Adesão à Vitrine Digital com sucesso via Stripe! Pagamento mensal de €8.99 confirmado.' 
-          : 'Adesão à Vitrine Digital com sucesso via Stripe! Pagamento mensal de £8.99 confirmado.'
-        );
+        alert(data.errorMessage || data.error || 'Erro ao iniciar sessão do Stripe Checkout.');
+        setShowcasePaymentLoading(false);
       }
-      
-      setShowShowcasePaymentModal(false);
-    } catch (err) {
-      console.error(err);
-      alert('Erro ao processar ativação de Vitrine Digital.');
-    } finally {
+    } catch (err: any) {
+      console.error('[Stripe Showcase Checkout Error]', err);
+      alert('Erro ao ligar ao servidor Stripe: ' + err.message);
       setShowcasePaymentLoading(false);
     }
   };
@@ -2140,65 +2137,22 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Card Fields */}
-                <div className="space-y-3">
-                  <span className="text-xs font-bold text-slate-700 block uppercase tracking-wider">Card Details</span>
-                  
-                  <div className="border-2 border-slate-200 focus-within:border-indigo-600 rounded-2xl px-4 py-3 bg-white space-y-3 transition-all shadow-sm">
-                    {/* Card Number */}
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Card Number</label>
-                      <input
-                        type="text"
-                        value={showcaseCardNumber}
-                        onChange={(e) => setShowcaseCardNumber(e.target.value)}
-                        className="w-full bg-transparent border-none p-0 outline-none text-sm text-slate-900 font-medium placeholder-slate-300"
-                        placeholder="4242 4242 4242 4242"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-2">
-                      {/* Exp */}
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expiry Date</label>
-                        <input
-                          type="text"
-                          value={showcaseCardExpiry}
-                          onChange={(e) => setShowcaseCardExpiry(e.target.value)}
-                          className="w-full bg-transparent border-none p-0 outline-none text-sm text-slate-900 font-medium placeholder-slate-300"
-                          placeholder="MM/YY"
-                        />
-                      </div>
-                      {/* CVC */}
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CVC</label>
-                        <input
-                          type="password"
-                          value={showcaseCardCVC}
-                          onChange={(e) => setShowcaseCardCVC(e.target.value)}
-                          className="w-full bg-transparent border-none p-0 outline-none text-sm text-slate-900 font-medium placeholder-slate-300"
-                          placeholder="CVC"
-                        />
-                      </div>
-                    </div>
+                {/* Stripe Hosted Checkout Notice */}
+                <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
+                    <CreditCard size={20} />
                   </div>
-
-                  {/* Name on Card */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cardholder Name</label>
-                    <input
-                      type="text"
-                      value={showcaseCardName}
-                      onChange={(e) => setShowcaseCardName(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-600 text-sm"
-                      placeholder="e.g. John Smith"
-                    />
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 font-sans">Encrypted Stripe Checkout</h4>
+                    <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed font-sans">
+                      You will be redirected securely to Stripe's encrypted payment checkout to complete your subscription with Visa, Mastercard, or Apple Pay.
+                    </p>
                   </div>
                 </div>
 
                 {/* Security trust badges */}
                 <div className="flex items-center justify-between text-[11px] text-slate-400">
-                  <span className="flex items-center gap-1">🔒 256-bit SSL Processing</span>
+                  <span className="flex items-center gap-1">🔒 256-bit SSL Secure</span>
                   <div className="flex gap-1.5 opacity-60">
                     <span className="px-1 py-0.5 border border-slate-200 rounded bg-slate-50 font-black text-[8px]">VISA</span>
                     <span className="px-1 py-0.5 border border-slate-200 rounded bg-slate-50 font-black text-[8px]">MC</span>
@@ -2209,22 +2163,22 @@ const Profile = () => {
                 {/* Action buttons */}
                 <div className="space-y-2 pt-2">
                   <button
-                    onClick={handleMockShowcasePaymentSuccess}
+                    onClick={handleStripeShowcaseCheckout}
                     disabled={showcasePaymentLoading}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {showcasePaymentLoading ? (
                       <span className="flex items-center gap-2">
-                        <RefreshCcw className="animate-spin" size={16} /> Processing subscription...
+                        <RefreshCcw className="animate-spin" size={16} /> Connecting to Stripe Checkout...
                       </span>
                     ) : (
-                      <span>Subscribe for {country === 'Reino Unido' || country === 'United Kingdom' ? '£8.99/month' : '€8.99/month'}</span>
+                      <span>Subscribe for {country === 'Reino Unido' || country === 'United Kingdom' ? '£8.99/month' : '€8.99/month'} with Stripe</span>
                     )}
                   </button>
                   
                   <button
                     onClick={() => setShowShowcasePaymentModal(false)}
-                    className="w-full text-center py-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-all"
+                    className="w-full text-center py-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
                   >
                     Cancel
                   </button>
