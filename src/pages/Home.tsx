@@ -1647,14 +1647,14 @@ const Home = () => {
               </div>
             </motion.div>
 
-            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Abaixo do casco do barco) */}
+            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Lado Direito) */}
             <motion.div 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-3 sm:pt-6 text-left w-full translate-x-[12px] xs:translate-x-[20px] sm:translate-x-[32px] md:translate-x-[44px] translate-y-[0px] xs:translate-y-[5px] sm:translate-y-[10px] md:translate-y-[15px]"
+              className="mt-auto pt-3 sm:pt-6 w-full flex justify-end -translate-y-1 xs:-translate-y-2 sm:-translate-y-3 md:-translate-y-4"
             >
-              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3.5 sm:px-6 py-3 xs:py-3.5 sm:py-4 md:py-4 shadow-2xl max-w-full">
-                <p className="text-[9px] xs:text-[10.5px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-relaxed text-left drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3.5 sm:px-6 py-3 xs:py-3.5 sm:py-4 md:py-4 shadow-2xl max-w-full text-right">
+                <p className="text-[9px] xs:text-[10.5px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-relaxed text-right drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
                   {country === 'Portugal' ? (
                     <>
                       Compre, venda e alugue barcos, iates,<br />
@@ -2082,14 +2082,14 @@ const Home = () => {
               </div>
             </motion.div>
 
-            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Abaixo do casco do barco) */}
+            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Lado Direito) */}
             <motion.div 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-3 sm:pt-6 text-left w-full translate-x-[12px] xs:translate-x-[20px] sm:translate-x-[32px] md:translate-x-[44px] translate-y-[0px] xs:translate-y-[5px] sm:translate-y-[10px] md:translate-y-[15px]"
+              className="mt-auto pt-3 sm:pt-6 w-full flex justify-end -translate-y-1 xs:-translate-y-2 sm:-translate-y-3 md:-translate-y-4"
             >
-              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3.5 sm:px-6 py-3 xs:py-3.5 sm:py-4 md:py-4 shadow-2xl max-w-full">
-                <p className="text-[9px] xs:text-[10.5px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-relaxed text-left drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3.5 sm:px-6 py-3 xs:py-3.5 sm:py-4 md:py-4 shadow-2xl max-w-full text-right">
+                <p className="text-[9px] xs:text-[10.5px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-relaxed text-right drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
                   {country === 'Portugal' ? (
                     <>
                       Compre, venda e alugue barcos, iates,<br />
