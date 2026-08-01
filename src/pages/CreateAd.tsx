@@ -1130,7 +1130,7 @@ const CreateAd = () => {
       }
 
       // Se não houver duplicado local, prosseguir normalmente para salvar ou cobrar destaque
-      if (isPaidDestaque && !alreadyHasThisDestaque && !isPromoActive && !formData.isPermanentFeatured && formData.category !== '💚 Doações & Solidariedade' && !isStaff) {
+      if (isPaidDestaque && !alreadyHasThisDestaque && !formData.isPermanentFeatured && formData.category !== '💚 Doações & Solidariedade' && !isStaff) {
         setPendingAdData(adData);
         setShowPaymentModal(true);
         setLoading(false);
@@ -1349,7 +1349,7 @@ const CreateAd = () => {
     }
   };
 
-  const isPromoActive = settings?.launchPromoActive !== false;
+  const isPromoActive = settings?.launchPromoActive === true;
   const isStaff = isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator';
 
   if (fetching) return <div className="text-center py-20">Loading...</div>;
@@ -2985,7 +2985,7 @@ const CreateAd = () => {
                     const isPaidDestaque = finalAdData.plan === 'local' || finalAdData.plan === 'national';
                     const alreadyHasThisDestaque = originalAd?.isFeatured && (originalAd?.plan === finalAdData.plan || (originalAd?.plan === 'highlight' && finalAdData.plan === 'local'));
 
-                    if (isPaidDestaque && !alreadyHasThisDestaque && !isPromoActive) {
+                    if (isPaidDestaque && !alreadyHasThisDestaque) {
                       setPendingAdData(finalAdData);
                       setShowPaymentModal(true);
                     } else {

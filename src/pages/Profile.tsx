@@ -23,7 +23,7 @@ import { calculateTotalPoints, calculateProgressPoints, POINTS_THRESHOLD, POINTS
 const Profile = () => {
   const { user, profile, refreshProfile, favorites } = useAuth();
   const { settings } = useSettings();
-  const isPromoActive = settings?.launchPromoActive !== false;
+  const isPromoActive = settings?.launchPromoActive === true;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const highlightAdId = searchParams.get('highlight');

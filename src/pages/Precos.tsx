@@ -11,7 +11,7 @@ export default function Precos() {
   const { settings } = useSettings();
   const navigate = useNavigate();
 
-  const isPromoActive = settings?.launchPromoActive !== false;
+  const isPromoActive = settings?.launchPromoActive === true;
 
   // Detect selected country for secondary currency presentation
   const [selectedCountry, setSelectedCountry] = React.useState<'Portugal' | 'Reino Unido'>(() => {

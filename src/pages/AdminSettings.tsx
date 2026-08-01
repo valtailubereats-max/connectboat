@@ -150,7 +150,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
           searchGroupOpacity: data.searchGroupOpacity !== undefined ? data.searchGroupOpacity : 10,
           compactCardMode: data.compactCardMode !== undefined ? data.compactCardMode : false,
           enableFotosFeature: data.enableFotosFeature !== undefined ? data.enableFotosFeature : false,
-          launchPromoActive: data.launchPromoActive !== undefined ? data.launchPromoActive : true
+          launchPromoActive: data.launchPromoActive !== undefined ? data.launchPromoActive : false
         });
       } else {
         const defaultSettings: MarketplaceSettings = {
@@ -170,7 +170,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
           searchGroupOpacity: 10,
           compactCardMode: false,
           enableFotosFeature: false,
-          launchPromoActive: true
+          launchPromoActive: false
         };
         await setDoc(doc(db, 'settings', 'global'), defaultSettings);
         setSettings(defaultSettings);
@@ -571,7 +571,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
               <label className="relative inline-flex items-center cursor-pointer">
                 <input 
                   type="checkbox" 
-                  checked={settings.launchPromoActive !== false} 
+                  checked={settings.launchPromoActive === true} 
                   onChange={(e) => setSettings({ ...settings, launchPromoActive: e.target.checked })} 
                   className="sr-only peer"
                 />
