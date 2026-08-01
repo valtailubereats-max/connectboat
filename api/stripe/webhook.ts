@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import Stripe from 'stripe';
+import * as admin from 'firebase-admin';
 
 export const config = {
   api: {
@@ -9,7 +10,6 @@ export const config = {
 
 const PROJECT_ID = 'navlink-489413';
 const DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
-const FIRESTORE_REST_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/${DATABASE_ID}/documents`;
 
 let stripeClient: Stripe | null = null;
 
@@ -22,6 +22,52 @@ function getStripe(): Stripe | null {
     });
   }
   return stripeClient;
+}
+
+let dbInstance: admin.firestore.Firestore | null = null;
+
+function getAdminDb(): admin.firestore.Firestore {
+  const hasServiceAccount = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
+  console.log(`[Stripe Webhook getAdminDb] FIREBASE_SERVICE_ACCOUNT present: ${hasServiceAccount}`);
+
+  if (!dbInstance) {
+    if (!admin.apps.length) {
+      const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+      if (serviceAccountJson) {
+        try {
+          let serviceAccount;
+          try {
+            serviceAccount = JSON.parse(serviceAccountJson);
+          } catch (e) {
+            const decoded = Buffer.from(serviceAccountJson, 'base64').toString('utf-8');
+            serviceAccount = JSON.parse(decoded);
+          }
+          admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            projectId: PROJECT_ID,
+          });
+          console.log(`[Stripe Webhook getAdminDb] admin.initializeApp() initialized using Service Account.`);
+        } catch (e: any) {
+          console.error(`[Stripe Webhook getAdminDb] Service Account init failed: ${e.message}. Falling back to default app init.`);
+          admin.initializeApp({ projectId: PROJECT_ID });
+          console.log(`[Stripe Webhook getAdminDb] admin.initializeApp() initialized using fallback projectId.`);
+        }
+      } else {
+        admin.initializeApp({ projectId: PROJECT_ID });
+        console.log(`[Stripe Webhook getAdminDb] admin.initializeApp() initialized using fallback projectId (no service account).`);
+      }
+    }
+
+    dbInstance = admin.firestore();
+    if (DATABASE_ID) {
+      try {
+        dbInstance.settings({ databaseId: DATABASE_ID });
+      } catch (e) {
+        // Settings already applied
+      }
+    }
+  }
+  return dbInstance;
 }
 
 async function getRawBody(req: Request): Promise<Buffer> {
@@ -43,30 +89,6 @@ async function getRawBody(req: Request): Promise<Buffer> {
       reject(err);
     });
   });
-}
-
-async function patchFirestoreDoc(collectionName: string, docId: string, fields: Record<string, any>, updateFields: string[]) {
-  try {
-    const queryParams = updateFields.map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join('&');
-    const url = `${FIRESTORE_REST_BASE}/${collectionName}/${encodeURIComponent(docId)}?${queryParams}`;
-
-    const res = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ fields }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.warn(`[Stripe Webhook] Firestore REST update failed for ${collectionName}/${docId}:`, errText);
-    } else {
-      console.log(`[Stripe Webhook] Successfully updated Firestore ${collectionName}/${docId}`);
-    }
-  } catch (err) {
-    console.error(`[Stripe Webhook Exception] Updating ${collectionName}/${docId}:`, err);
-  }
 }
 
 export default async function stripeWebhookHandler(req: Request & { rawBody?: Buffer }, res: Response) {
@@ -111,101 +133,80 @@ export default async function stripeWebhookHandler(req: Request & { rawBody?: Bu
   if (event && event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
     const metadata = session.metadata || {};
-
-    console.log(`[Stripe Webhook] Payment completed for session ${session.id}. ItemType: ${metadata.itemType}`);
-
     const { itemType, adId, userId, plan, showcaseDataJson } = metadata;
 
-    if (itemType === 'featured_ad' && adId) {
-      const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      const now = new Date().toISOString();
-      const level = plan === 'national' ? 'national' : 'local';
+    console.log(`[Stripe Webhook] Payment completed for session ${session.id}. Metadata: itemType=${itemType}, adId=${adId}, userId=${userId}, plan=${plan}`);
 
-      await patchFirestoreDoc(
-        'ads',
-        adId,
-        {
-          isFeatured: { booleanValue: true },
-          featuredLevel: { stringValue: level },
-          featuredUntil: { timestampValue: thirtyDaysFromNow },
-          featuredActivatedAt: { timestampValue: now },
-        },
-        ['isFeatured', 'featuredLevel', 'featuredUntil', 'featuredActivatedAt']
-      );
-    } else if (itemType === 'digital_showcase' && userId) {
-      let showcaseData: any = {};
-      if (showcaseDataJson) {
-        try {
-          showcaseData = JSON.parse(showcaseDataJson);
-        } catch (e) {
-          console.warn('[Stripe Webhook] Failed to parse showcaseDataJson metadata', e);
+    try {
+      const db = getAdminDb();
+
+      if (itemType === 'featured_ad') {
+        if (!adId) {
+          console.error(`[Stripe Webhook Error] itemType is 'featured_ad' but adId is missing from metadata!`);
+        } else {
+          const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          const level = plan === 'national' ? 'national' : 'local';
+
+          console.log(`[Stripe Webhook] Executing db.collection('ads').doc('${adId}').set(...) with level=${level}...`);
+
+          await db.collection('ads').doc(adId).set(
+            {
+              isFeatured: true,
+              featuredLevel: level,
+              featuredUntil: admin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
+              featuredActivatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+
+          console.log(`[Stripe Webhook] Successfully updated ad ${adId} to featured level ${level}`);
         }
-      }
+      } else if (itemType === 'digital_showcase' && userId) {
+        let showcaseData: any = {};
+        if (showcaseDataJson) {
+          try {
+            showcaseData = JSON.parse(showcaseDataJson);
+          } catch (e) {
+            console.warn('[Stripe Webhook] Failed to parse showcaseDataJson metadata', e);
+          }
+        }
 
-      const showcaseFields: Record<string, any> = {
-        showcasePaid: { booleanValue: true },
-        showcasePlan: { stringValue: 'premium' },
-        showcaseActive: { booleanValue: true },
-      };
-      const updateMask = ['showcasePaid', 'showcasePlan', 'showcaseActive'];
+        const userFields: Record<string, any> = {
+          showcasePaid: true,
+          showcasePlan: 'premium',
+          showcaseActive: true,
+        };
 
-      if (showcaseData.showcaseName) {
-        showcaseFields.showcaseName = { stringValue: showcaseData.showcaseName };
-        updateMask.push('showcaseName');
-      }
-      if (showcaseData.showcaseSlug) {
-        showcaseFields.showcaseSlug = { stringValue: showcaseData.showcaseSlug };
-        updateMask.push('showcaseSlug');
-      }
-      if (showcaseData.country) {
-        showcaseFields.country = { stringValue: showcaseData.country };
-        updateMask.push('country');
-      }
-      if (showcaseData.city) {
-        showcaseFields.city = { stringValue: showcaseData.city };
-        updateMask.push('city');
-      }
+        if (showcaseData.showcaseName) userFields.showcaseName = showcaseData.showcaseName;
+        if (showcaseData.showcaseSlug) userFields.showcaseSlug = showcaseData.showcaseSlug;
+        if (showcaseData.country) userFields.country = showcaseData.country;
+        if (showcaseData.city) userFields.city = showcaseData.city;
 
-      await patchFirestoreDoc('users', userId, showcaseFields, updateMask);
+        await db.collection('users').doc(userId).set(userFields, { merge: true });
+        console.log(`[Stripe Webhook] Successfully updated user ${userId} for digital showcase`);
 
-      const sellerProfileFields: Record<string, any> = {
-        ...showcaseFields,
-        showcaseApproved: { booleanValue: true },
-      };
-      const sellerUpdateMask = [...updateMask, 'showcaseApproved'];
+        const sellerProfileFields: Record<string, any> = {
+          ...userFields,
+          showcaseApproved: true,
+        };
 
-      if (showcaseData.showcaseCategory) {
-        sellerProfileFields.showcaseCategory = { stringValue: showcaseData.showcaseCategory };
-        sellerUpdateMask.push('showcaseCategory');
-      }
-      if (showcaseData.showcaseLogo) {
-        sellerProfileFields.showcaseLogo = { stringValue: showcaseData.showcaseLogo };
-        sellerUpdateMask.push('showcaseLogo');
-      }
-      if (showcaseData.showcaseCover) {
-        sellerProfileFields.showcaseCover = { stringValue: showcaseData.showcaseCover };
-        sellerUpdateMask.push('showcaseCover');
-      }
-      if (showcaseData.showcaseDescription) {
-        sellerProfileFields.showcaseDescription = { stringValue: showcaseData.showcaseDescription };
-        sellerUpdateMask.push('showcaseDescription');
-      }
-      if (showcaseData.showcaseWhatsapp) {
-        sellerProfileFields.showcaseWhatsapp = { stringValue: showcaseData.showcaseWhatsapp };
-        sellerUpdateMask.push('showcaseWhatsapp');
-      }
-      if (showcaseData.showcaseFacebook) {
-        sellerProfileFields.showcaseFacebook = { stringValue: showcaseData.showcaseFacebook };
-        sellerUpdateMask.push('showcaseFacebook');
-      }
-      if (showcaseData.showcaseInstagram) {
-        sellerProfileFields.showcaseInstagram = { stringValue: showcaseData.showcaseInstagram };
-        sellerUpdateMask.push('showcaseInstagram');
-      }
+        if (showcaseData.showcaseCategory) sellerProfileFields.showcaseCategory = showcaseData.showcaseCategory;
+        if (showcaseData.showcaseLogo) sellerProfileFields.showcaseLogo = showcaseData.showcaseLogo;
+        if (showcaseData.showcaseCover) sellerProfileFields.showcaseCover = showcaseData.showcaseCover;
+        if (showcaseData.showcaseDescription) sellerProfileFields.showcaseDescription = showcaseData.showcaseDescription;
+        if (showcaseData.showcaseWhatsapp) sellerProfileFields.showcaseWhatsapp = showcaseData.showcaseWhatsapp;
+        if (showcaseData.showcaseFacebook) sellerProfileFields.showcaseFacebook = showcaseData.showcaseFacebook;
+        if (showcaseData.showcaseInstagram) sellerProfileFields.showcaseInstagram = showcaseData.showcaseInstagram;
 
-      await patchFirestoreDoc('sellerPublicProfiles', userId, sellerProfileFields, sellerUpdateMask);
+        await db.collection('sellerPublicProfiles').doc(userId).set(sellerProfileFields, { merge: true });
+        console.log(`[Stripe Webhook] Successfully updated sellerPublicProfile ${userId} for digital showcase`);
+      }
+    } catch (err: any) {
+      console.error(`[Stripe Webhook Fulfillment Error]: ${err.message}`, err);
+      return res.status(500).send(`Firestore update failed: ${err.message}`);
     }
   }
 
   return res.status(200).json({ received: true });
 }
+
