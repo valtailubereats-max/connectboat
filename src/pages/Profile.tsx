@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, deleteDoc, writeBatch, increment, limit, getDocs, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage, handleFirestoreError, OperationType, getDocsWithCacheFallback } from '../firebase';
+import { db, storage, handleFirestoreError, OperationType, getDocsWithCacheFallback, clearDocsCache } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { clearHomeCache } from '../utils/cache';
@@ -520,39 +520,87 @@ const Profile = () => {
   };
 
   const handleFeatureAd = async (ad: Ad) => {
-    if (!user || !profile) return;
-    
+    if (!user || !profile) {
+      alert("Autenticação necessária para destacar anúncios.");
+      return;
+    }
+
+    const adId = ad?.id;
+    const userId = user?.uid;
+
+    if (!adId) {
+      alert("ID de anúncio inválido ou não especificado.");
+      return;
+    }
+
+    if (!userId) {
+      alert("ID de utilizador não encontrado.");
+      return;
+    }
+
     const credits = profile.referralCredits || 0;
     if (credits <= 0) {
-      alert("You have no Featured Credits available. Invite more friends to earn!");
+      alert("Não possui Créditos de Destaque disponíveis. Convide amigos para obter mais créditos!");
       return;
     }
     
-    if (!window.confirm("Would you like to use 1 Featured Credit to highlight this listing for 24 hours? It will receive priority placement on ConnectBoat!")) {
+    if (!window.confirm("Deseja utilizar 1 Crédito de Destaque para destacar este anúncio por 24 horas? Ele receberá posicionamento de destaque prioritário!")) {
       return;
     }
     
     try {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const now = new Date();
+      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const newCredits = Math.max(0, credits - 1);
+
+      console.log(`[Feature Listing Credit] adId=${adId}, userId=${userId}, creditsRemaining=${newCredits}`);
+
+      // Subtract 1 credit from user
+      await updateDoc(doc(db, 'users', userId), {
+        referralCredits: newCredits
+      });
       
-      await updateDoc(doc(db, 'ads', ad.id), {
+      // Update ad document in Firestore
+      await updateDoc(doc(db, 'ads', adId), {
         isFeatured: true,
-        featuredUntil: tomorrow,
-        featuredReason: 'credits'
+        featuredReason: 'credits',
+        featuredActivatedAt: now,
+        featuredUntil: tomorrow
       });
+
+      // Clear caches
       clearHomeCache();
-      
-      await updateDoc(doc(db, 'users', user.uid), {
-        referralCredits: credits - 1
-      });
-      
-      alert("Listing highlighted successfully for 24 hours!");
-      
-      await refreshProfile();
+      clearDocsCache();
+
+      // Refresh UI state immediately
+      setAds(prevAds => prevAds.map(item => {
+        if (item.id === adId) {
+          return {
+            ...item,
+            isFeatured: true,
+            featuredReason: 'credits',
+            featuredActivatedAt: now,
+            featuredUntil: tomorrow
+          };
+        }
+        return item;
+      }));
+
+      if (refreshProfile) {
+        await refreshProfile();
+      }
       await fetchUserAds();
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, `ads/${ad.id}`);
+      
+      alert("Anúncio destacado com sucesso por 24 horas!");
+    } catch (err: any) {
+      console.error("Error applying feature listing credit:", err);
+      let errMsg = "Falha ao gravar no Firestore.";
+      if (err?.code === 'permission-denied') {
+        errMsg = "Erro de Permissão: Não possui autorização para atualizar este anúncio no Firestore.";
+      } else if (err instanceof Error) {
+        errMsg = err.message;
+      }
+      alert(`Erro ao destacar anúncio: ${errMsg}`);
     }
   };
 
@@ -1475,17 +1523,17 @@ const Profile = () => {
                       </div>
                     )}
 
-                    {ad.status === 'approved' && ad.adStatus === 'active' && !isAdFeatured && (
+                    {((ad.status === 'approved' || !ad.status) && (ad.adStatus === 'active' || !ad.adStatus) && ad.adStatus !== 'sold' && ad.adStatus !== 'expired') && !isAdFeatured && (
                       <button
                         onClick={() => handleFeatureAd(ad)}
                         className={`mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                           (profile?.referralCredits || 0) > 0
                             ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-sm'
-                            : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
+                            : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100 text-slate-400'
                         }`}
                       >
                         <span>✨</span>
-                        <span>Feature Listing (1 credit)</span>
+                        <span>Destacar Anúncio (1 crédito)</span>
                       </button>
                     )}
 

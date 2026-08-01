@@ -124,6 +124,22 @@ export async function getDocsWithCacheFallback(q: Query, pathLabel: string = 'un
   return promise;
 }
 
+export function clearDocsCache(key?: string) {
+  if (key) {
+    docsCache.delete(key);
+  } else {
+    docsCache.clear();
+  }
+}
+
+export function clearDocCache(key?: string) {
+  if (key) {
+    docCache.delete(key);
+  } else {
+    docCache.clear();
+  }
+}
+
 export async function getDocWithCacheFallback(docRef: DocumentReference, pathLabel: string = 'unknown'): Promise<DocumentSnapshot> {
   const cacheKey = docRef.path;
   
