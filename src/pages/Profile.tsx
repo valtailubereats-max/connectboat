@@ -538,7 +538,8 @@ const Profile = () => {
       
       await updateDoc(doc(db, 'ads', ad.id), {
         isFeatured: true,
-        featuredUntil: tomorrow
+        featuredUntil: tomorrow,
+        featuredReason: 'credits'
       });
       clearHomeCache();
       
@@ -1333,6 +1334,26 @@ const Profile = () => {
                   : new Date(ad.featuredUntil) > new Date()
               );
 
+              const getFeaturedLabel = () => {
+                if (ad.isPermanentFeatured) return 'Permanent Featured';
+                if (
+                  ad.featuredReason === 'credits' ||
+                  ad.featuredReason === 'referral' ||
+                  ad.featuredReason === 'points' ||
+                  ad.featuredReason === 'credit'
+                ) {
+                  return 'Featured 24h';
+                }
+                const isPaidPlan =
+                  ['local', 'national', 'highlight', 'intermediate', 'premium', 'featured'].includes(ad.plan || '') ||
+                  ad.featuredLevel === 'local' ||
+                  ad.featuredLevel === 'national';
+
+                if (isPaidPlan) return 'Featured 30 days';
+                if (ad.plan === 'free' || !ad.plan) return 'Featured 24h';
+                return 'Featured 30 days';
+              };
+
               return (
                 <motion.div
                   key={`profile-ad-${ad.id}-${idx}`}
@@ -1382,7 +1403,7 @@ const Profile = () => {
                     <div className="mt-2 flex flex-wrap gap-2">
                       {isAdFeatured && (
                         <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 shadow-sm animate-pulse">
-                          ✨ Featured 24h
+                          ✨ {getFeaturedLabel()}
                         </span>
                       )}
                       {ad.status === 'pending' && (
