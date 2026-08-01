@@ -298,8 +298,8 @@ const Navbar = () => {
               <ShoppingBag size={20} />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-brand font-black tracking-tight leading-none text-white">
-                Connect<span className="text-sky-400">Boat</span>
+              <span className="text-xl sm:text-2xl font-black tracking-tight leading-none text-white">
+                ConnectBoat
               </span>
               <span className="text-[10px] font-semibold text-sky-200/80 tracking-wide leading-none mt-1">UK Marine & Boat Marketplace</span>
             </div>
