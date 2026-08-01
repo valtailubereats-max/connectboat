@@ -91,6 +91,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      managed_payments: {
+        enabled: false,
+      },
       customer_email: userEmail && typeof userEmail === 'string' && userEmail.includes('@') ? userEmail : undefined,
       line_items: [
         {
