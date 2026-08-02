@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { sendEmailGeneric } from '../utils/emailService';
 import { AdminMigrationWidget } from '../components/AdminMigrationWidget';
-import { AdminBannerEditor } from '../components/AdminBannerEditor';
 
 interface AdminSettingsProps {
   onClose?: () => void;
@@ -256,11 +255,6 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Definições do Marketplace</h1>
         <p className="text-slate-500 font-medium">Configure as regras de negócio, planos e categorias.</p>
       </div>
-
-      {/* Hero Banner Visual Editor Section inside Settings */}
-      <section className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
-        <AdminBannerEditor />
-      </section>
 
       <AnimatePresence>
         {successMsg && (

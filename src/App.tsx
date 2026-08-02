@@ -39,7 +39,6 @@ import AdminInvitations from './pages/AdminInvitations';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { InstallButton } from './components/InstallButton';
 import AdminManualTecnico from './pages/AdminManualTecnico';
-import AdminBannerEditorPage from './pages/AdminBannerEditorPage';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import AdminLayout from './components/AdminLayout';
 import OptimizedImage from './components/OptimizedImage';
@@ -294,16 +293,13 @@ const Navbar = () => {
     <nav ref={navRef} className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 bg-gradient-to-br from-sky-500 to-blue-700 rounded-xl flex items-center justify-center text-white group-hover:from-sky-400 group-hover:to-blue-600 transition-all shadow-md shadow-sky-500/20">
-              <ShoppingBag size={20} />
+          <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2.5 sm:gap-3 group">
+            <div className="w-[42px] h-[42px] bg-gradient-to-br from-sky-500 to-blue-700 rounded-xl flex items-center justify-center text-white group-hover:from-sky-400 group-hover:to-blue-600 transition-all shadow-md shadow-sky-500/20 shrink-0">
+              <ShoppingBag size={23} />
             </div>
-            <div className="flex flex-col">
-              <span className="text-xl sm:text-2xl font-black tracking-tight leading-none text-white">
-                ConnectBoat
-              </span>
-              <span className="text-[10px] font-semibold text-sky-200/80 tracking-wide leading-none mt-1">UK Marine & Boat Marketplace</span>
-            </div>
+            <span className="text-[23px] sm:text-[28px] font-black tracking-tight leading-none text-white select-none">
+              ConnectBoat
+            </span>
           </Link>
 
           {/* Desktop Nav */}
@@ -897,7 +893,6 @@ export default function App() {
                 <Route path="/admin/bulk-import" element={<AdminLayout><AdminBulkImport /></AdminLayout>} />
                 <Route path="/admin/demo-content" element={<AdminLayout><AdminDemoListings /></AdminLayout>} />
                 <Route path="/admin/marketing" element={<AdminLayout><AdminMarketing /></AdminLayout>} />
-                <Route path="/admin/banner-editor" element={<AdminLayout><AdminBannerEditorPage /></AdminLayout>} />
                 <Route path="/admin/ads" element={<AdminLayout><AdminAds /></AdminLayout>} />
                 <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
                 <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />

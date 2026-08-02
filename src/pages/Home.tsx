@@ -17,7 +17,7 @@ import {
 import AdCard from '../components/AdCard';
 import { 
   Search, Tag, MapPin, ShoppingBag, ArrowRight, AlertCircle, RefreshCcw, ArrowUp, Store,
-  SlidersHorizontal, X, Filter, Check, ChevronDown, Anchor, Ship, Fuel, Compass, RotateCcw, ArrowUpDown
+  SlidersHorizontal, X, Filter, Check, ChevronDown, Anchor, Ship, Fuel, Compass, RotateCcw, ArrowUpDown, Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 // @ts-ignore
@@ -29,25 +29,13 @@ const londonAerialSunny = "https://images.unsplash.com/photo-1567899378494-47b22
 
 import { useClickOutside } from '../hooks/useClickOutside';
 import { parsePrice } from '../utils';
-import { BannerTextBox } from '../components/BannerTextBox';
-import { AdminBannerEditor } from '../components/AdminBannerEditor';
 
 const PAGE_SIZE = 30; 
 
 const Home = () => {
-  const { settings, bannerConfig, categories } = useSettings();
+  const { settings, categories } = useSettings();
   const resultsSectionRef = useRef<HTMLDivElement>(null);
   const [londonBg, setLondonBg] = useState(londonAerialSunny);
-  const [isMobileScreen, setIsMobileScreen] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
-  const [showBannerEditorModal, setShowBannerEditorModal] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobileScreen(window.innerWidth < 768);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const handleSearchFocus = () => {
     setTimeout(() => {
@@ -325,16 +313,7 @@ const Home = () => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isSearchHovered, setIsSearchHovered] = useState(false);
 
-  // Onboarding states for country selection
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [shouldAnimateButton, setShouldAnimateButton] = useState(false);
-
-  // Custom Dropdown states
-  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
-  const [mobileCountryDropdownOpen, setMobileCountryDropdownOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const mobileCountryDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -360,17 +339,11 @@ const Home = () => {
   const inFlightFeaturedCountry = useRef<'Portugal' | 'Reino Unido' | null>(null);
   const fetchedFeaturedCountry = useRef<'Portugal' | 'Reino Unido' | null>(null);
 
-  // Helpers for country flags and labels
-  const getCountryFlag = (countryVal: 'Portugal' | 'Reino Unido') => {
-    return countryVal === 'Portugal' ? '🇵🇹' : '🇬🇧';
-  };
-
-  const getCommunityLabel = (countryVal: 'Portugal' | 'Reino Unido') => {
-    if (countryVal === 'Portugal') {
-      return { flag: '🇬🇧', text: 'Viewing ConnectBoat UK Marketplace' };
-    }
-    return { flag: '🇬🇧', text: 'Viewing ConnectBoat UK Marketplace' };
-  };
+  // Available countries configuration for Filters panel
+  const AVAILABLE_COUNTRIES: Array<{ id: 'Reino Unido' | 'Portugal'; label: string; flagCode: 'Reino Unido' | 'Portugal' }> = [
+    { id: 'Reino Unido', label: 'United Kingdom', flagCode: 'Reino Unido' },
+    // { id: 'Portugal', label: 'Portugal', flagCode: 'Portugal' }, // Prepared for future expansion
+  ];
 
   // Sync with Profile country if registered
   useEffect(() => {
@@ -380,55 +353,17 @@ const Home = () => {
     }
   }, [profile]);
 
-  // Click outside to close dropdown using unified hook
-  useClickOutside(dropdownRef, () => {
-    setCountryDropdownOpen(false);
-  });
-
-  useClickOutside(mobileCountryDropdownRef, () => {
-    setMobileCountryDropdownOpen(false);
-  });
-
   // Handle Country Change
   const handleCountryChange = (val: 'Portugal' | 'Reino Unido') => {
     setCountry(val);
     setCity('Todas');
     localStorage.setItem('selectedCountry', val);
-    setShowTooltip(false);
 
     // Sync country URL parameter to prevent useSearchParams useEffect from reverting the value
     const currentParams = new URLSearchParams(window.location.search);
     currentParams.set('country', val);
     setSearchParams(currentParams);
   };
-
-  const handleOnboardingButtonClick = () => {
-    setShowTooltip(false);
-    setCountryDropdownOpen(true);
-  };
-
-  useEffect(() => {
-    const sessionVisited = sessionStorage.getItem('countryOnboardingSessionInit');
-    const storedViews = localStorage.getItem('countryOnboardingViews');
-    let current = storedViews ? parseInt(storedViews, 10) : 0;
-    if (isNaN(current)) current = 0;
-
-    if (!sessionVisited) {
-      current = current + 1;
-      localStorage.setItem('countryOnboardingViews', current.toString());
-      sessionStorage.setItem('countryOnboardingSessionInit', 'true');
-    }
-
-    if (current === 1) {
-      setShowTooltip(true);
-    } else if (current === 2 || current === 3) {
-      setShouldAnimateButton(true);
-      const timer = setTimeout(() => {
-        setShouldAnimateButton(false);
-      }, 4500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
 
   // Monitorar scroll para exibir/esconder o botão de "Voltar ao topo"
   useEffect(() => {
@@ -1253,109 +1188,6 @@ const Home = () => {
                 <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
               </div>
 
-              {/* Seletor de País / Comunidade */}
-              <div className="relative h-11 w-16 lg:w-20 shrink-0 flex items-stretch" ref={dropdownRef} id="desktop-country-dropdown-wrapper">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setCountryDropdownOpen(prev => !prev);
-                    setShowTooltip(false);
-                  }}
-                  className="w-full h-11 flex items-center justify-between gap-1 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-2.5 transition-all cursor-pointer"
-                  id="community-toggle-button-search"
-                >
-                  <img
-                    src={getFlagSvgUrl(country)}
-                    alt={country}
-                    className="w-[24px] h-[16px] object-cover rounded-sm pointer-events-none select-none shrink-0"
-                    referrerPolicy="no-referrer"
-                  />
-                  <span className="text-[8px] text-slate-400 dark:text-slate-400 pointer-events-none select-none leading-none">▼</span>
-                </button>
-
-                {/* Dropdown de Países */}
-                <AnimatePresence>
-                  {countryDropdownOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 4, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                      transition={{ duration: 0.12 }}
-                      className="absolute right-0 top-full mt-1.5 z-50 w-44 rounded-2xl p-2 shadow-2xl flex flex-col gap-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
-                      role="menu"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleCountryChange('Portugal');
-                          setCountryDropdownOpen(false);
-                        }}
-                        role="menuitem"
-                        className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                          country === 'Portugal'
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white font-bold'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300'
-                        }`}
-                      >
-                        <img
-                          src={getFlagSvgUrl('Portugal')}
-                          alt="Portugal"
-                          className="w-5 h-3.5 object-cover rounded border border-slate-200 dark:border-slate-700 shrink-0"
-                          referrerPolicy="no-referrer"
-                        />
-                        <span>🇵🇹 Portugal</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          handleCountryChange('Reino Unido');
-                          setCountryDropdownOpen(false);
-                        }}
-                        role="menuitem"
-                        className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                          country === 'Reino Unido'
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white font-bold'
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300'
-                        }`}
-                      >
-                        <img
-                          src={getFlagSvgUrl('Reino Unido')}
-                          alt="Reino Unido"
-                          className="w-5 h-3.5 object-cover rounded border border-slate-200 dark:border-slate-700 shrink-0"
-                          referrerPolicy="no-referrer"
-                        />
-                        <span>🇬🇧 Reino Unido</span>
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Tooltip de Onboarding no 1º acesso */}
-                {showTooltip && (
-                  <AnimatePresence>
-                    <motion.div
-                      initial={{ opacity: 0, y: 12, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 12, scale: 0.95 }}
-                      className="absolute top-14 left-1/2 -translate-x-1/2 z-[9998] w-64 bg-slate-900 border border-indigo-500/30 text-white rounded-2xl p-4 shadow-2xl text-center"
-                    >
-                      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[6px] border-b-slate-900" />
-                      <p className="text-xs font-semibold leading-relaxed text-slate-200">
-                        Escolha a sua comunidade para ver anúncios perto de si.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleOnboardingButtonClick}
-                        className="mt-3 text-xs bg-indigo-600 hover:bg-indigo-500 text-white py-1.5 px-4 rounded-full font-bold transition-all shadow-md cursor-pointer hover:scale-105 w-full text-center"
-                        id="onboarding-community-select"
-                      >
-                        Escolher Comunidade
-                      </button>
-                    </motion.div>
-                  </AnimatePresence>
-                )}
-              </div>
-
               {/* Botão de Filtros Avançados */}
               <button
                 type="button"
@@ -1374,26 +1206,6 @@ const Home = () => {
                   </span>
                 )}
               </button>
-
-              {/* Ordenação (Sort By) */}
-              <div className="relative h-11 flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-3.5 transition-all shrink-0">
-                <ArrowUpDown size={14} className="text-slate-400 dark:text-slate-400 shrink-0" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0"
-                >
-                  <option value="newest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Newest First</option>
-                  <option value="oldest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Oldest First</option>
-                  <option value="price_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Price: Low to High</option>
-                  <option value="price_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Price: High to Low</option>
-                  <option value="year_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Year: Newest First</option>
-                  <option value="year_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Year: Oldest First</option>
-                  <option value="length_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Length: Longest First</option>
-                  <option value="length_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Length: Shortest First</option>
-                </select>
-                <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
-              </div>
 
               {/* Botão de Pesquisa */}
               <button
@@ -1658,16 +1470,30 @@ const Home = () => {
                 )}
               </div>
             </motion.div>
-          </div>
 
-          {/* Base do Banner: Subtítulo Dinâmico do Banner */}
-          <BannerTextBox 
-            country={country} 
-            isMobileScreen={isMobileScreen} 
-            bannerConfig={bannerConfig} 
-            isAdmin={isAdmin} 
-            onOpenEditor={() => setShowBannerEditorModal(true)} 
-          />
+            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Lado Direito) */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }} 
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-auto pt-3 sm:pt-6 w-full flex justify-end"
+            >
+              <div className="inline-flex items-center bg-slate-950/80 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3.5 sm:px-6 py-2.5 xs:py-3 sm:py-4 shadow-2xl max-w-full text-right">
+                <p className="text-[9.5px] xs:text-[11px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-relaxed text-right drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                  {country === 'Portugal' ? (
+                    <>
+                      Compre, venda e alugue barcos, iates,<br />
+                      equipamentos e serviços marítimos.
+                    </>
+                  ) : (
+                    <>
+                      Buy, sell and charter boats, yachts,<br />
+                      gear & marine services across the United Kingdom.
+                    </>
+                  )}
+                </p>
+              </div>
+            </motion.div>
+          </div>
         </section>
 
         {/* 3. ✨ ANÚNCIOS EM DESTAQUE */}
@@ -1883,101 +1709,6 @@ const Home = () => {
                 </span>
               )}
             </button>
-
-            {/* Ordenação (Sort By) */}
-            <div className="relative h-10.5 flex-1 flex items-center gap-1.5 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-2.5 transition-all">
-              <ArrowUpDown size={13} className="text-slate-400 shrink-0" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="w-full bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
-              >
-                <option value="newest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Newest First</option>
-                <option value="oldest" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Oldest First</option>
-                <option value="price_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Price: Low to High</option>
-                <option value="price_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Price: High to Low</option>
-                <option value="year_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Year: Newest First</option>
-                <option value="year_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Year: Oldest First</option>
-                <option value="length_desc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Length: Longest First</option>
-                <option value="length_asc" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">Length: Shortest First</option>
-              </select>
-              <span className="text-[9px] text-slate-400 absolute right-2 pointer-events-none select-none">▼</span>
-            </div>
-
-            {/* Selector de País */}
-            <div ref={mobileCountryDropdownRef} className="relative h-10.5 w-12 shrink-0 flex items-stretch" id="mobile-country-dropdown-wrapper">
-              <button
-                type="button"
-                onClick={() => setMobileCountryDropdownOpen(prev => !prev)}
-                aria-expanded={mobileCountryDropdownOpen}
-                aria-haspopup="menu"
-                className="w-full h-full flex items-center justify-center gap-1 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-2 transition-all cursor-pointer"
-              >
-                <img
-                  src={getFlagSvgUrl(country)}
-                  alt={country}
-                  className="w-[22px] h-[15px] object-cover rounded-sm pointer-events-none select-none shrink-0"
-                  referrerPolicy="no-referrer"
-                />
-                <span className="text-[8px] text-slate-400 dark:text-slate-400 pointer-events-none select-none leading-none">▼</span>
-              </button>
-
-              <AnimatePresence>
-                {mobileCountryDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 4, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                    transition={{ duration: 0.12 }}
-                    className="absolute right-0 top-full mt-1.5 z-50 w-44 rounded-2xl p-2 shadow-2xl flex flex-col gap-1 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white"
-                    role="menu"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleCountryChange('Portugal');
-                        setMobileCountryDropdownOpen(false);
-                      }}
-                      role="menuitem"
-                      className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                        country === 'Portugal'
-                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white font-bold'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      <img
-                        src={getFlagSvgUrl('Portugal')}
-                        alt="Portugal"
-                        className="w-5 h-3.5 object-cover rounded border border-slate-200 dark:border-slate-700 shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                      <span>🇵🇹 Portugal</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleCountryChange('Reino Unido');
-                        setMobileCountryDropdownOpen(false);
-                      }}
-                      role="menuitem"
-                      className={`flex items-center gap-2.5 w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                        country === 'Reino Unido'
-                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-950 dark:text-white font-bold'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      <img
-                        src={getFlagSvgUrl('Reino Unido')}
-                        alt="Reino Unido"
-                        className="w-5 h-3.5 object-cover rounded border border-slate-200 dark:border-slate-700 shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                      <span>🇬🇧 United Kingdom</span>
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
           </div>
 
           {/* Filtros expandidos de serviços se categoria for Serviços */}
@@ -2079,16 +1810,30 @@ const Home = () => {
                 )}
               </div>
             </motion.div>
-          </div>
 
-          {/* Base do Banner: Subtítulo Dinâmico do Banner */}
-          <BannerTextBox 
-            country={country} 
-            isMobileScreen={isMobileScreen} 
-            bannerConfig={bannerConfig} 
-            isAdmin={isAdmin} 
-            onOpenEditor={() => setShowBannerEditorModal(true)} 
-          />
+            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Lado Direito) */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }} 
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-auto pt-3 sm:pt-6 w-full flex justify-end"
+            >
+              <div className="inline-flex items-center bg-slate-950/80 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3.5 sm:px-6 py-2.5 xs:py-3 sm:py-4 shadow-2xl max-w-full text-right">
+                <p className="text-[9.5px] xs:text-[11px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-relaxed text-right drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                  {country === 'Portugal' ? (
+                    <>
+                      Compre, venda e alugue barcos, iates,<br />
+                      equipamentos e serviços marítimos.
+                    </>
+                  ) : (
+                    <>
+                      Buy, sell and charter boats, yachts,<br />
+                      gear & marine services across the United Kingdom.
+                    </>
+                  )}
+                </p>
+              </div>
+            </motion.div>
+          </div>
         </section>
 
         {/* 4. ANÚNCIOS EM DESTAQUE (Carrossel Compacto) */}
@@ -2252,6 +1997,40 @@ const Home = () => {
               {/* Modal Body - Scrollable Form Controls */}
               <div className="flex-1 overflow-y-auto p-5 space-y-6 text-left">
                 
+                {/* Section 0: Country Selection */}
+                <div className="space-y-2.5">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <Globe size={14} className="text-sky-500" />
+                    <span>Country</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {AVAILABLE_COUNTRIES.map((c) => {
+                      const isSelected = country === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handleCountryChange(c.id)}
+                          className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-sky-600 text-white border-sky-600 shadow-md shadow-sky-600/20'
+                              : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750'
+                          }`}
+                        >
+                          <img
+                            src={getFlagSvgUrl(c.flagCode)}
+                            alt={c.label}
+                            className="w-5 h-3.5 object-cover rounded border border-slate-200/50 dark:border-slate-700 shrink-0"
+                            referrerPolicy="no-referrer"
+                          />
+                          <span>{c.label}</span>
+                          {isSelected && <Check size={14} className="ml-auto shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Section 1: Boat Type */}
                 <div className="space-y-2.5">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
@@ -2548,29 +2327,6 @@ const Home = () => {
                 </button>
               </div>
 
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Modal Editor Visual do Banner (Apenas Admins) */}
-      <AnimatePresence>
-        {showBannerEditorModal && isAdmin && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 max-w-6xl w-full max-h-[92vh] overflow-y-auto relative shadow-2xl"
-            >
-              <button
-                onClick={() => setShowBannerEditorModal(false)}
-                className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-full transition-all cursor-pointer z-50"
-                title="Fechar Editor"
-              >
-                <X size={20} />
-              </button>
-              <AdminBannerEditor onSaved={() => setShowBannerEditorModal(false)} />
             </motion.div>
           </div>
         )}
