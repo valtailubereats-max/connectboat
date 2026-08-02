@@ -880,6 +880,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/precos" element={<Precos />} />
+                <Route path="/pricing" element={<Precos />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
@@ -904,8 +905,11 @@ export default function App() {
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/cookies" element={<Cookies />} />
+                <Route path="/cookie-policy" element={<Cookies />} />
                 <Route path="/denuncia" element={<Report />} />
+                <Route path="/report" element={<Report />} />
                 <Route path="/sugestoes" element={<Suggestions />} />
+                <Route path="/suggestions" element={<Suggestions />} />
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/links" element={<Links />} />
                 <Route path="/convite" element={<Convite />} />

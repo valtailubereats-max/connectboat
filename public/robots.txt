@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /profile
+Disallow: /create-ad
+Disallow: /edit-ad/
+Disallow: /campanhas
+Disallow: /api/
 
-Sitemap: https://www.mercado-luso.com/sitemap.xml
+Sitemap: https://www.connectboat.co.uk/sitemap.xml

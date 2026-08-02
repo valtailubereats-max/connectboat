@@ -47,13 +47,19 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
   // Base static items
   const items: SitemapItem[] = [
     { loc: 'https://www.connectboat.co.uk/', lastmod: currentDateStr, changefreq: 'daily', priority: '1.0' },
-    { loc: 'https://www.connectboat.co.uk/login', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.5' },
-    { loc: 'https://www.connectboat.co.uk/terms', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.3' },
-    { loc: 'https://www.connectboat.co.uk/privacy', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.3' },
-    { loc: 'https://www.connectboat.co.uk/cookies', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.3' },
+    { loc: 'https://www.connectboat.co.uk/faq', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.8' },
+    { loc: 'https://www.connectboat.co.uk/pricing', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.8' },
+    { loc: 'https://www.connectboat.co.uk/precos', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.8' },
+    { loc: 'https://www.connectboat.co.uk/suggestions', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.6' },
+    { loc: 'https://www.connectboat.co.uk/sugestoes', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.6' },
+    { loc: 'https://www.connectboat.co.uk/terms', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.5' },
+    { loc: 'https://www.connectboat.co.uk/privacy', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.5' },
+    { loc: 'https://www.connectboat.co.uk/cookie-policy', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.5' },
+    { loc: 'https://www.connectboat.co.uk/cookies', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.5' },
+    { loc: 'https://www.connectboat.co.uk/fotos', lastmod: currentDateStr, changefreq: 'weekly', priority: '0.7' },
+    { loc: 'https://www.connectboat.co.uk/links', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.4' },
     { loc: 'https://www.connectboat.co.uk/report', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.3' },
-    { loc: 'https://www.connectboat.co.uk/suggestions', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.4' },
-    { loc: 'https://www.connectboat.co.uk/faq', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.4' }
+    { loc: 'https://www.connectboat.co.uk/denuncia', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.3' }
   ];
 
   let ads: { id: string; title: string; lastmod: string }[] = [];
