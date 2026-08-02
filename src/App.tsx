@@ -40,6 +40,7 @@ import AdminInvitations from './pages/AdminInvitations';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { InstallButton } from './components/InstallButton';
 import AdminManualTecnico from './pages/AdminManualTecnico';
+import AdminBannerEditor from './pages/AdminBannerEditor';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import AdminLayout from './components/AdminLayout';
 import OptimizedImage from './components/OptimizedImage';
@@ -892,6 +893,7 @@ export default function App() {
                 <Route path="/admin/bulk-import" element={<AdminLayout><AdminBulkImport /></AdminLayout>} />
                 <Route path="/admin/demo-content" element={<AdminLayout><AdminDemoListings /></AdminLayout>} />
                 <Route path="/admin/marketing" element={<AdminLayout><AdminMarketing /></AdminLayout>} />
+                <Route path="/admin/banner-editor" element={<AdminLayout><AdminBannerEditor /></AdminLayout>} />
                 <Route path="/admin/ads" element={<AdminLayout><AdminAds /></AdminLayout>} />
                 <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
                 <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />

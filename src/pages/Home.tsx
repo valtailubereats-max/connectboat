@@ -33,7 +33,7 @@ import { parsePrice } from '../utils';
 const PAGE_SIZE = 30; 
 
 const Home = () => {
-  const { settings, categories } = useSettings();
+  const { settings, bannerConfig, categories } = useSettings();
   const resultsSectionRef = useRef<HTMLDivElement>(null);
   const [londonBg, setLondonBg] = useState(londonAerialSunny);
 
@@ -1443,27 +1443,53 @@ const Home = () => {
             </motion.div>
 
             {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Lado Direito) */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-3 sm:pt-6 w-full flex justify-end"
-            >
-              <div className="inline-flex items-center bg-slate-950/80 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3.5 sm:px-6 py-2.5 xs:py-3 sm:py-4 shadow-2xl max-w-full text-right">
-                <p className="text-[9.5px] xs:text-[11px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-relaxed text-right drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                  {country === 'Portugal' ? (
-                    <>
-                      Compre, venda e alugue barcos, iates,<br />
-                      equipamentos e serviços marítimos.
-                    </>
-                  ) : (
-                    <>
-                      Buy, sell and charter boats, yachts,<br />
-                      gear & marine services across the United Kingdom.
-                    </>
-                  )}
-                </p>
-              </div>
-            </motion.div>
+            {bannerConfig?.enabled !== false && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-auto pt-3 sm:pt-6 w-full flex justify-end"
+              >
+                <div 
+                  className="inline-flex items-center border border-white/15 shadow-2xl max-w-full text-right"
+                  style={{
+                    backgroundColor: bannerConfig?.desktop?.bgColor 
+                      ? `${bannerConfig.desktop.bgColor}${Math.round(((bannerConfig.desktop.bgOpacity ?? 80) / 100) * 255).toString(16).padStart(2, '0')}`
+                      : 'rgba(15, 23, 42, 0.8)',
+                    backdropFilter: `blur(${bannerConfig?.desktop?.backdropBlur ?? 12}px)`,
+                    borderRadius: `${bannerConfig?.desktop?.borderRadius ?? 16}px`,
+                    paddingTop: `${bannerConfig?.desktop?.paddingVertical ?? 12}px`,
+                    paddingBottom: `${bannerConfig?.desktop?.paddingVertical ?? 12}px`,
+                    paddingLeft: `${bannerConfig?.desktop?.paddingHorizontal ?? 20}px`,
+                    paddingRight: `${bannerConfig?.desktop?.paddingHorizontal ?? 20}px`,
+                  }}
+                >
+                  <p 
+                    className="font-medium italic tracking-wide leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+                    style={{
+                      color: bannerConfig?.desktop?.textColor || '#ffffff',
+                      fontSize: bannerConfig?.desktop?.fontSize ? `${bannerConfig.desktop.fontSize}px` : undefined,
+                      textAlign: bannerConfig?.desktop?.textAlign || 'right',
+                    }}
+                  >
+                    {country === 'Portugal' ? (
+                      bannerConfig?.desktop?.customTextPt || (
+                        <>
+                          Compre, venda e alugue barcos, iates,<br />
+                          equipamentos e serviços marítimos.
+                        </>
+                      )
+                    ) : (
+                      bannerConfig?.desktop?.customTextEn || (
+                        <>
+                          Buy, sell and charter boats, yachts,<br />
+                          gear & marine services across the United Kingdom.
+                        </>
+                      )
+                    )}
+                  </p>
+                </div>
+              </motion.div>
+            )}
           </div>
         </section>
 
@@ -1778,27 +1804,53 @@ const Home = () => {
             </motion.div>
 
             {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Lado Direito) */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-3 sm:pt-6 w-full flex justify-end"
-            >
-              <div className="inline-flex items-center bg-slate-950/80 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3.5 sm:px-6 py-2.5 xs:py-3 sm:py-4 shadow-2xl max-w-full text-right">
-                <p className="text-[9.5px] xs:text-[11px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-relaxed text-right drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                  {country === 'Portugal' ? (
-                    <>
-                      Compre, venda e alugue barcos, iates,<br />
-                      equipamentos e serviços marítimos.
-                    </>
-                  ) : (
-                    <>
-                      Buy, sell and charter boats, yachts,<br />
-                      gear & marine services across the United Kingdom.
-                    </>
-                  )}
-                </p>
-              </div>
-            </motion.div>
+            {bannerConfig?.enabled !== false && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-auto pt-3 sm:pt-6 w-full flex justify-end"
+              >
+                <div 
+                  className="inline-flex items-center border border-white/15 shadow-2xl max-w-full text-right"
+                  style={{
+                    backgroundColor: bannerConfig?.desktop?.bgColor 
+                      ? `${bannerConfig.desktop.bgColor}${Math.round(((bannerConfig.desktop.bgOpacity ?? 80) / 100) * 255).toString(16).padStart(2, '0')}`
+                      : 'rgba(15, 23, 42, 0.8)',
+                    backdropFilter: `blur(${bannerConfig?.desktop?.backdropBlur ?? 12}px)`,
+                    borderRadius: `${bannerConfig?.desktop?.borderRadius ?? 16}px`,
+                    paddingTop: `${bannerConfig?.desktop?.paddingVertical ?? 12}px`,
+                    paddingBottom: `${bannerConfig?.desktop?.paddingVertical ?? 12}px`,
+                    paddingLeft: `${bannerConfig?.desktop?.paddingHorizontal ?? 20}px`,
+                    paddingRight: `${bannerConfig?.desktop?.paddingHorizontal ?? 20}px`,
+                  }}
+                >
+                  <p 
+                    className="font-medium italic tracking-wide leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+                    style={{
+                      color: bannerConfig?.desktop?.textColor || '#ffffff',
+                      fontSize: bannerConfig?.desktop?.fontSize ? `${bannerConfig.desktop.fontSize}px` : undefined,
+                      textAlign: bannerConfig?.desktop?.textAlign || 'right',
+                    }}
+                  >
+                    {country === 'Portugal' ? (
+                      bannerConfig?.desktop?.customTextPt || (
+                        <>
+                          Compre, venda e alugue barcos, iates,<br />
+                          equipamentos e serviços marítimos.
+                        </>
+                      )
+                    ) : (
+                      bannerConfig?.desktop?.customTextEn || (
+                        <>
+                          Buy, sell and charter boats, yachts,<br />
+                          gear & marine services across the United Kingdom.
+                        </>
+                      )
+                    )}
+                  </p>
+                </div>
+              </motion.div>
+            )}
           </div>
         </section>
 
