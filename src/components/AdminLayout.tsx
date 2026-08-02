@@ -156,7 +156,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         { icon: MessageSquare, label: 'Suggestions', path: '/admin/suggestions' },
         { icon: Camera, label: 'Marine Gallery', path: '/admin/fotos' },
         { icon: Settings, label: 'Settings / Definições', path: '/admin/settings' },
-        { icon: Sliders, label: 'Editor do Banner', path: '/admin/banner-editor' },
         { icon: BookOpen, label: 'Technical Manual', path: '/admin/manual-tecnico' },
       ]
     }

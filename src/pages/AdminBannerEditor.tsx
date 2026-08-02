@@ -15,10 +15,12 @@ import {
   Palette, 
   Move, 
   Eye,
-  Info
+  Info,
+  ArrowUpDown
 } from 'lucide-react';
 import { BannerConfig, DEFAULT_BANNER_CONFIG, BannerDeviceConfig } from '../types';
-import londonAerial from '../assets/images/london_aerial_1780755464204.png';
+
+const boatBannerBg = "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=1600&q=80";
 
 export default function AdminBannerEditor() {
   const { bannerConfig: initialBannerConfig } = useSettings();
@@ -47,6 +49,8 @@ export default function AdminBannerEditor() {
   }, [initialBannerConfig]);
 
   const currentDeviceConfig = config[activeTab];
+
+  const getPosY = (val?: number) => (val === 90 ? 0 : (val ?? 0));
 
   const updateDeviceConfig = (key: keyof BannerDeviceConfig, value: any) => {
     setConfig(prev => ({
@@ -194,7 +198,7 @@ export default function AdminBannerEditor() {
           >
             {/* Background Image */}
             <img 
-              src={londonAerial} 
+              src={boatBannerBg} 
               alt="Banner Preview" 
               className="w-full h-full object-cover absolute inset-0"
             />
@@ -213,7 +217,16 @@ export default function AdminBannerEditor() {
 
               {/* Dynamic Subtitle Overlay Box */}
               {config.enabled && (
-                <div className="mt-auto pt-6 w-full flex justify-end">
+                <div 
+                  className={`mt-auto pt-6 w-full flex ${
+                    currentDeviceConfig.textAlign === 'left' ? 'justify-start' : 
+                    currentDeviceConfig.textAlign === 'center' ? 'justify-center' : 'justify-end'
+                  }`}
+                  style={{
+                    transform: `translateY(${-1 * getPosY(currentDeviceConfig.posY)}px)`,
+                    transition: 'transform 0.15s ease-out'
+                  }}
+                >
                   <div 
                     className="inline-flex items-center shadow-2xl max-w-full transition-all"
                     style={{
@@ -365,6 +378,32 @@ export default function AdminBannerEditor() {
                 onChange={(e) => updateDeviceConfig('backdropBlur', Number(e.target.value))}
                 className="w-full accent-sky-600 cursor-pointer"
               />
+            </div>
+
+            {/* Posição Vertical (Cima / Baixo) */}
+            <div className="sm:col-span-2 bg-sky-50/60 dark:bg-sky-950/40 p-3.5 rounded-2xl border border-sky-100 dark:border-sky-900/60 space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
+                <span className="flex items-center gap-1.5">
+                  <ArrowUpDown size={15} className="text-sky-600 dark:text-sky-400" />
+                  Posição Vertical da Caixa (Cima / Baixo)
+                </span>
+                <span className="px-2 py-0.5 bg-sky-100 dark:bg-sky-900/80 text-sky-700 dark:text-sky-300 rounded-md font-mono text-[11px]">
+                  {getPosY(currentDeviceConfig.posY)}px
+                </span>
+              </div>
+              <input 
+                type="range"
+                min="-80"
+                max="140"
+                value={getPosY(currentDeviceConfig.posY)}
+                onChange={(e) => updateDeviceConfig('posY', Number(e.target.value))}
+                className="w-full accent-sky-600 cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 font-medium pt-0.5">
+                <span>⬇️ Mais para Baixo (-80px)</span>
+                <span>Padrão (0px)</span>
+                <span>⬆️ Mais para Cima (+140px)</span>
+              </div>
             </div>
 
             {/* Tamanho da Fonte */}

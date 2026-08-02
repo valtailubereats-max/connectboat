@@ -1447,7 +1447,14 @@ const Home = () => {
               <motion.div 
                 initial={{ opacity: 0, y: 10 }} 
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-auto pt-3 sm:pt-6 w-full flex justify-end"
+                className={`mt-auto pt-3 sm:pt-6 w-full flex ${
+                  bannerConfig?.desktop?.textAlign === 'left' ? 'justify-start' : 
+                  bannerConfig?.desktop?.textAlign === 'center' ? 'justify-center' : 'justify-end'
+                }`}
+                style={{
+                  transform: `translateY(${-1 * ((bannerConfig?.desktop?.posY === 90 ? 0 : bannerConfig?.desktop?.posY) ?? 0)}px)`,
+                  transition: 'transform 0.2s ease-out'
+                }}
               >
                 <div 
                   className="inline-flex items-center border border-white/15 shadow-2xl max-w-full text-right"
@@ -1808,39 +1815,46 @@ const Home = () => {
               <motion.div 
                 initial={{ opacity: 0, y: 10 }} 
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-auto pt-3 sm:pt-6 w-full flex justify-end"
+                className={`mt-auto pt-3 sm:pt-6 w-full flex ${
+                  bannerConfig?.mobile?.textAlign === 'left' ? 'justify-start' : 
+                  bannerConfig?.mobile?.textAlign === 'center' ? 'justify-center' : 'justify-end'
+                }`}
+                style={{
+                  transform: `translateY(${-1 * ((bannerConfig?.mobile?.posY === 90 ? 0 : bannerConfig?.mobile?.posY) ?? 0)}px)`,
+                  transition: 'transform 0.2s ease-out'
+                }}
               >
                 <div 
                   className="inline-flex items-center border border-white/15 shadow-2xl max-w-full text-right"
                   style={{
-                    backgroundColor: bannerConfig?.desktop?.bgColor 
-                      ? `${bannerConfig.desktop.bgColor}${Math.round(((bannerConfig.desktop.bgOpacity ?? 80) / 100) * 255).toString(16).padStart(2, '0')}`
+                    backgroundColor: bannerConfig?.mobile?.bgColor 
+                      ? `${bannerConfig.mobile.bgColor}${Math.round(((bannerConfig.mobile.bgOpacity ?? 80) / 100) * 255).toString(16).padStart(2, '0')}`
                       : 'rgba(15, 23, 42, 0.8)',
-                    backdropFilter: `blur(${bannerConfig?.desktop?.backdropBlur ?? 12}px)`,
-                    borderRadius: `${bannerConfig?.desktop?.borderRadius ?? 16}px`,
-                    paddingTop: `${bannerConfig?.desktop?.paddingVertical ?? 12}px`,
-                    paddingBottom: `${bannerConfig?.desktop?.paddingVertical ?? 12}px`,
-                    paddingLeft: `${bannerConfig?.desktop?.paddingHorizontal ?? 20}px`,
-                    paddingRight: `${bannerConfig?.desktop?.paddingHorizontal ?? 20}px`,
+                    backdropFilter: `blur(${bannerConfig?.mobile?.backdropBlur ?? 12}px)`,
+                    borderRadius: `${bannerConfig?.mobile?.borderRadius ?? 12}px`,
+                    paddingTop: `${bannerConfig?.mobile?.paddingVertical ?? 10}px`,
+                    paddingBottom: `${bannerConfig?.mobile?.paddingVertical ?? 10}px`,
+                    paddingLeft: `${bannerConfig?.mobile?.paddingHorizontal ?? 14}px`,
+                    paddingRight: `${bannerConfig?.mobile?.paddingHorizontal ?? 14}px`,
                   }}
                 >
                   <p 
                     className="font-medium italic tracking-wide leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
                     style={{
-                      color: bannerConfig?.desktop?.textColor || '#ffffff',
-                      fontSize: bannerConfig?.desktop?.fontSize ? `${bannerConfig.desktop.fontSize}px` : undefined,
-                      textAlign: bannerConfig?.desktop?.textAlign || 'right',
+                      color: bannerConfig?.mobile?.textColor || '#ffffff',
+                      fontSize: bannerConfig?.mobile?.fontSize ? `${bannerConfig.mobile.fontSize}px` : undefined,
+                      textAlign: bannerConfig?.mobile?.textAlign || 'right',
                     }}
                   >
                     {country === 'Portugal' ? (
-                      bannerConfig?.desktop?.customTextPt || (
+                      bannerConfig?.mobile?.customTextPt || (
                         <>
                           Compre, venda e alugue barcos, iates,<br />
                           equipamentos e serviços marítimos.
                         </>
                       )
                     ) : (
-                      bannerConfig?.desktop?.customTextEn || (
+                      bannerConfig?.mobile?.customTextEn || (
                         <>
                           Buy, sell and charter boats, yachts,<br />
                           gear & marine services across the United Kingdom.
