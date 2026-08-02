@@ -260,8 +260,10 @@ export default function Links() {
   // Sync with global user-selected country
   useEffect(() => {
     const saved = localStorage.getItem('selectedCountry') as 'Portugal' | 'Reino Unido' | null;
-    if (saved === 'Portugal' || saved === 'Reino Unido') {
+    if (saved === 'Reino Unido') {
       setActiveCountry(saved);
+    } else {
+      setActiveCountry('Reino Unido');
     }
   }, []);
 

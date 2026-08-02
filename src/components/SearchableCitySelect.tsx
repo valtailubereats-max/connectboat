@@ -17,7 +17,7 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
   onChange,
   placeholder = "Type or select your location",
   required = false,
-  country = 'Portugal',
+  country = 'Reino Unido',
   disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);

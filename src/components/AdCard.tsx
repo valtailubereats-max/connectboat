@@ -269,7 +269,7 @@ const AdCard: React.FC<AdCardProps> = ({
         uid: ad.sellerId,
         displayName: hasSourceUrl ? 'Partner' : (ad.sellerName || 'Seller'),
         city: ad.city || '',
-        country: ad.country || 'Portugal',
+        country: ad.country || 'Reino Unido',
         ratingAverage,
         ratingCount
       };

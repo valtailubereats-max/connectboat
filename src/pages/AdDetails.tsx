@@ -267,7 +267,7 @@ const AdDetails = () => {
         uid: sellerId,
         displayName: (ad && ad.sourceUrl && /^https?:\/\//i.test(ad.sourceUrl)) ? 'Parceiro' : (ad?.sellerName || 'Vendedor'),
         city: ad?.city || '',
-        country: ad?.country || 'Portugal',
+        country: ad?.country || 'Reino Unido',
         ratingAverage,
         ratingCount
       };
@@ -677,7 +677,7 @@ const AdDetails = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {ad && (
         <Helmet>
-          <title>{ad.title} - {ad.city || 'Portugal/UK'} | ConnectBoat</title>
+          <title>{ad.title} - {ad.city || 'United Kingdom'} | ConnectBoat</title>
           <meta name="description" content={normalizedDescription.substring(0, 160)} />
           <meta name="robots" content="index, follow" />
           <link rel="canonical" href={`${window.location.origin}${getAdUrl(ad)}`} />

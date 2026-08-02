@@ -461,8 +461,8 @@ const AdminUsers = () => {
     { id: 'regular', label: 'Utilizadores Comuns', count: countStats.regular },
     { id: 'moderator', label: 'Moderadores', count: countStats.moderators },
     { id: 'admin', label: 'Admins', count: countStats.admins },
+    { id: 'uk', label: 'United Kingdom 🇬🇧', count: countStats.uk },
     { id: 'portugal', label: 'Portugal 🇵🇹', count: countStats.portugal },
-    { id: 'uk', label: 'Reino Unido 🇬🇧', count: countStats.uk },
     { id: 'showcase_active', label: 'Com Vitrine Ativa 💚', count: countStats.showcaseActive },
     { id: 'showcase_inactive', label: 'Sem Vitrine Ativa', count: countStats.showcaseInactive },
   ];

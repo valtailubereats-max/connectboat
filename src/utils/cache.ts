@@ -14,31 +14,31 @@ const cache: AdCache = {
   lastFeaturedFetchTime: {},
 };
 
-export function getCachedAds(country: string = 'Portugal'): Ad[] {
+export function getCachedAds(country: string = 'Reino Unido'): Ad[] {
   return cache.ads[country] || [];
 }
 
-export function setCachedAds(ads: Ad[], country: string = 'Portugal') {
+export function setCachedAds(ads: Ad[], country: string = 'Reino Unido') {
   cache.ads[country] = ads;
   cache.lastFetchTime[country] = Date.now();
   console.log(`[Cache] Gravou cache de ads (${country}) às: ${new Date(cache.lastFetchTime[country]).toISOString()} com ${ads.length} anúncios.`);
 }
 
-export function getLastFetchTime(country: string = 'Portugal'): number {
+export function getLastFetchTime(country: string = 'Reino Unido'): number {
   return cache.lastFetchTime[country] || 0;
 }
 
-export function getCachedFeaturedAds(country: string = 'Portugal'): Ad[] {
+export function getCachedFeaturedAds(country: string = 'Reino Unido'): Ad[] {
   return cache.featuredAds[country] || [];
 }
 
-export function setCachedFeaturedAds(featuredAds: Ad[], country: string = 'Portugal') {
+export function setCachedFeaturedAds(featuredAds: Ad[], country: string = 'Reino Unido') {
   cache.featuredAds[country] = featuredAds;
   cache.lastFeaturedFetchTime[country] = Date.now();
   console.log(`[Cache] Gravou cache de ads destacados (${country}) às: ${new Date(cache.lastFeaturedFetchTime[country]).toISOString()} com ${featuredAds.length} anúncios.`);
 }
 
-export function getLastFeaturedFetchTime(country: string = 'Portugal'): number {
+export function getLastFeaturedFetchTime(country: string = 'Reino Unido'): number {
   return cache.lastFeaturedFetchTime[country] || 0;
 }
 

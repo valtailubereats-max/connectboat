@@ -96,8 +96,8 @@ const CreateAd = () => {
     priceRequiresReview: false,
     locationRequiresReview: false,
     images: [] as string[],
-    city: prefill?.city || PORTUGAL_CITIES[0],
-    country: (prefill?.country || 'Portugal') as 'Portugal' | 'Reino Unido' | 'Ambos',
+    city: prefill?.city || UK_CITIES[0],
+    country: (prefill?.country || 'Reino Unido') as 'Portugal' | 'Reino Unido' | 'Ambos',
     category: urlCategory || prefill?.category || categories[0] || 'Outros',
     plan: 'free' as 'free' | 'local' | 'national' | 'highlight',
     duration: 30, // Default for free
@@ -466,11 +466,11 @@ const CreateAd = () => {
     if (!id && !prefill && !authLoading && !prefilledFromProfileRef.current) {
       prefilledFromProfileRef.current = true;
       const saved = localStorage.getItem('selectedCountry') as 'Portugal' | 'Reino Unido' | null;
-      let targetCountry: 'Portugal' | 'Reino Unido' = 'Portugal';
+      let targetCountry: 'Portugal' | 'Reino Unido' = 'Reino Unido';
       
-      if (profile?.country === 'Portugal' || profile?.country === 'Reino Unido') {
+      if (profile?.country === 'Reino Unido' || profile?.country === 'Portugal') {
         targetCountry = profile.country;
-      } else if (saved === 'Portugal' || saved === 'Reino Unido') {
+      } else if (saved === 'Reino Unido' || saved === 'Portugal') {
         targetCountry = saved;
       }
       
@@ -506,7 +506,7 @@ const CreateAd = () => {
           price: data.price !== undefined && data.price !== null && data.price !== 0 ? formatPrice(data.price) : (data.price === 0 ? '0' : ''),
           images: fetchedImages.length > 0 ? fetchedImages : (data.images || []),
           city: data.city,
-          country: data.country || 'Portugal',
+          country: data.country || 'Reino Unido',
           category: data.category,
           plan: data.plan || 'free',
           duration: 30, // Duration is only used for calculation on submit
@@ -2425,8 +2425,8 @@ const CreateAd = () => {
                   onChange={(e) => handleCountryChange(e.target.value as any)}
                   className="w-full px-4 py-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl font-bold text-emerald-800 outline-none cursor-pointer appearance-none shadow-sm hover:border-emerald-200 transition-all font-sans disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <option value="Portugal" className="font-bold text-slate-900 bg-white">🇵🇹 Portugal</option>
                   <option value="Reino Unido" className="font-bold text-slate-900 bg-white">🇬🇧 United Kingdom</option>
+                  <option value="Portugal" className="font-bold text-slate-900 bg-white">🇵🇹 Portugal</option>
                   {isStaff && (
                     <option value="Ambos" className="font-bold text-slate-900 bg-white">🌐 Both Countries</option>
                   )}

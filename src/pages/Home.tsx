@@ -256,45 +256,18 @@ const Home = () => {
   }, [ads]);
   
   const [country, setCountry] = useState<'Portugal' | 'Reino Unido'>(() => {
-    // 1. Check URL parameters first for initial load precision
+    // 1. Check URL parameters first for explicit country selection
     try {
       const params = new URLSearchParams(window.location.search);
       const urlCountry = params.get('country') as 'Portugal' | 'Reino Unido' | null;
-      if (urlCountry === 'Portugal' || urlCountry === 'Reino Unido') {
+      if (urlCountry === 'Reino Unido' || urlCountry === 'Portugal') {
         return urlCountry;
       }
     } catch (e) {
       console.warn("Could not determine country from URL parameters:", e);
     }
-
-    // 2. Check localStorage second
-    const saved = localStorage.getItem('selectedCountry') as 'Portugal' | 'Reino Unido' | null;
-    if (saved === 'Portugal' || saved === 'Reino Unido') return saved;
     
-    // 3. Try safe detection based on browser timezone and language
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const lang = navigator.language;
-      if (
-        tz.includes('Lisbon') || 
-        tz.includes('Atlantic/Madeira') || 
-        tz.includes('Atlantic/Azores') || 
-        lang.startsWith('pt')
-      ) {
-        return 'Portugal';
-      }
-      if (
-        tz.includes('London') || 
-        tz.includes('Europe/Belfast') || 
-        lang.startsWith('en-GB')
-      ) {
-        return 'Reino Unido';
-      }
-    } catch (e) {
-      console.warn("Could not determine timezone:", e);
-    }
-    
-    // 4. Fallback per instructions: Reino Unido
+    // Default launch experience is strictly United Kingdom
     return 'Reino Unido';
   });
 
@@ -1407,8 +1380,8 @@ const Home = () => {
           {/* Imagem de Fundo dinâmica */}
           <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
             <img 
-              src={country === 'Portugal' ? lisbonAerial : londonBg} 
-              alt={country} 
+              src={londonBg} 
+              alt="ConnectBoat UK Marine" 
               className="w-full h-full object-cover object-[center_20%] transition-all duration-700 ease-in-out"
               onError={() => {
                 if (londonBg !== londonAerialOriginalStandby) {
@@ -1428,7 +1401,7 @@ const Home = () => {
               className="flex flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 w-full"
             >
               <h1 className="text-lg xs:text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)]">
-                ConnectBoat<span className="text-sky-400 font-light"> Marketplace</span>
+                ConnectBoat
               </h1>
 
               {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
@@ -1441,11 +1414,11 @@ const Home = () => {
                     <span className="text-white font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
                       {totalApprovedCount !== null ? totalApprovedCount : filteredAds.length}
                     </span>
-                    <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Anúncios<br/>Ativos</span>
+                    <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Active<br/>Listings</span>
 
                     {!settings?.showTotalAdsBadge && isModeratorOrAdmin && (
                       <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
-                        🔒 Oculto (Visto por Staff)
+                        🔒 Hidden (Staff view)
                       </span>
                     )}
                   </div>
@@ -1459,7 +1432,7 @@ const Home = () => {
                     <span className="text-amber-300 font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
                       {totalUsersCount}
                     </span>
-                    <span className="text-white/80 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Membros<br/>Mundiais</span>
+                    <span className="text-white/80 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">UK<br/>Members</span>
 
                     {!settings?.showTotalUsersBadge && isModeratorOrAdmin && (
                       <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
@@ -1747,8 +1720,8 @@ const Home = () => {
           {/* Imagem de Fundo dinâmica */}
           <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
             <img 
-              src={country === 'Portugal' ? lisbonAerial : londonBg} 
-              alt={country} 
+              src={londonBg} 
+              alt="ConnectBoat UK Marine" 
               className="w-full h-full object-cover object-[center_20%] transition-all duration-700 ease-in-out"
               onError={() => {
                 if (londonBg !== londonAerialOriginalStandby) {
@@ -1768,7 +1741,7 @@ const Home = () => {
               className="flex flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 w-full"
             >
               <h1 className="text-lg xs:text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)]">
-                ConnectBoat<span className="text-sky-400 font-light"> Marketplace</span>
+                ConnectBoat
               </h1>
 
               {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
@@ -1781,11 +1754,11 @@ const Home = () => {
                     <span className="text-white font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
                       {totalApprovedCount !== null ? totalApprovedCount : filteredAds.length}
                     </span>
-                    <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Anúncios<br/>Ativos</span>
+                    <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Active<br/>Listings</span>
 
                     {!settings?.showTotalAdsBadge && isModeratorOrAdmin && (
                       <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
-                        🔒 Oculto (Visto por Staff)
+                        🔒 Hidden (Staff view)
                       </span>
                     )}
                   </div>
@@ -1799,7 +1772,7 @@ const Home = () => {
                     <span className="text-amber-300 font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
                       {totalUsersCount}
                     </span>
-                    <span className="text-white/80 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Membros<br/>Mundiais</span>
+                    <span className="text-white/80 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">UK<br/>Members</span>
 
                     {!settings?.showTotalUsersBadge && isModeratorOrAdmin && (
                       <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
