@@ -10,7 +10,7 @@ import {
   LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
 import { 
-  Users, ShoppingBag, MousePointer2, Bell, TrendingUp, MapPin, Calendar, Clock, Download,
+  Users, Tag, MousePointer2, Bell, TrendingUp, MapPin, Calendar, Clock, Download,
   ShieldCheck, Briefcase, Store, Megaphone, CheckCircle2, ShieldAlert, Star, Crown
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -612,7 +612,7 @@ const AdminDashboard = () => {
             {/* Total Listings */}
             <div className="p-5 bg-indigo-50/40 border border-indigo-100 rounded-2.5xl flex flex-col justify-between hover:border-indigo-200 transition-all">
               <div className="w-9 h-9 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mb-4">
-                <ShoppingBag size={18} />
+                <Tag size={18} />
               </div>
               <div>
                 <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Total Listings</span>
@@ -749,7 +749,7 @@ const AdminDashboard = () => {
             <MetricCard 
               title="Total Listings" 
               value={latest.ads.total} 
-              icon={<ShoppingBag />} 
+              icon={<Tag />} 
               color="emerald"
               subtitle={`${latest.ads.createdToday} created today`}
             />
@@ -805,7 +805,7 @@ const AdminDashboard = () => {
             </ChartContainer>
 
             {/* Ad Status Distribution */}
-            <ChartContainer title="Listings Status Distribution" icon={<ShoppingBag />}>
+            <ChartContainer title="Listings Status Distribution" icon={<Tag />}>
               <div className="flex flex-col md:flex-row items-center justify-around">
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>

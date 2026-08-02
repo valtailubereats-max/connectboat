@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   MapPin, MessageCircle, Clock, ChevronLeft, ChevronRight, X, Heart, Star, 
-  Trash2, Edit, AlertCircle, ShieldAlert, ShoppingBag, Eye, Award, Calendar, Share2, ExternalLink,
+  Trash2, Edit, AlertCircle, ShieldAlert, Eye, Award, Calendar, Share2, ExternalLink,
   Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag
 } from 'lucide-react';
 import { 
@@ -1297,7 +1297,7 @@ const AdDetails = () => {
                   </div>
                 ) : ad.adStatus === 'sold' || ad.status === 'sold' ? (
                   <div className="flex items-center justify-center gap-2 bg-slate-100 text-slate-500 py-3.5 px-6 rounded-2xl font-black text-sm border border-slate-200">
-                    <ShoppingBag size={20} className="flex-shrink-0 text-slate-400" />
+                    <Tag size={20} className="flex-shrink-0 text-slate-400" />
                     <span className="leading-tight">Listing Sold</span>
                   </div>
                 ) : (
@@ -1832,7 +1832,7 @@ const AdDetails = () => {
             <div className="flex flex-col gap-2 pt-1">
               {ad.adStatus === 'sold' || ad.status === 'sold' ? (
                 <div className="flex items-center justify-center gap-1 bg-slate-100 text-slate-500 py-2.5 px-4 rounded-xl font-black text-xs border border-slate-200">
-                  <ShoppingBag size={14} className="text-slate-400" />
+                  <Tag size={14} className="text-slate-400" />
                   <span>Listing Sold</span>
                 </div>
               ) : (

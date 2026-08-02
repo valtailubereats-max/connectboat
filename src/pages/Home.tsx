@@ -16,7 +16,7 @@ import {
 } from '../utils/cache';
 import AdCard from '../components/AdCard';
 import { 
-  Search, Tag, MapPin, ShoppingBag, ArrowRight, AlertCircle, RefreshCcw, ArrowUp, Store,
+  Search, Tag, MapPin, ArrowRight, AlertCircle, RefreshCcw, ArrowUp, Store,
   SlidersHorizontal, X, Filter, Check, ChevronDown, Anchor, Ship, Fuel, Compass, RotateCcw, ArrowUpDown, Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1580,7 +1580,7 @@ const Home = () => {
               </div>
             ) : filteredAds.length === 0 ? (
               <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
-                <ShoppingBag size={40} className="mx-auto text-slate-200 dark:text-slate-700 mb-3" />
+                <Anchor size={40} className="mx-auto text-slate-200 dark:text-slate-700 mb-3" />
                 <h3 className="text-md font-extrabold text-slate-400">No boating listings found</h3>
               </div>
             ) : (

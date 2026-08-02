@@ -12,7 +12,8 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType, getDocWithCacheFallback } from '../firebase';
 import { sendEmailGeneric } from '../utils/emailService';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, ShieldCheck, Mail, Lock, User as UserIcon, ArrowRight, Github, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, User as UserIcon, ArrowRight, Github, Eye, EyeOff } from 'lucide-react';
+import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
@@ -305,8 +306,8 @@ const Login = () => {
         className="bg-white p-5 sm:p-6 rounded-3xl shadow-2xl border border-slate-100"
       >
         <div className="text-center mb-4">
-          <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white mx-auto mb-2 shadow-lg shadow-indigo-200">
-            <ShoppingBag size={24} />
+          <div className="flex items-center justify-center mx-auto mb-3">
+            <ConnectBoatLogo className="h-11 w-auto" />
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             {mode === 'login' ? 'Welcome back!' : mode === 'register' ? 'Create account' : 'Reset password'}

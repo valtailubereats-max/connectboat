@@ -7,7 +7,7 @@ import { PhotoStoreItem } from '../types';
 import { formatPrice, parsePrice } from '../utils';
 import { 
   Camera, Plus, Edit, Trash2, Check, X, ShieldAlert, 
-  UploadCloud, Loader2, AlertCircle, ShoppingBag, Eye, EyeOff 
+  UploadCloud, Loader2, AlertCircle, Camera as CameraIcon, Eye, EyeOff 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -530,7 +530,7 @@ export default function AdminFotos() {
         {/* Existing Items Catalog List */}
         <div className="bg-white rounded-3xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
-            <ShoppingBag size={20} className="text-indigo-600" />
+            <Camera size={20} className="text-indigo-600" />
             <h3 className="text-lg font-brand font-black text-slate-900">Ficheiro de Fotografias do Mercado Luso</h3>
             <span className="ml-2 bg-slate-100 text-slate-600 text-xs font-extrabold px-2 py-0.5 rounded-full leading-none">
               {items.length}

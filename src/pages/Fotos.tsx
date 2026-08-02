@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db, getDocsWithCacheFallback, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { PhotoStoreItem } from '../types';
-import { Camera, Image as ImageIcon, AlertCircle, ShoppingBag, Loader2 } from 'lucide-react';
+import { Camera, Image as ImageIcon, AlertCircle, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
@@ -84,7 +84,7 @@ export default function Fotos() {
             className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700/50 max-w-sm w-full text-center sm:text-left"
           >
             <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 shrink-0">
-              <ShoppingBag size={20} />
+              <Camera size={20} />
             </div>
             <div>
               <p className="font-black text-sm">Online purchasing coming soon.</p>

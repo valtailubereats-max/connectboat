@@ -9,7 +9,7 @@ import { clearHomeCache } from '../utils/cache';
 import { Ad, UserProfile, COUNTRY_CODES, CITIES } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, MessageSquare, MapPin, ShoppingBag, Star, Plus, X, CreditCard } from 'lucide-react';
+import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, MessageSquare, MapPin, Tag, Star, Plus, X, CreditCard } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 import { formatPrice, parsePrice } from '../utils';
@@ -1484,7 +1484,7 @@ const Profile = () => {
                       )}
                       {(ad.status === 'sold' || ad.adStatus === 'sold') && ad.category !== 'Imigração' && ad.price !== undefined && Number(ad.price) > 0 && (
                         <span className="flex items-center gap-1 text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
-                          <ShoppingBag size={14} /> Sold
+                          <Tag size={14} /> Sold
                         </span>
                       )}
                     </div>
@@ -1510,7 +1510,7 @@ const Profile = () => {
                           }}
                           className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-all border border-emerald-100 cursor-pointer"
                         >
-                          <ShoppingBag size={14} /> Mark as Sold (with review)
+                          <Tag size={14} /> Mark as Sold (with review)
                         </button>
                         <button
                           onClick={() => handleMarkAsSoldOutside(ad.id)}

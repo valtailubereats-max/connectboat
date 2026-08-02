@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
-import { LogOut, PlusCircle, Plus, User as UserIcon, ShieldCheck, ShoppingBag, Menu, X, Share2, Bell, AlertTriangle, QrCode, Copy, Check, Mail } from 'lucide-react';
+import { LogOut, PlusCircle, Plus, User as UserIcon, ShieldCheck, Menu, X, Share2, Bell, AlertTriangle, QrCode, Copy, Check, Mail } from 'lucide-react';
+import { ConnectBoatLogo } from './components/ConnectBoatLogo';
 import { QRCodeSVG } from 'qrcode.react';
 import { auth, db, getDocsWithCacheFallback } from './firebase';
 import { signOut } from 'firebase/auth';
@@ -293,10 +294,8 @@ const Navbar = () => {
     <nav ref={navRef} className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
-          <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2.5 sm:gap-3 group">
-            <div className="w-[42px] h-[42px] bg-gradient-to-br from-sky-500 to-blue-700 rounded-xl flex items-center justify-center text-white group-hover:from-sky-400 group-hover:to-blue-600 transition-all shadow-md shadow-sky-500/20 shrink-0">
-              <ShoppingBag size={23} />
-            </div>
+          <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2 sm:gap-3 group">
+            <ConnectBoatLogo className="h-9 sm:h-10 w-auto shrink-0" />
             <span className="text-[23px] sm:text-[28px] font-black tracking-tight leading-none text-white select-none">
               ConnectBoat
             </span>
@@ -743,8 +742,8 @@ const Navbar = () => {
                     includeMargin={false}
                   />
                   {/* Central boat logo */}
-                  <div className="absolute w-10 h-10 bg-sky-600 rounded-xl border-4 border-white flex items-center justify-center text-white shadow-md">
-                    <ShoppingBag size={18} className="stroke-[2.5]" />
+                  <div className="absolute w-10 h-10 bg-slate-900 rounded-xl border-4 border-white flex items-center justify-center p-1.5 shadow-md">
+                    <ConnectBoatLogo className="w-full h-auto" />
                   </div>
                 </div>
 
@@ -922,8 +921,9 @@ export default function App() {
                   {/* Coluna 1: ConnectBoat Brand */}
                   <div className="md:col-span-4 space-y-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                        ⛵ ConnectBoat 🇬🇧
+                      <ConnectBoatLogo className="h-7 w-auto" />
+                      <span className="text-xl font-black text-slate-900 tracking-tight">
+                        ConnectBoat 🇬🇧
                       </span>
                     </div>
                     <div className="space-y-2">

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Ad } from '../types';
-import { MapPin, MessageCircle, Clock, X, User, Phone, AlertTriangle, Heart, Flag, Search, ChevronLeft, ChevronRight, Tag, Star, ShoppingBag, Mail, Globe, Share2, ExternalLink, Anchor, Gauge, Ruler, Bed, Calendar } from 'lucide-react';
+import { MapPin, MessageCircle, Clock, X, User, Phone, AlertTriangle, Heart, Flag, Search, ChevronLeft, ChevronRight, Tag, Star, Mail, Globe, Share2, ExternalLink, Anchor, Gauge, Ruler, Bed, Calendar } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
@@ -590,7 +590,7 @@ const AdCard: React.FC<AdCardProps> = ({
           {(ad.status === 'sold' || ad.adStatus === 'sold') && (
             <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-900/60 z-30 flex items-center justify-center backdrop-blur-[1.5px] pointer-events-none">
               <span className="bg-rose-600 text-white text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-lg border border-rose-500 flex items-center gap-1.5 animate-scale-in">
-                <ShoppingBag size={12} className="fill-current text-white shrink-0" /> SOLD
+                <Tag size={12} className="fill-current text-white shrink-0" /> SOLD
               </span>
             </div>
           )}
@@ -765,7 +765,7 @@ const AdCard: React.FC<AdCardProps> = ({
                     </div>
                     {(ad.status === 'sold' || ad.adStatus === 'sold') && ad.price !== undefined && Number(ad.price) > 0 && (
                       <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-tight flex items-center justify-center gap-1 mt-1">
-                        <ShoppingBag size={10} /> Sold
+                        <Tag size={10} /> Sold
                       </span>
                     )}
                   </div>
@@ -978,7 +978,7 @@ const AdCard: React.FC<AdCardProps> = ({
                       <div className="flex flex-col gap-3">
                         {ad.status === 'sold' || ad.adStatus === 'sold' ? (
                           <div className="flex items-center justify-center gap-2 bg-slate-100 text-slate-500 py-3.5 px-4 rounded-xl font-bold text-sm border border-slate-200">
-                            <ShoppingBag size={18} className="flex-shrink-0 text-slate-400" />
+                            <Tag size={18} className="flex-shrink-0 text-slate-400" />
                             <span className="leading-tight">Listing Sold</span>
                           </div>
                         ) : (

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { ConnectBoatLogo } from './ConnectBoatLogo';
 import { 
   LayoutDashboard, 
   Upload, 
-  ShoppingBag, 
+  Tag,
+  Anchor, 
   Users, 
   Settings, 
   Menu, 
@@ -92,7 +94,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { icon: Upload, label: 'Bulk Import Listings', path: '/admin/bulk-import' },
     { icon: Sparkles, label: 'Demo Content', path: '/admin/demo-content' },
     { icon: Upload, label: 'Import via AI', path: '/admin/import' },
-    { icon: ShoppingBag, label: 'Manage Listings', path: '/admin/ads' },
+    { icon: Tag, label: 'Manage Listings', path: '/admin/ads' },
     { icon: Users, label: 'Users', path: '/admin/users' },
     { icon: UserCheck, label: 'Claims', path: '/admin/claims' },
     { icon: Megaphone, label: 'Marketing', path: '/admin/marketing' },
@@ -125,7 +127,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     {
       title: 'Operations',
       items: [
-        { icon: ShoppingBag, label: 'Manage Listings', path: '/admin/ads' },
+        { icon: Tag, label: 'Manage Listings', path: '/admin/ads' },
         { icon: Users, label: 'Users', path: '/admin/users' },
         { icon: UserCheck, label: 'Claims', path: '/admin/claims' },
       ]
@@ -204,9 +206,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const SidebarContent = () => (
     <div className="flex flex-col h-full py-6 px-4">
       <div className="flex items-center gap-3 px-2 mb-4 shrink-0">
-        <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-          <ShoppingBag size={24} />
-        </div>
+        <ConnectBoatLogo className="h-9 w-auto shrink-0" />
         <div>
           <h2 className="text-lg font-black text-slate-900 leading-none">Admin</h2>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ConnectBoat</p>
@@ -418,9 +418,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             <Menu size={24} />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
-              <ShoppingBag size={18} />
-            </div>
+            <ConnectBoatLogo className="h-7 w-auto shrink-0" />
             <span className="font-black text-slate-900">Admin</span>
           </div>
           <div className="w-10 h-10" /> {/* Spacer for centering */}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { ShoppingBag, ArrowRight, Sparkles, Shield, Compass, Heart } from 'lucide-react';
+import { ArrowRight, Sparkles, Shield, Compass, Heart } from 'lucide-react';
+import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -102,9 +103,7 @@ const Convite: React.FC = () => {
 
         {/* LOGOTIPO */}
         <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 bg-[#046a38] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-100">
-            <ShoppingBag size={34} />
-          </div>
+          <ConnectBoatLogo className="h-14 w-auto" />
           <div className="flex flex-col">
             <h1 className="text-3xl font-brand font-bold tracking-tight text-slate-900">
               <span className="text-sky-600">Connect</span>
