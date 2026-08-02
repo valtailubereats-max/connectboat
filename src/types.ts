@@ -92,12 +92,12 @@ export interface BannerConfig {
 }
 
 export const DEFAULT_BANNER_DEVICE_DESKTOP: BannerDeviceConfig = {
-  posX: 100,
-  posY: 100,
-  width: 100,
+  posX: 96,
+  posY: 90,
+  width: 55,
   height: 0,
-  paddingVertical: 16,
-  paddingHorizontal: 24,
+  paddingVertical: 14,
+  paddingHorizontal: 22,
   borderRadius: 16,
   bgOpacity: 75,
   bgColor: '#0f172a',
@@ -110,16 +110,16 @@ export const DEFAULT_BANNER_DEVICE_DESKTOP: BannerDeviceConfig = {
 };
 
 export const DEFAULT_BANNER_DEVICE_MOBILE: BannerDeviceConfig = {
-  posX: 100,
-  posY: 100,
-  width: 100,
+  posX: 95,
+  posY: 90,
+  width: 88,
   height: 0,
-  paddingVertical: 12,
+  paddingVertical: 10,
   paddingHorizontal: 14,
   borderRadius: 12,
   bgOpacity: 75,
   bgColor: '#0f172a',
-  fontSize: 10.5,
+  fontSize: 11,
   textAlign: 'right',
   textColor: '#ffffff',
   backdropBlur: 12,

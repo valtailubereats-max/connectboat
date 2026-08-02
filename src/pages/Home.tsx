@@ -1658,16 +1658,16 @@ const Home = () => {
                 )}
               </div>
             </motion.div>
-
-            {/* Base do Banner: Subtítulo Dinâmico do Banner */}
-            <BannerTextBox 
-              country={country} 
-              isMobileScreen={isMobileScreen} 
-              bannerConfig={bannerConfig} 
-              isAdmin={isAdmin} 
-              onOpenEditor={() => setShowBannerEditorModal(true)} 
-            />
           </div>
+
+          {/* Base do Banner: Subtítulo Dinâmico do Banner */}
+          <BannerTextBox 
+            country={country} 
+            isMobileScreen={isMobileScreen} 
+            bannerConfig={bannerConfig} 
+            isAdmin={isAdmin} 
+            onOpenEditor={() => setShowBannerEditorModal(true)} 
+          />
         </section>
 
         {/* 3. ✨ ANÚNCIOS EM DESTAQUE */}
@@ -2079,16 +2079,16 @@ const Home = () => {
                 )}
               </div>
             </motion.div>
-
-            {/* Base do Banner: Subtítulo Dinâmico do Banner */}
-            <BannerTextBox 
-              country={country} 
-              isMobileScreen={isMobileScreen} 
-              bannerConfig={bannerConfig} 
-              isAdmin={isAdmin} 
-              onOpenEditor={() => setShowBannerEditorModal(true)} 
-            />
           </div>
+
+          {/* Base do Banner: Subtítulo Dinâmico do Banner */}
+          <BannerTextBox 
+            country={country} 
+            isMobileScreen={isMobileScreen} 
+            bannerConfig={bannerConfig} 
+            isAdmin={isAdmin} 
+            onOpenEditor={() => setShowBannerEditorModal(true)} 
+          />
         </section>
 
         {/* 4. ANÚNCIOS EM DESTAQUE (Carrossel Compacto) */}

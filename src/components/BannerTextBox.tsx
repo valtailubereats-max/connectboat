@@ -18,9 +18,17 @@ export const BannerTextBox: React.FC<BannerTextBoxProps> = ({
   isAdmin,
   onOpenEditor
 }) => {
-  const activeDeviceConfig: BannerDeviceConfig = isMobileScreen
-    ? (bannerConfig?.mobile || DEFAULT_BANNER_CONFIG.mobile)
-    : (bannerConfig?.desktop || DEFAULT_BANNER_CONFIG.desktop);
+  const defaultConfig = isMobileScreen ? DEFAULT_BANNER_CONFIG.mobile : DEFAULT_BANNER_CONFIG.desktop;
+  const rawDeviceConfig = isMobileScreen ? bannerConfig?.mobile : bannerConfig?.desktop;
+
+  const activeDeviceConfig: BannerDeviceConfig = {
+    ...defaultConfig,
+    ...(rawDeviceConfig || {})
+  };
+
+  const posX = activeDeviceConfig.posX ?? defaultConfig.posX;
+  const posY = activeDeviceConfig.posY ?? defaultConfig.posY;
+  const width = activeDeviceConfig.width ?? defaultConfig.width;
 
   const bgOpacityVal = (activeDeviceConfig.bgOpacity ?? 75) / 100;
   let bgStyle = activeDeviceConfig.bgColor || '#0f172a';
@@ -33,26 +41,27 @@ export const BannerTextBox: React.FC<BannerTextBoxProps> = ({
 
   const boxStyle: React.CSSProperties = {
     position: 'absolute',
-    left: `${activeDeviceConfig.posX}%`,
-    top: `${activeDeviceConfig.posY}%`,
-    transform: `translate(-${activeDeviceConfig.posX}%, -${activeDeviceConfig.posY}%)`,
-    width: `${activeDeviceConfig.width}%`,
+    left: `${posX}%`,
+    top: `${posY}%`,
+    transform: `translate(-${posX}%, -${posY}%)`,
+    width: `${width}%`,
     maxWidth: '100%',
     height: activeDeviceConfig.height && activeDeviceConfig.height > 0 ? `${activeDeviceConfig.height}px` : 'auto',
-    paddingTop: `${activeDeviceConfig.paddingVertical}px`,
-    paddingBottom: `${activeDeviceConfig.paddingVertical}px`,
-    paddingLeft: `${activeDeviceConfig.paddingHorizontal}px`,
-    paddingRight: `${activeDeviceConfig.paddingHorizontal}px`,
-    borderRadius: `${activeDeviceConfig.borderRadius}px`,
+    paddingTop: `${activeDeviceConfig.paddingVertical ?? 14}px`,
+    paddingBottom: `${activeDeviceConfig.paddingVertical ?? 14}px`,
+    paddingLeft: `${activeDeviceConfig.paddingHorizontal ?? 22}px`,
+    paddingRight: `${activeDeviceConfig.paddingHorizontal ?? 22}px`,
+    borderRadius: `${activeDeviceConfig.borderRadius ?? 16}px`,
     backgroundColor: bgStyle,
     backdropFilter: `blur(${activeDeviceConfig.backdropBlur ?? 12}px)`,
     WebkitBackdropFilter: `blur(${activeDeviceConfig.backdropBlur ?? 12}px)`,
-    fontSize: `${activeDeviceConfig.fontSize}px`,
-    textAlign: activeDeviceConfig.textAlign,
+    fontSize: `${activeDeviceConfig.fontSize ?? 15}px`,
+    textAlign: activeDeviceConfig.textAlign || 'right',
     color: activeDeviceConfig.textColor || '#ffffff',
     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
     border: '1px solid rgba(255, 255, 255, 0.15)',
-    zIndex: 25
+    zIndex: 25,
+    pointerEvents: 'auto'
   };
 
   return (
