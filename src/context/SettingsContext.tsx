@@ -60,7 +60,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               premium: data.maxImages?.premium || 5
             },
             maxShowcaseProducts: data.maxShowcaseProducts || 6,
-            showTotalAdsBadge: data.showTotalAdsBadge !== undefined ? data.showTotalAdsBadge : true,
+            showTotalAdsBadge: data.showTotalAdsBadge !== undefined ? data.showTotalAdsBadge : false,
             showTotalUsersBadge: data.showTotalUsersBadge !== undefined ? data.showTotalUsersBadge : false,
             compactCardMode: data.compactCardMode !== undefined ? data.compactCardMode : false,
             enableFotosFeature: data.enableFotosFeature !== undefined ? data.enableFotosFeature : false,
@@ -77,7 +77,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             expirationAction: 'archive',
             warningDays: 3,
             categories: CATEGORIES,
-            showTotalAdsBadge: true,
+            showTotalAdsBadge: false,
             showTotalUsersBadge: false,
             compactCardMode: false,
             enableFotosFeature: false,

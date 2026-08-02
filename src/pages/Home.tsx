@@ -1406,8 +1406,8 @@ const Home = () => {
 
               {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
               <div className="flex flex-row items-center gap-1.5 sm:gap-3 shrink-0">
-                {/* Contador de Anúncios Slim */}
-                {(settings?.showTotalAdsBadge === true || isModeratorOrAdmin) && (
+                {/* Contador de Anúncios Slim (Apenas para Staff / Administradores) */}
+                {isModeratorOrAdmin && (
                   <div 
                     className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
                   >
@@ -1416,11 +1416,9 @@ const Home = () => {
                     </span>
                     <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Active<br/>Listings</span>
 
-                    {!settings?.showTotalAdsBadge && isModeratorOrAdmin && (
-                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
-                        🔒 Hidden (Staff view)
-                      </span>
-                    )}
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
+                      🔒 Hidden (Staff view)
+                    </span>
                   </div>
                 )}
 
@@ -1621,11 +1619,11 @@ const Home = () => {
             )}
           </div>
 
-          {/* Dropdowns de Categoria e Cidade em 2 Colunas Limpas */}
-          <div className="grid grid-cols-2 gap-2 w-full" id="mobile-filters-section">
+          {/* Dropdowns de Categoria, Cidade e Filtros na Mesma Linha (3 Colunas) */}
+          <div className="grid grid-cols-3 gap-1.5 xs:gap-2 w-full" id="mobile-filters-section">
             {/* Categoria */}
-            <div className="relative h-10.5 flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-3 transition-all">
-              <Tag size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
+            <div className="relative h-10.5 flex items-center gap-1.5 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-2.5 transition-all min-w-0">
+              <Tag size={13} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
               <select
                 value={category}
                 onChange={(e) => {
@@ -1635,49 +1633,46 @@ const Home = () => {
                   setFilterNational(false);
                   setFilterOnline(false);
                 }}
-                className="w-full bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0 truncate"
+                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
               >
                 <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
                 {categories.map((c, i) => (
                   <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
                 ))}
               </select>
-              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-2.5 pointer-events-none select-none">▼</span>
+              <span className="text-[8px] text-slate-400 dark:text-slate-400 absolute right-2 pointer-events-none select-none">▼</span>
             </div>
 
             {/* Cidade / Localização */}
-            <div className="relative h-10.5 flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-3 transition-all">
-              <MapPin size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
+            <div className="relative h-10.5 flex items-center gap-1.5 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-2.5 transition-all min-w-0">
+              <MapPin size={13} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0 truncate"
+                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
               >
                 <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
                 {selectableCitiesOnHome.map((c, i) => (
                   <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
                 ))}
               </select>
-              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-2.5 pointer-events-none select-none">▼</span>
+              <span className="text-[8px] text-slate-400 dark:text-slate-400 absolute right-2 pointer-events-none select-none">▼</span>
             </div>
-          </div>
 
-          {/* Linha adicional com Filtros Avançados, Ordenação e País */}
-          <div className="flex items-center gap-2 w-full">
             {/* Botão de Filtros */}
             <button
               type="button"
               onClick={() => setFilterDrawerOpen(true)}
-              className={`h-10.5 flex-1 flex items-center justify-center gap-1.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+              className={`h-10.5 flex items-center justify-center gap-1.5 px-2 xs:px-2.5 rounded-xl border text-[11px] xs:text-xs font-semibold transition-all cursor-pointer min-w-0 truncate ${
                 activeMarineFilterCount > 0
                   ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
                   : 'bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200/90 dark:border-slate-700/60'
               }`}
             >
-              <SlidersHorizontal size={14} className="shrink-0" />
-              <span>Filters</span>
+              <SlidersHorizontal size={13} className="shrink-0" />
+              <span className="truncate">Filters</span>
               {activeMarineFilterCount > 0 && (
-                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[10px] font-bold">
+                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
                   {activeMarineFilterCount}
                 </span>
               )}
@@ -1746,8 +1741,8 @@ const Home = () => {
 
               {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
               <div className="flex flex-row items-center gap-1.5 sm:gap-3 shrink-0">
-                {/* Contador de Anúncios Slim */}
-                {(settings?.showTotalAdsBadge === true || isModeratorOrAdmin) && (
+                {/* Contador de Anúncios Slim (Apenas para Staff / Administradores) */}
+                {isModeratorOrAdmin && (
                   <div 
                     className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
                   >
@@ -1756,11 +1751,9 @@ const Home = () => {
                     </span>
                     <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Active<br/>Listings</span>
 
-                    {!settings?.showTotalAdsBadge && isModeratorOrAdmin && (
-                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
-                        🔒 Hidden (Staff view)
-                      </span>
-                    )}
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
+                      🔒 Hidden (Staff view)
+                    </span>
                   </div>
                 )}
 
