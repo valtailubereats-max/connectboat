@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 
@@ -191,7 +192,7 @@ async function startServer() {
   // Reescritas para crawlers de redes sociais (OpenGraph/Twitter Cards)
   const crawlerUserAgents = /facebookexternalhit|twitterbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot|bingbot|googlebot/i;
 
-  app.get('/anuncio/:slugAndId', async (req, res, next) => {
+  app.get(['/anuncio/:slugAndId', '/listing/:slugAndId'], async (req, res, next) => {
     const userAgent = req.headers['user-agent'] || '';
     if (crawlerUserAgents.test(userAgent)) {
       try {
@@ -224,7 +225,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, { index: false }));
     app.get('*', (req, res) => {
       if (req.originalUrl.startsWith('/api/') || req.path.startsWith('/api/')) {
         res.setHeader('Content-Type', 'application/json');
@@ -233,7 +234,22 @@ async function startServer() {
           error: `API endpoint não encontrado: ${req.method} ${req.originalUrl}`
         });
       }
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexPath = path.join(distPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        let rawHtml = fs.readFileSync(indexPath, 'utf-8');
+        const canonicalUrl = `https://connectboat.co.uk${req.path === '/' ? '/' : req.path}`;
+        rawHtml = rawHtml.replace(
+          /<link rel="canonical" href="[^"]*"/i,
+          `<link rel="canonical" href="${canonicalUrl}"`
+        );
+        rawHtml = rawHtml.replace(
+          /<meta property="og:url" content="[^"]*"/i,
+          `<meta property="og:url" content="${canonicalUrl}"`
+        );
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(rawHtml);
+      }
+      res.sendFile(indexPath);
     });
   }
 
