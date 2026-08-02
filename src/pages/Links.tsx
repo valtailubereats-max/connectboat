@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { ExternalLink, ArrowLeft, Globe, MapPin, Compass, Search } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
@@ -287,6 +288,13 @@ export default function Links() {
 
   return (
     <div className="max-w-6xl mx-auto py-4 px-2 space-y-8" id="links-page-container">
+      <Helmet>
+        <title>Useful Marine & UK Resources | ConnectBoat</title>
+        <meta name="description" content="Official directory of UK marine, maritime, and public service resources provided by ConnectBoat." />
+        <link rel="canonical" href="https://connectboat.co.uk/links" />
+        <meta property="og:url" content="https://connectboat.co.uk/links" />
+        <meta property="og:title" content="Useful Links | ConnectBoat" />
+      </Helmet>
       {/* Top Navigation Row */}
       <div className="flex items-center justify-between" id="links-header-row">
         <button

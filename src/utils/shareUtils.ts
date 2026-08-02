@@ -13,7 +13,7 @@ export interface ShareOptions {
 
 export function generateShareText(options: ShareOptions): { text: string; url: string; title: string } {
   const baseOrigin = window.location.origin;
-  const officialHomeUrl = 'https://www.connectboat.co.uk';
+  const officialHomeUrl = 'https://connectboat.co.uk';
   
   let shareUrl = options.url || window.location.href;
   let title = options.title || 'ConnectBoat';

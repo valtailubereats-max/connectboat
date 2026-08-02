@@ -53,6 +53,9 @@ export default function Precos() {
           name="description"
           content="Explore ConnectBoat pricing plans. Free listings, Featured options, and Marine Showcase subscriptions for boating professionals."
         />
+        <link rel="canonical" href="https://connectboat.co.uk/pricing" />
+        <meta property="og:url" content="https://connectboat.co.uk/pricing" />
+        <meta property="og:title" content="Pricing Plans | ConnectBoat" />
       </Helmet>
 
       {/* Header section with negative margin for deep integration */}

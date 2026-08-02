@@ -272,7 +272,7 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
     ogImage = fallbackUrl;
   }
 
-  const finalProductUrl = `https://www.connectboat.co.uk/empreendedores/${showcaseSlug}/produto/${productId}`;
+  const finalProductUrl = `https://connectboat.co.uk/empreendedores/${showcaseSlug}/produto/${productId}`;
 
   console.log(`[PRODUCT SEO] Injetando metatags -> Título: "${title}", Imagem: "${ogImage}"`);
 
@@ -280,6 +280,7 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
   const metaTags = `
   <title>${title}</title>
   <meta name="description" content="${description}" />
+  <link rel="canonical" href="${finalProductUrl}" />
   <meta property="og:url" content="${finalProductUrl}" />
   <meta property="og:title" content="${title}" />
   <meta property="og:description" content="${description}" />

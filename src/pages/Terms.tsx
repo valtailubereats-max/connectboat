@@ -1,4 +1,5 @@
 import React from 'react';
+import { Helmet } from 'react-helmet-async';
 import { motion } from 'motion/react';
 import { Shield, Info, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -10,6 +11,13 @@ const Terms = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
+      <Helmet>
+        <title>Terms of Use | ConnectBoat</title>
+        <meta name="description" content="Read the ConnectBoat Terms of Use for buyers, sellers, brokers, and marine service providers." />
+        <link rel="canonical" href="https://connectboat.co.uk/terms" />
+        <meta property="og:url" content="https://connectboat.co.uk/terms" />
+        <meta property="og:title" content="Terms of Use | ConnectBoat" />
+      </Helmet>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

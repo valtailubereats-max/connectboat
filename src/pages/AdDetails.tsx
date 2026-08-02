@@ -680,10 +680,10 @@ const AdDetails = () => {
           <title>{ad.title} - {ad.city || 'United Kingdom'} | ConnectBoat</title>
           <meta name="description" content={normalizedDescription.substring(0, 160)} />
           <meta name="robots" content="index, follow" />
-          <link rel="canonical" href={`${window.location.origin}${getAdUrl(ad)}`} />
+          <link rel="canonical" href={`https://connectboat.co.uk${getAdUrl(ad)}`} />
           <meta property="og:type" content="product" />
           <meta property="og:site_name" content="ConnectBoat" />
-          <meta property="og:url" content={`${window.location.origin}${getAdUrl(ad)}`} />
+          <meta property="og:url" content={`https://connectboat.co.uk${getAdUrl(ad)}`} />
           <meta property="og:title" content={`${ad.title} | ConnectBoat`} />
           <meta property="og:description" content={normalizedDescription.substring(0, 160)} />
           <meta property="og:image" content={images[0] || ad.imageUrl} />
@@ -705,7 +705,7 @@ const AdDetails = () => {
               "model": ad.model || undefined,
               "offers": {
                 "@type": "Offer",
-                "url": `${window.location.origin}${getAdUrl(ad)}`,
+                "url": `https://connectboat.co.uk${getAdUrl(ad)}`,
                 "priceCurrency": ad.country === 'Reino Unido' ? 'GBP' : 'EUR',
                 "price": ad.price || 0,
                 "itemCondition": ad.condition === 'Novo' ? "https://schema.org/NewCondition" : "https://schema.org/UsedCondition",

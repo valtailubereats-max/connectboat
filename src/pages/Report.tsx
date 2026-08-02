@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, AlertTriangle, Send, Phone, MessageSquare, Info, FileText, X } from 'lucide-react';
@@ -41,6 +42,13 @@ const Report = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
+      <Helmet>
+        <title>Report Listing | ConnectBoat</title>
+        <meta name="description" content="Report suspicious or abusive listings on ConnectBoat to keep our UK boat marketplace safe." />
+        <link rel="canonical" href="https://connectboat.co.uk/report" />
+        <meta property="og:url" content="https://connectboat.co.uk/report" />
+        <meta property="og:title" content="Report Listing | ConnectBoat" />
+      </Helmet>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

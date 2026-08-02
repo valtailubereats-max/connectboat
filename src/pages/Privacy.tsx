@@ -1,4 +1,5 @@
 import React from 'react';
+import { Helmet } from 'react-helmet-async';
 import { motion } from 'motion/react';
 import { Shield, Info, Database, Target, Lock, Scale, Cookie, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -10,6 +11,13 @@ const Privacy = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
+      <Helmet>
+        <title>Privacy Policy | ConnectBoat</title>
+        <meta name="description" content="ConnectBoat Privacy Policy outlining how personal data and account details are managed securely." />
+        <link rel="canonical" href="https://connectboat.co.uk/privacy" />
+        <meta property="og:url" content="https://connectboat.co.uk/privacy" />
+        <meta property="og:title" content="Privacy Policy | ConnectBoat" />
+      </Helmet>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

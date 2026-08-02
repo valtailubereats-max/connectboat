@@ -1,4 +1,5 @@
 import React from 'react';
+import { Helmet } from 'react-helmet-async';
 import { motion } from 'motion/react';
 import { Shield, Info, Cookie, Settings, ShieldAlert, CheckCircle, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -10,6 +11,13 @@ const Cookies = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
+      <Helmet>
+        <title>Cookie Policy | ConnectBoat</title>
+        <meta name="description" content="ConnectBoat Cookie Policy explaining how we use essential cookies and browser storage." />
+        <link rel="canonical" href="https://connectboat.co.uk/cookie-policy" />
+        <meta property="og:url" content="https://connectboat.co.uk/cookie-policy" />
+        <meta property="og:title" content="Cookie Policy | ConnectBoat" />
+      </Helmet>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

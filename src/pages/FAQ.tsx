@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'motion/react';
 import { HelpCircle, ChevronDown, ChevronUp, Search, MessageCircle, Mail } from 'lucide-react';
 
@@ -61,6 +62,13 @@ const FAQ = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12" id="faq-page">
+      <Helmet>
+        <title>Frequently Asked Questions (FAQ) | ConnectBoat</title>
+        <meta name="description" content="Find answers to common questions about buying, selling, and chartering boats on ConnectBoat." />
+        <link rel="canonical" href="https://connectboat.co.uk/faq" />
+        <meta property="og:url" content="https://connectboat.co.uk/faq" />
+        <meta property="og:title" content="FAQ | ConnectBoat" />
+      </Helmet>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

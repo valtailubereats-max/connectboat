@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
@@ -79,6 +80,13 @@ const Suggestions = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12" id="suggestions-page">
+      <Helmet>
+        <title>Suggestions & Feedback | ConnectBoat</title>
+        <meta name="description" content="Share your suggestions and feedback with ConnectBoat. Help us build the ultimate UK boat marketplace." />
+        <link rel="canonical" href="https://connectboat.co.uk/suggestions" />
+        <meta property="og:url" content="https://connectboat.co.uk/suggestions" />
+        <meta property="og:title" content="Suggestions & Feedback | ConnectBoat" />
+      </Helmet>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

@@ -236,10 +236,8 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
     console.log(`[SEO SERVERLESS] Nenhuma imagem pública válida encontrada (provável Base64 ou nula). Usando imagem padrão: ${adImage}`);
   }
 
-  const host = req.headers.host || 'www.mercado-luso.com';
-  const protocol = (req.headers['x-forwarded-proto'] as string) || 'https';
-  // O link deve apontar para o caminho de visualização canônica do anúncio
-  const adUrl = `${protocol}://${host}${pathname}`;
+  const canonicalHost = 'connectboat.co.uk';
+  const adUrl = `https://${canonicalHost}${pathname}`;
 
   console.log(`[SEO SERVERLESS] Preparando injeção. Título: "${title}", Imagem: "${adImage}", URL: "${adUrl}"`);
 
@@ -247,6 +245,7 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
   const metaTags = `
   <title>${title}</title>
   <meta name="description" content="${description}" />
+  <link rel="canonical" href="${adUrl}" />
   <meta property="og:url" content="${adUrl}" />
   <meta property="og:title" content="${title}" />
   <meta property="og:description" content="${description}" />

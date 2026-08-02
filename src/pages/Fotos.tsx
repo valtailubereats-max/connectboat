@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { db, getDocsWithCacheFallback, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { PhotoStoreItem } from '../types';
@@ -74,6 +75,13 @@ export default function Fotos() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id="pagina-loja-fotos">
+      <Helmet>
+        <title>Marine Photography Gallery | ConnectBoat</title>
+        <meta name="description" content="Explore and purchase high-resolution marine photography and digital photo downloads on ConnectBoat." />
+        <link rel="canonical" href="https://connectboat.co.uk/photos" />
+        <meta property="og:url" content="https://connectboat.co.uk/photos" />
+        <meta property="og:title" content="Marine Photography Gallery | ConnectBoat" />
+      </Helmet>
       {/* Toast Notification for Buy Click */}
       <AnimatePresence>
         {showMessage && (

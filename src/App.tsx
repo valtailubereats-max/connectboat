@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
 import { LogOut, PlusCircle, Plus, User as UserIcon, ShieldCheck, Menu, X, Share2, Bell, AlertTriangle, QrCode, Copy, Check, Mail } from 'lucide-react';
 import { ConnectBoatLogo } from './components/ConnectBoatLogo';
 import { QRCodeSVG } from 'qrcode.react';
@@ -393,7 +393,7 @@ const Navbar = () => {
                       </Link>
                       {(settings?.enableFotosFeature !== false || isAdmin || isModerator) && (
                         <Link
-                          to="/fotos"
+                          to="/photos"
                           onClick={() => setShowUserDropdown(false)}
                           className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
                           id="nav-fotos-link"
@@ -402,7 +402,7 @@ const Navbar = () => {
                         </Link>
                       )}
                       <Link
-                        to="/precos"
+                        to="/pricing"
                         onClick={() => setShowUserDropdown(false)}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
                         id="nav-precos-link"
@@ -491,7 +491,7 @@ const Navbar = () => {
                       </Link>
 
                       <Link
-                        to="/sugestoes"
+                        to="/suggestions"
                         onClick={() => setShowUserDropdown(false)}
                         className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700"
                         id="menu-sugestoes"
@@ -561,7 +561,7 @@ const Navbar = () => {
                         </Link>
                         {(settings?.enableFotosFeature !== false || isAdmin || isModerator) && (
                           <Link
-                            to="/fotos"
+                            to="/photos"
                             onClick={() => setShowUserDropdown(false)}
                             className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
                             id="nav-fotos-link"
@@ -570,7 +570,7 @@ const Navbar = () => {
                           </Link>
                         )}
                         <Link
-                          to="/precos"
+                          to="/pricing"
                           onClick={() => setShowUserDropdown(false)}
                           className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
                           id="nav-precos-link-guest"
@@ -633,9 +633,9 @@ const Navbar = () => {
             <div className="px-4 py-6 space-y-4 flex flex-col">
               <Link to="/" onClick={() => setIsOpen(false)} className="text-lg font-black text-sky-400">Home</Link>
               {(settings?.enableFotosFeature !== false || isAdmin || isModerator) && (
-                <Link to="/fotos" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Marine Gallery</Link>
+                <Link to="/photos" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Marine Gallery</Link>
               )}
-              <Link to="/precos" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Pricing Plans</Link>
+              <Link to="/pricing" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Pricing Plans</Link>
               
               {user ? <>
                 {isAdmin && (
@@ -675,7 +675,7 @@ const Navbar = () => {
                   <Link to="/create-ad" onClick={() => setIsOpen(false)} className="text-md font-bold text-slate-200">
                     Post Listing
                   </Link>
-                  <Link to="/sugestoes" onClick={() => setIsOpen(false)} className="text-md font-bold text-slate-200">
+                  <Link to="/suggestions" onClick={() => setIsOpen(false)} className="text-md font-bold text-slate-200">
                     Suggestions
                   </Link>
                   
@@ -861,8 +861,8 @@ export default function App() {
       <Helmet>
         <title>ConnectBoat - UK Marine & Boat Marketplace</title>
         <meta name="description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
-        <link rel="canonical" href="https://www.connectboat.co.uk" />
-        <meta property="og:url" content="https://www.connectboat.co.uk" />
+        <link rel="canonical" href="https://connectboat.co.uk" />
+        <meta property="og:url" content="https://connectboat.co.uk" />
         <meta property="og:type" content="website" />
         <meta property="og:title" content="ConnectBoat - UK Marine & Boat Marketplace" />
         <meta property="og:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
@@ -879,8 +879,8 @@ export default function App() {
             <main ref={mainRef} className="max-w-7xl mx-auto px-1.5 xs:px-2 sm:px-6 lg:px-8 py-4 sm:py-8 cursor-grab active:cursor-grabbing">
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/precos" element={<Precos />} />
                 <Route path="/pricing" element={<Precos />} />
+                <Route path="/precos" element={<Navigate to="/pricing" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
@@ -900,16 +900,17 @@ export default function App() {
                 <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
                 <Route path="/admin/claims" element={<AdminLayout><AdminClaims /></AdminLayout>} />
                 <Route path="/admin/team" element={<AdminLayout><AdminTeam /></AdminLayout>} />
-                <Route path="/fotos" element={<Fotos />} />
+                <Route path="/photos" element={<Fotos />} />
+                <Route path="/fotos" element={<Navigate to="/photos" replace />} />
                 <Route path="/admin/fotos" element={<AdminLayout><AdminFotos /></AdminLayout>} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
-                <Route path="/cookies" element={<Cookies />} />
                 <Route path="/cookie-policy" element={<Cookies />} />
-                <Route path="/denuncia" element={<Report />} />
+                <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
                 <Route path="/report" element={<Report />} />
-                <Route path="/sugestoes" element={<Suggestions />} />
+                <Route path="/denuncia" element={<Navigate to="/report" replace />} />
                 <Route path="/suggestions" element={<Suggestions />} />
+                <Route path="/sugestoes" element={<Navigate to="/suggestions" replace />} />
                 <Route path="/faq" element={<FAQ />} />
                 <Route path="/links" element={<Links />} />
                 <Route path="/convite" element={<Convite />} />
@@ -952,12 +953,12 @@ export default function App() {
                         <Link to="/faq" className="hover:text-sky-600 hover:underline transition-all">FAQ</Link>
                       </li>
                       <li>
-                        <Link to="/precos" className="hover:text-sky-600 hover:underline transition-all font-extrabold flex items-center gap-1">
+                        <Link to="/pricing" className="hover:text-sky-600 hover:underline transition-all font-extrabold flex items-center gap-1">
                           Pricing Plans <span className="text-[10px]">🏷️</span>
                         </Link>
                       </li>
                       <li>
-                        <Link to="/sugestoes" className="hover:text-sky-600 hover:underline transition-all">Suggestions</Link>
+                        <Link to="/suggestions" className="hover:text-sky-600 hover:underline transition-all">Suggestions</Link>
                       </li>
                     </ul>
                   </div>
@@ -975,10 +976,10 @@ export default function App() {
                         <Link to="/privacy" className="hover:text-sky-600 hover:underline transition-all">Privacy Policy</Link>
                       </li>
                       <li>
-                        <Link to="/cookies" className="hover:text-sky-600 hover:underline transition-all">Cookie Policy</Link>
+                        <Link to="/cookie-policy" className="hover:text-sky-600 hover:underline transition-all">Cookie Policy</Link>
                       </li>
                       <li>
-                        <Link to="/denuncia" className="text-rose-500 hover:text-rose-600 hover:underline transition-all font-extrabold">Report Listing</Link>
+                        <Link to="/report" className="text-rose-500 hover:text-rose-600 hover:underline transition-all font-extrabold">Report Listing</Link>
                       </li>
                     </ul>
                   </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { collection, query, where, limit, getCountFromServer, orderBy } from 'firebase/firestore';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { db, withTimeout, getDocsWithCacheFallback } from '../firebase';
@@ -1088,6 +1089,13 @@ const Home = () => {
 
   return (
     <div className="w-full">
+      <Helmet>
+        <title>ConnectBoat - UK Marine & Boat Marketplace</title>
+        <meta name="description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
+        <link rel="canonical" href="https://connectboat.co.uk/" />
+        <meta property="og:url" content="https://connectboat.co.uk/" />
+        <meta property="og:title" content="ConnectBoat - UK Marine & Boat Marketplace" />
+      </Helmet>
       {/* ============================================================== */}
       {/* 💻 LAYOUT DESKTOP (Aparece apenas em ecrãs médios e superiores) */}
       {/* ============================================================== */}

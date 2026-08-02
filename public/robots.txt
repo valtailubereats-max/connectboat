@@ -7,4 +7,4 @@ Disallow: /edit-ad/
 Disallow: /campanhas
 Disallow: /api/
 
-Sitemap: https://www.connectboat.co.uk/sitemap.xml
+Sitemap: https://connectboat.co.uk/sitemap.xml
