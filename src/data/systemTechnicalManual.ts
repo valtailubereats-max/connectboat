@@ -583,7 +583,7 @@ export const manualItems: ManualItem[] = [
     access: 'Public',
     buttons: ['WhatsApp Support', 'Install App (PWA)', 'Digital Showcases'],
     actions: [
-      'Redirect to connectboatuk@gmail.com for email support',
+      'Redirect to contato@connectboat.co.uk for email support',
       'Open WhatsApp support in new tab',
       'Navigate to legal and help pages'
     ],
@@ -647,7 +647,7 @@ export const manualItems: ManualItem[] = [
     access: 'Public for alert triggers, Server for SMTP credentials',
     buttons: ['Send Email (Support)'],
     actions: [
-      'Display official support email connectboatuk@gmail.com on public pages',
+      'Display official support email contato@connectboat.co.uk on public pages',
       'Use serverless API routes to send automated notifications'
     ],
     technicalNotes: 'Proxy endpoint /api/email/send safely proxies emails without exposing secret keys.',

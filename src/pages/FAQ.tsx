@@ -46,7 +46,7 @@ const FAQ = () => {
     },
     {
       question: 'How do I contact support?',
-      answer: 'Reach out to us via direct support or email connectboatuk@gmail.com. Our team is available to assist you with any questions.'
+      answer: 'Reach out to us via direct support or email contato@connectboat.co.uk. Our team is available to assist you with any questions.'
     }
   ];
 
@@ -151,7 +151,7 @@ const FAQ = () => {
               <MessageCircle size={16} /> WhatsApp Support
             </a>
             <a
-              href="mailto:connectboatuk@gmail.com"
+              href="mailto:contato@connectboat.co.uk"
               className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-50 shadow-sm transition-all uppercase tracking-wider cursor-pointer"
               id="faq-email-support-link"
             >

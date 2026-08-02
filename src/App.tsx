@@ -987,11 +987,11 @@ export default function App() {
                     <ul className="space-y-3.5 text-xs font-bold text-slate-600">
                       <li>
                         <a 
-                          href="mailto:connectboatuk@gmail.com" 
+                          href="mailto:contato@connectboat.co.uk" 
                           className="bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-100 px-3.5 py-2 rounded-xl transition-all inline-flex items-center gap-1.5 shadow-2xs font-extrabold cursor-pointer active:scale-95"
                         >
                           <Mail size={14} className="text-sky-600 shrink-0" />
-                          <span>connectboatuk@gmail.com</span>
+                          <span>contato@connectboat.co.uk</span>
                         </a>
                       </li>
                       <li>
