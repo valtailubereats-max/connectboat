@@ -29,13 +29,25 @@ const londonAerialSunny = "https://images.unsplash.com/photo-1567899378494-47b22
 
 import { useClickOutside } from '../hooks/useClickOutside';
 import { parsePrice } from '../utils';
+import { BannerTextBox } from '../components/BannerTextBox';
+import { AdminBannerEditor } from '../components/AdminBannerEditor';
 
 const PAGE_SIZE = 30; 
 
 const Home = () => {
-  const { settings, categories } = useSettings();
+  const { settings, bannerConfig, categories } = useSettings();
   const resultsSectionRef = useRef<HTMLDivElement>(null);
   const [londonBg, setLondonBg] = useState(londonAerialSunny);
+  const [isMobileScreen, setIsMobileScreen] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [showBannerEditorModal, setShowBannerEditorModal] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSearchFocus = () => {
     setTimeout(() => {
@@ -1647,28 +1659,14 @@ const Home = () => {
               </div>
             </motion.div>
 
-            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Lado Direito) */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-3 sm:pt-6 w-full flex justify-end -translate-y-1 xs:-translate-y-2 sm:-translate-y-3 md:-translate-y-4"
-            >
-              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3.5 sm:px-6 py-3 xs:py-3.5 sm:py-4 md:py-4 shadow-2xl max-w-full text-right">
-                <p className="text-[9px] xs:text-[10.5px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-relaxed text-right drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                  {country === 'Portugal' ? (
-                    <>
-                      Compre, venda e alugue barcos, iates,<br />
-                      equipamentos e serviços marítimos.
-                    </>
-                  ) : (
-                    <>
-                      Buy, sell and charter boats, yachts,<br />
-                      gear & marine services across the United Kingdom.
-                    </>
-                  )}
-                </p>
-              </div>
-            </motion.div>
+            {/* Base do Banner: Subtítulo Dinâmico do Banner */}
+            <BannerTextBox 
+              country={country} 
+              isMobileScreen={isMobileScreen} 
+              bannerConfig={bannerConfig} 
+              isAdmin={isAdmin} 
+              onOpenEditor={() => setShowBannerEditorModal(true)} 
+            />
           </div>
         </section>
 
@@ -2082,28 +2080,14 @@ const Home = () => {
               </div>
             </motion.div>
 
-            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Lado Direito) */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-auto pt-3 sm:pt-6 w-full flex justify-end -translate-y-1 xs:-translate-y-2 sm:-translate-y-3 md:-translate-y-4"
-            >
-              <div className="inline-flex items-center bg-slate-950/75 backdrop-blur-md border border-white/15 rounded-xl sm:rounded-2xl px-3.5 sm:px-6 py-3 xs:py-3.5 sm:py-4 md:py-4 shadow-2xl max-w-full text-right">
-                <p className="text-[9px] xs:text-[10.5px] sm:text-sm md:text-[15px] lg:text-[17px] text-white/95 font-medium italic tracking-wide leading-relaxed text-right drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                  {country === 'Portugal' ? (
-                    <>
-                      Compre, venda e alugue barcos, iates,<br />
-                      equipamentos e serviços marítimos.
-                    </>
-                  ) : (
-                    <>
-                      Buy, sell and charter boats, yachts,<br />
-                      gear & marine services across the United Kingdom.
-                    </>
-                  )}
-                </p>
-              </div>
-            </motion.div>
+            {/* Base do Banner: Subtítulo Dinâmico do Banner */}
+            <BannerTextBox 
+              country={country} 
+              isMobileScreen={isMobileScreen} 
+              bannerConfig={bannerConfig} 
+              isAdmin={isAdmin} 
+              onOpenEditor={() => setShowBannerEditorModal(true)} 
+            />
           </div>
         </section>
 
@@ -2564,6 +2548,29 @@ const Home = () => {
                 </button>
               </div>
 
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Editor Visual do Banner (Apenas Admins) */}
+      <AnimatePresence>
+        {showBannerEditorModal && isAdmin && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 max-w-6xl w-full max-h-[92vh] overflow-y-auto relative shadow-2xl"
+            >
+              <button
+                onClick={() => setShowBannerEditorModal(false)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-full transition-all cursor-pointer z-50"
+                title="Fechar Editor"
+              >
+                <X size={20} />
+              </button>
+              <AdminBannerEditor onSaved={() => setShowBannerEditorModal(false)} />
             </motion.div>
           </div>
         )}

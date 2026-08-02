@@ -23,7 +23,8 @@ import {
   Activity,
   UserCheck,
   Film,
-  Sparkles
+  Sparkles,
+  Sliders
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -132,6 +133,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     {
       title: 'Marketing & Promotion',
       items: [
+        { icon: Sliders, label: 'Editor Banner Principal', path: '/admin/banner-editor' },
         {
           icon: Megaphone,
           label: 'Platform Marketing',

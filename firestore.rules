@@ -232,7 +232,7 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin() && (
         (settingsId == 'global' && isValidSettings(request.resource.data)) ||
-        (settingsId in ['health_last_run', 'health_email_tracker'])
+        (settingsId in ['health_last_run', 'health_email_tracker', 'bannerConfig', 'banner'])
       );
     }
 

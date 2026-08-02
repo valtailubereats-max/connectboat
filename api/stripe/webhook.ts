@@ -28,8 +28,6 @@ let dbInstance: admin.firestore.Firestore | null = null;
 
 function getAdminDb(): admin.firestore.Firestore {
   const firebaseAdmin = (admin as any).default || admin;
-  const hasServiceAccount = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
-  console.log(`[Stripe Webhook getAdminDb] FIREBASE_SERVICE_ACCOUNT present: ${hasServiceAccount}`);
 
   if (!dbInstance) {
     const apps = firebaseAdmin.apps || [];
@@ -48,15 +46,12 @@ function getAdminDb(): admin.firestore.Firestore {
             credential: firebaseAdmin.credential.cert(serviceAccount),
             projectId: PROJECT_ID,
           });
-          console.log(`[Stripe Webhook getAdminDb] admin.initializeApp() initialized using Service Account.`);
         } catch (e: any) {
           console.error(`[Stripe Webhook getAdminDb] Service Account init failed: ${e.message}. Falling back to default app init.`);
           firebaseAdmin.initializeApp({ projectId: PROJECT_ID });
-          console.log(`[Stripe Webhook getAdminDb] admin.initializeApp() initialized using fallback projectId.`);
         }
       } else {
         firebaseAdmin.initializeApp({ projectId: PROJECT_ID });
-        console.log(`[Stripe Webhook getAdminDb] admin.initializeApp() initialized using fallback projectId (no service account).`);
       }
     }
 
@@ -137,8 +132,6 @@ export default async function stripeWebhookHandler(req: Request & { rawBody?: Bu
     const metadata = session.metadata || {};
     const { itemType, adId, userId, plan, showcaseDataJson } = metadata;
 
-    console.log(`[Stripe Webhook] Payment completed for session ${session.id}. Metadata: itemType=${itemType}, adId=${adId}, userId=${userId}, plan=${plan}`);
-
     try {
       const db = getAdminDb();
 
@@ -148,8 +141,6 @@ export default async function stripeWebhookHandler(req: Request & { rawBody?: Bu
         } else {
           const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
           const level = plan === 'national' ? 'national' : 'local';
-
-          console.log(`[Stripe Webhook] Executing db.collection('ads').doc('${adId}').set(...) with level=${level}...`);
 
           const firebaseAdmin = (admin as any).default || admin;
           await db.collection('ads').doc(adId).set(

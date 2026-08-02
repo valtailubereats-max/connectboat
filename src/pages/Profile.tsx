@@ -553,8 +553,6 @@ const Profile = () => {
       const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
       const newCredits = Math.max(0, credits - 1);
 
-      console.log(`[Feature Listing Credit] adId=${adId}, userId=${userId}, creditsRemaining=${newCredits}`);
-
       // Subtract 1 credit from user
       await updateDoc(doc(db, 'users', userId), {
         referralCredits: newCredits

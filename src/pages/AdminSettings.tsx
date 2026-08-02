@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, getDocWithCacheFallback } from '../firebase';
 import { MarketplaceSettings, CATEGORIES } from '../types';
@@ -15,7 +16,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Mail,
-  Send
+  Send,
+  Sliders
 } from 'lucide-react';
 import { sendEmailGeneric } from '../utils/emailService';
 import { AdminMigrationWidget } from '../components/AdminMigrationWidget';
@@ -252,6 +254,26 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
       <div>
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Definições do Marketplace</h1>
         <p className="text-slate-500 font-medium">Configure as regras de negócio, planos e categorias.</p>
+      </div>
+
+      {/* Hero Banner Visual Editor Shortcut Card */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-sky-950 text-white p-6 rounded-3xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-sky-500/20">
+        <div>
+          <div className="flex items-center gap-2 text-sky-400 font-extrabold text-xs uppercase tracking-wider mb-1">
+            <Sliders size={16} />
+            <span>Ferramenta Visual de Layout</span>
+          </div>
+          <h2 className="text-xl font-black">Editor do Banner Principal</h2>
+          <p className="text-xs text-slate-300 mt-1 max-w-xl">
+            Ajuste livremente com Drag & Drop a posição (X e Y), dimensão, padding, border radius, opacidade e tipografia da caixa de texto do banner principal.
+          </p>
+        </div>
+        <Link
+          to="/admin/banner-editor"
+          className="px-5 py-3 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs rounded-2xl shadow-lg transition-all cursor-pointer shrink-0"
+        >
+          Abrir Editor do Banner →
+        </Link>
       </div>
 
       <AnimatePresence>

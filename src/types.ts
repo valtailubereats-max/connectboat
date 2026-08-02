@@ -64,6 +64,76 @@ export interface MarketplaceSettings {
   launchPromoActive?: boolean;
 }
 
+export interface BannerDeviceConfig {
+  posX: number;             // 0 to 100 (% horizontal)
+  posY: number;             // 0 to 100 (% vertical)
+  width: number;            // 10 to 100 (%)
+  height: number;           // 0 = auto, or px
+  paddingVertical: number;   // 0 to 60 (px)
+  paddingHorizontal: number; // 0 to 60 (px)
+  borderRadius: number;     // 0 to 50 (px)
+  bgOpacity: number;        // 0 to 100 (%)
+  bgColor: string;          // Hex color e.g. '#0f172a'
+  fontSize: number;         // 8 to 36 (px)
+  textAlign: 'left' | 'center' | 'right';
+  textColor?: string;       // Hex color e.g. '#ffffff'
+  backdropBlur?: number;    // 0 to 24 (px)
+  customTextPt?: string;    // Custom message for PT
+  customTextEn?: string;    // Custom message for UK
+}
+
+export interface BannerConfig {
+  id: string;
+  enabled: boolean;
+  desktop: BannerDeviceConfig;
+  mobile: BannerDeviceConfig;
+  updatedAt?: any;
+  updatedBy?: string;
+}
+
+export const DEFAULT_BANNER_DEVICE_DESKTOP: BannerDeviceConfig = {
+  posX: 100,
+  posY: 100,
+  width: 100,
+  height: 0,
+  paddingVertical: 16,
+  paddingHorizontal: 24,
+  borderRadius: 16,
+  bgOpacity: 75,
+  bgColor: '#0f172a',
+  fontSize: 15,
+  textAlign: 'right',
+  textColor: '#ffffff',
+  backdropBlur: 12,
+  customTextPt: '',
+  customTextEn: ''
+};
+
+export const DEFAULT_BANNER_DEVICE_MOBILE: BannerDeviceConfig = {
+  posX: 100,
+  posY: 100,
+  width: 100,
+  height: 0,
+  paddingVertical: 12,
+  paddingHorizontal: 14,
+  borderRadius: 12,
+  bgOpacity: 75,
+  bgColor: '#0f172a',
+  fontSize: 10.5,
+  textAlign: 'right',
+  textColor: '#ffffff',
+  backdropBlur: 12,
+  customTextPt: '',
+  customTextEn: ''
+};
+
+export const DEFAULT_BANNER_CONFIG: BannerConfig = {
+  id: 'bannerConfig',
+  enabled: true,
+  desktop: DEFAULT_BANNER_DEVICE_DESKTOP,
+  mobile: DEFAULT_BANNER_DEVICE_MOBILE
+};
+
 export interface UserProfile {
   id?: string;
   uid: string;

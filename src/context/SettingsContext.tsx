@@ -1,22 +1,25 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
-import { MarketplaceSettings, CATEGORIES } from '../types';
+import { MarketplaceSettings, CATEGORIES, BannerConfig, DEFAULT_BANNER_CONFIG } from '../types';
 
 interface SettingsContextType {
   settings: MarketplaceSettings | null;
+  bannerConfig: BannerConfig | null;
   categories: string[];
   loading: boolean;
 }
 
 const SettingsContext = createContext<SettingsContextType>({
   settings: null,
+  bannerConfig: DEFAULT_BANNER_CONFIG,
   categories: CATEGORIES,
   loading: true,
 });
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<MarketplaceSettings | null>(null);
+  const [bannerConfig, setBannerConfig] = useState<BannerConfig | null>(DEFAULT_BANNER_CONFIG);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,9 +31,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const docRef = doc(db, 'settings', 'global');
     
-    const unsubscribe = onSnapshot(docRef, 
+    const unsubscribeGlobal = onSnapshot(docRef, 
       (docSnap) => {
-        console.log('[READ] Settings');
         clearTimeout(safetyTimer);
         if (docSnap.exists()) {
           const data = docSnap.data() as MarketplaceSettings;
@@ -82,7 +84,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             launchPromoActive: false
           };
           setSettings(defaultSettings);
-          // Attempt to write default settings only if caller has permissions (ignore permission-denied for non-admins)
           setDoc(doc(db, 'settings', 'global'), defaultSettings).catch((err) => {
             if (err?.code !== 'permission-denied') {
               console.warn("Could not save default settings to Firestore:", err);
@@ -98,9 +99,39 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
     );
 
+    // Snapshot listener for Banner Configuration
+    const bannerDocRef = doc(db, 'settings', 'bannerConfig');
+    const unsubscribeBanner = onSnapshot(bannerDocRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as Partial<BannerConfig>;
+          setBannerConfig({
+            id: 'bannerConfig',
+            enabled: data.enabled !== undefined ? data.enabled : true,
+            desktop: {
+              ...DEFAULT_BANNER_CONFIG.desktop,
+              ...(data.desktop || {})
+            },
+            mobile: {
+              ...DEFAULT_BANNER_CONFIG.mobile,
+              ...(data.mobile || {})
+            },
+            updatedAt: data.updatedAt,
+            updatedBy: data.updatedBy
+          });
+        } else {
+          setBannerConfig(DEFAULT_BANNER_CONFIG);
+        }
+      },
+      (error) => {
+        console.warn("Banner config listener warning:", error);
+      }
+    );
+
     return () => {
       clearTimeout(safetyTimer);
-      unsubscribe();
+      unsubscribeGlobal();
+      unsubscribeBanner();
     };
   }, []);
 
@@ -109,7 +140,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     : CATEGORIES;
 
   return (
-    <SettingsContext.Provider value={{ settings, categories, loading }}>
+    <SettingsContext.Provider value={{ settings, bannerConfig, categories, loading }}>
       {children}
     </SettingsContext.Provider>
   );
