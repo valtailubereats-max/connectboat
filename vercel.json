@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/og-image.png", "destination": "/api/og-image" },
+    { "source": "/connectboat-og.png", "destination": "/api/og-image" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/robots.txt", "destination": "/robots.txt" },
