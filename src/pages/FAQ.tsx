@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'motion/react';
-import { HelpCircle, ChevronDown, ChevronUp, Search, MessageCircle, Mail } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { HelpCircle, ChevronDown, ChevronUp, Search, MessageCircle, Mail, ArrowLeft, Home } from 'lucide-react';
 
 interface FAQItem {
   question: string;
@@ -9,6 +10,7 @@ interface FAQItem {
 }
 
 const FAQ = () => {
+  const navigate = useNavigate();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -76,6 +78,29 @@ const FAQ = () => {
         animate={{ opacity: 1, y: 0 }}
         className="space-y-8"
       >
+        {/* Navigation Bar */}
+        <div className="flex items-center justify-between gap-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-xl border border-slate-200 shadow-sm transition-all cursor-pointer hover:border-slate-300 active:scale-95"
+            id="faq-back-btn"
+            title="Voltar à página anterior"
+          >
+            <ArrowLeft size={16} />
+            <span>Voltar</span>
+          </button>
+
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 font-medium text-xs sm:text-sm rounded-xl border border-slate-200 shadow-sm transition-all cursor-pointer"
+            id="faq-home-btn"
+            title="Ir para a Página Inicial"
+          >
+            <Home size={16} />
+            <span className="hidden sm:inline">Página Inicial</span>
+          </Link>
+        </div>
+
         {/* Header */}
         <div className="text-center space-y-3">
           <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mx-auto">
