@@ -10,7 +10,7 @@ import { sendEmailGeneric } from '../utils/emailService';
 import { CITIES, Ad, MarketplaceSettings, PORTUGAL_CITIES, UK_CITIES, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
-import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard } from 'lucide-react';
+import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, ChevronRight, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 import { normalizeDescription } from '../utils/textFormatter';
 import { parsePrice, formatPrice } from '../utils';
@@ -138,6 +138,42 @@ const CreateAd = () => {
     vatPaid: prefill?.vatPaid || '',
     ceCertified: prefill?.ceCertified || ''
   });
+
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
+  const validateStep1 = () => {
+    if (!formData.title || !formData.title.trim()) {
+      showValidationError('Please enter a title for your listing.', 'txt-ad-title');
+      return false;
+    }
+    if (!formData.category) {
+      showValidationError('Please select a category.');
+      return false;
+    }
+    if (!formData.description || !formData.description.trim()) {
+      showValidationError('Please enter a detailed description.', 'txt-description');
+      return false;
+    }
+    if (!formData.city) {
+      showValidationError('Please select a city/region.');
+      return false;
+    }
+    setFormError(null);
+    return true;
+  };
+
+  const validateStep1AndProceed = () => {
+    if (validateStep1()) {
+      setCurrentStep(2);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin && formData.plan === 'free') {
+      setFormData(prev => ({ ...prev, plan: 'local' }));
+    }
+  }, [isAdmin, formData.plan]);
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPhotoSourceMenu, setShowPhotoSourceMenu] = useState(false);
@@ -1352,20 +1388,126 @@ const CreateAd = () => {
   const isPromoActive = settings?.launchPromoActive === true;
   const isStaff = isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator';
 
+  const isBoatCategory = useMemo(() => {
+    if (!formData.category) return true;
+    const cat = formData.category;
+    return (
+      cat === 'Barcos a Motor' ||
+      cat === 'Veleiros' ||
+      cat === 'Pequenas Embarcações' ||
+      cat === 'Jet Skis' ||
+      cat === 'Iates / Superyachts' ||
+      cat === 'Outros'
+    );
+  }, [formData.category]);
+
+  const isEngineCategory = formData.category === 'Motores';
+  const isPartsCategory = formData.category === 'Peças & Acessórios' || formData.category === 'Electrónica Marítima';
+  const isJobCategory = formData.category === 'Trabalho/Empregos';
+  const isImmigrationCategory = formData.category === 'Imigração';
+  const isServiceCategory = formData.category === 'Serviços' || formData.category?.startsWith('Serviços') || formData.category?.includes('Serviços');
+  const isDonationCategory = formData.category === '💚 Doações & Solidariedade';
+
   if (fetching) return <div className="text-center py-20">Loading...</div>;
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 mb-6 font-medium transition-colors">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 mb-6 font-medium transition-colors cursor-pointer">
         <ChevronLeft size={20} /> Back
       </button>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100"
-      >
-        <h1 className="text-3xl font-bold text-slate-900 mb-8">{id ? 'Edit Listing' : 'New Listing'}</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column: Wizard Form */}
+        <div className="lg:col-span-7 xl:col-span-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-100"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                {id ? 'Edit Listing' : 'New Listing'}
+              </h1>
+              <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                Step {currentStep} of 3
+              </span>
+            </div>
+
+            {/* Step Wizard Navigation Header */}
+            <div className="mb-8 border-b border-slate-200/80 pb-6">
+              <div className="flex items-center justify-between max-w-xl mx-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentStep > 1) setCurrentStep(1);
+                  }}
+                  className={`flex items-center gap-2 text-xs sm:text-sm font-extrabold transition-all ${
+                    currentStep === 1
+                      ? 'text-indigo-600'
+                      : currentStep > 1
+                      ? 'text-slate-800 cursor-pointer hover:text-indigo-600'
+                      : 'text-slate-400'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                    currentStep === 1 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : currentStep > 1 ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'
+                  }`}>
+                    {currentStep > 1 ? <Check size={16} strokeWidth={3} /> : '1'}
+                  </div>
+                  <span className="hidden sm:inline">1. Basic Info</span>
+                  <span className="sm:hidden">Basic</span>
+                </button>
+
+                <div className={`flex-1 h-1 mx-2 sm:mx-3 rounded-full transition-all ${currentStep >= 2 ? 'bg-emerald-500' : 'bg-slate-100'}`} />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentStep > 2) setCurrentStep(2);
+                    else if (currentStep < 2) validateStep1AndProceed();
+                  }}
+                  className={`flex items-center gap-2 text-xs sm:text-sm font-extrabold transition-all ${
+                    currentStep === 2
+                      ? 'text-indigo-600'
+                      : currentStep > 2
+                      ? 'text-slate-800 cursor-pointer hover:text-indigo-600'
+                      : 'text-slate-400'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                    currentStep === 2 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : currentStep > 2 ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'
+                  }`}>
+                    {currentStep > 2 ? <Check size={16} strokeWidth={3} /> : '2'}
+                  </div>
+                  <span className="hidden sm:inline">2. Details</span>
+                  <span className="sm:hidden">Details</span>
+                </button>
+
+                <div className={`flex-1 h-1 mx-2 sm:mx-3 rounded-full transition-all ${currentStep >= 3 ? 'bg-emerald-500' : 'bg-slate-100'}`} />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentStep < 3) {
+                      if (validateStep1()) setCurrentStep(3);
+                    }
+                  }}
+                  className={`flex items-center gap-2 text-xs sm:text-sm font-extrabold transition-all ${
+                    currentStep === 3
+                      ? 'text-indigo-600'
+                      : 'text-slate-400'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                    currentStep === 3 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-100 text-slate-400'
+                  }`}>
+                    3
+                  </div>
+                  <span className="hidden sm:inline">3. Plan & Publish</span>
+                  <span className="sm:hidden">Plan</span>
+                </button>
+              </div>
+            </div>
 
         {id && isEditLocked && !isAdmin && (
           <div className="mb-8 p-6 bg-amber-50 border border-amber-200 rounded-3xl" id="edit-locked-warning">
@@ -2815,6 +2957,95 @@ const CreateAd = () => {
           </button>
         </form>
       </motion.div>
+    </div>
+
+    {/* Right Column: Sticky Live Listing Preview Panel (Desktop) */}
+    <div className="hidden lg:block lg:col-span-5 xl:col-span-4">
+      <div className="sticky top-24 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xl space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <span>👁️</span> Live Listing Preview
+          </span>
+          <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+            Real-time
+          </span>
+        </div>
+
+        {/* Live Rendered Card */}
+        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm transition-all duration-200">
+          {/* Photo Container */}
+          <div className="aspect-[4/3] bg-slate-900 relative overflow-hidden">
+            {formData.images.length > 0 ? (
+              <img
+                src={formData.images[0]}
+                alt={formData.title || 'Preview'}
+                className={formData.listingType === 'informativo' ? "w-full h-full object-contain p-2 bg-slate-50" : "w-full h-full object-cover"}
+                style={formData.listingType !== 'informativo' ? getAdImageStyle(imagePositionX, imagePositionY, imageZoom) : undefined}
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-2 bg-slate-100/80">
+                <ImageIcon size={32} className="opacity-30" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Photo Preview</span>
+              </div>
+            )}
+
+            {/* Badge Overlay */}
+            <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1 shadow-md">
+              <span>{formData.country === 'Reino Unido' ? '🇬🇧' : '🇵🇹'}</span>
+              <span>
+                {formData.plan === 'national' ? 'National ⭐⭐⭐' : formData.plan === 'local' ? 'Local ⭐' : 'Standard'}
+              </span>
+            </div>
+
+            {/* Photos Count */}
+            {formData.images.length > 0 && (
+              <div className="absolute bottom-3 right-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                📷 {formData.images.length}
+              </div>
+            )}
+          </div>
+
+          {/* Card Body */}
+          <div className="p-4 space-y-2 text-left">
+            <div className="flex items-center justify-between text-[11px] text-slate-500 font-bold">
+              <span className="text-indigo-600 uppercase tracking-wider truncate max-w-[140px]">
+                {formData.category || 'Category'}
+              </span>
+              <span className="flex items-center gap-1 text-slate-600 shrink-0">
+                <MapPin size={12} /> {formData.city || 'City'}
+              </span>
+            </div>
+
+            <h4 className="font-extrabold text-slate-900 text-sm line-clamp-2 leading-snug">
+              {formData.title || 'Listing Title'}
+            </h4>
+
+            <div className="text-base font-black text-indigo-600 pt-1">
+              {formData.category === '💚 Doações & Solidariedade'
+                ? 'Free (Donation)'
+                : formData.price
+                ? (formData.country === 'Reino Unido' ? `£${formData.price}` : `€${formData.price}`)
+                : 'Price on Application'}
+            </div>
+
+            {/* Technical specs summary */}
+            {(formData.year || formData.boatType || formData.length || formData.horsepower) && (
+              <div className="pt-2 border-t border-slate-200/60 flex flex-wrap gap-1 text-[10px] text-slate-600 font-semibold">
+                {formData.boatType && <span className="bg-slate-200/70 px-2 py-0.5 rounded-md">{formData.boatType}</span>}
+                {formData.year && <span className="bg-slate-200/70 px-2 py-0.5 rounded-md">{formData.year}</span>}
+                {formData.length && <span className="bg-slate-200/70 px-2 py-0.5 rounded-md">{formData.length}</span>}
+                {formData.horsepower && <span className="bg-slate-200/70 px-2 py-0.5 rounded-md">{formData.horsepower}</span>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <p className="text-[11px] text-slate-400 font-medium text-center leading-relaxed">
+          This live preview updates automatically as you fill in details across all 3 steps.
+        </p>
+      </div>
+    </div>
+  </div>
 
       {/* Stripe Checkout Modal */}
       <AnimatePresence>
