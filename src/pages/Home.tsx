@@ -1128,7 +1128,7 @@ const Home = () => {
                     setIsSearchFocused(true);
                   }}
                   onBlur={() => setIsSearchFocused(false)}
-                  placeholder="Search boats, yachts, engines, parts, electronics, gear..."
+                  placeholder="Search"
                   className="w-full bg-transparent text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:outline-none text-xs lg:text-sm"
                 />
                 {searchTerm && (
@@ -1657,7 +1657,7 @@ const Home = () => {
                 handleSearchFocus();
                 setIsSearchFocused(true);
               }}
-              placeholder="Search boats, engines, parts, services..."
+              placeholder="Search"
               className="w-full bg-transparent text-slate-900 dark:text-white font-medium placeholder:text-slate-400 focus:outline-none text-xs"
             />
             {searchTerm && (

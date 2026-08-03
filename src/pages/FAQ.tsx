@@ -84,20 +84,20 @@ const FAQ = () => {
             onClick={() => navigate(-1)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm rounded-xl border border-slate-200 shadow-sm transition-all cursor-pointer hover:border-slate-300 active:scale-95"
             id="faq-back-btn"
-            title="Voltar à página anterior"
+            title="Return to previous page"
           >
             <ArrowLeft size={16} />
-            <span>Voltar</span>
+            <span>Back</span>
           </button>
 
           <Link
             to="/"
             className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 font-medium text-xs sm:text-sm rounded-xl border border-slate-200 shadow-sm transition-all cursor-pointer"
             id="faq-home-btn"
-            title="Ir para a Página Inicial"
+            title="Go to Home page"
           >
             <Home size={16} />
-            <span className="hidden sm:inline">Página Inicial</span>
+            <span className="hidden sm:inline">Home</span>
           </Link>
         </div>
 
@@ -158,7 +158,20 @@ const FAQ = () => {
                         className="overflow-hidden"
                       >
                         <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100" id={`faq-answer-${index}`}>
-                          {item.answer}
+                          {item.answer.includes('contato@connectboat.co.uk') ? (
+                            <>
+                              {item.answer.split('contato@connectboat.co.uk')[0]}
+                              <a
+                                href="mailto:contato@connectboat.co.uk"
+                                className="text-indigo-600 hover:underline font-semibold cursor-pointer"
+                              >
+                                contato@connectboat.co.uk
+                              </a>
+                              {item.answer.split('contato@connectboat.co.uk')[1]}
+                            </>
+                          ) : (
+                            item.answer
+                          )}
                         </p>
                       </motion.div>
                     )}
