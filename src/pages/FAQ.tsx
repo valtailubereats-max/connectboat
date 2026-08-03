@@ -70,8 +70,8 @@ const FAQ = () => {
         <link rel="canonical" href="https://connectboat.co.uk/faq" />
         <meta property="og:url" content="https://connectboat.co.uk/faq" />
         <meta property="og:title" content="FAQ | ConnectBoat" />
-        <meta property="og:image" content="https://connectboat.co.uk/connectboat-og.png" />
-        <meta name="twitter:image" content="https://connectboat.co.uk/connectboat-og.png" />
+        <meta property="og:image" content="https://connectboat.co.uk/api/og-image" />
+        <meta name="twitter:image" content="https://connectboat.co.uk/api/og-image" />
       </Helmet>
       <motion.div
         initial={{ opacity: 0, y: 20 }}

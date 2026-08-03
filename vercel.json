@@ -2,10 +2,12 @@
   "rewrites": [
     { "source": "/og-image.png", "destination": "/api/og-image" },
     { "source": "/connectboat-og.png", "destination": "/api/og-image" },
+    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/robots.txt", "destination": "/robots.txt" },
     { "source": "/empreendedores/:showcaseSlug/produto/:productId", "destination": "/api/product-seo?showcaseSlug=:showcaseSlug&productId=:productId" },
     { "source": "/anuncio/:slugAndId", "destination": "/api/seo?slugAndId=:slugAndId" },
-    { "source": "/listing/:slugAndId", "destination": "/api/seo?slugAndId=:slugAndId" }
+    { "source": "/listing/:slugAndId", "destination": "/api/seo?slugAndId=:slugAndId" },
+    { "source": "/((?!sitemap\\.xml|robots\\.txt|.*\\..*).*)", "destination": "/" }
   ]
 }

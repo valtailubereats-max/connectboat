@@ -17,8 +17,8 @@ const Cookies = () => {
         <link rel="canonical" href="https://connectboat.co.uk/cookie-policy" />
         <meta property="og:url" content="https://connectboat.co.uk/cookie-policy" />
         <meta property="og:title" content="Cookie Policy | ConnectBoat" />
-        <meta property="og:image" content="https://connectboat.co.uk/connectboat-og.png" />
-        <meta name="twitter:image" content="https://connectboat.co.uk/connectboat-og.png" />
+        <meta property="og:image" content="https://connectboat.co.uk/api/og-image" />
+        <meta name="twitter:image" content="https://connectboat.co.uk/api/og-image" />
       </Helmet>
       <motion.div
         initial={{ opacity: 0, y: 20 }}

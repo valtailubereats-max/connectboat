@@ -687,13 +687,13 @@ const AdDetails = () => {
           <meta property="og:url" content={`https://connectboat.co.uk${location.pathname.startsWith('/listing/') ? location.pathname : getAdUrl(ad)}`} />
           <meta property="og:title" content={`${ad.title} | ConnectBoat`} />
           <meta property="og:description" content={normalizedDescription.substring(0, 160)} />
-          <meta property="og:image" content={images[0] || ad.imageUrl || 'https://connectboat.co.uk/connectboat-og.png'} />
+          <meta property="og:image" content={images[0] || ad.imageUrl || 'https://connectboat.co.uk/api/og-image'} />
           {ad.price && <meta property="product:price:amount" content={String(ad.price)} />}
           {ad.price && <meta property="product:price:currency" content={ad.country === 'Reino Unido' ? 'GBP' : 'EUR'} />}
           <meta name="twitter:card" content="summary_large_image" />
           <meta name="twitter:title" content={`${ad.title} | ConnectBoat`} />
           <meta name="twitter:description" content={normalizedDescription.substring(0, 160)} />
-          <meta name="twitter:image" content={images[0] || ad.imageUrl || 'https://connectboat.co.uk/connectboat-og.png'} />
+          <meta name="twitter:image" content={images[0] || ad.imageUrl || 'https://connectboat.co.uk/api/og-image'} />
           <script type="application/ld+json">
             {JSON.stringify({
               "@context": "https://schema.org/",
