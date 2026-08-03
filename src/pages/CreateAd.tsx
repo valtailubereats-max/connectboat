@@ -1612,1241 +1612,733 @@ const CreateAd = () => {
             </div>
           )}
 
-          {/* Image Upload */}
-          <div className="space-y-4">
-            <div className="flex justify-between items-end">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
-                {formData.category === 'Trabalho/Empregos' ? 'Imagens da Vaga (Opcional)' : 'Imagens do Produto'}
-              </label>
-              <span className="text-xs font-bold text-slate-400">
-                {formData.images.length} de {maxAllowed} imagens
-              </span>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                disabled={uploading}
-              />
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleImageUpload}
-                className="hidden"
-                disabled={uploading}
-              />
-              <AnimatePresence mode="popLayout">
-                {formData.images.map((url, index) => (
-                  url && (
-                    <motion.div
-                      key={`${url}-${index}`}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="aspect-square bg-slate-100 rounded-2xl overflow-hidden relative group border border-slate-200"
-                    >
-                      <img 
-                        src={url} 
-                        alt={`Preview ${index}`} 
-                        className={formData.listingType === 'informativo' ? "w-full h-full object-contain p-2 bg-slate-50" : "w-full h-full object-cover"} 
-                        style={index === 0 && formData.listingType !== 'informativo' ? getAdImageStyle(imagePositionX, imagePositionY, imageZoom) : undefined} 
-                      />
-                      {!(isEditLocked && !isAdmin) && (
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-2 md:p-1.5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-95 shadow-lg z-10 cursor-pointer"
+          {/* STEP 1 OF 3: BASIC INFORMATION */}
+          {currentStep === 1 && (
+            <motion.div
+              key="step-1"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-6"
+            >
+              {/* 1. Photos (FIRST item) */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                    Photos *
+                  </label>
+                  <span className="text-xs font-bold text-slate-400">
+                    {formData.images.length} of {maxAllowed} photos
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                  <AnimatePresence mode="popLayout">
+                    {formData.images.map((url, index) => (
+                      url && (
+                        <motion.div
+                          key={`${url}-${index}`}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className="aspect-square bg-slate-100 rounded-2xl overflow-hidden relative group border border-slate-200"
                         >
-                          <X size={14} />
-                        </button>
-                      )}
-                      {index === 0 && (
-                        <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] font-bold py-1 text-center uppercase tracking-tighter">
-                          Principal
-                        </div>
-                      )}
-                    </motion.div>
-                  )
-                ))}
-              </AnimatePresence>
+                          <img 
+                            src={url} 
+                            alt={`Preview ${index}`} 
+                            className={formData.listingType === 'informativo' ? "w-full h-full object-contain p-2 bg-slate-50" : "w-full h-full object-cover"} 
+                            style={index === 0 && formData.listingType !== 'informativo' ? getAdImageStyle(imagePositionX, imagePositionY, imageZoom) : undefined} 
+                          />
+                          {!(isEditLocked && !isAdmin) && (
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute top-2 right-2 bg-red-500 text-white p-2 md:p-1.5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-95 shadow-lg z-10 cursor-pointer"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+                          {index === 0 && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] font-bold py-1 text-center uppercase tracking-tighter">
+                              Main Photo
+                            </div>
+                          )}
+                        </motion.div>
+                      )
+                    ))}
+                  </AnimatePresence>
 
-              {formData.images.length < maxAllowed && !(isEditLocked && !isAdmin) && (
-                <button
-                  type="button"
-                  onClick={() => setShowPhotoSourceMenu(true)}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  disabled={uploading}
-                  className={`aspect-square border-2 border-dashed rounded-2xl flex items-center justify-center relative transition-colors duration-200 group disabled:opacity-50 disabled:cursor-not-allowed ${
-                    isDragging
-                      ? 'border-indigo-500 bg-indigo-50/50 text-indigo-600 scale-[1.02]'
-                      : 'bg-slate-50 border-slate-200 hover:border-indigo-400 hover:bg-slate-100/50'
-                  }`}
-                >
-                  <div className="text-center p-4">
-                    {uploading ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <RefreshCcw className="animate-spin text-indigo-600" size={32} />
-                        <span className="text-xs font-bold text-indigo-600">Uploading...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <Plus className={`mx-auto mb-1 transition-colors ${isDragging ? 'text-indigo-600' : 'text-slate-300 group-hover:text-indigo-400'}`} size={32} />
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
-                          {isDragging ? 'Drop here' : 'Drag or Click'}
-                        </p>
-                        <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-tighter font-semibold">
-                          (Photos)
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </button>
-              )}
-            </div>
-            <p className="text-[10px] text-slate-400 font-medium">
-              * A primeira imagem será a principal. Máximo 5MB por arquivo. Otimização automática aplicada.
-            </p>
-
-            {formData.images.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-6 p-5 bg-slate-50 rounded-2xl border border-slate-200/60"
-              >
-                <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wide mb-3 flex items-center gap-2">
-                  <ImageIcon size={16} className="text-indigo-500" />
-                  Main Photo Crop & Framing (Visual Adjustment)
-                </h4>
-                <p className="text-xs text-slate-500 mb-4">
-                  Click and <strong>drag the image directly</strong> in the preview on the right. Scroll the <strong>mouse wheel</strong> to zoom in/out on desktop, or use a <strong>two-finger pinch gesture</strong> on mobile.
-                </p>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                  {/* Both Previews Box (Original + Card Crop) - Spans 7 cols on large screens */}
-                  <div className="lg:col-span-7 flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    
-                    {/* Imagem Original Preview - Reference */}
-                    <div className="flex flex-col items-center">
-                      <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-tighter text-center">
-                        Original Image (Reference)
-                      </div>
-                      <div className="w-[170px] h-[170px] sm:w-[180px] sm:h-[180px] bg-slate-950 rounded-2xl overflow-hidden border border-slate-300 shadow-inner relative flex items-center justify-center">
-                        <img 
-                          src={formData.images[0]} 
-                          alt="Original image uncropped" 
-                          className="w-full h-full object-contain pointer-events-none"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Como Ficará No Card Preview - Interactive */}
-                    <div className="flex flex-col items-center">
-                      <div className="text-[10px] font-bold text-indigo-500 uppercase mb-2 tracking-tighter text-center">
-                        {formData.listingType === 'informativo' ? 'Full Image Framing' : 'Card Preview (Drag to Adjust)'}
-                      </div>
-                      <div 
-                        ref={formData.listingType === 'informativo' ? undefined : containerRef}
-                        onPointerDown={formData.listingType === 'informativo' ? undefined : handlePointerDown}
-                        onPointerMove={formData.listingType === 'informativo' ? undefined : handlePointerMove}
-                        onPointerUp={formData.listingType === 'informativo' ? undefined : handlePointerUp}
-                        onPointerCancel={formData.listingType === 'informativo' ? undefined : handlePointerUp}
-                        onTouchStart={formData.listingType === 'informativo' ? undefined : handleTouchStart}
-                        onTouchMove={formData.listingType === 'informativo' ? undefined : handleTouchMove}
-                        onTouchEnd={formData.listingType === 'informativo' ? undefined : handleTouchEnd}
-                        onTouchCancel={formData.listingType === 'informativo' ? undefined : handleTouchEnd}
-                        className={`w-[170px] h-[170px] sm:w-[180px] sm:h-[180px] bg-slate-150 rounded-2xl overflow-hidden border-2 border-indigo-500 shadow-lg relative select-none touch-none group transition-all duration-200 ${
-                          formData.listingType === 'informativo' ? 'cursor-default p-2 flex items-center justify-center bg-slate-100' : isDraggingImage ? 'cursor-grabbing border-indigo-600 shadow-xl scale-[1.01]' : 'cursor-grab hover:shadow-md hover:border-indigo-400'
-                        }`}
-                      >
-                        <img 
-                          src={formData.images[0]} 
-                          alt="Framing adjustment preview" 
-                          className={`w-full h-full pointer-events-none transition-all duration-75 ${
-                            formData.listingType === 'informativo' ? 'object-contain' : 'object-cover'
-                          }`}
-                          style={formData.listingType === 'informativo' ? undefined : getAdImageStyle(imagePositionX, imagePositionY, imageZoom)}
-                        />
-                        {formData.listingType === 'informativo' ? (
-                          <div className="absolute top-2 right-2 bg-emerald-600/95 backdrop-blur-sm text-white text-[9px] font-black uppercase tracking-tight py-1 px-2.5 rounded-full pointer-events-none shadow">
-                            💻 Full 💡
+                  {formData.images.length < maxAllowed && !(isEditLocked && !isAdmin) && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPhotoSourceMenu(true)}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      disabled={uploading}
+                      className={`aspect-square border-2 border-dashed rounded-2xl flex items-center justify-center relative transition-colors duration-200 group disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isDragging
+                          ? 'border-indigo-500 bg-indigo-50/50 text-indigo-600 scale-[1.02]'
+                          : 'bg-slate-50 border-slate-200 hover:border-indigo-400 hover:bg-slate-100/50'
+                      }`}
+                    >
+                      <div className="text-center p-4">
+                        {uploading ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <RefreshCcw className="animate-spin text-indigo-600" size={32} />
+                            <span className="text-xs font-bold text-indigo-600">Uploading...</span>
                           </div>
                         ) : (
-                          <div className="absolute top-2 right-2 bg-indigo-600/90 backdrop-blur-sm text-white text-[9px] font-black uppercase tracking-tight py-1 px-2.5 rounded-full pointer-events-none shadow">
-                            Drag 🖐️
-                          </div>
+                          <>
+                            <Plus className={`mx-auto mb-1 transition-colors ${isDragging ? 'text-indigo-600' : 'text-slate-300 group-hover:text-indigo-400'}`} size={32} />
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">
+                              {isDragging ? 'Drop here' : 'Drag or Click'}
+                            </p>
+                            <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-tighter font-semibold">
+                              (Photos)
+                            </p>
+                          </>
                         )}
                       </div>
-                    </div>
-
-                  </div>
-
-                  {/* Slider Controls Box - Spans 5 cols on large screens */}
-                  <div className="lg:col-span-5 space-y-4">
-                    {formData.listingType === 'informativo' ? (
-                      <div className="bg-emerald-50/70 border-2 border-emerald-100 p-5 rounded-2xl space-y-3 shadow-sm">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 flex items-center gap-1">
-                          <span>💡</span> Informational Mode Active
-                        </span>
-                        <p className="text-xs font-semibold text-slate-600 leading-relaxed">
-                          This listing is configured as an <strong>Informational Listing</strong>.
-                        </p>
-                        <p className="text-[11px] font-medium text-slate-500 leading-relaxed">
-                          In this mode, the main image will be displayed completely (<strong>contain</strong>) with a neutral soft background, preventing edge crops on Home, lists, or search results. Manual zoom and positioning controls are disabled as the whole image is automatically preserved.
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="bg-slate-100/80 border border-slate-200/60 p-4 rounded-2xl space-y-3">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">✨ Framing Instructions</span>
-                          <ul className="text-xs font-semibold text-slate-600 space-y-2.5">
-                            <li className="flex items-start gap-2">
-                              <span className="text-indigo-600 shrink-0">🖐️</span>
-                              <span><strong>Move:</strong> Drag the image up, down, left or right.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-indigo-600 shrink-0">🔍</span>
-                              <span><strong>Zoom (PC):</strong> Scroll the mouse wheel over the image.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                              <span className="text-indigo-650 shrink-0">📱</span>
-                              <span><strong>Zoom (Mobile):</strong> Use a two-finger pinch gesture.</span>
-                            </li>
-                          </ul>
-                          <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px] font-bold text-slate-500">
-                            <span>Current Zoom:</span>
-                            <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md font-mono">{imageZoom.toFixed(2)}x</span>
-                          </div>
-                        </div>
-
-                        {/* Reset/Center Buttons */}
-                        <div className="flex gap-2 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setImagePositionX(50);
-                              setImagePositionY(50);
-                            }}
-                            className="flex-1 py-1.5 px-3 text-xs font-bold text-indigo-650 bg-indigo-50 border border-indigo-100 hover:bg-indigo-100/70 rounded-xl transition-colors cursor-pointer text-center"
-                          >
-                            Center
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setImagePositionX(50);
-                              setImagePositionY(50);
-                              setImageZoom(1);
-                            }}
-                            className="flex-1 py-1.5 px-3 text-xs font-bold text-slate-650 bg-slate-100 border border-slate-200 hover:bg-slate-200/70 rounded-xl transition-colors cursor-pointer text-center"
-                          >
-                            Reset
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {isAdmin && (
-              <div className="bg-gradient-to-br from-indigo-50/70 to-blue-50/50 p-6 rounded-3xl border-2 border-indigo-100/80 md:col-span-2 space-y-4 shadow-sm">
-                <h4 className="font-bold text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider">
-                  <span>⚙️ Administrator Settings</span>
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Listing Type</label>
-                    <select
-                      value={formData.listingType}
-                      onChange={(e) => setFormData({ ...formData, listingType: e.target.value as any })}
-                      className="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                    >
-                      <option value="normal">Standard Listing (Opens detail page)</option>
-                      <option value="informativo">Informational Listing (Redirects to Useful Link)</option>
-                    </select>
-                  </div>
-                  {formData.listingType === 'informativo' && (
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">URL de Destino (interno. Ex: /links?categoria=imigracao)</label>
-                      <input
-                        type="text"
-                        value={formData.targetUrl}
-                        onChange={(e) => setFormData({ ...formData, targetUrl: e.target.value })}
-                        placeholder="Ex: /links?categoria=imigracao"
-                        className="w-full px-4 py-3 bg-white border-2 border-slate-100 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                      />
-                    </div>
+                    </button>
                   )}
                 </div>
-              </div>
-            )}
+                <p className="text-[10px] text-slate-400 font-medium">
+                  * First photo is the cover photo. Max 5MB per file.
+                </p>
 
-            {/* SECTION 1: ESSENTIAL BOAT IDENTIFICATION */}
-            <div className="md:col-span-2 p-6 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl space-y-6 shadow-xl border border-slate-800">
-              <div className="flex items-center gap-3 border-b border-white/10 pb-4">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
-                  <Anchor size={22} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
-                    Identificação do Barco <span className="text-xs font-semibold text-emerald-300 bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-400/30">Opcional</span>
-                  </h3>
-                  <p className="text-xs text-slate-300 mt-0.5">Preencha os dados da embarcação se desejar especificar detalhes técnicos.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {/* Boat Type */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Tipo de Barco</label>
-                  <select
-                    id="sel-boat-type"
-                    value={formData.boatType}
-                    onChange={(e) => setFormData({ ...formData, boatType: e.target.value })}
-                    disabled={!isAdmin && isEditLocked}
-                    className="w-full px-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-indigo-400 text-white outline-none transition-all font-medium text-sm disabled:opacity-50"
-                  >
-                    <option value="">Selecione o tipo...</option>
-                    {BOAT_TYPES.map((type) => (
-                      <option key={type} value={type} className="bg-slate-900 text-white">{type}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Manufacturer */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Fabricante / Marca</label>
-                  <input
-                    id="txt-manufacturer"
-                    type="text"
-                    value={formData.manufacturer}
-                    onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
-                    placeholder="Ex: Princess, Sunseeker, Bavaria"
-                    disabled={!isAdmin && isEditLocked}
-                    className="w-full px-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-indigo-400 text-white outline-none transition-all text-sm disabled:opacity-50"
-                  />
-                </div>
-
-                {/* Model */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Modelo</label>
-                  <input
-                    id="txt-model"
-                    type="text"
-                    value={formData.model}
-                    onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                    placeholder="Ex: V48, Oceanis 40.1"
-                    disabled={!isAdmin && isEditLocked}
-                    className="w-full px-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-indigo-400 text-white outline-none transition-all text-sm disabled:opacity-50"
-                  />
-                </div>
-
-                {/* Year */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Ano de Fabrico</label>
-                  <input
-                    id="txt-year"
-                    type="number"
-                    min="1900"
-                    max={new Date().getFullYear() + 1}
-                    value={formData.year}
-                    onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                    placeholder="Ex: 2021"
-                    disabled={!isAdmin && isEditLocked}
-                    className="w-full px-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-indigo-400 text-white outline-none transition-all text-sm disabled:opacity-50"
-                  />
-                </div>
-
-                {/* Condition */}
-                <div className="space-y-2 md:col-span-2 lg:col-span-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-300">Condição do Barco</label>
-                  <select
-                    id="sel-condition"
-                    value={formData.condition}
-                    onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-                    disabled={!isAdmin && isEditLocked}
-                    className="w-full px-4 py-3.5 bg-slate-800/80 border border-slate-700 rounded-xl focus:border-indigo-400 text-white outline-none transition-all font-medium text-sm disabled:opacity-50"
-                  >
-                    <option value="">Selecione a condição...</option>
-                    {BOAT_CONDITIONS.map((cond) => (
-                      <option key={cond} value={cond} className="bg-slate-900 text-white">{cond}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 2: DIMENSIONS & TECHNICAL SPECS (OPTIONAL) */}
-            <div className="md:col-span-2 p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-5">
-              <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                  <Ruler size={18} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    Dimensões & Construção <span className="text-[10px] font-bold text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">Opcional</span>
-                  </h3>
-                  <p className="text-xs text-slate-500">Detalhes técnicos de comprimento, boca, calado e material do casco.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Comprimento (LOA)</label>
-                  <input
-                    type="text"
-                    value={formData.length}
-                    onChange={(e) => setFormData({ ...formData, length: e.target.value })}
-                    placeholder="Ex: 38 ft / 11.6 m"
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Boca (Largura)</label>
-                  <input
-                    type="text"
-                    value={formData.beam}
-                    onChange={(e) => setFormData({ ...formData, beam: e.target.value })}
-                    placeholder="Ex: 12 ft / 3.6 m"
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Calado (Draft)</label>
-                  <input
-                    type="text"
-                    value={formData.draft}
-                    onChange={(e) => setFormData({ ...formData, draft: e.target.value })}
-                    placeholder="Ex: 3.5 ft / 1.0 m"
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Material do Casco</label>
-                  <select
-                    value={formData.hullMaterial}
-                    onChange={(e) => setFormData({ ...formData, hullMaterial: e.target.value })}
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  >
-                    <option value="">Selecione...</option>
-                    {BOAT_HULL_MATERIALS.map((mat) => (
-                      <option key={mat} value={mat}>{mat}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 3: ENGINE & MECHANICAL (OPTIONAL) */}
-            <div className="md:col-span-2 p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-5">
-              <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                  <Gauge size={18} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    Motorização & Mecânica <span className="text-[10px] font-bold text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">Opcional</span>
-                  </h3>
-                  <p className="text-xs text-slate-500">Especificações do motor, potência, combustível e horas de uso.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Marca do Motor</label>
-                  <input
-                    type="text"
-                    value={formData.engineBrand}
-                    onChange={(e) => setFormData({ ...formData, engineBrand: e.target.value })}
-                    placeholder="Ex: Volvo Penta, Mercury"
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Potência (HP)</label>
-                  <input
-                    type="text"
-                    value={formData.horsepower}
-                    onChange={(e) => setFormData({ ...formData, horsepower: e.target.value })}
-                    placeholder="Ex: 300 HP / 2x 435 HP"
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Horas de Motor</label>
-                  <input
-                    type="text"
-                    value={formData.engineHours}
-                    onChange={(e) => setFormData({ ...formData, engineHours: e.target.value })}
-                    placeholder="Ex: 250 hrs"
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Combustível</label>
-                  <select
-                    value={formData.fuelType}
-                    onChange={(e) => setFormData({ ...formData, fuelType: e.target.value })}
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  >
-                    <option value="">Selecione...</option>
-                    {BOAT_FUEL_TYPES.map((fuel) => (
-                      <option key={fuel} value={fuel}>{fuel}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 4: ACCOMMODATIONS & EQUIPMENT (OPTIONAL) */}
-            <div className="md:col-span-2 p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-5">
-              <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                  <Compass size={18} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    Acomodações & Equipamento <span className="text-[10px] font-bold text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">Opcional</span>
-                  </h3>
-                  <p className="text-xs text-slate-500">Número de cabines, lugares de dormida, casas de banho e reboque.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Cabines</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.cabins}
-                    onChange={(e) => setFormData({ ...formData, cabins: e.target.value })}
-                    placeholder="Ex: 2"
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Berths (Camas)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.berths}
-                    onChange={(e) => setFormData({ ...formData, berths: e.target.value })}
-                    placeholder="Ex: 4"
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Casas de Banho</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.bathrooms}
-                    onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
-                    placeholder="Ex: 1"
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-700">Reboque Incluído</label>
-                  <select
-                    value={formData.trailerIncluded}
-                    onChange={(e) => setFormData({ ...formData, trailerIncluded: e.target.value })}
-                    className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all text-sm"
-                  >
-                    <option value="No">Não</option>
-                    <option value="Yes">Sim</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 5: LEGAL & COMPLIANCE (OPTIONAL) */}
-            <div className="md:col-span-2 p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-4">
-              <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                  <ShieldCheck size={18} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    Conformidade & Impostos <span className="text-[10px] font-bold text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">Opcional</span>
-                  </h3>
-                  <p className="text-xs text-slate-500">Informações fiscais e certificação marítima.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl">
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">IVA Pago (VAT Paid)</p>
-                    <p className="text-xs text-slate-500">O imposto sobre o valor acrescentado foi liquidado?</p>
+                {formData.images.length > 0 && (
+                  <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200/60 flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-700">Main Photo Framing Adjustment</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setImagePositionX(50); setImagePositionY(50); }}
+                        className="px-3 py-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-100"
+                      >
+                        Center
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setImagePositionX(50); setImagePositionY(50); setImageZoom(1); }}
+                        className="px-3 py-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-100"
+                      >
+                        Reset
+                      </button>
+                    </div>
                   </div>
-                  <select
-                    value={formData.vatPaid}
-                    onChange={(e) => setFormData({ ...formData, vatPaid: e.target.value })}
-                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none"
-                  >
-                    <option value="Yes">Sim</option>
-                    <option value="No">Não</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-2xl">
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">Certificado CE</p>
-                    <p className="text-xs text-slate-500">Embarcação em conformidade com as diretivas CE?</p>
-                  </div>
-                  <select
-                    value={formData.ceCertified}
-                    onChange={(e) => setFormData({ ...formData, ceCertified: e.target.value })}
-                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 outline-none"
-                  >
-                    <option value="Yes">Sim</option>
-                    <option value="No">Não</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Listing Title *</label>
-                {formData.manufacturer && formData.model && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const autoTitle = `${formData.manufacturer} ${formData.model} ${formData.year ? `(${formData.year})` : ''}`.trim();
-                      setFormData({ ...formData, title: autoTitle });
-                    }}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <Sparkles size={14} /> Generate Automatic Title
-                  </button>
                 )}
               </div>
-              <div className="relative">
-                <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                <input
-                  id="txt-ad-title"
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  required
+
+              {/* 2. Listing Title */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Listing Title *</label>
+                <div className="relative">
+                  <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                  <input
+                    id="txt-ad-title"
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                    disabled={!isAdmin && isEditLocked}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    placeholder="Ex: Princess V48 Yacht (2021)"
+                  />
+                </div>
+              </div>
+
+              {/* 3. Description */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Description *</label>
+                <div className="relative">
+                  <FileText className="absolute left-4 top-6 text-slate-400" size={20} />
+                  <textarea
+                    id="txt-description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    required
+                    rows={5}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all resize-none"
+                    placeholder="Describe item condition, history, included accessories, etc."
+                  />
+                </div>
+              </div>
+
+              {/* 4. Category */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Category *</label>
+                <select
+                  value={formData.category}
                   disabled={!isAdmin && isEditLocked}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                  placeholder="Ex: Princess V48 Yacht (2021)"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Category</label>
-              <select
-                value={formData.category}
-                disabled={!isAdmin && isEditLocked}
-                onChange={(e) => {
-                  const cat = e.target.value;
-                  const updatedData = { ...formData, category: cat };
-                  if (cat === '💚 Doações & Solidariedade') {
-                    updatedData.plan = 'local';
-                    updatedData.price = '0';
-                  }
-                  setFormData(updatedData);
-                }}
-                className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                <option value="">Seleccione uma categoria...</option>
-                {categories
-                  .filter(c => {
-                    const isStaffOnly = c === 'Imigração' || c === 'Trabalho/Empregos';
-                    if (isStaffOnly) {
-                      return isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator';
+                  onChange={(e) => {
+                    const cat = e.target.value;
+                    const updatedData = { ...formData, category: cat };
+                    if (cat === '💚 Doações & Solidariedade') {
+                      updatedData.plan = 'local';
+                      updatedData.price = '0';
                     }
-                    return true;
-                  })
-                  .map((c, index) => <option key={`category-${c}-${index}`} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            {(formData.category === 'Serviços' || formData.category?.startsWith('Serviços') || formData.category?.includes('Serviços')) && (
-              <div className="space-y-3 col-span-1 md:col-span-2">
-                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider block">Área de Atendimento</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl">
-                  <label className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl hover:border-indigo-100 hover:bg-indigo-50/10 cursor-pointer transition-all shadow-sm">
-                    <input
-                      type="radio"
-                      name="serviceCoverage"
-                      value="city"
-                      checked={formData.serviceCoverage === 'city'}
-                      onChange={() => setFormData({ ...formData, serviceCoverage: 'city' })}
-                      className="w-4.5 h-4.5 text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                    />
-                    <span className="text-sm font-semibold text-slate-700">Apenas minha cidade</span>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl hover:border-indigo-100 hover:bg-indigo-50/10 cursor-pointer transition-all shadow-sm">
-                    <input
-                      type="radio"
-                      name="serviceCoverage"
-                      value="radius20"
-                      checked={formData.serviceCoverage === 'radius20'}
-                      onChange={() => setFormData({ ...formData, serviceCoverage: 'radius20' })}
-                      className="w-4.5 h-4.5 text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                    />
-                    <span className="text-sm font-semibold text-slate-700">Até 20 km</span>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl hover:border-indigo-100 hover:bg-indigo-50/10 cursor-pointer transition-all shadow-sm">
-                    <input
-                      type="radio"
-                      name="serviceCoverage"
-                      value="radius50"
-                      checked={formData.serviceCoverage === 'radius50'}
-                      onChange={() => setFormData({ ...formData, serviceCoverage: 'radius50' })}
-                      className="w-4.5 h-4.5 text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                    />
-                    <span className="text-sm font-semibold text-slate-700">Até 50 km</span>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl hover:border-indigo-100 hover:bg-indigo-50/10 cursor-pointer transition-all shadow-sm">
-                    <input
-                      type="radio"
-                      name="serviceCoverage"
-                      value="county"
-                      checked={formData.serviceCoverage === 'county'}
-                      onChange={() => setFormData({ ...formData, serviceCoverage: 'county' })}
-                      className="w-4.5 h-4.5 text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                    />
-                    <span className="text-sm font-semibold text-slate-700">
-                      {formData.country === 'Reino Unido' ? 'Todo o condado' : 'Todo o distrito'}
-                    </span>
-                  </label>
-                  {formData.country === 'Reino Unido' ? (
-                    <label className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl hover:border-indigo-100 hover:bg-indigo-50/10 cursor-pointer transition-all shadow-sm">
-                      <input
-                        type="radio"
-                        name="serviceCoverage"
-                        value="uk"
-                        checked={formData.serviceCoverage === 'uk'}
-                        onChange={() => setFormData({ ...formData, serviceCoverage: 'uk' })}
-                        className="w-4.5 h-4.5 text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                      />
-                      <span className="text-sm font-semibold text-slate-700">Todo o Reino Unido</span>
-                    </label>
-                  ) : (
-                    <label className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl hover:border-indigo-100 hover:bg-indigo-50/10 cursor-pointer transition-all shadow-sm">
-                      <input
-                        type="radio"
-                        name="serviceCoverage"
-                        value="portugal"
-                        checked={formData.serviceCoverage === 'portugal'}
-                        onChange={() => setFormData({ ...formData, serviceCoverage: 'portugal' })}
-                        className="w-4.5 h-4.5 text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                      />
-                      <span className="text-sm font-semibold text-slate-700">Todo Portugal</span>
-                    </label>
-                  )}
-                  <label className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-2xl hover:border-indigo-100 hover:bg-indigo-50/10 cursor-pointer transition-all shadow-sm col-span-1 sm:col-span-2 md:col-span-3">
-                    <input
-                      type="radio"
-                      name="serviceCoverage"
-                      value="online"
-                      checked={formData.serviceCoverage === 'online'}
-                      onChange={() => setFormData({ ...formData, serviceCoverage: 'online' })}
-                      className="w-4.5 h-4.5 text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                    />
-                    <span className="text-sm font-semibold text-slate-700">Atendimento Online</span>
-                  </label>
-                </div>
+                    setFormData(updatedData);
+                  }}
+                  className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-medium"
+                >
+                  <option value="">Select a category...</option>
+                  {categories
+                    .filter(c => {
+                      const isStaffOnly = c === 'Imigração' || c === 'Trabalho/Empregos';
+                      if (isStaffOnly) {
+                        return isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator';
+                      }
+                      return true;
+                    })
+                    .map((c, index) => <option key={`category-${c}-${index}`} value={c}>{c}</option>)}
+                </select>
               </div>
-            )}
 
-            {formData.category === '💚 Doações & Solidariedade' && (
-              <div className="col-span-1 md:col-span-3 p-5 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200/85 rounded-3xl shadow-sm text-left animate-pulse">
-                <p className="text-sm text-emerald-800 font-extrabold flex items-center gap-1.5">
-                  <span>💚</span> Obrigado pela sua generosidade!
-                </p>
-                <p className="text-xs text-emerald-700/95 mt-1.5 leading-relaxed font-semibold">
-                  ConnectBoat values community contributions. For this reason, donated items receive special local visibility benefits to support fellow boaters.
-                </p>
-              </div>
-            )}
-
-            {formData.category === 'Imigração' ? (
-              <>
+              {/* 5. Price */}
+              {formData.category === '💚 Doações & Solidariedade' ? (
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Phone / WhatsApp (Required)</label>
-                  <input
-                    type="tel"
-                    value={formData.sellerPhone}
-                    onChange={(e) => setFormData({ ...formData, sellerPhone: e.target.value })}
-                    required={formData.category === 'Imigração'}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="Ex: +351 912 345 678"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Contact Email (Optional)</label>
-                  <input
-                    type="email"
-                    value={formData.contactEmail}
-                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="example@domain.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">External Link / Website (URL)</label>
-                  <input
-                    type="url"
-                    value={formData.externalUrl}
-                    onChange={(e) => setFormData({ ...formData, externalUrl: e.target.value })}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="https://example.com"
-                  />
-                </div>
-              </>
-            ) : formData.category === 'Trabalho/Empregos' ? (
-              <>
-                <div className="space-y-2 col-span-1 md:col-span-2">
-                  <div className="p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl">
-                    <p className="text-xs text-indigo-800 font-bold">💼 Informações da Vaga de Trabalho</p>
-                    <p className="text-[11px] text-indigo-600 mt-1">Preencha as informações detalhadas sobre o emprego para atrair candidaturas qualificadas.</p>
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Price</label>
+                  <div className="w-full px-4 py-4 bg-emerald-50 border-2 border-emerald-150 text-emerald-800 rounded-2xl font-extrabold flex items-center gap-2 select-none">
+                    <span>💚 Free (Community Donation)</span>
                   </div>
                 </div>
+              ) : (
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Empresa / Recrutador</label>
-                  <input
-                    type="text"
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="Ex: Luso Recrutamento, LDA"
-                  />
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                    Price ({formData.country === 'Reino Unido' ? '£' : '€'})
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xl select-none leading-none z-10">
+                      {formData.country === 'Reino Unido' ? '£' : '€'}
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={formData.price}
+                      onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-bold text-slate-800"
+                      placeholder="Ex: 799,950"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Salário / Remuneração</label>
-                  <input
-                    type="text"
-                    value={formData.salary}
-                    onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="Ex: 1.200€ - 1.500€ / mês, 10€ / hora, A negociar"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Tipo de Contrato</label>
-                  <select
-                    value={formData.contractType}
-                    onChange={(e) => setFormData({ ...formData, contractType: e.target.value })}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                  >
-                    <option value="">Seleccione o tipo de contrato...</option>
-                    <option value="Full-time">Full-time</option>
-                    <option value="Part-time">Part-time</option>
-                    <option value="Contrato de Trabalho">Contrato de Trabalho</option>
-                    <option value="Prestação de Serviços (Recibos Verdes)">Prestação de Serviços (Recibos Verdes)</option>
-                    <option value="Temporário / Sazonal">Temporário / Sazonal</option>
-                    <option value="Estágio">Estágio</option>
-                    <option value="Outro">Outro</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Horário de Trabalho</label>
-                  <select
-                    value={formData.workSchedule}
-                    onChange={(e) => setFormData({ ...formData, workSchedule: e.target.value })}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                  >
-                    <option value="">Seleccione o horário...</option>
-                    <option value="Período Diário">Período Diário</option>
-                    <option value="Turnos">Turnos</option>
-                    <option value="Horário Flexível">Horário Flexível</option>
-                    <option value="Finais de Semana">Finais de Semana</option>
-                    <option value="Trabalho Noturno">Trabalho Noturno</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Required Experience</label>
-                  <select
-                    value={formData.experienceRequired}
-                    onChange={(e) => setFormData({ ...formData, experienceRequired: e.target.value })}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                  >
-                    <option value="">Select experience level...</option>
-                    <option value="Sem experiência">No experience</option>
-                    <option value="1-2 anos">1-2 years</option>
-                    <option value="3-5 anos">3-5 years</option>
-                    <option value="Sénior (+5 anos)">Senior (+5 years)</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Contact Phone / WhatsApp</label>
-                  <input
-                    type="tel"
-                    value={formData.sellerPhone}
-                    onChange={(e) => setFormData({ ...formData, sellerPhone: e.target.value })}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="Ex: +351 912 345 678"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Contact Email (Optional)</label>
-                  <input
-                    type="email"
-                    value={formData.contactEmail}
-                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="example@jobs.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">External Application Link (Optional)</label>
-                  <input
-                    type="url"
-                    value={formData.externalUrl}
-                    onChange={(e) => setFormData({ ...formData, externalUrl: e.target.value })}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="https://jobs.recruitment.com/job/123"
-                  />
-                </div>
-              </>
-            ) : formData.category === '💚 Doações & Solidariedade' ? (
+              )}
+
+              {/* 6. Publishing Region */}
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
-                  Price
-                </label>
-                <div className="w-full px-4 py-4 bg-emerald-50 border-2 border-emerald-150 text-emerald-800 rounded-2xl font-extrabold flex items-center gap-2 select-none">
-                  <span>💚 Free (Community Donation)</span>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
-                  Price ({formData.country === 'Reino Unido' ? '£' : '€'})
-                </label>
+                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Publishing Region</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xl select-none leading-none z-10">
-                    {formData.country === 'Reino Unido' ? '£' : '€'}
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all"
-                    placeholder="Ex: 799,950 or £799,950.00"
+                  <select
+                    value={formData.country}
+                    disabled={!isAdmin && isEditLocked}
+                    onChange={(e) => handleCountryChange(e.target.value as any)}
+                    className="w-full px-4 py-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl font-bold text-emerald-800 outline-none cursor-pointer appearance-none shadow-sm hover:border-emerald-200 transition-all font-sans disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <option value="Reino Unido" className="font-bold text-slate-900 bg-white">🇬🇧 United Kingdom</option>
+                    <option value="Portugal" className="font-bold text-slate-900 bg-white">🇵🇹 Portugal</option>
+                    {isStaff && (
+                      <option value="Ambos" className="font-bold text-slate-900 bg-white">🌐 Both Countries</option>
+                    )}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-emerald-800 font-bold select-none">
+                    ▼
+                  </div>
+                </div>
+              </div>
+
+              {/* 7. City / Region */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">City / Region *</label>
+                <div className="relative">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={20} />
+                  <SearchableCitySelect
+                    value={formData.city}
+                    disabled={!isAdmin && isEditLocked}
+                    onChange={(val) => setFormData({ ...formData, city: val })}
+                    placeholder="Type or select your city"
+                    country={formData.country}
                   />
                 </div>
               </div>
-            )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Publishing Region</label>
-              <div className="relative">
-                <select
-                  value={formData.country}
-                  disabled={!isAdmin && isEditLocked}
-                  onChange={(e) => handleCountryChange(e.target.value as any)}
-                  className="w-full px-4 py-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl font-bold text-emerald-800 outline-none cursor-pointer appearance-none shadow-sm hover:border-emerald-200 transition-all font-sans disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <option value="Reino Unido" className="font-bold text-slate-900 bg-white">🇬🇧 United Kingdom</option>
-                  <option value="Portugal" className="font-bold text-slate-900 bg-white">🇵🇹 Portugal</option>
-                  {isStaff && (
-                    <option value="Ambos" className="font-bold text-slate-900 bg-white">🌐 Both Countries</option>
-                  )}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-emerald-800 font-bold select-none">
-                  ▼
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">City / Region</label>
-              <div className="relative">
-                <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={20} />
-                <SearchableCitySelect
-                  value={formData.city}
-                  disabled={!isAdmin && isEditLocked}
-                  onChange={(val) => setFormData({ ...formData, city: val })}
-                  placeholder="Type or select your city"
-                  country={formData.country}
-                />
-              </div>
-            </div>
-
-            {formData.category !== 'Imigração' && formData.category !== 'Trabalho/Empregos' && (
-              <div className="space-y-4 md:col-span-2 p-6 bg-slate-50 border-2 border-slate-100 rounded-2xl" id="contact-phone-section">
-                <div>
-                  <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Contact Phone</h4>
-                  <p className="text-xs text-slate-500">Choose the phone number buyers will use to contact you via WhatsApp.</p>
-                </div>
-
+              {/* 8. Contact Phone */}
+              <div className="space-y-3 p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl">
+                <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Contact Phone</h4>
                 <label className="flex items-center gap-3 cursor-pointer select-none py-1">
                   <input
                     type="checkbox"
                     checked={formData.useProfilePhone}
                     onChange={(e) => handleUseProfilePhoneChange(e.target.checked)}
                     className="w-5 h-5 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 transition-all cursor-pointer"
-                    id="chk-use-profile-phone"
                   />
                   <span className="text-sm font-bold text-slate-700">
                     Use phone from my profile <span className="text-slate-500 font-normal">({profile?.phone || 'No phone configured'})</span>
                   </span>
                 </label>
 
-                <AnimatePresence>
-                  {!formData.useProfilePhone && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden space-y-2"
-                    >
-                      <label className="text-xs font-bold text-slate-600 uppercase tracking-wider block mt-2">
-                        Listing Contact Phone (Optional)
-                      </label>
-                      <div className="relative">
+                {!formData.useProfilePhone && (
+                  <input
+                    type="tel"
+                    value={formData.contactPhone}
+                    onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none text-sm"
+                    placeholder={formData.country === 'Reino Unido' ? '+44 7123 456789' : '+351 912 345 678'}
+                  />
+                )}
+              </div>
+
+              {/* Step 1 Actions */}
+              <div className="flex items-center justify-between pt-6 border-t border-slate-200 mt-8">
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="px-6 py-3.5 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  ← Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={validateStep1AndProceed}
+                  className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-indigo-100 flex items-center gap-2 cursor-pointer"
+                >
+                  Continue →
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 2 OF 3: BOAT DETAILS */}
+          {currentStep === 2 && (
+            <motion.div
+              key="step-2"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-6"
+            >
+              {/* Mobile Sticky Preview Header */}
+              <div className="lg:hidden sticky top-16 z-30 bg-white/95 backdrop-blur-md border border-indigo-100 rounded-2xl p-3 shadow-lg mb-4 flex items-center gap-3">
+                {formData.images[0] ? (
+                  <img src={formData.images[0]} alt="Cover" className="w-12 h-12 object-cover rounded-xl shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 shrink-0">
+                    📷
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black text-slate-900 truncate">{formData.title || 'Untitled Listing'}</p>
+                  <p className="text-xs font-black text-indigo-600">
+                    {formData.category === '💚 Doações & Solidariedade' ? 'Free (Donation)' : formData.price ? (formData.country === 'Reino Unido' ? `£${formData.price}` : `€${formData.price}`) : 'Price on request'}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-semibold truncate">{formData.category} • {formData.city || 'No city'}</p>
+                </div>
+              </div>
+
+              {/* Boat Category Technical Specs */}
+              {isBoatCategory && (
+                <div className="space-y-6">
+                  {/* Boat Specs Group 1: Type, Manufacturer, Model, Year, Condition */}
+                  <div className="p-6 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-3xl space-y-5 shadow-xl border border-slate-800">
+                    <div className="flex items-center gap-3 border-b border-white/10 pb-3">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+                        <Anchor size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black text-white">Boat Identification</h3>
+                        <p className="text-xs text-slate-300">Enter technical boat details</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold uppercase text-slate-300">Boat Type</label>
+                        <select
+                          value={formData.boatType}
+                          onChange={(e) => setFormData({ ...formData, boatType: e.target.value })}
+                          disabled={!isAdmin && isEditLocked}
+                          className="w-full px-3.5 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm"
+                        >
+                          <option value="">Select boat type...</option>
+                          {BOAT_TYPES.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold uppercase text-slate-300">Manufacturer</label>
                         <input
-                          type="tel"
-                          value={formData.contactPhone}
-                          onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                          className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none transition-all text-sm"
-                          placeholder={formData.country === 'Reino Unido' ? '+44 7123 456789' : '+351 912 345 678'}
-                          id="txt-contact-phone"
+                          type="text"
+                          value={formData.manufacturer}
+                          onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
+                          placeholder="Ex: Princess, Sunseeker"
+                          disabled={!isAdmin && isEditLocked}
+                          className="w-full px-3.5 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm"
                         />
                       </div>
-                      <p className="text-[11px] text-slate-400 font-medium">
-                        * If left blank, we will use your profile phone number as fallback.
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
 
-            <div className="space-y-4 md:col-span-2">
-              {isStaff && (
-                <div className="p-6 bg-amber-500/10 border-2 border-amber-500/25 rounded-3xl space-y-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">🛠️</span>
-                    <div>
-                      <h3 className="text-sm font-black text-amber-800 uppercase tracking-wider">Painel Administrativo: Destaque Permanente</h3>
-                      <p className="text-[11px] text-amber-900/75">Este anúncio pode ser configurado para nunca expirar e servir de preenchimento rotativo na Home.</p>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold uppercase text-slate-300">Model</label>
+                        <input
+                          type="text"
+                          value={formData.model}
+                          onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                          placeholder="Ex: V48, Oceanis 40.1"
+                          disabled={!isAdmin && isEditLocked}
+                          className="w-full px-3.5 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold uppercase text-slate-300">Year</label>
+                        <input
+                          type="number"
+                          min="1900"
+                          max={new Date().getFullYear() + 1}
+                          value={formData.year}
+                          onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                          placeholder="Ex: 2021"
+                          disabled={!isAdmin && isEditLocked}
+                          className="w-full px-3.5 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5 md:col-span-2">
+                        <label className="text-xs font-bold uppercase text-slate-300">Condition</label>
+                        <select
+                          value={formData.condition}
+                          onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
+                          disabled={!isAdmin && isEditLocked}
+                          className="w-full px-3.5 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm"
+                        >
+                          <option value="">Select condition...</option>
+                          {BOAT_CONDITIONS.map((cond) => (
+                            <option key={cond} value={cond}>{cond}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white/60 rounded-2xl border border-amber-500/10 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <input
-                        id="isPermanentFeatured"
-                        type="checkbox"
-                        checked={formData.isPermanentFeatured}
-                        onChange={(e) => setFormData(prev => ({ ...prev, isPermanentFeatured: e.target.checked }))}
-                        className="w-5 h-5 accent-amber-600 rounded cursor-pointer"
-                      />
-                      <label htmlFor="isPermanentFeatured" className="text-sm font-bold text-slate-800 cursor-pointer select-none">
-                        ⭐ Ativar como Destaque Permanente
-                      </label>
+                  {/* Dimensions */}
+                  <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-4">
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <Ruler size={18} className="text-indigo-600" /> Dimensions & Construction
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Length (LOA)</label>
+                        <input
+                          type="text"
+                          value={formData.length}
+                          onChange={(e) => setFormData({ ...formData, length: e.target.value })}
+                          placeholder="Ex: 38 ft / 11.6 m"
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Beam (Width)</label>
+                        <input
+                          type="text"
+                          value={formData.beam}
+                          onChange={(e) => setFormData({ ...formData, beam: e.target.value })}
+                          placeholder="Ex: 12 ft / 3.6 m"
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Draft</label>
+                        <input
+                          type="text"
+                          value={formData.draft}
+                          onChange={(e) => setFormData({ ...formData, draft: e.target.value })}
+                          placeholder="Ex: 3.5 ft / 1.0 m"
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Hull Material</label>
+                        <select
+                          value={formData.hullMaterial}
+                          onChange={(e) => setFormData({ ...formData, hullMaterial: e.target.value })}
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
+                        >
+                          <option value="">Select material...</option>
+                          {BOAT_HULL_MATERIALS.map((mat) => (
+                            <option key={mat} value={mat}>{mat}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <span className="text-[10px] font-black bg-amber-600 text-white px-2 py-1 rounded-lg uppercase tracking-wider">
-                      Staff Only
-                    </span>
                   </div>
 
-                  {formData.isPermanentFeatured && (
-                    <motion.div 
-                      key="perm-fields"
-                      initial={{ opacity: 0, y: -10 }} 
-                      animate={{ opacity: 1, y: 0 }}
-                      className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2"
-                    >
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-black tracking-wider text-amber-800 block">Nível do Destaque Permanente</label>
+                  {/* Engine & Mechanics */}
+                  <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-4">
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <Gauge size={18} className="text-indigo-600" /> Engine & Mechanics
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Engine Brand</label>
+                        <input
+                          type="text"
+                          value={formData.engineBrand}
+                          onChange={(e) => setFormData({ ...formData, engineBrand: e.target.value })}
+                          placeholder="Ex: Volvo Penta"
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Horsepower</label>
+                        <input
+                          type="text"
+                          value={formData.horsepower}
+                          onChange={(e) => setFormData({ ...formData, horsepower: e.target.value })}
+                          placeholder="Ex: 300 HP"
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Engine Hours</label>
+                        <input
+                          type="text"
+                          value={formData.engineHours}
+                          onChange={(e) => setFormData({ ...formData, engineHours: e.target.value })}
+                          placeholder="Ex: 250 hrs"
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Fuel Type</label>
                         <select
-                          value={formData.plan}
-                          onChange={(e) => setFormData(prev => ({ ...prev, plan: e.target.value as any }))}
-                          className="w-full px-4 py-3 bg-white border-2 border-amber-100 rounded-xl font-bold text-slate-800 outline-none cursor-pointer"
+                          value={formData.fuelType}
+                          onChange={(e) => setFormData({ ...formData, fuelType: e.target.value })}
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
                         >
-                          <option value="local">Destaque Local ⭐</option>
-                          <option value="national">Destaque Nacional ⭐⭐⭐</option>
+                          <option value="">Select fuel...</option>
+                          {BOAT_FUEL_TYPES.map((fuel) => (
+                            <option key={fuel} value={fuel}>{fuel}</option>
+                          ))}
                         </select>
                       </div>
+                    </div>
+                  </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase font-black tracking-wider text-amber-800 block">País de Exibição Permanente</label>
+                  {/* Accommodations & Compliance */}
+                  <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-4">
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <Compass size={18} className="text-indigo-600" /> Accommodations & Extras
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Cabins</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.cabins}
+                          onChange={(e) => setFormData({ ...formData, cabins: e.target.value })}
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Berths</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.berths}
+                          onChange={(e) => setFormData({ ...formData, berths: e.target.value })}
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Bathrooms</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.bathrooms}
+                          onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-700">Trailer</label>
                         <select
-                          value={formData.country}
-                          onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value as any }))}
-                          className="w-full px-4 py-3 bg-white border-2 border-amber-100 rounded-xl font-bold text-slate-800 outline-none cursor-pointer"
+                          value={formData.trailerIncluded}
+                          onChange={(e) => setFormData({ ...formData, trailerIncluded: e.target.value })}
+                          className="w-full px-3.5 py-3 bg-white border border-slate-200 rounded-xl text-sm"
                         >
-                          <option value="Portugal">🇵🇹 Portugal</option>
-                          <option value="Reino Unido">🇬🇧 Reino Unido</option>
-                          <option value="Ambos">🌐 Ambos os Países</option>
+                          <option value="No">No</option>
+                          <option value="Yes">Yes</option>
                         </select>
                       </div>
-                    </motion.div>
-                  )}
+                    </div>
+                  </div>
                 </div>
               )}
 
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider block">Listing Type & Features</label>
-              {formData.category === '💚 Doações & Solidariedade' ? (
-                <div className="p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl border-2 border-emerald-400 shadow-md relative overflow-hidden text-left col-span-1 md:col-span-3">
-                  <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[10px] font-black px-4 py-1.5 rounded-bl-xl uppercase tracking-wider animate-pulse flex items-center gap-1">
-                    <span>Solidarity Benefit Active</span> <span>💚</span>
-                  </div>
-                  
-                  <h3 className="text-base font-black text-emerald-950 flex items-center gap-2 mb-3">
-                    <span>🎉</span> Benefits of your donation listing
-                  </h3>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-emerald-800 font-semibold mb-5">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-600 font-black">✅</span> <span>Free Local Highlight</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-600 font-black">✅</span> <span>Enhanced visibility in your city</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-600 font-black">✅</span> <span>Solidarity Badge on listing</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-600 font-black">✅</span> <span>100% Free (No listing or highlight fee)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-emerald-600 font-black">✅</span> <span>Feature Duration: 30 days free highlight</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-emerald-600 text-white border border-emerald-500 rounded-2xl text-xs space-y-1.5 font-sans">
-                    <p className="font-extrabold flex items-center gap-1.5 text-white tracking-wide">
-                      <span>⚠️</span> IMPORTANT NOTICE
-                    </p>
-                    <p className="leading-relaxed font-semibold opacity-95">
-                      This listing is strictly for donations and 100% free items. Any attempt at hidden sales, deceptive advertising, or abuse will result in account suspension on ConnectBoat. Please report any irregularities to moderation.
-                    </p>
-                  </div>
+              {/* Non-boat category specs if applicable */}
+              {!isBoatCategory && (
+                <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-4">
+                  <p className="text-xs text-slate-500 font-medium">
+                    Technical boat specifications are skipped for <strong>{formData.category || 'this category'}</strong>. Click continue to proceed.
+                  </p>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-4">
-                  
-                  {/* Standard Plan */}
-                  <button
-                    type="button"
-                    disabled={!isAdmin && isEditLocked}
-                    onClick={() => setFormData({ ...formData, plan: 'free' })}
-                    className={`p-5 rounded-3xl border-2 text-left transition-all ${
-                      formData.plan === 'free' 
-                        ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-100' 
-                        : 'border-slate-100 bg-slate-50 hover:border-slate-300'
-                    } ${(!isAdmin && isEditLocked) ? 'opacity-60 cursor-not-allowed' : ''}`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="font-extrabold text-slate-900 text-sm">Standard Listing</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Free standard listings</p>
-                      </div>
-                      <span className="text-[9px] font-black bg-slate-200 text-slate-800 px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
-                        Free
-                      </span>
-                    </div>
-                    
-                    <ul className="text-[11px] text-slate-600 space-y-1 my-3">
-                      <li className="flex items-center gap-1">✅ Up to 2 photos</li>
-                      <li className="flex items-center gap-1">✅ Standard search results</li>
-                      <li className="flex items-center gap-1">✅ Search & favorites</li>
-                    </ul>
+              )}
 
-                    <div className="mt-3 pt-3 border-t border-slate-200/50" onClick={(e) => e.stopPropagation()}>
-                      <label className="text-[9px] uppercase font-black tracking-wider text-slate-400 block mb-1">Listing Duration</label>
-                      <select
-                        value={formData.duration}
-                        disabled={!isAdmin && isEditLocked}
-                        onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 0, plan: 'free' })}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-xl text-[11px] font-bold outline-none cursor-pointer disabled:opacity-50"
-                      >
-                        <option value={15}>15 Days</option>
-                        <option value={30}>30 Days</option>
-                      </select>
-                    </div>
-                  </button>
+              {/* Step 2 Actions */}
+              <div className="flex items-center justify-between pt-6 border-t border-slate-200 mt-8">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentStep(1);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="px-6 py-3.5 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  ← Back
+                </button>
 
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentStep(3);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-indigo-100 flex items-center gap-2 cursor-pointer"
+                >
+                  Continue →
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 3 OF 3: REVIEW & PLAN */}
+          {currentStep === 3 && (
+            <motion.div
+              key="step-3"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-6"
+            >
+              {/* Mobile Sticky Preview Header */}
+              <div className="lg:hidden sticky top-16 z-30 bg-white/95 backdrop-blur-md border border-indigo-100 rounded-2xl p-3 shadow-lg mb-4 flex items-center gap-3">
+                {formData.images[0] ? (
+                  <img src={formData.images[0]} alt="Cover" className="w-12 h-12 object-cover rounded-xl shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 shrink-0">
+                    📷
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black text-slate-900 truncate">{formData.title || 'Untitled Listing'}</p>
+                  <p className="text-xs font-black text-indigo-600">
+                    {formData.category === '💚 Doações & Solidariedade' ? 'Free (Donation)' : formData.price ? (formData.country === 'Reino Unido' ? `£${formData.price}` : `€${formData.price}`) : 'Price on request'}
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-semibold truncate">{formData.category} • {formData.city || 'No city'}</p>
+                </div>
+              </div>
+
+              {/* Complete Listing Summary */}
+              <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-4">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <span>📋</span> Complete Listing Summary
+                </h3>
+
+                {formData.images.length > 0 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                    {formData.images.map((img, idx) => (
+                      <img key={idx} src={img} alt={`Thumb ${idx}`} className="w-16 h-16 object-cover rounded-xl border border-slate-200 shrink-0" />
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-white p-4 rounded-2xl border border-slate-200">
+                  <div>
+                    <span className="text-slate-400 block font-semibold">Title</span>
+                    <span className="font-extrabold text-slate-800">{formData.title || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-semibold">Price</span>
+                    <span className="font-extrabold text-indigo-600">
+                      {formData.category === '💚 Doações & Solidariedade' ? 'Free' : formData.price ? (formData.country === 'Reino Unido' ? `£${formData.price}` : `€${formData.price}`) : 'On request'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-semibold">Category</span>
+                    <span className="font-bold text-slate-800">{formData.category || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-semibold">Region & City</span>
+                    <span className="font-bold text-slate-800">{formData.country} • {formData.city || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-semibold">Contact Phone</span>
+                    <span className="font-bold text-slate-800">{formData.useProfilePhone ? (profile?.phone || 'Profile Phone') : (formData.contactPhone || '—')}</span>
+                  </div>
+                  {formData.year && (
+                    <div>
+                      <span className="text-slate-400 block font-semibold">Year / Specs</span>
+                      <span className="font-bold text-slate-800">{formData.year} {formData.length ? `• ${formData.length}` : ''}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Select Promotion Plan (Paid Plans Only for Normal Public Users) */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <span>⭐</span> Select Promotion Plan
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Local Highlight */}
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => setFormData({ ...formData, plan: 'local' })}
-                    className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden ${
+                    className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
                       formData.plan === 'local' || formData.plan === 'highlight'
-                        ? 'border-amber-400 bg-amber-50/20 ring-4 ring-amber-100' 
-                        : 'border-slate-100 bg-slate-50 hover:border-slate-300'
-                    } ${(!isAdmin && isEditLocked) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                        ? 'border-amber-400 bg-amber-50/30 ring-4 ring-amber-100'
+                        : 'border-slate-200 bg-white hover:border-amber-300'
+                    }`}
                   >
-                    <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-yellow-500 text-white text-[8px] font-black px-2 py-1 rounded-bl-xl uppercase tracking-wider shrink-0 animate-pulse">
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-yellow-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
                       Local ⭐
                     </div>
-                    
-                    <div className="flex justify-between items-start mb-2 mt-2">
-                      <div>
-                        <p className="font-extrabold text-slate-900 text-sm">Local Highlight</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Featured in your city</p>
-                        {isPromoActive && (
-                          <div className="mt-1">
-                            <span className="inline-flex items-center gap-1.5 text-[9px] font-black bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100">
-                              🎁 Free at Launch
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <ul className="text-[11px] text-slate-600 space-y-1 my-3">
-                      <li className="flex items-center gap-1">🌟 <strong>Up to 4 photos</strong></li>
-                      <li className="flex items-center gap-1">🌟 Local highlight</li>
-                      <li className="flex items-center gap-1">🌟 Local carousel</li>
-                      <li className="flex items-center gap-1">🌟 Star Badge ⭐</li>
+                    <p className="font-black text-slate-900 text-base">Local Highlight</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Featured in your city & local carousel</p>
+
+                    <ul className="text-xs text-slate-600 space-y-1 my-3 font-medium">
+                      <li>🌟 <strong>Up to 4 photos</strong></li>
+                      <li>🌟 Priority in local search</li>
+                      <li>🌟 Star Badge ⭐</li>
                     </ul>
 
-                    <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col gap-1 p-2 bg-white/50 rounded-xl border border-dashed border-amber-200">
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="font-bold text-amber-800">Duration:</span>
-                        <span className="font-extrabold text-slate-930">30 Days</span>
-                      </div>
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="font-bold text-amber-800">Price:</span>
-                        <span className="font-black text-amber-600 flex flex-col items-end">
-                          <span className={isPromoActive ? "line-through text-slate-400 font-bold" : ""}>
-                            {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}
-                          </span>
-                          {isPromoActive && (
-                            <span className="text-emerald-600 font-black text-[9px]">Free 🎁</span>
-                          )}
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-500">Duration: 30 Days</span>
+                      <span className="font-black text-amber-600 text-sm">
+                        <span className={isPromoActive ? "line-through text-slate-400 font-bold mr-1" : ""}>
+                          {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}
                         </span>
-                      </div>
+                        {isPromoActive && <span className="text-emerald-600 font-black">Free 🎁</span>}
+                      </span>
                     </div>
                   </button>
 
@@ -2855,106 +2347,92 @@ const CreateAd = () => {
                     type="button"
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => setFormData({ ...formData, plan: 'national' })}
-                    className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden ${
-                      formData.plan === 'national' 
-                        ? 'border-indigo-500 bg-indigo-50/20 ring-4 ring-indigo-100' 
-                        : 'border-slate-100 bg-slate-50 hover:border-slate-300'
-                    } ${(!isAdmin && isEditLocked) ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
+                      formData.plan === 'national'
+                        ? 'border-indigo-600 bg-indigo-50/30 ring-4 ring-indigo-100'
+                        : 'border-slate-200 bg-white hover:border-indigo-300'
+                    }`}
                   >
-                    <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-indigo-500 text-white text-[8px] font-black px-2 py-1 rounded-bl-xl uppercase tracking-wider shrink-0 animate-pulse">
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-indigo-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
                       National ⭐⭐⭐
                     </div>
-                    
-                    <div className="flex justify-between items-start mb-2 mt-2">
-                      <div>
-                        <p className="font-extrabold text-slate-900 text-sm">National Highlight</p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">Nationwide visibility</p>
-                        {isPromoActive && (
-                          <div className="mt-1">
-                            <span className="inline-flex items-center gap-1.5 text-[9px] font-black bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100">
-                              🎁 Free at Launch
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <ul className="text-[11px] text-slate-600 space-y-1 my-3">
-                      <li className="flex items-center gap-1 font-semibold text-indigo-900">🚀 Maximum Priority</li>
-                      <li className="flex items-center gap-1">🌟 <strong>Up to 6 photos</strong></li>
-                      <li className="flex items-center gap-1">🌟 All cities</li>
-                      <li className="flex items-center gap-1">🌟 Triple Star Badge ⭐⭐⭐</li>
+                    <p className="font-black text-slate-900 text-base">National Highlight</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Maximum nationwide visibility across all cities</p>
+
+                    <ul className="text-xs text-slate-600 space-y-1 my-3 font-medium">
+                      <li>🚀 <strong>Maximum Priority</strong></li>
+                      <li>🌟 <strong>Up to 6 photos</strong></li>
+                      <li>🌟 Triple Star Badge ⭐⭐⭐</li>
                     </ul>
 
-                    <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col gap-1 p-2 bg-indigo-50/50 rounded-xl border border-dashed border-indigo-200">
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="font-bold text-indigo-700">Duration:</span>
-                        <span className="font-extrabold text-slate-930">30 Days</span>
-                      </div>
-                      <div className="flex justify-between items-center text-[10px]">
-                        <span className="font-bold text-indigo-700">Price:</span>
-                        <span className="font-black text-indigo-600 flex flex-col items-end">
-                          <span className={isPromoActive ? "line-through text-slate-400 font-bold" : ""}>
-                            {formData.country === 'Reino Unido' ? '£7.99' : '€7.99'}
-                          </span>
-                          {isPromoActive && (
-                            <span className="text-emerald-600 font-black text-[9px]">Free 🎁</span>
-                          )}
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-500">Duration: 30 Days</span>
+                      <span className="font-black text-indigo-600 text-sm">
+                        <span className={isPromoActive ? "line-through text-slate-400 font-bold mr-1" : ""}>
+                          {formData.country === 'Reino Unido' ? '£7.99' : '€7.99'}
                         </span>
-                      </div>
+                        {isPromoActive && <span className="text-emerald-600 font-black">Free 🎁</span>}
+                      </span>
                     </div>
                   </button>
+                </div>
 
+                {isStaff && (
+                  <div className="p-4 bg-amber-500/10 border-2 border-amber-500/25 rounded-2xl flex items-center gap-3 mt-4">
+                    <input
+                      id="isPermanentFeatured"
+                      type="checkbox"
+                      checked={formData.isPermanentFeatured}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isPermanentFeatured: e.target.checked }))}
+                      className="w-5 h-5 accent-amber-600 rounded cursor-pointer"
+                    />
+                    <label htmlFor="isPermanentFeatured" className="text-xs font-bold text-slate-800 cursor-pointer">
+                      ⭐ Permanent Staff Highlight (Never Expires)
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {formError && (
+                <div className="p-4 bg-rose-50 border-2 border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between text-xs font-bold">
+                  <span>{formError}</span>
+                  <button type="button" onClick={() => setFormError(null)}>
+                    <X size={16} />
+                  </button>
                 </div>
               )}
-            </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Detailed Description</label>
-              <div className="relative">
-                <FileText className="absolute left-4 top-6 text-slate-400" size={20} />
-                <textarea
-                  id="txt-description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  required
-                  rows={6}
-                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all resize-none"
-                  placeholder="Describe item condition, included accessories, equipment details, etc."
-                />
-              </div>
-            </div>
-          </div>
+              {/* Step 3 Actions */}
+              <div className="flex items-center justify-between pt-6 border-t border-slate-200 mt-8">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentStep(2);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="px-6 py-3.5 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  ← Back
+                </button>
 
-          {formError && (
-            <div className="p-4 bg-rose-50 border-2 border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between gap-3 text-xs font-bold shadow-sm">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="text-rose-600 shrink-0" size={18} />
-                <span>{formError}</span>
+                <button
+                  id="btn-submit-ad"
+                  type="submit"
+                  disabled={loading}
+                  className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-extrabold text-base transition-all shadow-xl shadow-indigo-200 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCcw className="animate-spin text-white" size={18} />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <span>Proceed to Payment →</span>
+                  )}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setFormError(null)}
-                className="text-rose-500 hover:text-rose-700 p-1"
-              >
-                <X size={16} />
-              </button>
-            </div>
+            </motion.div>
           )}
-
-          <button
-            id="btn-submit-ad"
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
-          >
-            {loading ? (
-              <>
-                <RefreshCcw className="animate-spin text-white" size={20} />
-                <span>Processing listing...</span>
-              </>
-            ) : id ? 'Update Listing' : 'Publish Listing'}
-          </button>
         </form>
       </motion.div>
     </div>
