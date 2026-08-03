@@ -48,6 +48,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Links from './pages/Links';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ShareModal } from './components/ShareModal';
+import { AnalyticsTracker } from './components/AnalyticsTracker';
 import { triggerShare } from './utils/shareUtils';
 
 import { Ad } from './types';
@@ -871,6 +872,7 @@ export default function App() {
       <SettingsProvider>
         <AuthProvider>
           <Router>
+            <AnalyticsTracker />
             <ScrollToTop />
             <div className="min-h-screen font-sans text-slate-900 selection:bg-pt-green/10 max-w-full overflow-x-hidden">
             <Navbar />
@@ -887,6 +889,7 @@ export default function App() {
                 <Route path="/create-ad" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
                 <Route path="/edit-ad/:id" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
                 <Route path="/anuncio/:id" element={<AdDetails />} />
+                <Route path="/listing/:id" element={<AdDetails />} />
                 <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
                 <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
                 <Route path="/admin/health" element={<AdminLayout><AdminSystemHealth /></AdminLayout>} />
