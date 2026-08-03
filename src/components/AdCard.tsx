@@ -10,6 +10,7 @@ import { sendEmailGeneric, getSellerEmail } from '../utils/emailService';
 import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../utils/imageFraming';
 import OptimizedImage from './OptimizedImage';
 import ReviewModal from './ReviewModal';
+import ImageLightboxModal from './ImageLightboxModal';
 
 import { doc, updateDoc, increment, setDoc, deleteDoc, collection, query, where, limit, serverTimestamp } from 'firebase/firestore';
 import { db, getDocWithCacheFallback, getDocsWithCacheFallback } from '../firebase';
@@ -1106,32 +1107,14 @@ const AdCard: React.FC<AdCardProps> = ({
       </AnimatePresence>
 
       {/* Full Image Modal */}
-      <AnimatePresence>
-        {showFullImage && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 md:p-8">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative w-full h-full flex items-center justify-center"
-              onClick={() => setShowFullImage(false)}
-            >
-              <button
-                onClick={() => setShowFullImage(false)}
-                className="absolute top-4 right-4 p-3 text-white/70 hover:text-white transition-colors z-10 bg-black/40 rounded-full"
-              >
-                <X size={24} />
-              </button>
-              <img
-                src={images[currentImageIndex]}
-                alt={ad.title}
-                className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
-                referrerPolicy="no-referrer"
-              />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ImageLightboxModal
+        isOpen={showFullImage}
+        onClose={() => setShowFullImage(false)}
+        images={images}
+        currentIndex={currentImageIndex}
+        onIndexChange={setCurrentImageIndex}
+        title={ad?.title}
+      />
 
       {/* Floating Toast Proof of Interest */}
       {toast && toast.show && (
