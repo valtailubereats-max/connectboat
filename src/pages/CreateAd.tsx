@@ -1226,7 +1226,7 @@ const CreateAd = () => {
   const handleImportAd = async () => {
     const isStaff = isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator';
     if (!isStaff) {
-      setImportError('Não tem permissão para realizar esta ação.');
+      setImportError('You do not have permission to perform this action.');
       return;
     }
 
@@ -1266,7 +1266,7 @@ const CreateAd = () => {
       if (!contentType.includes('application/json')) {
         const textResponse = await response.text();
         console.error('[Import Pipeline Error] Non-JSON response received:', response.status, response.statusText, textResponse.slice(0, 300));
-        throw new Error(`[HTTP ${response.status}] Resposta inválida da API (/api/import-ad). Tente novamente.`);
+        throw new Error(`[HTTP ${response.status}] Invalid response from API (/api/import-ad). Please try again.`);
       }
 
       const result = await response.json();
@@ -1370,16 +1370,16 @@ const CreateAd = () => {
         const detectedMarketplace = getSupportedMarketplace(importUrl);
         const sourceSiteName = detectedMarketplace ? detectedMarketplace.name : getSourceSiteFromUrl(importUrl);
 
-        setImportSuccess(`Dados importados de ${sourceSiteName}. Revise as informações antes de publicar.`);
+        setImportSuccess(`Listing details imported from ${sourceSiteName}. Please review the information before publishing.`);
       } else {
-        const stageMsg = result?.stage ? `[Fase: ${result.stage}] ` : '';
-        const errorMsg = result?.error || 'Não foi possível importar os dados deste anúncio. Preencha manualmente.';
+        const stageMsg = result?.stage ? `[Stage: ${result.stage}] ` : '';
+        const errorMsg = result?.error || 'Unable to import listing details. Please fill in manually.';
         console.error('[Import Pipeline Stage Failure]', stageMsg, errorMsg);
         throw new Error(`${stageMsg}${errorMsg}`);
       }
     } catch (err: any) {
       console.error('[Import Pipeline Error]:', err.message || err);
-      setImportError(err.message || 'Não foi possível importar os dados deste anúncio. Preencha manualmente.');
+      setImportError(err.message || 'Unable to import listing details. Please fill in manually.');
     } finally {
       setIsImporting(false);
     }
@@ -1554,10 +1554,10 @@ const CreateAd = () => {
                 {isImporting ? (
                   <>
                     <RefreshCcw className="animate-spin text-white" size={16} />
-                    A importar...
+                    Importing...
                   </>
                 ) : (
-                  'Importar Dados'
+                  'Import Data'
                 )}
               </button>
             </div>

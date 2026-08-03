@@ -1034,18 +1034,18 @@ export default async function handler(req: any, res: any) {
     console.log('[Import Pipeline] Stage 1: Request received');
     const { url, userRole } = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
 
-    // Verificação de permissões
+    // Permission check
     if (userRole !== 'admin' && userRole !== 'moderator') {
       console.warn('[Import Pipeline Failure] Permission denied for role:', userRole);
       return res.status(403).json({ 
         success: false, 
         stage: 'Permission Validation',
-        error: 'Acesso negado. Apenas administradores ou moderadores podem realizar a importação.' 
+        error: 'Access denied. Only administrators or moderators can import listings from URL.' 
       });
     }
 
     if (!url) {
-      return res.status(400).json({ success: false, stage: 'URL Validation', error: "Falta o link do anúncio." });
+      return res.status(400).json({ success: false, stage: 'URL Validation', error: "Please provide a listing URL." });
     }
 
     const lowerUrl = url.toLowerCase();
@@ -1125,7 +1125,7 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({
         success: false,
         stage: 'Fetching HTML',
-        error: 'Não foi possível importar os dados deste anúncio. O servidor de origem recusou a ligação.'
+        error: 'Unable to import listing data. The origin server rejected the connection or the page is unavailable.'
       });
     }
 
@@ -1147,7 +1147,7 @@ export default async function handler(req: any, res: any) {
     const jsonLdList = extractJsonLd(responseText);
     const productNode = extractFromJsonLdList(jsonLdList);
 
-    // Extração de Título
+    // Title Extraction
     let rawTitle = extractMetaContent(responseText, 'og:title');
     if (!rawTitle) {
       rawTitle = productNode?.name || productNode?.title || extractMetaContent(responseText, 'twitter:title') || '';
@@ -1156,14 +1156,55 @@ export default async function handler(req: any, res: any) {
       const titleMatch = responseText.match(/<title>([^<]+)<\/title>/i);
       rawTitle = titleMatch ? titleMatch[1] : '';
     }
-    // Jina Reader Markdown Title Header ("Title: ..." ou "# ...")
+    // Jina Reader Markdown Title Header ("Title: ..." or "# ...")
     if (!rawTitle || /second-hand|items for sale|access denied|attention required|just a moment/i.test(rawTitle)) {
       const jinaTitleMatch = responseText.match(/^Title:\s*([^\n]+)/m) || responseText.match(/^#\s*([^\n]+)/m);
       if (jinaTitleMatch) {
         rawTitle = jinaTitleMatch[1].trim();
       }
     }
-    // Fallback por Slug do URL se o título ainda estiver genérico ou vazio
+
+    // Check if the page is a 404, deleted, or dead listing
+    const isDeadOr404Listing = (html: string, rawTitleStr: string): boolean => {
+      const normTitle = (rawTitleStr || '').toLowerCase();
+      const normHtml = (html || '').toLowerCase();
+      const deadPatterns = [
+        '404 page not found',
+        '404 - page not found',
+        '404 not found',
+        'page not found',
+        'ad no longer available',
+        'listing no longer available',
+        'listing expired',
+        'item no longer available',
+        'this ad has been removed',
+        'this ad is no longer active',
+        'página não encontrada',
+        'anúncio indisponível',
+        'anúncio expirado',
+        'access denied',
+        'attention required',
+        'just a moment'
+      ];
+      if (deadPatterns.some(pat => normTitle.includes(pat))) return true;
+      if (
+        normHtml.includes('target url returned error 404') ||
+        (normHtml.includes('404 page not found') && !normHtml.includes('itemprop="name"')) ||
+        (normHtml.includes('ad no longer available') && !normHtml.includes('itemprop="name"'))
+      ) return true;
+      return false;
+    };
+
+    if (isDeadOr404Listing(responseText, rawTitle)) {
+      console.warn("[Import Pipeline Failure Stage 3 - Dead Listing/404 Detected]:", rawTitle);
+      return res.status(200).json({
+        success: false,
+        stage: 'Listing Availability Check',
+        error: 'This listing is no longer available or could not be found (404 Page Not Found). Please check the link or fill in details manually.'
+      });
+    }
+
+    // Fallback by URL slug if title is still generic or empty
     if (!rawTitle || /second-hand|items for sale|access denied|attention required|just a moment/i.test(rawTitle)) {
       const urlSlugMatch = url.match(/\/([a-z0-9-]+?)(?:\/\d+)?\/?$/i);
       if (urlSlugMatch) {
@@ -1184,7 +1225,7 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({
         success: false,
         stage: 'Parsing HTML',
-        error: 'Não foi possível extrair o título do anúncio. Verifique se o link está ativo.'
+        error: 'Unable to extract listing title. Please check if the listing link is active.'
       });
     }
 
@@ -1405,7 +1446,7 @@ export default async function handler(req: any, res: any) {
     return res.status(200).json({ 
       success: false, 
       stage: 'Server Exception', 
-      error: 'Não foi possível importar os dados deste anúncio. Preencha manualmente.' 
+      error: 'Unable to import listing data. Please check the URL or fill in details manually.' 
     });
   }
 }
