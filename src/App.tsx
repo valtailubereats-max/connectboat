@@ -867,7 +867,14 @@ export default function App() {
         <meta property="og:type" content="website" />
         <meta property="og:title" content="ConnectBoat - UK Marine & Boat Marketplace" />
         <meta property="og:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
+        <meta property="og:image" content="https://connectboat.co.uk/og-image.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="ConnectBoat - UK Marine & Boat Marketplace" />
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="ConnectBoat - UK Marine & Boat Marketplace" />
+        <meta name="twitter:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
+        <meta name="twitter:image" content="https://connectboat.co.uk/og-image.png" />
       </Helmet>
       <SettingsProvider>
         <AuthProvider>

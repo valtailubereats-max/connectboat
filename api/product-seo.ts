@@ -256,7 +256,7 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
   );
 
   let ogImage = '';
-  const fallbackUrl = 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800';
+  const fallbackUrl = 'https://connectboat.co.uk/og-image.png';
 
   // Garantir imagem pública transparente e sem blobs/base64
   if (productData.images && Array.isArray(productData.images)) {

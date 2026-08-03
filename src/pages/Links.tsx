@@ -294,6 +294,8 @@ export default function Links() {
         <link rel="canonical" href="https://connectboat.co.uk/links" />
         <meta property="og:url" content="https://connectboat.co.uk/links" />
         <meta property="og:title" content="Useful Links | ConnectBoat" />
+        <meta property="og:image" content="https://connectboat.co.uk/og-image.png" />
+        <meta name="twitter:image" content="https://connectboat.co.uk/og-image.png" />
       </Helmet>
       {/* Top Navigation Row */}
       <div className="flex items-center justify-between" id="links-header-row">

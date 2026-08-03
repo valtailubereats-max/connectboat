@@ -81,6 +81,8 @@ export default function Fotos() {
         <link rel="canonical" href="https://connectboat.co.uk/photos" />
         <meta property="og:url" content="https://connectboat.co.uk/photos" />
         <meta property="og:title" content="Marine Photography Gallery | ConnectBoat" />
+        <meta property="og:image" content="https://connectboat.co.uk/og-image.png" />
+        <meta name="twitter:image" content="https://connectboat.co.uk/og-image.png" />
       </Helmet>
       {/* Toast Notification for Buy Click */}
       <AnimatePresence>

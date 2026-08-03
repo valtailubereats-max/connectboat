@@ -206,7 +206,7 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
   );
   
   let adImage = '';
-  const fallbackUrl = 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=600&q=80';
+  const fallbackUrl = 'https://connectboat.co.uk/og-image.png';
 
   // Helper to validate and return string only if it is a public URL and not base64
   const isValidUrl = (urlStr: any): boolean => {
