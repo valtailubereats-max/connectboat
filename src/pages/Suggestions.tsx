@@ -86,8 +86,8 @@ const Suggestions = () => {
         <link rel="canonical" href="https://connectboat.co.uk/suggestions" />
         <meta property="og:url" content="https://connectboat.co.uk/suggestions" />
         <meta property="og:title" content="Suggestions & Feedback | ConnectBoat" />
-        <meta property="og:image" content="https://connectboat.co.uk/og-image.png" />
-        <meta name="twitter:image" content="https://connectboat.co.uk/og-image.png" />
+        <meta property="og:image" content="https://connectboat.co.uk/connectboat-og.png" />
+        <meta name="twitter:image" content="https://connectboat.co.uk/connectboat-og.png" />
       </Helmet>
       <motion.div
         initial={{ opacity: 0, y: 20 }}

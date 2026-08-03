@@ -56,8 +56,8 @@ export default function Precos() {
         <link rel="canonical" href="https://connectboat.co.uk/pricing" />
         <meta property="og:url" content="https://connectboat.co.uk/pricing" />
         <meta property="og:title" content="Pricing Plans | ConnectBoat" />
-        <meta property="og:image" content="https://connectboat.co.uk/og-image.png" />
-        <meta name="twitter:image" content="https://connectboat.co.uk/og-image.png" />
+        <meta property="og:image" content="https://connectboat.co.uk/connectboat-og.png" />
+        <meta name="twitter:image" content="https://connectboat.co.uk/connectboat-og.png" />
       </Helmet>
 
       {/* Header section with negative margin for deep integration */}
