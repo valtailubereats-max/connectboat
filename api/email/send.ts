@@ -2,8 +2,8 @@
 
 const EMAIL_FLAG_ACTIVE = process.env.EMAIL_ACTIVE !== 'false';
 
-// Helper para gerar o template HTML com design unificado
-function generateLusoTemplate(title: string, bodyContent: string, ctaLink?: string, ctaText?: string): string {
+// Helper to generate unified HTML email templates
+function generateConnectBoatTemplate(title: string, bodyContent: string, ctaLink?: string, ctaText?: string): string {
   const ctaButton = ctaLink && ctaText ? `
     <div style="margin: 25px 0; text-align: center;">
       <a href="${ctaLink}" target="_blank" style="background-color: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -45,7 +45,7 @@ function generateLusoTemplate(title: string, bodyContent: string, ctaLink?: stri
                   ${ctaButton}
                   <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;">
                   <p style="font-size: 12px; color: #64748b; margin: 0;">
-                    Need help or have questions? Contact our customer support team through our official portal.
+                    Need assistance or have questions? Contact us at <a href="mailto:contato@connectboat.co.uk" style="color: #0284c7; text-decoration: underline;">contato@connectboat.co.uk</a>.
                   </p>
                 </td>
               </tr>
@@ -53,10 +53,10 @@ function generateLusoTemplate(title: string, bodyContent: string, ctaLink?: stri
               <!-- Footer -->
               <tr style="background-color: #f1f5f9;">
                 <td style="padding: 20px; text-align: center; color: #64748b; font-size: 12px;">
-                  <p style="margin: 0 0 6px 0; font-weight: 700;"> ConnectBoat </p>
-                  <p style="margin: 0;"> United Kingdom </p>
+                  <p style="margin: 0 0 6px 0; font-weight: 700;">ConnectBoat UK</p>
+                  <p style="margin: 0;">United Kingdom Marine & Boat Marketplace</p>
                   <p style="margin: 12px 0 0 0; font-size: 10px; color: #94a3b8;">
-                    This is an automated notification email. Please do not reply directly to this message.
+                    This is an automated notification. Please write to contato@connectboat.co.uk for customer support.
                   </p>
                 </td>
               </tr>
@@ -70,136 +70,159 @@ function generateLusoTemplate(title: string, bodyContent: string, ctaLink?: stri
   `;
 }
 
-// Renderizador dos templates específicos
+// Render specific email templates
 function renderEmail(template: string, data: any): { subject: string; html: string } {
   let subject = '';
   let bodyContent = '';
   let ctaLink: string | undefined;
   let ctaText: string | undefined;
 
-  // Centralized URL resolve: prioritizes PUBLIC_SITE_URL, SITE_URL or APP_URL.
-  // Never uses temporary Vercel URLs in production; only allows fallback to Vercel URLs in non-production.
   let resolvedUrl = process.env.PUBLIC_SITE_URL || process.env.SITE_URL || process.env.APP_URL;
 
   if (!resolvedUrl) {
     if (process.env.NODE_ENV !== 'production' && process.env.VERCEL_URL) {
       resolvedUrl = `https://${process.env.VERCEL_URL}`;
     } else {
-      resolvedUrl = 'https://www.mercado-luso.com';
+      resolvedUrl = 'https://www.connectboat.co.uk';
     }
   }
 
-  // Strip trailing slash if present
   const baseUrl = resolvedUrl.replace(/\/$/, '');
 
   switch (template) {
-    case 'anuncio_aprovado':
-      subject = `✅ Seu anúncio no Mercado Luso foi aprovado!`;
+    case 'anuncio_submetido':
+      subject = `⛵ Listing Submitted Successfully: ${data.adTitle || 'Your Listing'}`;
       bodyContent = `
-        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Olá ${data.sellerName || 'Utilizador'},</p>
-        <p>Temos o prazer de informar que o seu anúncio <strong>"${data.adTitle}"</strong> foi revisto e <strong>aprovado</strong> pela nossa equipa de moderação!</p>
-        <p>O anúncio já se encontra totalmente ativo e disponível para visualização e contacto de interessados no Mercado Luso.</p>
-        <p>Desejamos-lhe ótimas vendas e excelentes negócios.</p>
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${data.sellerName || 'Valued Member'},</p>
+        <p>Thank you for submitting your listing <strong>"${data.adTitle}"</strong> on ConnectBoat!</p>
+        <p>Your listing has been received and is currently being reviewed by our moderation team to ensure compliance with our marine marketplace standards.</p>
+        <p>You will receive an email update as soon as your listing is approved and published live.</p>
+      `;
+      ctaLink = `${baseUrl}/profile`;
+      ctaText = 'View My Account';
+      break;
+
+    case 'anuncio_aprovado':
+      subject = `✅ Your Listing is Now Live on ConnectBoat: ${data.adTitle || ''}`;
+      bodyContent = `
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${data.sellerName || 'Valued Member'},</p>
+        <p>Great news! Your listing <strong>"${data.adTitle}"</strong> has been reviewed and <strong>approved</strong> by our moderation team.</p>
+        <p>Your listing is now live on ConnectBoat and accessible to buyers across the UK marine community.</p>
+        <p>We wish you smooth sailing and successful connections!</p>
       `;
       ctaLink = `${baseUrl}/anuncio/${data.adId}`;
-      ctaText = 'Ver meu Anúncio';
+      ctaText = 'View Live Listing';
       break;
 
     case 'anuncio_rejeitado':
-      subject = `❌ Atualização sobre o seu anúncio no Mercado Luso`;
+      subject = `❌ Update Regarding Your Listing on ConnectBoat`;
       bodyContent = `
-        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Olá ${data.sellerName || 'Utilizador'},</p>
-        <p>Agradecemos o envio do seu anúncio ao Mercado Luso. No entanto, o seu anúncio <strong>"${data.adTitle}"</strong> não pôde ser aprovado neste momento.</p>
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${data.sellerName || 'Valued Member'},</p>
+        <p>Thank you for submitting your listing to ConnectBoat. Unfortunately, your listing <strong>"${data.adTitle}"</strong> could not be approved at this time.</p>
         <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 4px;">
-          <strong style="color: #991b1b; display: block; margin-bottom: 5px;">Motivo da Rejeição:</strong>
-          <span style="color: #7f1d1d;">${data.reason || 'O anúncio não cumpre as nossas diretrizes gerais.'}</span>
+          <strong style="color: #991b1b; display: block; margin-bottom: 5px;">Reason for Rejection:</strong>
+          <span style="color: #7f1d1d;">${data.reason || 'The listing does not comply with our marketplace guidelines.'}</span>
         </div>
-        <p>Recomendamos que reveja as nossas regras de publicação e efetue as edições necessárias para que o anúncio seja aprovado no futuro.</p>
+        <p>Please review our publishing guidelines and make the necessary edits from your profile to resubmit.</p>
       `;
       ctaLink = `${baseUrl}/profile`;
-      ctaText = 'Ir para o meu Perfil';
+      ctaText = 'Go to My Profile';
       break;
 
     case 'anuncio_pendente_staff':
-      subject = `⚠️ NOVO ANÚNCIO PENDENTE: ${data.adTitle || 'Classificado'}`;
+      subject = `⚠️ NEW PENDING LISTING MODERATION: ${data.adTitle || 'Listing'}`;
       bodyContent = `
-        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Olá Moderador,</p>
-        <p>Um novo anúncio foi publicado com status de <strong>pendente</strong> e requer a sua revisão e moderação.</p>
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello Staff / Moderator,</p>
+        <p>A new listing has been submitted and is currently <strong>pending review</strong>.</p>
         <table border="0" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 15px; border-radius: 6px; width: 100%; margin: 20px 0;">
           <tr>
-            <td style="padding: 4px 0;"><strong>Anúncio:</strong></td>
+            <td style="padding: 4px 0;"><strong>Title:</strong></td>
             <td style="padding: 4px 0;">${data.adTitle}</td>
           </tr>
           <tr>
-            <td style="padding: 4px 0;"><strong>Anunciante:</strong></td>
+            <td style="padding: 4px 0;"><strong>Seller:</strong></td>
             <td style="padding: 4px 0;">${data.sellerName}</td>
           </tr>
         </table>
-        <p>Por favor, aceda à secção de moderação no painel de administração o mais brevemente possível para validar este anúncio.</p>
+        <p>Please log in to the ConnectBoat administration panel to review and approve or reject this listing.</p>
       `;
       ctaLink = `${baseUrl}/admin/ads`;
-      ctaText = 'Ir para Painel de Moderação';
+      ctaText = 'Go to Moderation Panel';
       break;
 
     case 'interesse_contacto':
-      subject = `👥 Novo clique de contacto no seu anúncio: ${data.adTitle}`;
+      subject = `👥 New Buyer Enquiry for Your Listing: ${data.adTitle}`;
       bodyContent = `
-        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Olá ${data.sellerName || 'Utilizador'},</p>
-        <p>Existem excelentes notícias!</p>
-        <p>Um potencial comprador demonstrou vivo interesse no seu anúncio <strong>"${data.adTitle}"</strong>.</p>
-        <p>O utilizador <strong>${data.interestedName}</strong> clicou no botão para estabelecer contacto de WhatsApp consigo.</p>
-        <p>Se o comprador ainda não lhe enviou uma mensagem, mantenha-se atento à sua aplicação móvel para responder com prontidão!</p>
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${data.sellerName || 'Valued Member'},</p>
+        <p>You have a new buyer enquiry!</p>
+        <p>A prospective buyer, <strong>${data.interestedName}</strong>, has initiated contact for your listing <strong>"${data.adTitle}"</strong>.</p>
+        <p>Please check your WhatsApp or direct messages to respond promptly and secure your sale.</p>
       `;
       ctaLink = `${baseUrl}/anuncio/${data.adId}`;
-      ctaText = 'Visualizar o Anúncio';
+      ctaText = 'View Listing';
       break;
 
     case 'review_recebida':
-      subject = `⭐️ Recebeu uma nova avaliação no Mercado Luso!`;
+      subject = `⭐️ You Received a New Review on ConnectBoat!`;
       bodyContent = `
-        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Olá ${data.sellerName || 'Utilizador'},</p>
-        <p>O utilizador <strong>${data.reviewerName}</strong> deixou-lhe uma nova avaliação pública pelo negócio do seu anúncio <strong>"${data.adTitle}"</strong>.</p>
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${data.sellerName || 'Valued Member'},</p>
+        <p>User <strong>${data.reviewerName}</strong> left a public review for your listing <strong>"${data.adTitle}"</strong>.</p>
         <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
           <div style="font-size: 24px; color: #fbbf24; margin-bottom: 8px;">
             ${'★'.repeat(Math.min(5, Math.max(1, data.rating)))}
           </div>
           <p style="margin: 0; font-style: italic; color: #451a03; font-size: 16px;">
-            "${data.comment || 'Sem comentário preenchido.'}"
+            "${data.comment || 'No comment provided.'}"
           </p>
         </div>
-        <p>Avaliações positivas ajudam a construir confiança de novos compradores. Continue o excelente trabalho!</p>
+        <p>Positive reviews build trust across the ConnectBoat marine community. Keep up the great work!</p>
       `;
       ctaLink = `${baseUrl}/profile`;
-      ctaText = 'Ir para a minha Conta';
+      ctaText = 'View My Profile';
       break;
 
     case 'compra_concluida':
-      subject = `🎉 Venda marcada como concluída com sucesso!`;
+      subject = `🎉 Sale Marked as Completed!`;
       bodyContent = `
-        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Olá ${data.sellerName || 'Utilizador'},</p>
-        <p>Muitos parabéns pelo fecho do seu negócio!</p>
-        <p>O seu anúncio <strong>"${data.adTitle}"</strong> foi marcado como vendido com sucesso para o comprador <strong>${data.buyerName}</strong>.</p>
-        <p>Agradecemos sinceramente a escolha do Mercado Luso como plataforma oficial para publicar os seus classificados e apoiar a nossa comunidade.</p>
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${data.sellerName || 'Valued Member'},</p>
+        <p>Congratulations on completing your transaction!</p>
+        <p>Your listing <strong>"${data.adTitle}"</strong> has been marked as successfully sold to buyer <strong>${data.buyerName}</strong>.</p>
+        <p>Thank you for choosing ConnectBoat as your trusted marine marketplace platform.</p>
       `;
       ctaLink = `${baseUrl}/profile`;
-      ctaText = 'Gerir outros Anúncios';
+      ctaText = 'Manage My Listings';
+      break;
+
+    case 'pagamento_confirmado':
+      subject = `💳 Payment Confirmed: ${data.planName || 'ConnectBoat Service'}`;
+      bodyContent = `
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${data.userName || 'Valued Member'},</p>
+        <p>We have successfully received your payment for <strong>${data.planName || 'Featured Listing / Digital Showcase'}</strong>.</p>
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 15px; margin: 20px 0;">
+          <strong style="color: #166534; display: block; margin-bottom: 5px;">Order Summary:</strong>
+          <span style="color: #15803d; font-size: 14px;">Plan: ${data.planName || 'Premium Plan'} • Amount: ${data.amount || 'Paid'}</span>
+        </div>
+        <p>Your upgraded feature status is now active on ConnectBoat.</p>
+      `;
+      ctaLink = `${baseUrl}/profile`;
+      ctaText = 'View My Account';
       break;
 
     case 'boas_vindas':
-      subject = `👋 Bem-vindo ao Mercado Luso!`;
+      subject = `⛵ Welcome to ConnectBoat - UK Marine Marketplace!`;
       bodyContent = `
-        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Seja muito bem-vindo, ${data.userName}!</p>
-        <p>A sua conta foi registada com sucesso no <strong>Mercado Luso</strong>, o portal preferido de anúncios classificados das comunidades lusófonas em Portugal e no Reino Unido.</p>
-        <p>Aqui poderá:</p>
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Welcome aboard, ${data.userName}!</p>
+        <p>Your account has been successfully created on <strong>ConnectBoat</strong>, the UK's premier boat and marine classifieds platform.</p>
+        <p>Here is what you can do on ConnectBoat:</p>
         <ul style="padding-left: 20px; margin: 15px 0;">
-          <li>Publicar anúncios de forma totalmente rápida e gratuita.</li>
-          <li>Consultar imóveis, vagas de emprego, automóveis, assistência legal/imigração e muito mais.</li>
-          <li>Negociar segurança e diretamente pelo WhatsApp de outros utilizadores.</li>
+          <li>Publish listings for boats, marine equipment, parts, services, and charters.</li>
+          <li>Browse listings across all regions in the UK.</li>
+          <li>Connect directly with buyers and sellers via verified contact options.</li>
         </ul>
-        <p>Por favor, complete as informações do seu perfil para iniciar as suas publicações com segurança reforçada.</p>
+        <p>Please complete your profile details to start buying or selling with full confidence.</p>
       `;
       ctaLink = `${baseUrl}/profile`;
-      ctaText = 'Configurar meu Perfil';
+      ctaText = 'Complete Profile';
       break;
 
     case 'alerta_saude_sistema':
@@ -210,46 +233,46 @@ function renderEmail(template: string, data: any): { subject: string; html: stri
         'Crítico': '#ef4444'
       };
       const alertColor = levelColors[data.currentLevel] || '#6366f1';
-      subject = `⚠️ Alerta de Saúde do Sistema: ${data.currentLevel} (${data.healthPercentage}%)`;
+      subject = `⚠️ System Health Alert: ${data.currentLevel} (${data.healthPercentage}%)`;
       bodyContent = `
-        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Olá ${data.adminName || 'Administrador'},</p>
-        <p>O Monitor de Saúde do Sistema detetou uma alteração nos sinais vitais da aplicação.</p>
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${data.adminName || 'Administrator'},</p>
+        <p>The ConnectBoat System Health Monitor has detected a status change.</p>
         
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 6px solid ${alertColor};">
-          <p style="margin: 0 0 5px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em;">Estado Geral</p>
+          <p style="margin: 0 0 5px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em;">Current Status</p>
           <h2 style="margin: 0 0 10px 0; font-size: 28px; font-weight: 800; color: ${alertColor};">
             ${data.currentLevel} (${data.healthPercentage}%)
           </h2>
-          ${data.previousLevel ? `<p style="margin: 0; font-size: 13px; color: #64748b;">Nível anterior: <strong>${data.previousLevel}</strong></p>` : ''}
+          ${data.previousLevel ? `<p style="margin: 0; font-size: 13px; color: #64748b;">Previous Level: <strong>${data.previousLevel}</strong></p>` : ''}
         </div>
 
-        <h3 style="font-size: 14px; font-weight: bold; margin: 25px 0 10px 0; text-transform: uppercase; letter-spacing: 0.05em; color: #1e293b;">Alertas Ativos Encontrados:</h3>
+        <h3 style="font-size: 14px; font-weight: bold; margin: 25px 0 10px 0; text-transform: uppercase; letter-spacing: 0.05em; color: #1e293b;">Active Health Alerts:</h3>
         <div style="background-color: #ffffff; border: 1px solid #f1f5f9; border-radius: 8px; font-size: 14px; line-height: 1.5; color: #475569;">
-          ${data.alertDetailsString || '<p style="padding: 15px; margin: 0; color: #64748b;">Nenhum alerta ativo de momento.</p>'}
+          ${data.alertDetailsString || '<p style="padding: 15px; margin: 0; color: #64748b;">No active alerts at this time.</p>'}
         </div>
 
         ${data.actionRequired ? `
           <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 15px; margin: 20px 0;">
-            <strong style="color: #b45309; display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">Ação Recomendada</strong>
+            <strong style="color: #b45309; display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">Recommended Action</strong>
             <span style="color: #78350f;">${data.actionRequired}</span>
           </div>
         ` : ''}
 
-        <p style="margin-top: 25px;">Por favor, examine o painel de saúde do sistema no painel administrativo para obter detalhes e resolver as ocorrências.</p>
+        <p style="margin-top: 25px;">Please check the administration health dashboard for full details.</p>
       `;
       ctaLink = `${baseUrl}/admin/health`;
-      ctaText = 'Abrir Monitor de Saúde';
+      ctaText = 'Open System Health Dashboard';
       break;
 
     default:
-      subject = `Notificação Automática Mercado Luso`;
+      subject = `ConnectBoat Notification`;
       bodyContent = `
-        <p>Recebeu uma nova notificação do Mercado Luso.</p>
+        <p>You have received a notification from ConnectBoat.</p>
         <p>${JSON.stringify(data)}</p>
       `;
   }
 
-  const html = generateLusoTemplate(subject, bodyContent, ctaLink, ctaText);
+  const html = generateConnectBoatTemplate(subject, bodyContent, ctaLink, ctaText);
   return { subject, html };
 }
 
@@ -268,9 +291,8 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
-  // Se o envio geral estiver desligado
   if (!EMAIL_FLAG_ACTIVE) {
-    console.log('[API Email] O envio automático de e-mails está desativado globalmente através do EMAIL_ACTIVE=false.');
+    console.log('[API Email] Automated emails disabled globally via EMAIL_ACTIVE=false.');
     return res.status(200).json({ success: true, message: "Emails disabled globally" });
   }
 
@@ -278,18 +300,18 @@ export default async function handler(req: any, res: any) {
     const { template, to, data } = req.body;
 
     if (!to || !template) {
-      return res.status(400).json({ error: "Parâmetros 'to' e 'template' obrigatórios." });
+      return res.status(400).json({ error: "Required parameters 'to' and 'template' are missing." });
     }
 
     const { subject, html } = renderEmail(template, data);
 
-    const emailFrom = process.env.EMAIL_FROM || 'no-reply@mercadoluso.com';
+    const emailFrom = process.env.EMAIL_FROM || 'ConnectBoat <no-reply@connectboat.co.uk>';
+    const emailReplyTo = process.env.EMAIL_REPLY_TO || 'contato@connectboat.co.uk';
     const resendApiKey = process.env.RESEND_API_KEY;
-    const sendgridApiKey = process.env.SENDGRID_API_KEY;
 
-    // 1. Enviar através de RESEND se configurado
+    // Send via Resend (Single production email provider for ConnectBoat)
     if (resendApiKey) {
-      console.log(`[API Email] Enviando email via Resend para: ${to}`);
+      console.log(`[API Email] Sending real email via Resend to: ${Array.isArray(to) ? to.join(', ') : to}`);
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -298,69 +320,46 @@ export default async function handler(req: any, res: any) {
         },
         body: JSON.stringify({
           from: emailFrom,
-          to: to,
+          to: Array.isArray(to) ? to : [to],
           subject: subject,
-          html: html
+          html: html,
+          reply_to: emailReplyTo
         })
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Resend API Error: ${response.status} - ${errorText}`);
+        console.error(`[API Email ERROR] Resend API return error ${response.status}:`, errorText);
+        throw new Error(`Resend API Error (${response.status}): ${errorText}`);
       }
 
       const responseJson = await response.json();
       return res.status(200).json({ success: true, provider: 'resend', id: responseJson.id });
     }
 
-    // 2. Enviar através de SENDGRID se configurado
-    if (sendgridApiKey) {
-      console.log(`[API Email] Enviando email via SendGrid para: ${to}`);
-      const recipients = Array.isArray(to) ? to.map(email => ({ email })) : [{ email: to }];
-      
-      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sendgridApiKey}`
-        },
-        body: JSON.stringify({
-          personalizations: [{ to: recipients }],
-          from: { email: emailFrom, name: 'Mercado Luso' },
-          subject: subject,
-          content: [{ type: 'text/html', value: html }]
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`SendGrid API Error: ${response.status} - ${errorText}`);
-      }
-
-      return res.status(200).json({ success: true, provider: 'sendgrid' });
-    }
-
-    // 3. Fallback: Simulação no Console com Log Limpo e Detalhado
+    // Fallback: Console Simulation for local development without API key
     console.log(' ');
     console.log('========================================================================');
-    console.log(`✉️ [SIMULAÇÃO DE EMAIL] ENVIADO COM SUCESSO COPIADO PARA DESENVOLVIMENTO`);
-    console.log(`   Destinatário(s): ${Array.isArray(to) ? to.join(', ') : to}`);
-    console.log(`   Remetente:      ${emailFrom}`);
-    console.log(`   Assunto:        ${subject}`);
-    console.log(`   Template:       ${template}`);
+    console.log(`✉️ [EMAIL SIMULATION] DISPATCH LOGGED FOR LOCAL DEVELOPMENT`);
+    console.log(`   Recipient(s): ${Array.isArray(to) ? to.join(', ') : to}`);
+    console.log(`   From:         ${emailFrom}`);
+    console.log(`   Reply-To:     ${emailReplyTo}`);
+    console.log(`   Subject:      ${subject}`);
+    console.log(`   Template:     ${template}`);
     console.log('------------------------------------------------------------------------');
-    console.log(`   Mapeado dinamicamente com dados:`, JSON.stringify(data, null, 2));
+    console.log(`   Payload data:`, JSON.stringify(data, null, 2));
     console.log('========================================================================');
     console.log(' ');
 
     return res.status(200).json({ 
       success: true, 
       simulated: true, 
-      info: "Email simulado e logado em desenvolvimento com sucesso (sem chave API configurada)" 
+      info: "Email simulated successfully in dev environment (RESEND_API_KEY not configured)" 
     });
 
   } catch (err: any) {
-    console.error("[API Email ERROR] Falhou o envio de email:", err?.message || err);
+    console.error("[API Email ERROR] Failed to send email:", err?.message || err);
     return res.status(500).json({ success: false, error: err?.message || String(err) });
   }
 }
+

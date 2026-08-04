@@ -24,6 +24,51 @@ function getStripe(): Stripe | null {
   return stripeClient;
 }
 
+async function sendPaymentEmail(toEmail: string, userName: string, planName: string, amountFormatted?: string) {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const emailFrom = process.env.EMAIL_FROM || 'ConnectBoat <no-reply@connectboat.co.uk>';
+  const emailReplyTo = process.env.EMAIL_REPLY_TO || 'contato@connectboat.co.uk';
+
+  if (!toEmail || !toEmail.includes('@')) return;
+
+  if (resendApiKey) {
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${resendApiKey}`
+        },
+        body: JSON.stringify({
+          from: emailFrom,
+          to: [toEmail],
+          subject: `💳 Payment Confirmed: ${planName}`,
+          reply_to: emailReplyTo,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+              <div style="background-color: #0f172a; padding: 24px; text-align: center;">
+                <h1 style="margin: 0; color: #ffffff; font-size: 22px;">⛵ ConnectBoat</h1>
+                <p style="margin: 4px 0 0 0; color: #38bdf8; font-size: 12px; font-weight: 600; text-transform: uppercase;">UK Boat & Marine Marketplace</p>
+              </div>
+              <div style="padding: 30px; color: #334155;">
+                <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${userName || 'Valued Member'},</p>
+                <p>We have received your payment for <strong>${planName}</strong>.</p>
+                ${amountFormatted ? `<p style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; color: #166534; font-weight: bold;">Amount Paid: ${amountFormatted}</p>` : ''}
+                <p>Your subscription features are now fully active on ConnectBoat.</p>
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0;">
+                <p style="font-size: 12px; color: #64748b; margin: 0;">If you have any questions, please write to us at <a href="mailto:contato@connectboat.co.uk" style="color: #0284c7;">contato@connectboat.co.uk</a>.</p>
+              </div>
+            </div>
+          `
+        })
+      });
+      console.log(`[Stripe Webhook Email] Sent payment confirmation email to ${toEmail}`);
+    } catch (err) {
+      console.warn(`[Stripe Webhook Email Error] Failed to send receipt:`, err);
+    }
+  }
+}
+
 let dbInstance: admin.firestore.Firestore | null = null;
 
 function getAdminDb(): admin.firestore.Firestore {
@@ -154,6 +199,17 @@ export default async function stripeWebhookHandler(req: Request & { rawBody?: Bu
           );
 
           console.log(`[Stripe Webhook] Successfully updated ad ${adId} to featured level ${level}`);
+
+          // Dispatch confirmation email
+          const customerEmail = session.customer_details?.email || session.customer_email;
+          if (customerEmail) {
+            sendPaymentEmail(
+              customerEmail,
+              session.customer_details?.name || 'Valued Member',
+              `Featured Listing (${level === 'national' ? 'National' : 'Local'} Plan)`,
+              session.amount_total ? `£${(session.amount_total / 100).toFixed(2)}` : undefined
+            ).catch(err => console.warn('[Stripe Email Error]', err));
+          }
         }
       } else if (itemType === 'digital_showcase' && userId) {
         let showcaseData: any = {};

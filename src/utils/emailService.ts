@@ -9,6 +9,11 @@ import { db } from '../firebase';
  */
 
 export interface EmailData {
+  anuncio_submetido: {
+    sellerName: string;
+    adTitle: string;
+    adId: string;
+  };
   anuncio_aprovado: {
     sellerName: string;
     adTitle: string;
@@ -42,6 +47,11 @@ export interface EmailData {
     sellerName: string;
     buyerName: string;
     adTitle: string;
+  };
+  pagamento_confirmado: {
+    userName: string;
+    planName: string;
+    amount?: string;
   };
   boas_vindas: {
     userName: string;

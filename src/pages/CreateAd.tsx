@@ -820,6 +820,19 @@ const CreateAd = () => {
               }
             }
           }
+
+          // Send submission confirmation to seller if email is present
+          if (user?.email) {
+            try {
+              await sendEmailGeneric('anuncio_submetido', user.email, {
+                sellerName: profile?.name || user.displayName || 'Valued Member',
+                adTitle: finalAdData.title,
+                adId: targetAdId
+              });
+            } catch (err: any) {
+              console.warn('[SELLER SUBMISSION EMAIL] error:', err.message || err);
+            }
+          }
         } catch (notifErr: any) {
           console.warn('[PENDING EMAIL] error:', notifErr.message || notifErr);
         }
