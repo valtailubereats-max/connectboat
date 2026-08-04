@@ -1421,10 +1421,10 @@ const Home = () => {
             <motion.div 
               initial={{ opacity: 0, y: -10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 w-full"
+              className="flex flex-row items-start justify-between gap-3 sm:gap-4 w-full"
             >
-              <h1 className="text-lg xs:text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)]">
-                ConnectBoat
+              <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-white tracking-tight leading-[1.12] drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] max-w-[220px] xs:max-w-[280px] sm:max-w-md md:max-w-xl text-left">
+                Your Next Adventure Starts Here
               </h1>
 
               {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
@@ -1465,59 +1465,18 @@ const Home = () => {
               </div>
             </motion.div>
 
-            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Lado Direito) */}
+            {/* Base do Banner: Subtítulo Flutuante sem container na Parte Inferior (Lado Esquerdo) */}
             {bannerConfig?.enabled !== false && (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }} 
                 animate={{ opacity: 1, y: 0 }}
-                className={`mt-auto pt-3 sm:pt-6 w-full flex ${
-                  bannerConfig?.desktop?.textAlign === 'left' ? 'justify-start' : 
-                  bannerConfig?.desktop?.textAlign === 'center' ? 'justify-center' : 'justify-end'
-                }`}
-                style={{
-                  transform: `translateY(${-1 * ((bannerConfig?.desktop?.posY === 90 ? 0 : bannerConfig?.desktop?.posY) ?? 0)}px)`,
-                  transition: 'transform 0.2s ease-out'
-                }}
+                className="mt-auto pt-3 sm:pt-6 w-full flex justify-start text-left"
               >
-                <div 
-                  className="inline-flex items-center border border-white/15 shadow-2xl max-w-full text-right"
-                  style={{
-                    backgroundColor: bannerConfig?.desktop?.bgColor 
-                      ? `${bannerConfig.desktop.bgColor}${Math.round(((bannerConfig.desktop.bgOpacity ?? 80) / 100) * 255).toString(16).padStart(2, '0')}`
-                      : 'rgba(15, 23, 42, 0.8)',
-                    backdropFilter: `blur(${bannerConfig?.desktop?.backdropBlur ?? 12}px)`,
-                    borderRadius: `${bannerConfig?.desktop?.borderRadius ?? 16}px`,
-                    paddingTop: `${bannerConfig?.desktop?.paddingVertical ?? 12}px`,
-                    paddingBottom: `${bannerConfig?.desktop?.paddingVertical ?? 12}px`,
-                    paddingLeft: `${bannerConfig?.desktop?.paddingHorizontal ?? 20}px`,
-                    paddingRight: `${bannerConfig?.desktop?.paddingHorizontal ?? 20}px`,
-                  }}
+                <p 
+                  className="text-xs xs:text-sm sm:text-base md:text-lg font-medium text-white/95 leading-snug sm:leading-normal tracking-wide drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] max-w-[270px] xs:max-w-[320px] sm:max-w-md md:max-w-xl text-left"
                 >
-                  <p 
-                    className="font-medium italic tracking-wide leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
-                    style={{
-                      color: bannerConfig?.desktop?.textColor || '#ffffff',
-                      fontSize: bannerConfig?.desktop?.fontSize ? `${bannerConfig.desktop.fontSize}px` : undefined,
-                      textAlign: bannerConfig?.desktop?.textAlign || 'right',
-                    }}
-                  >
-                    {country === 'Portugal' ? (
-                      bannerConfig?.desktop?.customTextPt || (
-                        <>
-                          Compre, venda e alugue barcos, iates,<br />
-                          equipamentos e serviços marítimos.
-                        </>
-                      )
-                    ) : (
-                      bannerConfig?.desktop?.customTextEn || (
-                        <>
-                          Buy, sell and charter boats, yachts,<br />
-                          gear & marine services across the United Kingdom.
-                        </>
-                      )
-                    )}
-                  </p>
-                </div>
+                  Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.
+                </p>
               </motion.div>
             )}
           </div>
@@ -1671,10 +1630,10 @@ const Home = () => {
             <motion.div 
               initial={{ opacity: 0, y: -10 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="flex flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 w-full"
+              className="flex flex-row items-start justify-between gap-2.5 sm:gap-4 w-full"
             >
-              <h1 className="text-lg xs:text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-[0_4px_14px_rgba(0,0,0,0.9)]">
-                ConnectBoat
+              <h1 className="text-xl xs:text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-[1.12] drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] max-w-[200px] xs:max-w-[240px] sm:max-w-md text-left">
+                Your Next Adventure Starts Here
               </h1>
 
               {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
@@ -1715,62 +1674,18 @@ const Home = () => {
               </div>
             </motion.div>
 
-            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior */}
+            {/* Base do Banner: Subtítulo Flutuante sem container na Parte Inferior (Lado Esquerdo) */}
             {bannerConfig?.enabled !== false && (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }} 
                 animate={{ opacity: 1, y: 0 }}
-                className={`mt-auto pt-3 sm:pt-6 w-full flex ${
-                  bannerConfig?.mobile?.textAlign === 'left' ? 'justify-start' : 
-                  bannerConfig?.mobile?.textAlign === 'center' ? 'justify-center' : 'justify-end'
-                }`}
-                style={{
-                  transform: `translateY(${-1 * ((bannerConfig?.mobile?.posY === 90 ? 0 : bannerConfig?.mobile?.posY) ?? 0)}px)`,
-                  transition: 'transform 0.2s ease-out'
-                }}
+                className="mt-auto pt-3 sm:pt-6 w-full flex justify-start text-left"
               >
-                <div 
-                  className="inline-flex items-center gap-2.5 border border-white/15 shadow-2xl max-w-full text-left"
-                  style={{
-                    backgroundColor: bannerConfig?.mobile?.bgColor 
-                      ? `${bannerConfig.mobile.bgColor}${Math.round(((bannerConfig.mobile.bgOpacity ?? 80) / 100) * 255).toString(16).padStart(2, '0')}`
-                      : 'rgba(15, 23, 42, 0.85)',
-                    backdropFilter: `blur(${bannerConfig?.mobile?.backdropBlur ?? 12}px)`,
-                    borderRadius: `${bannerConfig?.mobile?.borderRadius ?? 16}px`,
-                    paddingTop: `${bannerConfig?.mobile?.paddingVertical ?? 10}px`,
-                    paddingBottom: `${bannerConfig?.mobile?.paddingVertical ?? 10}px`,
-                    paddingLeft: `${bannerConfig?.mobile?.paddingHorizontal ?? 14}px`,
-                    paddingRight: `${bannerConfig?.mobile?.paddingHorizontal ?? 14}px`,
-                  }}
+                <p 
+                  className="text-xs xs:text-sm font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] max-w-[260px] xs:max-w-[300px] sm:max-w-md text-left"
                 >
-                  <div className="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center shrink-0 text-white shadow-sm">
-                    <Anchor size={16} />
-                  </div>
-                  <p 
-                    className="font-medium tracking-wide leading-snug drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] text-xs"
-                    style={{
-                      color: bannerConfig?.mobile?.textColor || '#ffffff',
-                      fontSize: bannerConfig?.mobile?.fontSize ? `${bannerConfig.mobile.fontSize}px` : undefined,
-                      textAlign: bannerConfig?.mobile?.textAlign || 'left',
-                    }}
-                  >
-                    {country === 'Portugal' ? (
-                      bannerConfig?.mobile?.customTextPt || (
-                        <>
-                          Compre, venda e alugue barcos, iates,<br />
-                          equipamentos e serviços marítimos.
-                        </>
-                      )
-                    ) : (
-                      bannerConfig?.mobile?.customTextEn || (
-                        <>
-                          Buy, sell and charter boats, yachts,<br />
-                          gear & marine services across the <strong>United Kingdom</strong>.
-                        </>
-                      )
-                    )}
-                  </p>
-                </div>
+                  Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.
+                </p>
               </motion.div>
             )}
           </div>
