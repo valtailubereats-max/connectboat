@@ -1,13 +1,258 @@
 import type { Request, Response } from 'express';
-import { decodeHtmlEntities, cleanTitle } from '../src/utils/textUtils';
-import {
-  normalizeListingUrl,
-  extractExternalId,
-  validateSearchPageUrl,
-  SearchPageValidationResult
-} from '../src/utils/urlNormalization';
 
 console.log('[discover-listings] MODULE_LOAD: Module initialized successfully');
+
+// ==========================================
+// INLINED HELPER UTILITIES (Self-contained for Vercel Serverless Runtime)
+// ==========================================
+
+export const decodeHtmlEntities = (str: string): string => {
+  if (!str) return '';
+  let temp = str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&pound;/g, '£')
+    .replace(/&euro;/g, '€')
+    .replace(/&#36;/g, '$')
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  
+  try {
+    temp = temp.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  } catch (e) {
+    // ignore
+  }
+  return temp;
+};
+
+export const cleanTitle = (title: string): string => {
+  if (!title) return '';
+  let temp = decodeHtmlEntities(title)
+    .replace(/\s*-\s*à venda\s*-\s*.*$/gi, '')
+    .replace(/\s*-\s*OLX\s*Portugal.*$/gi, '')
+    .replace(/\s*-\s*OLX.*$/gi, '')
+    .replace(/\s*[|]\s*Gumtree.*$/gi, '')
+    .replace(/\s*-\s*Gumtree.*$/gi, '')
+    .replace(/\s*in\s+[^|]+[|]\s*Gumtree.*$/gi, '')
+    .replace(/\s*-\s*Boats\s*and\s*Outboards.*$/gi, '')
+    .replace(/\s*-\s*Apollo\s*Duck.*$/gi, '')
+    .replace(/\s*-\s*YachtWorld.*$/gi, '')
+    .replace(/\s*-\s*Rightboat.*$/gi, '')
+    .replace(/\s*-\s*TheYachtMarket.*$/gi, '')
+    .replace(/\s*-\s*Boatshop24.*$/gi, '')
+    .replace(/\s*-\s*Boat24.*$/gi, '')
+    .replace(/\s*-\s*Boats\.com.*$/gi, '')
+    .replace(/\|.*$/gi, '')
+    .trim();
+
+  // Remove emojis
+  temp = temp.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+  
+  // Replace duplicated spaces
+  temp = temp.replace(/\s+/g, ' ');
+
+  return temp.trim();
+};
+
+const TRACKING_PARAMS = new Set([
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'gclid',
+  'fbclid',
+  'ref',
+  'source',
+  '_ga',
+  '_gl',
+  'mc_cid',
+  'mc_eid'
+]);
+
+export function normalizeListingUrl(rawUrl: string, baseUrl?: string): string {
+  if (!rawUrl || typeof rawUrl !== 'string') return '';
+  
+  let decoded = decodeHtmlEntities(rawUrl.trim());
+  if (decoded.startsWith('javascript:') || decoded.startsWith('mailto:') || decoded.startsWith('tel:')) {
+    return '';
+  }
+
+  let parsed: URL;
+  try {
+    if (baseUrl && !decoded.startsWith('http://') && !decoded.startsWith('https://')) {
+      parsed = new URL(decoded, baseUrl);
+    } else {
+      parsed = new URL(decoded);
+    }
+  } catch {
+    return '';
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return '';
+  }
+
+  // Force HTTPS
+  parsed.protocol = 'https:';
+
+  // Lowercase hostname
+  parsed.hostname = parsed.hostname.toLowerCase();
+  if (parsed.hostname.endsWith('.')) {
+    parsed.hostname = parsed.hostname.slice(0, -1);
+  }
+
+  // Remove tracking parameters
+  const searchParams = new URLSearchParams(parsed.search);
+  const keysToDelete: string[] = [];
+  searchParams.forEach((_, key) => {
+    if (TRACKING_PARAMS.has(key.toLowerCase())) {
+      keysToDelete.push(key);
+    }
+  });
+  keysToDelete.forEach(k => searchParams.delete(k));
+  parsed.search = searchParams.toString();
+
+  // Remove fragment
+  parsed.hash = '';
+
+  let finalUrl = parsed.toString();
+  // Strip trailing slash for consistency (unless it's just origin e.g. https://domain.com/)
+  if (parsed.pathname !== '/' && finalUrl.endsWith('/')) {
+    finalUrl = finalUrl.slice(0, -1);
+  }
+
+  return finalUrl;
+}
+
+export function extractExternalId(url: string, marketplaceId: string): string | undefined {
+  if (!url) return undefined;
+  
+  const norm = normalizeListingUrl(url);
+  if (!norm) return undefined;
+
+  try {
+    const parsed = new URL(norm);
+    const path = parsed.pathname;
+
+    if (marketplaceId === 'apolloduck') {
+      const match = path.match(/\/boat\/[^\/]+\/(\d+)\/?$/i) || path.match(/\/(\d+)\/?$/);
+      if (match) return match[1];
+    }
+
+    if (marketplaceId === 'boatsandoutboards') {
+      const match = path.match(/-(\d{5,})\/?$/i) || path.match(/\/(\d{5,})\/?$/i);
+      if (match) return match[1];
+    }
+  } catch {
+    // ignore
+  }
+
+  return undefined;
+}
+
+export type SearchPageValidationResult = {
+  isValid: boolean;
+  errorCode?: 
+    | 'INVALID_URL'
+    | 'UNSUPPORTED_MARKETPLACE'
+    | 'INDIVIDUAL_LISTING_URL'
+    | 'NOT_A_RESULTS_PAGE'
+    | 'UNAUTHORIZED';
+  errorMessage?: string;
+  marketplaceId?: 'apolloduck' | 'boatsandoutboards';
+  marketplaceName?: string;
+  normalizedUrl?: string;
+};
+
+export function validateSearchPageUrl(urlInput: string): SearchPageValidationResult {
+  if (!urlInput || typeof urlInput !== 'string' || !urlInput.trim()) {
+    return {
+      isValid: false,
+      errorCode: 'INVALID_URL',
+      errorMessage: 'Please enter a valid URL.'
+    };
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(urlInput.trim());
+  } catch {
+    return {
+      isValid: false,
+      errorCode: 'INVALID_URL',
+      errorMessage: 'The provided URL is invalid. Please check the syntax.'
+    };
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return {
+      isValid: false,
+      errorCode: 'INVALID_URL',
+      errorMessage: 'Only HTTP or HTTPS protocol URLs are supported.'
+    };
+  }
+
+  let hostname = parsed.hostname.toLowerCase();
+  if (hostname.startsWith('www.')) hostname = hostname.slice(4);
+
+  let marketplaceId: 'apolloduck' | 'boatsandoutboards' | null = null;
+  let marketplaceName = '';
+
+  if (hostname === 'apolloduck.com' || hostname.endsWith('.apolloduck.com') ||
+      hostname === 'apolloduck.co.uk' || hostname.endsWith('.apolloduck.co.uk') ||
+      hostname === 'apolloduck.ie' || hostname.endsWith('.apolloduck.ie')) {
+    marketplaceId = 'apolloduck';
+    marketplaceName = 'Apollo Duck';
+  } else if (hostname === 'boatsandoutboards.co.uk' || hostname.endsWith('.boatsandoutboards.co.uk')) {
+    marketplaceId = 'boatsandoutboards';
+    marketplaceName = 'Boats and Outboards';
+  }
+
+  if (!marketplaceId) {
+    return {
+      isValid: false,
+      errorCode: 'UNSUPPORTED_MARKETPLACE',
+      errorMessage: 'Marketplace not supported for Search Results Import. Only Apollo Duck and Boats and Outboards are allowed in this version.'
+    };
+  }
+
+  const normalizedUrl = normalizeListingUrl(urlInput);
+  const path = parsed.pathname.toLowerCase();
+
+  if (marketplaceId === 'apolloduck') {
+    if (/\/boat\/[^\/]+\/\d+/i.test(path)) {
+      return {
+        isValid: false,
+        errorCode: 'INDIVIDUAL_LISTING_URL',
+        errorMessage: 'The provided URL is an individual listing, not a search results page. Please use individual URL import.'
+      };
+    }
+  }
+
+  if (marketplaceId === 'boatsandoutboards') {
+    if (/\/boat\/[^\/]*\d{5,}/i.test(path) || /\/boats-for-sale\/[^\/]*\d{5,}\/?$/i.test(path)) {
+      return {
+        isValid: false,
+        errorCode: 'INDIVIDUAL_LISTING_URL',
+        errorMessage: 'The provided URL is an individual listing, not a search results page. Please use individual URL import.'
+      };
+    }
+  }
+
+  return {
+    isValid: true,
+    marketplaceId,
+    marketplaceName,
+    normalizedUrl
+  };
+}
 
 export type DiscoveredListing = {
   sourceUrl: string;
