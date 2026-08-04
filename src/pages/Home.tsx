@@ -1115,7 +1115,91 @@ const Home = () => {
       {/* 💻 LAYOUT DESKTOP (Aparece apenas em ecrãs médios e superiores) */}
       {/* ============================================================== */}
       <div className="hidden md:flex flex-col gap-4 md:gap-5 max-w-full">
-        {/* 1. BARRA DE PESQUISA PRINCIPAL (Layout Replicado do Mobile) */}
+        {/* 1. HERO BANNER LUXURY (Título no topo esquerdo, stats à direita e subtítulo flutuante abaixo do casco) */}
+        <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl transition-all duration-500 max-w-full bg-slate-950 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between" id="desktop-banner-section">
+          {/* Imagem de Fundo dinâmica */}
+          <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
+            <img 
+              src={londonBg} 
+              alt="ConnectBoat UK Marine" 
+              className="w-full h-full object-cover object-[center_20%] transition-all duration-700 ease-in-out"
+              onError={() => {
+                if (londonBg !== londonAerialOriginalStandby) {
+                  setLondonBg(londonAerialOriginalStandby);
+                }
+              }}
+            />
+            {/* Overlay em gradiente top-to-bottom para maximizar legibilidade no topo e no fundo sem cobrir o centro */}
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
+          </div>
+
+          <div className="relative z-10 w-full h-full flex flex-col justify-between p-3.5 xs:p-4 sm:p-8 md:p-10 lg:p-12 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
+            {/* Topo do Banner: Título no Topo à Esquerda + Stats Badges à Direita */}
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }} 
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-row items-start justify-between gap-3 sm:gap-4 w-full"
+            >
+              <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-white tracking-tight leading-[1.12] drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] max-w-[220px] xs:max-w-[280px] sm:max-w-md md:max-w-xl text-left">
+                Your Next Adventure Starts Here
+              </h1>
+
+              {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
+              <div className="flex flex-row items-center gap-1.5 sm:gap-3 shrink-0">
+                {/* Contador de Anúncios Slim (Apenas para Staff / Administradores) */}
+                {isModeratorOrAdmin && (
+                  <div 
+                    className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
+                  >
+                    <span className="text-white font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
+                      {totalApprovedCount !== null ? totalApprovedCount : filteredAds.length}
+                    </span>
+                    <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Active<br/>Listings</span>
+
+                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
+                      🔒 Hidden (Staff view)
+                    </span>
+                  </div>
+                )}
+
+                {/* Contador de Utilizadores Slim */}
+                {(settings?.showTotalUsersBadge || isModeratorOrAdmin) && totalUsersCount !== null && (
+                  <div 
+                    className="flex items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
+                  >
+                    <span className="text-amber-300 font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
+                      {totalUsersCount}
+                    </span>
+                    <span className="text-white/80 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">UK<br/>Members</span>
+
+                    {!settings?.showTotalUsersBadge && isModeratorOrAdmin && (
+                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
+                        🔒 Oculto (Visto por Staff)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Base do Banner: Subtítulo Flutuante sem container na Parte Inferior (Lado Direito) em 2 linhas */}
+            {bannerConfig?.enabled !== false && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-auto pt-2 sm:pt-4 w-full flex justify-end text-right"
+              >
+                <p 
+                  className="text-xs sm:text-sm md:text-base font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-w-[280px] xs:max-w-[340px] sm:max-w-[420px] md:max-w-[460px] text-right"
+                >
+                  Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.
+                </p>
+              </motion.div>
+            )}
+          </div>
+        </section>
+
+        {/* 2. BARRA DE PESQUISA E DROPDOWNS DESKTOP (Abaixo do Banner, estilo Mobile) */}
         <section className="w-full flex flex-col gap-2 bg-transparent" id="desktop-search-section">
           
           {/* 3 Dropdowns na Primeira Linha */}
@@ -1391,90 +1475,6 @@ const Home = () => {
               </motion.div>
             );
           })()}
-        </section>
-
-        {/* 2. HERO BANNER LUXURY (Título no topo esquerdo, stats à direita e subtítulo flutuante abaixo do casco) */}
-        <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl transition-all duration-500 max-w-full bg-slate-950 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between">
-          {/* Imagem de Fundo dinâmica */}
-          <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
-            <img 
-              src={londonBg} 
-              alt="ConnectBoat UK Marine" 
-              className="w-full h-full object-cover object-[center_20%] transition-all duration-700 ease-in-out"
-              onError={() => {
-                if (londonBg !== londonAerialOriginalStandby) {
-                  setLondonBg(londonAerialOriginalStandby);
-                }
-              }}
-            />
-            {/* Overlay em gradiente top-to-bottom para maximizar legibilidade no topo e no fundo sem cobrir o centro */}
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
-          </div>
-
-          <div className="relative z-10 w-full h-full flex flex-col justify-between p-3.5 xs:p-4 sm:p-8 md:p-10 lg:p-12 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
-            {/* Topo do Banner: Título no Topo à Esquerda + Stats Badges à Direita */}
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-row items-start justify-between gap-3 sm:gap-4 w-full"
-            >
-              <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-white tracking-tight leading-[1.12] drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] max-w-[220px] xs:max-w-[280px] sm:max-w-md md:max-w-xl text-left">
-                Your Next Adventure Starts Here
-              </h1>
-
-              {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
-              <div className="flex flex-row items-center gap-1.5 sm:gap-3 shrink-0">
-                {/* Contador de Anúncios Slim (Apenas para Staff / Administradores) */}
-                {isModeratorOrAdmin && (
-                  <div 
-                    className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
-                  >
-                    <span className="text-white font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
-                      {totalApprovedCount !== null ? totalApprovedCount : filteredAds.length}
-                    </span>
-                    <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Active<br/>Listings</span>
-
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
-                      🔒 Hidden (Staff view)
-                    </span>
-                  </div>
-                )}
-
-                {/* Contador de Utilizadores Slim */}
-                {(settings?.showTotalUsersBadge || isModeratorOrAdmin) && totalUsersCount !== null && (
-                  <div 
-                    className="flex items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
-                  >
-                    <span className="text-amber-300 font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
-                      {totalUsersCount}
-                    </span>
-                    <span className="text-white/80 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">UK<br/>Members</span>
-
-                    {!settings?.showTotalUsersBadge && isModeratorOrAdmin && (
-                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
-                        🔒 Oculto (Visto por Staff)
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Base do Banner: Subtítulo Flutuante sem container na Parte Inferior (Lado Direito) em 2 linhas */}
-            {bannerConfig?.enabled !== false && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }} 
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-auto pt-2 sm:pt-4 w-full flex justify-end text-right"
-              >
-                <p 
-                  className="text-xs sm:text-sm md:text-base font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-w-[280px] xs:max-w-[340px] sm:max-w-[420px] md:max-w-[460px] text-right"
-                >
-                  Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.
-                </p>
-              </motion.div>
-            )}
-          </div>
         </section>
 
         {/* 3. ✨ ANÚNCIOS EM DESTAQUE */}
