@@ -1647,126 +1647,8 @@ const Home = () => {
       {/* 📱 LAYOUT MOBILE (Aparece apenas em ecrãs menores que md) */}
       {/* ============================================================== */}
       <div className="flex md:hidden flex-col gap-4 w-full max-w-full overflow-hidden" id="mobile-home-root">
-        {/* 1. BARRA DE PESQUISA E FILTROS MOBILE (Organizada, elegante e responsiva) */}
-        <section className="w-full flex flex-col gap-2.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-2.5 shadow-sm" id="mobile-search-section">
-          
-          {/* Campo de Pesquisa Textual Mobile */}
-          <div className="h-11 flex items-center gap-2.5 px-3.5 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700/60 focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20 transition-all">
-            <Search size={16} className="text-slate-400 dark:text-slate-400 shrink-0" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => {
-                handleSearchFocus();
-                setIsSearchFocused(true);
-              }}
-              placeholder="Search"
-              className="w-full bg-transparent text-slate-900 dark:text-white font-medium placeholder:text-slate-400 focus:outline-none text-xs"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm('')}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-1 font-semibold text-xs"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {/* Dropdowns de Categoria, Cidade e Filtros na Mesma Linha (3 Colunas) */}
-          <div className="grid grid-cols-3 gap-1.5 xs:gap-2 w-full" id="mobile-filters-section">
-            {/* Categoria */}
-            <div className="relative h-10.5 flex items-center gap-1.5 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-2.5 transition-all min-w-0">
-              <Tag size={13} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
-              <select
-                value={category}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setCategory(val);
-                  setFilterRegion(false);
-                  setFilterNational(false);
-                  setFilterOnline(false);
-                }}
-                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
-              >
-                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
-                {categories.map((c, i) => (
-                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
-                ))}
-              </select>
-              <span className="text-[8px] text-slate-400 dark:text-slate-400 absolute right-2 pointer-events-none select-none">▼</span>
-            </div>
-
-            {/* Cidade / Localização */}
-            <div className="relative h-10.5 flex items-center gap-1.5 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-2.5 transition-all min-w-0">
-              <MapPin size={13} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
-              <select
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
-              >
-                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
-                {selectableCitiesOnHome.map((c, i) => (
-                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
-                ))}
-              </select>
-              <span className="text-[8px] text-slate-400 dark:text-slate-400 absolute right-2 pointer-events-none select-none">▼</span>
-            </div>
-
-            {/* Botão de Filtros */}
-            <button
-              type="button"
-              onClick={() => setFilterDrawerOpen(true)}
-              className={`h-10.5 flex items-center justify-center gap-1.5 px-2 xs:px-2.5 rounded-xl border text-[11px] xs:text-xs font-semibold transition-all cursor-pointer min-w-0 truncate ${
-                activeMarineFilterCount > 0
-                  ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
-                  : 'bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200/90 dark:border-slate-700/60'
-              }`}
-            >
-              <SlidersHorizontal size={13} className="shrink-0" />
-              <span className="truncate">Filters</span>
-              {activeMarineFilterCount > 0 && (
-                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
-                  {activeMarineFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Filtros expandidos de serviços se categoria for Serviços */}
-          {(() => {
-            const isServiceCategory = category === 'Boat Services' || category === 'Serviços' || category?.includes('Services') || category?.includes('Serviços');
-            return isServiceCategory && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="w-full mt-1 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-2.5 border border-slate-200/80 dark:border-slate-800"
-              >
-                <div className="flex flex-col gap-2 text-left">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Service Area:</span>
-                  <div className="flex flex-wrap gap-2">
-                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200">
-                      <input type="checkbox" checked={filterRegion} onChange={(e) => setFilterRegion(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                      <span>Local</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200">
-                      <input type="checkbox" checked={filterNational} onChange={(e) => setFilterNational(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                      <span>Nationwide</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200">
-                      <input type="checkbox" checked={filterOnline} onChange={(e) => setFilterOnline(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                      <span>Remote</span>
-                    </label>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })()}
-        </section>
-
-        {/* 3. HERO BANNER LUXURY (Identico ao Desktop: Título, Stats e Subtítulo) */}
+        
+        {/* 1. HERO BANNER LUXURY (Primeiro elemento no topo) */}
         <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl transition-all duration-500 w-full bg-slate-950 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between" id="mobile-banner-section">
           {/* Imagem de Fundo dinâmica */}
           <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
@@ -1833,7 +1715,7 @@ const Home = () => {
               </div>
             </motion.div>
 
-            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior (Lado Direito) */}
+            {/* Base do Banner: Subtítulo Elegante Flutuante na Parte Inferior */}
             {bannerConfig?.enabled !== false && (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }} 
@@ -1848,25 +1730,28 @@ const Home = () => {
                 }}
               >
                 <div 
-                  className="inline-flex items-center border border-white/15 shadow-2xl max-w-full text-right"
+                  className="inline-flex items-center gap-2.5 border border-white/15 shadow-2xl max-w-full text-left"
                   style={{
                     backgroundColor: bannerConfig?.mobile?.bgColor 
                       ? `${bannerConfig.mobile.bgColor}${Math.round(((bannerConfig.mobile.bgOpacity ?? 80) / 100) * 255).toString(16).padStart(2, '0')}`
-                      : 'rgba(15, 23, 42, 0.8)',
+                      : 'rgba(15, 23, 42, 0.85)',
                     backdropFilter: `blur(${bannerConfig?.mobile?.backdropBlur ?? 12}px)`,
-                    borderRadius: `${bannerConfig?.mobile?.borderRadius ?? 12}px`,
+                    borderRadius: `${bannerConfig?.mobile?.borderRadius ?? 16}px`,
                     paddingTop: `${bannerConfig?.mobile?.paddingVertical ?? 10}px`,
                     paddingBottom: `${bannerConfig?.mobile?.paddingVertical ?? 10}px`,
                     paddingLeft: `${bannerConfig?.mobile?.paddingHorizontal ?? 14}px`,
                     paddingRight: `${bannerConfig?.mobile?.paddingHorizontal ?? 14}px`,
                   }}
                 >
+                  <div className="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center shrink-0 text-white shadow-sm">
+                    <Anchor size={16} />
+                  </div>
                   <p 
-                    className="font-medium italic tracking-wide leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+                    className="font-medium tracking-wide leading-snug drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] text-xs"
                     style={{
                       color: bannerConfig?.mobile?.textColor || '#ffffff',
                       fontSize: bannerConfig?.mobile?.fontSize ? `${bannerConfig.mobile.fontSize}px` : undefined,
-                      textAlign: bannerConfig?.mobile?.textAlign || 'right',
+                      textAlign: bannerConfig?.mobile?.textAlign || 'left',
                     }}
                   >
                     {country === 'Portugal' ? (
@@ -1880,7 +1765,7 @@ const Home = () => {
                       bannerConfig?.mobile?.customTextEn || (
                         <>
                           Buy, sell and charter boats, yachts,<br />
-                          gear & marine services across the United Kingdom.
+                          gear & marine services across the <strong>United Kingdom</strong>.
                         </>
                       )
                     )}
@@ -1889,6 +1774,133 @@ const Home = () => {
               </motion.div>
             )}
           </div>
+        </section>
+
+        {/* 2. FILTROS DROPDOWNS E BARRA DE PESQUISA MOBILE */}
+        <section className="w-full flex flex-col gap-2 bg-transparent" id="mobile-search-section">
+          
+          {/* 3 Dropdowns na Mesma Linha (Slightly stronger border, softer than Search Bar) */}
+          <div className="grid grid-cols-3 gap-1.5 xs:gap-2 w-full" id="mobile-filters-section">
+            {/* Categoria */}
+            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl px-2.5 transition-all min-w-0 shadow-2xs">
+              <Tag size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
+              <select
+                value={category}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCategory(val);
+                  setFilterRegion(false);
+                  setFilterNational(false);
+                  setFilterOnline(false);
+                }}
+                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
+              >
+                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
+                {categories.map((c, i) => (
+                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
+                ))}
+              </select>
+              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-2.5 pointer-events-none select-none">▼</span>
+            </div>
+
+            {/* Cidade / Localização */}
+            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl px-2.5 transition-all min-w-0 shadow-2xs">
+              <MapPin size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
+              >
+                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
+                {selectableCitiesOnHome.map((c, i) => (
+                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
+                ))}
+              </select>
+              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-2.5 pointer-events-none select-none">▼</span>
+            </div>
+
+            {/* Botão de Filtros */}
+            <button
+              type="button"
+              onClick={() => setFilterDrawerOpen(true)}
+              className={`h-11 flex items-center justify-center gap-1.5 px-2 xs:px-2.5 rounded-2xl border text-[11px] xs:text-xs font-semibold transition-all cursor-pointer min-w-0 truncate shadow-2xs ${
+                activeMarineFilterCount > 0
+                  ? 'bg-sky-600 text-white border-sky-600'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <SlidersHorizontal size={14} className="shrink-0 text-slate-500 dark:text-slate-400" />
+              <span className="truncate">Filters</span>
+              {activeMarineFilterCount > 0 && (
+                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
+                  {activeMarineFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Campo de Pesquisa Textual Mobile (Highlight focal element, blue border + soft blue glow) */}
+          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white dark:bg-slate-900 rounded-2xl border-2 border-sky-400/90 dark:border-sky-500/80 shadow-[0_0_15px_rgba(2,132,199,0.14)] focus-within:ring-2 focus-within:ring-sky-500/25 transition-all">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => {
+                handleSearchFocus();
+                setIsSearchFocused(true);
+              }}
+              onBlur={() => setIsSearchFocused(false)}
+              placeholder="Search boats, engines, parts, services..."
+              className="w-full bg-transparent text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-1 font-semibold text-xs shrink-0"
+              >
+                ✕
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleSearchFocus()}
+              className="w-9 h-9 sm:w-10 sm:h-10 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white rounded-xl flex items-center justify-center shrink-0 transition-all shadow-sm cursor-pointer"
+              aria-label="Search"
+            >
+              <Search size={18} />
+            </button>
+          </div>
+
+          {/* Filtros expandidos de serviços se categoria for Serviços */}
+          {(() => {
+            const isServiceCategory = category === 'Boat Services' || category === 'Serviços' || category?.includes('Services') || category?.includes('Serviços');
+            return isServiceCategory && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="w-full mt-1 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-2.5 border border-slate-200/80 dark:border-slate-800"
+              >
+                <div className="flex flex-col gap-2 text-left">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Service Area:</span>
+                  <div className="flex flex-wrap gap-2">
+                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200">
+                      <input type="checkbox" checked={filterRegion} onChange={(e) => setFilterRegion(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
+                      <span>Local</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200">
+                      <input type="checkbox" checked={filterNational} onChange={(e) => setFilterNational(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
+                      <span>Nationwide</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200">
+                      <input type="checkbox" checked={filterOnline} onChange={(e) => setFilterOnline(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
+                      <span>Remote</span>
+                    </label>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()}
         </section>
 
         {/* 4. ANÚNCIOS EM DESTAQUE (Carrossel Compacto) */}
