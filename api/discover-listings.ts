@@ -233,20 +233,23 @@ export type FetchResult = {
 
 /**
  * Resilient Page Fetcher with Jina Reader Fallback
+ * Timeouts are strictly bounded (3.5s direct + 4.0s fallback = max 7.5s total)
+ * to guarantee responses complete within Vercel serverless execution window.
  */
 async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
   const userAgents = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'
   ];
 
   let directStatus = 0;
   let directHtml = '';
   let fallbackAttempted = false;
 
+  // 1. Direct fetch with strict 3.5s timeout
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    const timeout = setTimeout(() => controller.abort(), 3500);
 
     const resp = await fetch(pageUrl, {
       method: 'GET',
@@ -275,17 +278,17 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
       }
     }
   } catch (err: any) {
-    console.warn('[discover-listings] Direct fetch failed or timed out:', err);
+    console.warn('[discover-listings] Direct fetch failed or timed out:', err?.message || err);
   }
 
-  // Fallback to Jina Reader
+  // 2. Fallback to Jina Reader with strict 4.0s timeout
   fallbackAttempted = true;
   const jinaTargetUrl = (pageUrl.includes('boatsandoutboards') && !pageUrl.endsWith('/')) ? `${pageUrl}/` : pageUrl;
   console.log('[discover-listings] Attempting Jina Reader fallback for:', jinaTargetUrl);
   try {
     const jinaUrl = `https://r.jina.ai/${jinaTargetUrl}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => controller.abort(), 4000);
 
     const jinaResp = await fetch(jinaUrl, {
       method: 'GET',
@@ -303,7 +306,7 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
       }
     }
   } catch (jinaErr: any) {
-    console.error('[discover-listings] Jina fallback failed:', jinaErr);
+    console.error('[discover-listings] Jina fallback failed:', jinaErr?.message || jinaErr);
     let errorCode: FetchResult['errorCode'] = 'FALLBACK_FAILED';
     if (jinaErr.name === 'AbortError') errorCode = 'FETCH_TIMEOUT';
     else if (jinaErr.code === 'ENOTFOUND') errorCode = 'DNS_ERROR';
@@ -313,7 +316,7 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
       fetchSource: 'direct',
       status: directStatus || 500,
       errorCode,
-      errorDetails: jinaErr.message,
+      errorDetails: jinaErr?.message || 'Tempo limite excedido ao ler a página.',
       fallbackAttempted: true
     };
   }
@@ -331,8 +334,63 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
 }
 
 /**
+ * Helper to ensure JSON error responses are always cleanly returned with both
+ * English and Portuguese fields so no Vercel HTML error reaches the client.
+ */
+function sendJsonError(
+  res: any,
+  statusCode: number,
+  errorCode: string,
+  errorMessage: string,
+  stage: string,
+  details?: string,
+  requestId?: string,
+  extraDiagnostics?: any
+) {
+  if (!res || res.headersSent) return;
+
+  try {
+    if (typeof res.setHeader === 'function') {
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    }
+  } catch (e) {
+    // Ignore header setting errors
+  }
+
+  const payload = {
+    success: false,
+    sucesso: false,
+    error: errorCode,
+    erro: errorMessage,
+    errorMessage: errorMessage,
+    stage,
+    estagio: stage,
+    details: details || errorMessage,
+    detalhes: details || errorMessage,
+    requestId: requestId || `req_${Date.now()}`,
+    _diagnostics: extraDiagnostics || undefined
+  };
+
+  try {
+    if (typeof res.status === 'function') {
+      return res.status(statusCode).json(payload);
+    } else if (typeof res.send === 'function') {
+      return res.send(JSON.stringify(payload));
+    } else if (typeof res.end === 'function') {
+      res.statusCode = statusCode;
+      return res.end(JSON.stringify(payload));
+    }
+  } catch (e) {
+    console.error('[discover-listings] Critical error attempting to send JSON error response:', e);
+  }
+}
+
+/**
  * Main Endpoint Handler for POST /api/discover-listings
- * Fully wrapped to guarantee zero unhandled runtime exceptions escape to Vercel.
+ * Fully wrapped in a top-level try/catch to guarantee zero unhandled runtime exceptions escape to Vercel.
  */
 export default async function discoverListingsHandler(req: any, res: any) {
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
@@ -348,7 +406,7 @@ export default async function discoverListingsHandler(req: any, res: any) {
     console.log('[discover-listings] HANDLER_START', { requestId, method: req?.method });
 
     // Set CORS and content type headers safely
-    if (res && typeof res.setHeader === 'function') {
+    if (res && typeof res.setHeader === 'function' && !res.headersSent) {
       res.setHeader("Content-Type", "application/json");
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -356,16 +414,20 @@ export default async function discoverListingsHandler(req: any, res: any) {
     }
 
     if (req?.method === "OPTIONS") {
-      return res.status(200).end();
+      if (typeof res.status === 'function') return res.status(200).end();
+      if (typeof res.end === 'function') return res.end();
     }
 
     if (req?.method !== "POST") {
-      return res.status(405).json({
-        success: false,
-        error: "METHOD_NOT_ALLOWED",
-        errorMessage: "Método não permitido.",
+      return sendJsonError(
+        res,
+        405,
+        'METHOD_NOT_ALLOWED',
+        'Método não permitido. Utilize o método POST.',
+        'METHOD_CHECK',
+        'Apenas pedidos POST são suportados.',
         requestId
-      });
+      );
     }
 
     // Stage 2: BODY_PARSED
@@ -374,12 +436,15 @@ export default async function discoverListingsHandler(req: any, res: any) {
       try {
         body = JSON.parse(req.body);
       } catch (err) {
-        return res.status(400).json({
-          success: false,
-          error: 'INVALID_JSON_PAYLOAD',
-          errorMessage: 'Corpo do pedido em formato JSON inválido.',
+        return sendJsonError(
+          res,
+          400,
+          'INVALID_JSON_PAYLOAD',
+          'Corpo do pedido em formato JSON inválido.',
+          'BODY_PARSED',
+          'Não foi possível interpretar o corpo da requisição como JSON.',
           requestId
-        });
+        );
       }
     } else if (req?.body && typeof req.body === 'object') {
       body = req.body;
@@ -394,12 +459,15 @@ export default async function discoverListingsHandler(req: any, res: any) {
     console.log('[discover-listings] BODY_RECEIVED', { requestId, pageUrl: rawPageUrl, userRole, diagnosticsOnly });
 
     if (!rawPageUrl || typeof rawPageUrl !== 'string' || !rawPageUrl.trim()) {
-      return res.status(400).json({
-        success: false,
-        error: 'INVALID_REQUEST_BODY',
-        errorMessage: 'O URL da página de pesquisa (pageUrl) é obrigatório.',
+      return sendJsonError(
+        res,
+        400,
+        'INVALID_REQUEST_BODY',
+        'O URL da página de pesquisa (pageUrl) é obrigatório.',
+        'VALIDATE_INPUT',
+        'Por favor, forneça o parâmetro pageUrl.',
         requestId
-      });
+      );
     }
 
     targetPageUrl = rawPageUrl.trim();
@@ -416,19 +484,25 @@ export default async function discoverListingsHandler(req: any, res: any) {
     // Role check: Admin or Moderator required
     if (userRole !== 'admin' && userRole !== 'moderator') {
       if (!authHeader) {
-        return res.status(401).json({
-          success: false,
-          error: 'UNAUTHENTICATED',
-          errorMessage: 'Autenticação necessária. Faça login como administrador ou moderador.',
+        return sendJsonError(
+          res,
+          401,
+          'UNAUTHENTICATED',
+          'Autenticação necessária. Faça login como administrador ou moderador.',
+          'AUTH_CHECK',
+          'Cabeçalho de autorização em falta.',
           requestId
-        });
+        );
       }
-      return res.status(403).json({
-        success: false,
-        error: 'FORBIDDEN',
-        errorMessage: 'Acesso negado. Apenas administradores ou moderadores podem realizar a descoberta de anúncios.',
+      return sendJsonError(
+        res,
+        403,
+        'FORBIDDEN',
+        'Acesso negado. Apenas administradores ou moderadores podem realizar a descoberta de anúncios.',
+        'PERMISSIONS_CHECK',
+        'Papel de utilizador insuficiente.',
         requestId
-      });
+      );
     }
 
     // Stage 4: AUTH_SUCCESS
@@ -438,19 +512,22 @@ export default async function discoverListingsHandler(req: any, res: any) {
     // Stage 5: URL_VALIDATED
     const validation: SearchPageValidationResult = validateSearchPageUrl(targetPageUrl);
     if (!validation.isValid) {
-      return res.status(400).json({
-        success: false,
-        error: validation.errorCode,
-        errorMessage: validation.errorMessage,
+      return sendJsonError(
+        res,
+        400,
+        validation.errorCode || 'INVALID_URL',
+        validation.errorMessage || 'O URL fornecido não é válido.',
+        'URL_VALIDATED',
+        validation.errorMessage,
         requestId
-      });
+      );
     }
 
     lastCompletedStage = 'URL_VALIDATED';
 
     // Stage 6: MARKETPLACE_DETECTED
     const { marketplaceId, marketplaceName, normalizedUrl } = validation;
-    detectedMarketplace = marketplaceName;
+    detectedMarketplace = marketplaceName || 'Unknown';
     targetPageUrl = normalizedUrl || targetPageUrl;
     lastCompletedStage = 'MARKETPLACE_DETECTED';
     console.log('[discover-listings] MARKETPLACE_DETECTED', { requestId, detectedMarketplace, targetPageUrl });
@@ -474,20 +551,24 @@ export default async function discoverListingsHandler(req: any, res: any) {
 
     if (!fetchRes.htmlOrText || fetchRes.htmlOrText.length < 200) {
       const errCode = fetchRes.errorCode || (fetchRes.status === 403 ? 'PAGE_ACCESS_DENIED' : 'SEARCH_PAGE_FETCH_FAILED');
-      const errMsg = fetchRes.errorDetails || 'Não foi possível aceder à página de resultados de pesquisa. Verifique se a página está disponível publicamente.';
+      const errMsg = 'Ocorreu um erro temporário no servidor ao ler a página de pesquisa.';
+      const details = fetchRes.errorDetails || 'Não foi possível obter o conteúdo da página após tentativas direta e via leitor.';
 
-      return res.status(400).json({
-        success: false,
-        error: errCode,
-        errorMessage: errMsg,
+      return sendJsonError(
+        res,
+        500,
+        errCode,
+        errMsg,
+        lastCompletedStage,
+        details,
         requestId,
-        _diagnostics: {
+        {
           directStatus: fetchRes.status,
           fallbackUsed: fetchRes.fetchSource === 'jina',
           fetchSource: fetchRes.fetchSource,
           htmlLength
         }
-      });
+      );
     }
 
     // Stage 10: HTML_RECEIVED
@@ -535,6 +616,7 @@ export default async function discoverListingsHandler(req: any, res: any) {
     if (diagnosticsOnly) {
       return res.status(200).json({
         success: true,
+        sucesso: true,
         requestId,
         stages: {
           authentication: "ok",
@@ -560,6 +642,7 @@ export default async function discoverListingsHandler(req: any, res: any) {
 
     return res.status(200).json({
       success: true,
+      sucesso: true,
       requestId,
       marketplace: marketplaceName,
       pageUrl: targetPageUrl,
@@ -594,19 +677,20 @@ export default async function discoverListingsHandler(req: any, res: any) {
       stack: err?.stack
     });
 
-    if (res && typeof res.status === 'function') {
-      return res.status(500).json({
-        success: false,
-        error: 'DISCOVERY_FAILED',
-        errorMessage: 'Ocorreu um erro temporário no servidor ao ler a página. Por favor, tente novamente.',
-        requestId,
-        debug: {
-          errorName: err?.name || 'Error',
-          errorMessage: err?.message || 'Erro desconhecido',
-          stage: lastCompletedStage,
-          stack: err?.stack
-        }
-      });
-    }
+    return sendJsonError(
+      res,
+      500,
+      'DISCOVERY_FAILED',
+      'Ocorreu um erro temporário no servidor ao ler a página de pesquisa.',
+      lastCompletedStage,
+      err?.message || 'Erro de execução na função do servidor',
+      requestId,
+      {
+        errorName: err?.name || 'Error',
+        errorMessage: err?.message || 'Erro desconhecido',
+        stage: lastCompletedStage,
+        stack: err?.stack
+      }
+    );
   }
 }
