@@ -46,6 +46,7 @@ import AdminLayout from './components/AdminLayout';
 import OptimizedImage from './components/OptimizedImage';
 import { motion, AnimatePresence } from 'motion/react';
 import Links from './pages/Links';
+import BoatsForHire from './pages/BoatsForHire';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ShareModal } from './components/ShareModal';
 import { AnalyticsTracker } from './components/AnalyticsTracker';
@@ -913,6 +914,8 @@ export default function App() {
                 <Route path="/photos" element={<Fotos />} />
                 <Route path="/fotos" element={<Navigate to="/photos" replace />} />
                 <Route path="/admin/fotos" element={<AdminLayout><AdminFotos /></AdminLayout>} />
+                <Route path="/boats-for-hire" element={<BoatsForHire />} />
+                <Route path="/barcos-aluguer" element={<Navigate to="/boats-for-hire" replace />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/cookie-policy" element={<Cookies />} />

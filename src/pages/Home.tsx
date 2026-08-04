@@ -703,6 +703,8 @@ const Home = () => {
     
     let result = featuredAds.filter(ad => {
       if (ad.category === 'Trabalho/Empregos') return false;
+      // EXCLUSIVE FOR SALE LISTINGS: Boats for Hire are strictly forbidden from Featured Marine Listings
+      if (ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') return false;
       
       const search = searchTerm.toLowerCase().trim();
       const matchesSearch = !search || ad.title?.toLowerCase().includes(search) || ad.description?.toLowerCase().includes(search);
@@ -1589,18 +1591,13 @@ const Home = () => {
                     </p>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setCategory('Boats for Hire');
-                      if (resultsSectionRef.current) {
-                        resultsSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-                      }
-                    }}
-                    className="px-3.5 py-1.5 bg-slate-100 hover:bg-sky-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-[11px] rounded-xl transition-all border border-slate-200 dark:border-slate-700 flex items-center gap-1 shrink-0 cursor-pointer"
+                  <Link
+                    to="/boats-for-hire"
+                    className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-[11px] rounded-xl transition-all shadow-xs flex items-center gap-1 shrink-0 cursor-pointer"
                   >
-                    <span>View All Hire Listings</span>
+                    <span>View All Boats for Hire</span>
                     <ArrowRight size={13} />
-                  </button>
+                  </Link>
                 </div>
 
                 {hireAds.length > 0 ? (
