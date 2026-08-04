@@ -870,6 +870,18 @@ const Home = () => {
     let result = ads.filter(ad => {
       if (ad.category === 'Trabalho/Empregos') return false;
 
+      // Exclude rental/hire listings from "Latest Marine Listings"
+      if (
+        ad.listingIntent === 'hire' ||
+        ad.category === 'Boats for Hire' ||
+        ad.category === 'Aluguer de Barcos' ||
+        ad.category === 'Boat Hire & Charters' ||
+        ad.listingType === 'hire' ||
+        ad.listingType === 'rent'
+      ) {
+        return false;
+      }
+
       // 1. Status & Active checks
       const matchesStatus = ad.status === 'approved' && (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
       if (!matchesStatus) return false;
