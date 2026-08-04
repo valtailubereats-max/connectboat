@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, limit, updateDoc, doc, getDocs, getDoc, setDoc, where } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, parseFirestoreDate } from '../firebase';
-import { UserProfile } from '../types';
+import { UserProfile, UK_REGIONS, getRegionForCity } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -100,7 +100,8 @@ const AdminUsers = () => {
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editCity, setEditCity] = useState('');
-  const [editCountry, setEditCountry] = useState<'Portugal' | 'Reino Unido' | ''>('');
+  const [editRegion, setEditRegion] = useState('');
+  const [editCountry, setEditCountry] = useState<'Portugal' | 'Reino Unido'>('Reino Unido');
   const [editRole, setEditRole] = useState<'user' | 'moderator' | 'admin'>('user');
   const [editReferralCredits, setEditReferralCredits] = useState<number>(0);
   const [editPointsFromAds, setEditPointsFromAds] = useState<number>(0);
@@ -118,7 +119,8 @@ const AdminUsers = () => {
     setEditEmail(user.email || '');
     setEditPhone(user.phone || '');
     setEditCity(user.city || '');
-    setEditCountry(user.country || '');
+    setEditRegion(user.region || getRegionForCity(user.city) || '');
+    setEditCountry('Reino Unido');
     setEditRole(user.role || 'user');
     setEditReferralCredits(user.referralCredits || 0);
     setEditPointsFromAds(user.pointsFromAds || 0);
@@ -1191,17 +1193,18 @@ const AdminUsers = () => {
                     </div>
                   </div>
 
-                  {/* Country Field */}
+                  {/* Region Field */}
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-black text-slate-800 uppercase tracking-widest">País</label>
+                    <label className="block text-[10px] font-black text-slate-800 uppercase tracking-widest">Region</label>
                     <select
-                      value={editCountry}
-                      onChange={(e) => setEditCountry(e.target.value as 'Portugal' | 'Reino Unido' | '')}
+                      value={editRegion || getRegionForCity(editCity)}
+                      onChange={(e) => setEditRegion(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-sm cursor-pointer"
                     >
-                      <option value="">Selecione o País...</option>
-                      <option value="Portugal">Portugal</option>
-                      <option value="Reino Unido">Reino Unido</option>
+                      <option value="">Select Region...</option>
+                      {UK_REGIONS.map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

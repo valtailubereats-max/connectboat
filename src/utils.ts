@@ -1,4 +1,5 @@
 import { parsePrice } from './utils/textUtils';
+import { getRegionForCity } from './types';
 
 export { parsePrice };
 
@@ -36,25 +37,30 @@ export const extractIdFromSlug = (param: string | undefined): string => {
   return parts[parts.length - 1];
 };
 
-export const getAdLocationLabel = (ad: { category: string; city: string; country?: string; serviceCoverage?: string }): string => {
+export const getAdLocationLabel = (ad: { category: string; city: string; region?: string; country?: string; serviceCoverage?: string }): string => {
   const isService = ad.category === 'Marine Services' || ad.category?.toLowerCase() === 'marine services' || ad.category?.includes('Service');
-  if (!isService) {
-    return ad.city || 'United Kingdom';
+  const regionName = ad.region || getRegionForCity(ad.city);
+  if (isService) {
+    const coverage = ad.serviceCoverage || 'city';
+    switch (coverage) {
+      case 'radius20':
+        return `${ad.city} + 20 miles`;
+      case 'radius50':
+        return `${ad.city} + 50 miles`;
+      case 'county':
+        return regionName ? `${regionName} (${ad.city})` : `Region (${ad.city})`;
+      case 'uk':
+      case 'portugal':
+        return 'UK Nationwide Service';
+      case 'online':
+        return 'Online Service';
+      case 'city':
+      default:
+        break;
+    }
   }
-  const coverage = ad.serviceCoverage || 'city';
-  switch (coverage) {
-    case 'radius20':
-      return `${ad.city} + 20 miles`;
-    case 'radius50':
-      return `${ad.city} + 50 miles`;
-    case 'county':
-      return `Region / County (${ad.city})`;
-    case 'uk':
-      return 'United Kingdom Nationwide';
-    case 'online':
-      return 'Online Service';
-    case 'city':
-    default:
-      return ad.city || 'United Kingdom';
+  if (regionName && ad.city) {
+    return `${regionName} • ${ad.city}`;
   }
+  return ad.city || regionName || 'United Kingdom';
 };

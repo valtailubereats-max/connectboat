@@ -691,7 +691,7 @@ function extractLocation(
   url: string
 ): LocationResult {
   const lowerUrl = url.toLowerCase();
-  const defaultCountry = (lowerUrl.includes('.pt') || lowerUrl.includes('olx.pt')) ? 'Portugal' : 'United Kingdom';
+  const defaultCountry = 'United Kingdom';
 
   let foundLoc: string | null = null;
   let locationSource: LocationResult['locationSource'] = 'not-found';

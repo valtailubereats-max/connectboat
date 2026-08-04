@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MapPin, Search, ChevronDown, Plus, Check } from 'lucide-react';
-import { CITIES, PORTUGAL_CITIES, UK_CITIES } from '../types';
+import { CITIES, UK_CITIES, CITIES_BY_REGION } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface SearchableCitySelectProps {
@@ -8,16 +8,17 @@ interface SearchableCitySelectProps {
   onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
-  country?: 'Portugal' | 'Reino Unido' | 'Ambos' | '';
+  region?: string;
+  country?: string;
   disabled?: boolean;
 }
 
 export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
   value,
   onChange,
-  placeholder = "Type or select your location",
+  placeholder = "Select or type City / Town",
   required = false,
-  country = 'Reino Unido',
+  region,
   disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,7 +26,6 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Fechar o dropdown ao clicar fora do componente
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -38,7 +38,6 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
     };
   }, []);
 
-  // Focar o campo de pesquisa assim que o dropdown se abre
   useEffect(() => {
     if (isOpen && searchInputRef.current) {
       setTimeout(() => {
@@ -48,11 +47,11 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
   }, [isOpen]);
 
   const activeCities = useMemo(() => {
-    if (country === 'Reino Unido') return UK_CITIES;
-    if (country === 'Portugal') return PORTUGAL_CITIES;
-    if (country === 'Ambos') return [...PORTUGAL_CITIES, ...UK_CITIES];
-    return [];
-  }, [country]);
+    if (region && CITIES_BY_REGION[region]) {
+      return CITIES_BY_REGION[region];
+    }
+    return UK_CITIES;
+  }, [region]);
 
   const filteredCities = activeCities.filter(city =>
     city.toLowerCase().includes(search.toLowerCase())
@@ -82,10 +81,6 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
         id="searchable-city-select-trigger"
         onClick={() => {
           if (disabled) return;
-          if (!country) {
-            alert('Please select a country first.');
-            return;
-          }
           setIsOpen(!isOpen);
         }}
         disabled={disabled}

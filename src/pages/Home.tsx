@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { collection, query, where, limit, getCountFromServer, orderBy } from 'firebase/firestore';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { db, withTimeout, getDocsWithCacheFallback } from '../firebase';
-import { Ad, CITIES, PORTUGAL_CITIES, UK_CITIES, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS } from '../types';
+import { Ad, CITIES, PORTUGAL_CITIES, UK_CITIES, UK_REGIONS, CITIES_BY_REGION, getRegionForCity, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -244,6 +244,7 @@ const Home = () => {
     setFilterRegion(false);
     setFilterNational(false);
     setFilterOnline(false);
+    setSelectedRegion('');
   };
 
   const availableManufacturers = useMemo(() => {
@@ -256,6 +257,7 @@ const Home = () => {
     return Array.from(setM).sort();
   }, [ads]);
   
+  const [selectedRegion, setSelectedRegion] = useState<string>('');
   const [country, setCountry] = useState<'Portugal' | 'Reino Unido'>(() => {
     // 1. Check URL parameters first for explicit country selection
     try {
@@ -821,9 +823,11 @@ const Home = () => {
       const matchesStatus = ad.status === 'approved' && (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
       if (!matchesStatus) return false;
 
-      // 2. Country check
-      const adCountry = ad.country || 'Portugal';
-      if (adCountry !== country) return false;
+      // 2. Region check
+      if (selectedRegion && selectedRegion !== 'All Regions' && selectedRegion !== '') {
+        const adRegion = ad.region || getRegionForCity(ad.city);
+        if (adRegion !== selectedRegion) return false;
+      }
 
       // 3. Main Search text
       if (!matchesSearchText(ad, searchTerm)) return false;
@@ -2048,38 +2052,22 @@ const Home = () => {
               {/* Modal Body - Scrollable Form Controls */}
               <div className="flex-1 overflow-y-auto p-5 space-y-6 text-left">
                 
-                {/* Section 0: Country Selection */}
+                {/* Section 0: Region Selection */}
                 <div className="space-y-2.5">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <Globe size={14} className="text-sky-500" />
-                    <span>Country</span>
+                    <MapPin size={14} className="text-sky-500" />
+                    <span>Region</span>
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {AVAILABLE_COUNTRIES.map((c) => {
-                      const isSelected = country === c.id;
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => handleCountryChange(c.id)}
-                          className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-sky-600 text-white border-sky-600 shadow-md shadow-sky-600/20'
-                              : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750'
-                          }`}
-                        >
-                          <img
-                            src={getFlagSvgUrl(c.flagCode)}
-                            alt={c.label}
-                            className="w-5 h-3.5 object-cover rounded border border-slate-200/50 dark:border-slate-700 shrink-0"
-                            referrerPolicy="no-referrer"
-                          />
-                          <span>{c.label}</span>
-                          {isSelected && <Check size={14} className="ml-auto shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <select
+                    value={selectedRegion}
+                    onChange={(e) => setSelectedRegion(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-extrabold text-slate-800 dark:text-slate-100 outline-none cursor-pointer"
+                  >
+                    <option value="">All Regions</option>
+                    {UK_REGIONS.map(reg => (
+                      <option key={reg} value={reg}>{reg}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Section 1: Boat Type */}

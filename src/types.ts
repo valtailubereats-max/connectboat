@@ -152,7 +152,8 @@ export interface UserProfile {
   referredBy?: string;
   referralCredits?: number;
   pointsFromAds?: number;
-  country?: 'United Kingdom';
+  region?: string;
+  country?: string;
   showcaseActive?: boolean;
   showcaseApproved?: boolean;
   showcaseName?: string;
@@ -187,7 +188,8 @@ export interface Ad {
   imageUrl: string; // Keep for backward compatibility, but use images[0]
   images: string[];
   city: string;
-  country?: 'United Kingdom' | 'Portugal' | 'Reino Unido' | 'Ambos';
+  region?: string;
+  country?: 'United Kingdom' | 'Portugal' | 'Reino Unido' | 'Ambos' | string;
   category: string;
   sellerId: string;
   sellerPhone: string;
@@ -384,33 +386,105 @@ export const CATEGORIES = [
   'Wanted'
 ];
 
-export const CITIES = [
-  'Southampton',
-  'Portsmouth',
-  'Plymouth',
-  'Cowes',
-  'Poole',
-  'Lymington',
-  'Hamble',
-  'Dartmouth',
-  'Falmouth',
-  'London',
-  'Brighton',
-  'Bristol',
-  'Liverpool',
-  'Manchester',
-  'Windermere',
-  'Edinburgh',
-  'Glasgow',
-  'Belfast',
-  'Cardiff',
-  'Weymouth',
+export const UK_REGIONS = [
+  'England',
+  'Scotland',
+  'Wales',
+  'Northern Ireland',
   'Other'
-];
+] as const;
+
+export type UKRegion = typeof UK_REGIONS[number];
+
+export const CITIES_BY_REGION: Record<string, string[]> = {
+  'England': [
+    'Southampton',
+    'Portsmouth',
+    'Plymouth',
+    'Cowes',
+    'Poole',
+    'Lymington',
+    'Hamble',
+    'Dartmouth',
+    'Falmouth',
+    'London',
+    'Brighton',
+    'Bristol',
+    'Liverpool',
+    'Manchester',
+    'Windermere',
+    'Weymouth',
+    'Ipswich',
+    'Chichester',
+    'Torquay',
+    'Brixham',
+    'Dover',
+    'Harwich',
+    'Whitby',
+    'Newcastle',
+    'Hull'
+  ],
+  'Scotland': [
+    'Glasgow',
+    'Edinburgh',
+    'Aberdeen',
+    'Dundee',
+    'Inverness',
+    'Oban',
+    'Troon',
+    'Largs',
+    'Kip',
+    'Fort William',
+    'Peterhead',
+    'Stornoway',
+    'Lerwick',
+    'Kirkwall'
+  ],
+  'Wales': [
+    'Cardiff',
+    'Swansea',
+    'Milford Haven',
+    'Conwy',
+    'Bangor',
+    'Holyhead',
+    'Tenby',
+    'Aberystwyth',
+    'Pwllheli'
+  ],
+  'Northern Ireland': [
+    'Belfast',
+    'Bangor (NI)',
+    'Derry / Londonderry',
+    'Carrickfergus',
+    'Portrush',
+    'Newry',
+    'Larne'
+  ],
+  'Other': [
+    'Channel Islands',
+    'Isle of Man',
+    'Other'
+  ]
+};
+
+export const CITIES = Array.from(
+  new Set(Object.values(CITIES_BY_REGION).flat())
+);
 
 export const PORTUGAL_CITIES = CITIES;
 
 export const UK_CITIES = CITIES;
+
+export function getRegionForCity(city: string | undefined | null): string {
+  if (!city) return 'England';
+  const norm = city.trim().toLowerCase();
+  for (const [region, cities] of Object.entries(CITIES_BY_REGION)) {
+    if (cities.some(c => c.toLowerCase() === norm)) {
+      return region;
+    }
+  }
+  return 'England';
+}
 
 export const COUNTRY_CODES = [
   { code: '+44', country: 'United Kingdom', flag: '🇬🇧' },

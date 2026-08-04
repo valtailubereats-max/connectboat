@@ -6,7 +6,7 @@ import { db, storage, handleFirestoreError, OperationType, getDocsWithCacheFallb
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { clearHomeCache } from '../utils/cache';
-import { Ad, UserProfile, COUNTRY_CODES, CITIES } from '../types';
+import { Ad, UserProfile, COUNTRY_CODES, CITIES, UK_REGIONS, getRegionForCity } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, MessageSquare, MapPin, Tag, Star, Plus, X, CreditCard } from 'lucide-react';
@@ -34,7 +34,8 @@ const Profile = () => {
   const [countryCode, setCountryCode] = useState('+351');
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
-  const [country, setCountry] = useState<'Portugal' | 'Reino Unido' | ''>('');
+  const [region, setRegion] = useState('');
+  const [country, setCountry] = useState<'Portugal' | 'Reino Unido'>('Reino Unido');
   const [loading, setLoading] = useState(false);
   const [ads, setAds] = useState<Ad[]>([]);
   const [adsLoading, setAdsLoading] = useState(true);
@@ -1243,29 +1244,21 @@ const Profile = () => {
             <p className="text-xs text-slate-400 mt-1">Required so buyers can get in touch.</p>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Country / Region</label>
+            <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Region</label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base leading-none select-none pointer-events-none z-10">
-                {country === 'Portugal' ? '🇵🇹' : country === 'Reino Unido' ? '🇬🇧' : '🌍'}
-              </span>
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={20} />
               <select
-                value={country}
+                value={region || getRegionForCity(city)}
                 onChange={(e) => {
-                  const newVal = e.target.value as 'Portugal' | 'Reino Unido' | '';
-                  setCountry(newVal);
+                  setRegion(e.target.value);
                   setCity('');
-                  if (newVal === 'Reino Unido') {
-                    setCountryCode('+44');
-                  } else if (newVal === 'Portugal') {
-                    setCountryCode('+351');
-                  }
                 }}
-                required
                 className="w-full pl-12 pr-10 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all appearance-none font-bold text-slate-800 cursor-pointer"
               >
-                <option value="" disabled className="text-slate-400">Select your country</option>
-                <option value="Portugal">🇵🇹 Portugal</option>
-                <option value="Reino Unido">🇬🇧 United Kingdom</option>
+                <option value="" disabled className="text-slate-400">Select your region</option>
+                {UK_REGIONS.map(reg => (
+                  <option key={reg} value={reg}>{reg}</option>
+                ))}
               </select>
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">▼</span>
             </div>
@@ -1276,9 +1269,15 @@ const Profile = () => {
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={20} />
               <SearchableCitySelect
                 value={city}
-                onChange={(val) => setCity(val)}
+                onChange={(val) => {
+                  setCity(val);
+                  if (!region) {
+                    const r = getRegionForCity(val);
+                    if (r) setRegion(r);
+                  }
+                }}
                 placeholder="Type or select your city"
-                country={country}
+                region={region || getRegionForCity(city)}
               />
             </div>
           </div>
@@ -1318,51 +1317,14 @@ const Profile = () => {
             <span className="bg-slate-200 text-slate-600 text-sm px-3 py-1 rounded-full">{ads.length}</span>
           </h2>
 
-          {/* Sub-abas de divisão por país */}
-          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit gap-1" id="ads-country-sub-tabs">
-            <button
-              onClick={() => setAdsCountryTab('Portugal')}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-                adsCountryTab === 'Portugal'
-                  ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/50'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-              id="btn-sub-tab-portugal"
-            >
-              <span>🇵🇹</span> Portugal
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-                adsCountryTab === 'Portugal' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200/80 text-slate-600'
-              }`}>
-                {ptAds.length}
-              </span>
-            </button>
-            <button
-              onClick={() => setAdsCountryTab('Reino Unido')}
-              className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-                adsCountryTab === 'Reino Unido'
-                  ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/50'
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-              id="btn-sub-tab-uk"
-            >
-              <span>🇬🇧</span> United Kingdom
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-                adsCountryTab === 'Reino Unido' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200/80 text-slate-600'
-              }`}>
-                {ukAds.length}
-              </span>
-            </button>
-          </div>
         </div>
 
         {adsLoading ? (
           <div className="text-center py-12 text-slate-400">Loading listings...</div>
-        ) : (adsCountryTab === 'Portugal' ? ptAds : ukAds).length === 0 ? (
+        ) : ads.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl text-center border-2 border-dashed border-slate-200">
             <p className="text-slate-500 mb-4">
-              {ads.length === 0 
-                ? "You haven't posted any listings yet." 
-                : `You haven't posted any listings in ${adsCountryTab}.`}
+              You haven't posted any listings yet.
             </p>
             <button
               onClick={() => navigate('/create-ad')}
@@ -1373,7 +1335,7 @@ const Profile = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {(adsCountryTab === 'Portugal' ? ptAds : ukAds).map((ad, idx) => {
+            {ads.map((ad, idx) => {
               const isAdFeatured = ad.isFeatured && ad.featuredUntil && (
                 ad.featuredUntil.seconds 
                   ? ad.featuredUntil.toDate() > new Date() 

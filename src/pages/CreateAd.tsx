@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { clearHomeCache } from '../utils/cache';
 import { sendEmailGeneric } from '../utils/emailService';
-import { CITIES, Ad, MarketplaceSettings, PORTUGAL_CITIES, UK_CITIES, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS } from '../types';
+import { CITIES, Ad, MarketplaceSettings, PORTUGAL_CITIES, UK_CITIES, UK_REGIONS, CITIES_BY_REGION, getRegionForCity, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
 import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, ChevronRight, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard } from 'lucide-react';
@@ -96,8 +96,9 @@ const CreateAd = () => {
     priceRequiresReview: false,
     locationRequiresReview: false,
     images: [] as string[],
-    city: prefill?.city || UK_CITIES[0],
-    country: (prefill?.country || 'Reino Unido') as 'Portugal' | 'Reino Unido' | 'Ambos',
+    city: prefill?.city || 'Southampton',
+    region: prefill?.region || (prefill?.city ? getRegionForCity(prefill.city) : 'England'),
+    country: 'United Kingdom',
     category: urlCategory || prefill?.category || categories[0] || 'Outros',
     plan: 'free' as 'free' | 'local' | 'national' | 'highlight',
     duration: 30, // Default for free
@@ -1841,39 +1842,47 @@ const CreateAd = () => {
                 </div>
               )}
 
-              {/* 6. Publishing Region */}
+              {/* Region */}
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Publishing Region</label>
+                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Region *</label>
                 <div className="relative">
                   <select
-                    value={formData.country}
+                    value={formData.region}
                     disabled={!isAdmin && isEditLocked}
-                    onChange={(e) => handleCountryChange(e.target.value as any)}
-                    className="w-full px-4 py-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl font-bold text-emerald-800 outline-none cursor-pointer appearance-none shadow-sm hover:border-emerald-200 transition-all font-sans disabled:opacity-60 disabled:cursor-not-allowed"
+                    onChange={(e) => {
+                      const newRegion = e.target.value;
+                      const regionCities = CITIES_BY_REGION[newRegion] || UK_CITIES;
+                      setFormData(prev => ({
+                        ...prev,
+                        region: newRegion,
+                        city: regionCities.includes(prev.city) ? prev.city : (regionCities[0] || 'Southampton')
+                      }));
+                    }}
+                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-800 outline-none cursor-pointer appearance-none shadow-sm hover:border-slate-200 transition-all font-sans disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <option value="Reino Unido" className="font-bold text-slate-900 bg-white">🇬🇧 United Kingdom</option>
-                    <option value="Portugal" className="font-bold text-slate-900 bg-white">🇵🇹 Portugal</option>
-                    {isStaff && (
-                      <option value="Ambos" className="font-bold text-slate-900 bg-white">🌐 Both Countries</option>
-                    )}
+                    {UK_REGIONS.map(reg => (
+                      <option key={reg} value={reg} className="font-bold text-slate-900 bg-white">
+                        {reg}
+                      </option>
+                    ))}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-emerald-800 font-bold select-none">
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-slate-400 font-bold select-none">
                     ▼
                   </div>
                 </div>
               </div>
 
-              {/* 7. City / Region */}
+              {/* City / Town */}
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">City / Region *</label>
+                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">City / Town *</label>
                 <div className="relative">
                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={20} />
                   <SearchableCitySelect
                     value={formData.city}
                     disabled={!isAdmin && isEditLocked}
-                    onChange={(val) => setFormData({ ...formData, city: val })}
-                    placeholder="Type or select your city"
-                    country={formData.country}
+                    onChange={(val) => setFormData(prev => ({ ...prev, city: val, region: prev.region || getRegionForCity(val) }))}
+                    placeholder="e.g. Southampton, Glasgow, Cardiff..."
+                    region={formData.region}
                   />
                 </div>
               </div>
@@ -2277,7 +2286,7 @@ const CreateAd = () => {
                   <div>
                     <span className="text-slate-400 block font-semibold">Price</span>
                     <span className="font-extrabold text-indigo-600">
-                      {formData.category === '💚 Doações & Solidariedade' ? 'Free' : formData.price ? (formData.country === 'Reino Unido' ? `£${formData.price}` : `€${formData.price}`) : 'On request'}
+                      {formData.category === '💚 Doações & Solidariedade' ? 'Free' : formData.price ? `£${formData.price}` : 'On request'}
                     </span>
                   </div>
                   <div>
@@ -2286,7 +2295,7 @@ const CreateAd = () => {
                   </div>
                   <div>
                     <span className="text-slate-400 block font-semibold">Region & City</span>
-                    <span className="font-bold text-slate-800">{formData.country} • {formData.city || '—'}</span>
+                    <span className="font-bold text-slate-800">{formData.region ? `${formData.region} • ` : ''}{formData.city || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block font-semibold">Contact Phone</span>
@@ -2469,7 +2478,6 @@ const CreateAd = () => {
 
             {/* Badge Overlay */}
             <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1 shadow-md">
-              <span>{formData.country === 'Reino Unido' ? '🇬🇧' : '🇵🇹'}</span>
               <span>
                 {formData.plan === 'national' ? 'National ⭐⭐⭐' : formData.plan === 'local' ? 'Local ⭐' : 'Standard'}
               </span>

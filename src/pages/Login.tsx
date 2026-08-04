@@ -39,10 +39,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [profileCountry, setProfileCountry] = useState<'Portugal' | 'Reino Unido'>(() => {
-    const saved = localStorage.getItem('selectedCountry') as 'Portugal' | 'Reino Unido' | null;
-    return saved === 'Portugal' || saved === 'Reino Unido' ? saved : 'Reino Unido';
-  });
+  const [profileCountry, setProfileCountry] = useState<'Portugal' | 'Reino Unido'>('Reino Unido');
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -364,23 +361,6 @@ const Login = () => {
                   onChange={(e) => setName(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-xl outline-none transition-all font-medium text-slate-900"
                 />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-2">Country / Community</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base leading-none select-none shrink-0 pointer-events-none">
-                    {profileCountry === 'Portugal' ? '🇵🇹' : '🇬🇧'}
-                  </span>
-                  <select
-                    value={profileCountry}
-                    onChange={(e) => setProfileCountry(e.target.value as 'Portugal' | 'Reino Unido')}
-                    className="w-full pl-12 pr-10 py-3 bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-xl outline-none transition-all font-bold text-slate-800 appearance-none cursor-pointer"
-                  >
-                    <option value="Portugal">🇵🇹 Portugal</option>
-                    <option value="Reino Unido">🇬🇧 United Kingdom</option>
-                  </select>
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none">▼</span>
-                </div>
               </div>
             </>
           )}

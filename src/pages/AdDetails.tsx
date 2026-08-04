@@ -11,7 +11,7 @@ import {
   doc, updateDoc, increment, setDoc, collection, query, where, limit, getDoc, serverTimestamp, Timestamp 
 } from 'firebase/firestore';
 import { db, getDocWithCacheFallback, getDocsWithCacheFallback, parseFirestoreDate, handleFirestoreError, OperationType } from '../firebase';
-import { Ad, UserProfile, Review } from '../types';
+import { Ad, UserProfile, Review, getRegionForCity } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice, getAdUrl, extractIdFromSlug, getAdLocationLabel } from '../utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -1058,9 +1058,9 @@ const AdDetails = () => {
               </div>
               {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
                 <div className="space-y-0.5 text-right">
-                  <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Country</span>
+                  <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Region</span>
                   <span className="text-sm sm:text-lg font-extrabold text-slate-900 block">
-                    {ad.country === 'Reino Unido' ? 'United Kingdom' : 'Portugal'}
+                    {ad.region || getRegionForCity(ad.city)}
                   </span>
                 </div>
               )}
@@ -1074,9 +1074,9 @@ const AdDetails = () => {
               </div>
             ) : isService && (ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal') ? (
               <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-r from-teal-50 to-emerald-50 border border-emerald-100 rounded-2xl text-center space-y-2">
-                <span className="text-4xl">🌍</span>
-                <p className="text-base font-extrabold text-emerald-900">Active National Coverage</p>
-                <p className="text-xs text-emerald-700/80 font-semibold max-w-md">This professional provides services nationwide ({ad.country === 'Reino Unido' ? 'United Kingdom' : 'Portugal'}).</p>
+                <span className="text-4xl">⚓</span>
+                <p className="text-base font-extrabold text-emerald-900">Active UK National Coverage</p>
+                <p className="text-xs text-emerald-700/80 font-semibold max-w-md">This professional provides services nationwide across the United Kingdom.</p>
               </div>
             ) : (
               ad.city && ad.city.trim() !== '' && ad.city.toLowerCase() !== 'todas' && (
@@ -1089,7 +1089,7 @@ const AdDetails = () => {
                     loading="lazy"
                     allowFullScreen
                     referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent(ad.city + ', ' + ad.country)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(ad.city + ', United Kingdom')}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
                   />
                 </div>
               )
@@ -1195,7 +1195,7 @@ const AdDetails = () => {
                   ) : (
                     <>
                       <MapPin size={16} className="text-indigo-600" />
-                      <span>{ad.country === 'Reino Unido' ? '🇬🇧' : '🇵🇹'} {getAdLocationLabel(ad)}, {ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country || 'Portugal'}</span>
+                      <span>{getAdLocationLabel(ad)}</span>
                     </>
                   )}
                 </div>
@@ -1558,7 +1558,7 @@ const AdDetails = () => {
                 ) : (
                   <>
                     <MapPin size={13} className="text-indigo-600 shrink-0" />
-                    <span className="truncate">{getAdLocationLabel(ad)}, {ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country || 'Portugal'}</span>
+                    <span className="truncate">{getAdLocationLabel(ad)}</span>
                   </>
                 )}
               </div>

@@ -658,7 +658,6 @@ const AdCard: React.FC<AdCardProps> = ({
                 <>
                   <MapPin size={(useCompactMode || isFeaturedVariant) ? 10 : 12} className="text-indigo-500 shrink-0 opacity-75" />
                   <span className="truncate">
-                    <span className="mr-1">{ad.country?.toLowerCase().includes('portugal') || ad.country?.toLowerCase().includes('pt') ? '🇵🇹' : '🇬🇧'}</span>{' '}
                     <span
                       onClick={(e) => {
                         e.stopPropagation();
@@ -912,7 +911,7 @@ const AdCard: React.FC<AdCardProps> = ({
                           ) : (
                             <>
                               <MapPin size={14} className="text-indigo-600" />
-                              <span>{ad.country === 'Reino Unido' ? '🇬🇧' : '🇵🇹'} {getAdLocationLabel(ad)}</span>
+                              <span>{getAdLocationLabel(ad)}</span>
                             </>
                           )}
                         </div>

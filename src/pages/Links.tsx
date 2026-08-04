@@ -306,38 +306,6 @@ export default function Links() {
         >
           <ArrowLeft size={16} /> Back
         </button>
-
-        {/* Country Picker Tabs */}
-        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200" id="tabs-country-links">
-          <button
-            onClick={() => {
-              setActiveCountry('Portugal');
-              localStorage.setItem('selectedCountry', 'Portugal');
-            }}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeCountry === 'Portugal'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-            id="tab-portugal"
-          >
-            <span>🇵🇹</span> Portugal
-          </button>
-          <button
-            onClick={() => {
-              setActiveCountry('Reino Unido');
-              localStorage.setItem('selectedCountry', 'Reino Unido');
-            }}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeCountry === 'Reino Unido'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-            id="tab-uk"
-          >
-            <span>🇬🇧</span> United Kingdom
-          </button>
-        </div>
       </div>
 
       {/* Hero Banner Section */}
@@ -353,14 +321,14 @@ export default function Links() {
             Marine & Community Guide
           </div>
           <h1 className="text-3xl sm:text-4xl font-brand font-black tracking-tight" id="hero-title">
-            Useful Links ({activeCountry === 'Portugal' ? 'Portugal 🇵🇹' : 'United Kingdom 🇬🇧'})
+            Useful Marine Links & Resources 🇬🇧
           </h1>
           <p className="text-slate-300 text-sm max-w-lg leading-relaxed" id="hero-subtitle">
-            A curated collection of official government portals, marine organisations, professional networks, and public resources.
+            A curated collection of official UK government portals, maritime organisations, professional networks, and public resources.
           </p>
         </div>
-        <div className="text-6xl sm:text-8xl select-none filter drop-shadow-md animate-pulse shrink-0" id="hero-flag">
-          {activeCountry === 'Portugal' ? '🇵🇹' : '🇬🇧'}
+        <div className="text-6xl sm:text-8xl select-none filter drop-shadow-md shrink-0" id="hero-flag">
+          ⚓
         </div>
       </motion.div>
 
