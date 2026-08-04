@@ -217,7 +217,7 @@ const BoatsForHire = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by title, make or location..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500 transition-all"
+              className="w-full pl-10 pr-4 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500 transition-all"
             />
             {searchTerm && (
               <button 
@@ -234,11 +234,11 @@ const BoatsForHire = () => {
             <select
               value={cityFilter}
               onChange={(e) => setCityFilter(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition-all"
+              className="w-full px-3.5 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition-all cursor-pointer"
             >
-              <option value="All">All Locations</option>
+              <option value="All" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">All Locations</option>
               {availableCities.filter(c => c !== 'All').map(c => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">{c}</option>
               ))}
             </select>
           </div>
@@ -248,17 +248,17 @@ const BoatsForHire = () => {
             <select
               value={boatTypeFilter}
               onChange={(e) => setBoatTypeFilter(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition-all"
+              className="w-full px-3.5 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition-all cursor-pointer"
             >
-              <option value="All">All Boat Types</option>
-              <option value="Yacht">Yacht</option>
-              <option value="Motorboat">Motorboat</option>
-              <option value="RIB">RIB / Inflatable</option>
-              <option value="Sailboat">Sailboat</option>
-              <option value="Catamaran">Catamaran</option>
-              <option value="Jet Ski">Jet Ski</option>
+              <option value="All" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">All Boat Types</option>
+              <option value="Yacht" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Yacht</option>
+              <option value="Motorboat" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Motorboat</option>
+              <option value="RIB" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">RIB / Inflatable</option>
+              <option value="Sailboat" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Sailboat</option>
+              <option value="Catamaran" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Catamaran</option>
+              <option value="Jet Ski" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Jet Ski</option>
               {availableBoatTypes.filter(t => !['All', 'Yacht', 'Motorboat', 'RIB', 'Sailboat', 'Catamaran', 'Jet Ski'].includes(t)).map(t => (
-                <option key={t} value={t}>{t}</option>
+                <option key={t} value={t} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">{t}</option>
               ))}
             </select>
           </div>
@@ -268,11 +268,11 @@ const BoatsForHire = () => {
             <select
               value={skipperFilter}
               onChange={(e) => setSkipperFilter(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition-all"
+              className="w-full px-3.5 py-2.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-sky-500 transition-all cursor-pointer"
             >
-              <option value="All">Skipper: Any</option>
-              <option value="Yes">Skipper Included</option>
-              <option value="No">Bareboat (Self-drive)</option>
+              <option value="All" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Skipper: Any</option>
+              <option value="Yes" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Skipper Included</option>
+              <option value="No" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Bareboat (Self-drive)</option>
             </select>
           </div>
         </div>
