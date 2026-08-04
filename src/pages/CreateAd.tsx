@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { clearHomeCache } from '../utils/cache';
 import { sendEmailGeneric } from '../utils/emailService';
-import { CITIES, Ad, MarketplaceSettings, PORTUGAL_CITIES, UK_CITIES, UK_REGIONS, CITIES_BY_REGION, getRegionForCity, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS } from '../types';
+import { CITIES, Ad, MarketplaceSettings, PORTUGAL_CITIES, UK_CITIES, UK_REGIONS, CITIES_BY_REGION, getRegionForCity, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS, PRICING_UNITS } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
 import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, ChevronRight, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard } from 'lucide-react';
@@ -118,6 +118,19 @@ const CreateAd = () => {
     listingType: 'normal' as 'normal' | 'informativo',
     targetUrl: '',
     serviceCoverage: prefill?.serviceCoverage || 'city',
+    // Rental fields
+    listingIntent: (prefill?.listingIntent || (urlCategory === 'Boats for Hire' ? 'hire' : 'sale')) as 'sale' | 'hire',
+    pricingUnit: prefill?.pricingUnit || 'Per Day',
+    rentalPrice: prefill?.rentalPrice ? prefill.rentalPrice.toString() : '',
+    departureLocation: prefill?.departureLocation || '',
+    passengerCapacity: prefill?.passengerCapacity || '',
+    skipperIncluded: prefill?.skipperIncluded || 'No',
+    fuelIncluded: prefill?.fuelIncluded || 'No',
+    minimumHireDuration: prefill?.minimumHireDuration || '',
+    securityDeposit: prefill?.securityDeposit ? prefill.securityDeposit.toString() : '',
+    availableEquipment: prefill?.availableEquipment || '',
+    rentalRules: prefill?.rentalRules || '',
+    availabilityNotes: prefill?.availabilityNotes || '',
     // Boating fields (Phase 4)
     boatType: prefill?.boatType || '',
     manufacturer: prefill?.manufacturer || '',
@@ -562,6 +575,18 @@ const CreateAd = () => {
           listingType: data.listingType || 'normal',
           targetUrl: data.targetUrl || '',
           serviceCoverage: (data as any).serviceCoverage || 'city',
+          listingIntent: data.listingIntent || (data.category === 'Boats for Hire' ? 'hire' : 'sale'),
+          pricingUnit: data.pricingUnit || 'Per Day',
+          rentalPrice: data.rentalPrice ? data.rentalPrice.toString() : '',
+          departureLocation: data.departureLocation || '',
+          passengerCapacity: data.passengerCapacity || '',
+          skipperIncluded: data.skipperIncluded || 'No',
+          fuelIncluded: data.fuelIncluded || 'No',
+          minimumHireDuration: data.minimumHireDuration || '',
+          securityDeposit: data.securityDeposit ? data.securityDeposit.toString() : '',
+          availableEquipment: typeof data.availableEquipment === 'string' ? data.availableEquipment : (Array.isArray(data.availableEquipment) ? data.availableEquipment.join(', ') : ''),
+          rentalRules: data.rentalRules || '',
+          availabilityNotes: data.availabilityNotes || '',
           boatType: data.boatType || '',
           manufacturer: data.manufacturer || '',
           model: data.model || '',
@@ -1009,6 +1034,19 @@ const CreateAd = () => {
         listingType: isStaff ? formData.listingType : (originalAd?.listingType || 'normal'),
         targetUrl: isStaff ? (formData.listingType === 'informativo' ? formData.targetUrl.trim() : '') : (originalAd?.targetUrl || ''),
         serviceCoverage: (formData.category === 'Serviços' || formData.category?.startsWith('Serviços') || formData.category?.includes('Serviços')) ? (formData.serviceCoverage || 'city') : 'city',
+        // Rental / Hire Fields
+        listingIntent: formData.listingIntent,
+        pricingUnit: formData.listingIntent === 'hire' ? formData.pricingUnit : '',
+        rentalPrice: formData.listingIntent === 'hire' ? (formData.rentalPrice ? parsePrice(formData.rentalPrice) : (formData.price ? parsePrice(formData.price) : 0)) : 0,
+        departureLocation: formData.listingIntent === 'hire' ? formData.departureLocation.trim() : '',
+        passengerCapacity: formData.listingIntent === 'hire' ? (formData.passengerCapacity ? parseInt(formData.passengerCapacity.toString()) || formData.passengerCapacity : '') : '',
+        skipperIncluded: formData.listingIntent === 'hire' ? formData.skipperIncluded : 'No',
+        fuelIncluded: formData.listingIntent === 'hire' ? formData.fuelIncluded : 'No',
+        minimumHireDuration: formData.listingIntent === 'hire' ? formData.minimumHireDuration.trim() : '',
+        securityDeposit: formData.listingIntent === 'hire' ? (formData.securityDeposit ? parsePrice(formData.securityDeposit) : '') : '',
+        availableEquipment: formData.listingIntent === 'hire' ? formData.availableEquipment.trim() : '',
+        rentalRules: formData.listingIntent === 'hire' ? formData.rentalRules.trim() : '',
+        availabilityNotes: formData.listingIntent === 'hire' ? formData.availabilityNotes.trim() : '',
         // Boating fields (Phase 4)
         boatType: formData.boatType || '',
         manufacturer: formData.manufacturer.trim(),
@@ -1634,6 +1672,47 @@ const CreateAd = () => {
               animate={{ opacity: 1, x: 0 }}
               className="space-y-6"
             >
+              {/* Listing Intent Toggle */}
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-700/80 space-y-3">
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                  Listing Purpose <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      listingIntent: 'sale',
+                      category: prev.category === 'Boats for Hire' ? 'Motorboats & Powerboats' : prev.category
+                    }))}
+                    className={`p-3.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
+                      formData.listingIntent === 'sale'
+                        ? 'bg-sky-600 text-white border-sky-600 shadow-md'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400'
+                    }`}
+                  >
+                    <Tag size={18} />
+                    <span>Boat for Sale</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({
+                      ...prev,
+                      listingIntent: 'hire',
+                      category: 'Boats for Hire'
+                    }))}
+                    className={`p-3.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
+                      formData.listingIntent === 'hire'
+                        ? 'bg-sky-600 text-white border-sky-600 shadow-md'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400'
+                    }`}
+                  >
+                    <Anchor size={18} />
+                    <span>Boat for Hire</span>
+                  </button>
+                </div>
+              </div>
               {/* 1. Photos (FIRST item) */}
               <div className="space-y-4">
                 <div className="flex justify-between items-end">
@@ -1955,6 +2034,158 @@ const CreateAd = () => {
               animate={{ opacity: 1, x: 0 }}
               className="space-y-6"
             >
+              {/* Hire / Charter Specifications Block */}
+              {(formData.listingIntent === 'hire' || formData.category === 'Boats for Hire') && (
+                <div className="p-6 bg-gradient-to-br from-sky-900 to-slate-900 text-white rounded-3xl space-y-5 shadow-xl border border-sky-800">
+                  <div className="flex items-center gap-3 border-b border-white/10 pb-3">
+                    <div className="w-9 h-9 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-300">
+                      <Anchor size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-white">Hire & Charter Specifications</h3>
+                      <p className="text-xs text-sky-200/80">Configure rental pricing, capacity, location & conditions</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Rental Price & Unit */}
+                    <div>
+                      <label className="text-xs font-bold uppercase text-sky-200">Rental Rate ({formData.country === 'Reino Unido' ? '£' : '€'})</label>
+                      <div className="flex gap-2 mt-1">
+                        <input
+                          type="text"
+                          value={formData.rentalPrice || formData.price}
+                          onChange={(e) => setFormData({ ...formData, rentalPrice: e.target.value, price: e.target.value })}
+                          placeholder="e.g. 250"
+                          className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm font-bold"
+                        />
+                        <select
+                          value={formData.pricingUnit}
+                          onChange={(e) => setFormData({ ...formData, pricingUnit: e.target.value })}
+                          className="px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm font-bold cursor-pointer shrink-0"
+                        >
+                          {PRICING_UNITS.map(unit => (
+                            <option key={unit} value={unit}>{unit}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Departure Location */}
+                    <div>
+                      <label className="text-xs font-bold uppercase text-sky-200">Departure Location / Marina</label>
+                      <input
+                        type="text"
+                        value={formData.departureLocation}
+                        onChange={(e) => setFormData({ ...formData, departureLocation: e.target.value })}
+                        placeholder="e.g. Southampton Marina, Pontoon 4"
+                        className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm mt-1"
+                      />
+                    </div>
+
+                    {/* Passenger Capacity */}
+                    <div>
+                      <label className="text-xs font-bold uppercase text-sky-200">Passenger Capacity</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={formData.passengerCapacity}
+                        onChange={(e) => setFormData({ ...formData, passengerCapacity: e.target.value })}
+                        placeholder="e.g. 8 passengers"
+                        className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm mt-1"
+                      />
+                    </div>
+
+                    {/* Minimum Hire Duration */}
+                    <div>
+                      <label className="text-xs font-bold uppercase text-sky-200">Minimum Hire Duration</label>
+                      <input
+                        type="text"
+                        value={formData.minimumHireDuration}
+                        onChange={(e) => setFormData({ ...formData, minimumHireDuration: e.target.value })}
+                        placeholder="e.g. 2 Hours or 1 Day"
+                        className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm mt-1"
+                      />
+                    </div>
+
+                    {/* Skipper Included */}
+                    <div>
+                      <label className="text-xs font-bold uppercase text-sky-200">Skipper / Captain Included?</label>
+                      <select
+                        value={formData.skipperIncluded === true ? 'Yes' : (formData.skipperIncluded === false ? 'No' : formData.skipperIncluded)}
+                        onChange={(e) => setFormData({ ...formData, skipperIncluded: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm mt-1 cursor-pointer font-bold"
+                      >
+                        <option value="Yes">Yes (Skipper Included)</option>
+                        <option value="No">No (Bareboat / Self-Drive)</option>
+                        <option value="Optional">Optional (On Request)</option>
+                      </select>
+                    </div>
+
+                    {/* Fuel Included */}
+                    <div>
+                      <label className="text-xs font-bold uppercase text-sky-200">Fuel Included?</label>
+                      <select
+                        value={formData.fuelIncluded === true ? 'Yes' : (formData.fuelIncluded === false ? 'No' : formData.fuelIncluded)}
+                        onChange={(e) => setFormData({ ...formData, fuelIncluded: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm mt-1 cursor-pointer font-bold"
+                      >
+                        <option value="Yes">Yes (Fuel Included)</option>
+                        <option value="No">No (Pay Fuel Used)</option>
+                      </select>
+                    </div>
+
+                    {/* Security Deposit */}
+                    <div>
+                      <label className="text-xs font-bold uppercase text-sky-200">Security Deposit ({formData.country === 'Reino Unido' ? '£' : '€'})</label>
+                      <input
+                        type="text"
+                        value={formData.securityDeposit}
+                        onChange={(e) => setFormData({ ...formData, securityDeposit: e.target.value })}
+                        placeholder="e.g. 500 (Refundable)"
+                        className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm mt-1"
+                      />
+                    </div>
+
+                    {/* Equipment Included */}
+                    <div>
+                      <label className="text-xs font-bold uppercase text-sky-200">Available Equipment</label>
+                      <input
+                        type="text"
+                        value={formData.availableEquipment}
+                        onChange={(e) => setFormData({ ...formData, availableEquipment: e.target.value })}
+                        placeholder="e.g. Life jackets, GPS, Fishing gear, Watersports"
+                        className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm mt-1"
+                      />
+                    </div>
+
+                    {/* Rental Rules */}
+                    <div className="md:col-span-2">
+                      <label className="text-xs font-bold uppercase text-sky-200">Rental Rules & Licensing Requirements</label>
+                      <input
+                        type="text"
+                        value={formData.rentalRules}
+                        onChange={(e) => setFormData({ ...formData, rentalRules: e.target.value })}
+                        placeholder="e.g. RYA Level 2 required for bareboat, Age 21+, No pets, Max 8 people"
+                        className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm mt-1"
+                      />
+                    </div>
+
+                    {/* Availability Notes */}
+                    <div className="md:col-span-2">
+                      <label className="text-xs font-bold uppercase text-sky-200">Availability & Seasonal Notes</label>
+                      <input
+                        type="text"
+                        value={formData.availabilityNotes}
+                        onChange={(e) => setFormData({ ...formData, availabilityNotes: e.target.value })}
+                        placeholder="e.g. Available April - October, weekend bookings require 48h advance notice"
+                        className="w-full px-3.5 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white outline-none text-sm mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Mobile Sticky Preview Header */}
               <div className="lg:hidden sticky top-16 z-30 bg-white/95 backdrop-blur-md border border-indigo-100 rounded-2xl p-3 shadow-lg mb-4 flex items-center gap-3">
                 {formData.images[0] ? (

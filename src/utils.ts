@@ -10,9 +10,30 @@ export const formatPrice = (price: number | string | undefined | null, country?:
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: 'GBP',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(num);
+};
+
+export const formatRentalPriceUnit = (unit?: string): string => {
+  if (!unit) return '/ day';
+  const u = unit.toLowerCase().trim();
+  if (u.includes('hour') || u === 'per hour') return '/ hour';
+  if (u.includes('half') || u === 'per half day') return '/ half day';
+  if (u.includes('week') || u === 'per week') return '/ week';
+  if (u.includes('day') || u === 'per day') return '/ day';
+  return `/ ${unit.replace(/^per\s+/i, '').toLowerCase()}`;
+};
+
+export const formatAdPrice = (ad: { price?: number; rentalPrice?: number; listingIntent?: string; category?: string; pricingUnit?: string; country?: string }): string => {
+  const isHire = ad.listingIntent === 'hire' || ad.category === 'Boats for Hire';
+  const val = isHire ? (ad.rentalPrice ?? ad.price) : ad.price;
+  const base = formatPrice(val, ad.country);
+  if (isHire) {
+    if (base === 'Free') return 'Free Hire';
+    return `${base} ${formatRentalPriceUnit(ad.pricingUnit)}`;
+  }
+  return base;
 };
 
 export const generateSlug = (title: string): string => {

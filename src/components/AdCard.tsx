@@ -5,7 +5,7 @@ import { MapPin, MessageCircle, Clock, X, User, Phone, AlertTriangle, Heart, Fla
 import { formatDistanceToNow } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
-import { formatPrice, getAdUrl, getAdLocationLabel } from '../utils';
+import { formatPrice, formatAdPrice, getAdUrl, getAdLocationLabel } from '../utils';
 import { sendEmailGeneric, getSellerEmail } from '../utils/emailService';
 import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../utils/imageFraming';
 import OptimizedImage from './OptimizedImage';
@@ -756,14 +756,14 @@ const AdCard: React.FC<AdCardProps> = ({
                       Free 💚
                     </span>
                   </div>
-                ) : hasPrice ? (
+                ) : (hasPrice || ad.rentalPrice || ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') ? (
                   <div className="flex flex-col items-center justify-center">
                     <div className={`font-black text-indigo-600 tracking-tight leading-none ${
                       isFeaturedVariant ? 'text-sm md:text-base' : 'text-base md:text-lg'
                     }`}>
-                      {formatPrice(ad.price, ad.country)}
+                      {formatAdPrice(ad)}
                     </div>
-                    {(ad.status === 'sold' || ad.adStatus === 'sold') && ad.price !== undefined && Number(ad.price) > 0 && (
+                    {(ad.status === 'sold' || ad.adStatus === 'sold') && (
                       <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-tight flex items-center justify-center gap-1 mt-1">
                         <Tag size={10} /> Sold
                       </span>
@@ -922,7 +922,7 @@ const AdCard: React.FC<AdCardProps> = ({
                         {ad.category === '💚 Doações & Solidariedade' ? (
                           <span className="text-emerald-600 font-extrabold flex items-center gap-1.5">Free 💚</span>
                         ) : (
-                          formatPrice(ad.price, ad.country)
+                          formatAdPrice(ad)
                         )}
                       </div>
                     )}

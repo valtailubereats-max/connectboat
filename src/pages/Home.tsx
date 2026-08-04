@@ -1071,6 +1071,16 @@ const Home = () => {
   }, [ads, country]);
 
   // Paginação inteligente de anúncios filtrados em memória (carregamento instantâneo offline-first)
+  // Boats for Hire list
+  const hireAds = useMemo(() => {
+    return ads.filter(ad => (
+      ad.status === 'approved' &&
+      (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus) &&
+      (ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') &&
+      (ad.country ? ad.country === country : true)
+    ));
+  }, [ads, country]);
+
   const displayedAds = useMemo(() => {
     return filteredAds.slice(0, limitAmount);
   }, [filteredAds, limitAmount]);
@@ -1535,6 +1545,61 @@ const Home = () => {
             </div>
           </section>
         )}
+
+        {/* 4. ⚓ BOATS FOR HIRE SECTION */}
+        <section className="py-4 text-left my-2 border-t border-slate-100 dark:border-slate-800/80" id="boats-for-hire-section">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <Anchor className="text-sky-600 dark:text-sky-400 shrink-0" size={18} />
+                <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                  Boats for Hire & Charter
+                </h2>
+              </div>
+              <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
+                Explore luxury yachts, motorboats & RIBs available for charter across the UK
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setCategory('Boats for Hire');
+                if (resultsSectionRef.current) {
+                  resultsSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="px-3.5 py-1.5 bg-slate-100 hover:bg-sky-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-[11px] rounded-xl transition-all border border-slate-200 dark:border-slate-700 flex items-center gap-1 shrink-0 cursor-pointer"
+            >
+              <span>View All Hire Listings</span>
+              <ArrowRight size={13} />
+            </button>
+          </div>
+
+          {hireAds.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+              {hireAds.slice(0, 5).map((ad) => (
+                <AdCard key={`hire-${ad.id}`} ad={ad} />
+              ))}
+            </div>
+          ) : (
+            <div className="p-6 bg-white dark:bg-slate-900/80 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center gap-2 shadow-xs">
+              <Anchor size={28} className="text-sky-500/60" />
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                Are you a boat owner or charter operator?
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-md">
+                List your yacht, powerboat or RIB for hire on ConnectBoat and connect directly with interested clients via WhatsApp.
+              </p>
+              <Link
+                to="/criar-anuncio"
+                className="mt-1 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <span>List Boat for Hire</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          )}
+        </section>
 
         {/* 5. ⛵ GRID DE ANÚNCIOS (Últimos anúncios) */}
         <section className="py-2 md:py-4 text-left">

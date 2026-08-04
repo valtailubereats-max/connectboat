@@ -54,7 +54,19 @@
         "claimedAt": { "type": "string", "format": "date-time" },
         "businessViews": { "type": "number" },
         "invitationMilestonesSent": { "type": "array", "items": { "type": "string" } },
-        "serviceCoverage": { "type": "string", "enum": ["city", "radius20", "radius50", "county", "uk", "portugal", "online"] }
+        "serviceCoverage": { "type": "string", "enum": ["city", "radius20", "radius50", "county", "uk", "portugal", "online"] },
+        "listingIntent": { "type": "string", "enum": ["sale", "hire"] },
+        "pricingUnit": { "type": "string" },
+        "rentalPrice": { "type": "number" },
+        "departureLocation": { "type": "string" },
+        "passengerCapacity": { "type": "number" },
+        "skipperIncluded": { "type": "string" },
+        "fuelIncluded": { "type": "string" },
+        "minimumHireDuration": { "type": "string" },
+        "securityDeposit": { "type": "number" },
+        "availableEquipment": { "type": "string" },
+        "rentalRules": { "type": "string" },
+        "availabilityNotes": { "type": "string" }
       },
       "required": ["id", "title", "description", "imageUrl", "city", "category", "sellerId", "sellerPhone", "sellerName", "status", "createdAt"]
     },

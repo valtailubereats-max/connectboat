@@ -180,6 +180,17 @@ export interface ShowcaseProduct {
   createdAt: any;
 }
 
+export type ListingIntent = 'sale' | 'hire';
+
+export const PRICING_UNITS = [
+  'Per Hour',
+  'Per Half Day',
+  'Per Day',
+  'Per Week'
+] as const;
+
+export type PricingUnit = typeof PRICING_UNITS[number];
+
 export interface Ad {
   id: string;
   title: string;
@@ -259,6 +270,20 @@ export interface Ad {
   invitationSentAt?: any;
   invitationLastMessage?: string;
   invitationCount?: number;
+
+  // Rental / Hire Specific Fields
+  listingIntent?: 'sale' | 'hire';
+  pricingUnit?: 'Per Hour' | 'Per Half Day' | 'Per Day' | 'Per Week' | string;
+  rentalPrice?: number;
+  departureLocation?: string;
+  passengerCapacity?: number | string;
+  skipperIncluded?: 'Yes' | 'No' | boolean;
+  fuelIncluded?: 'Yes' | 'No' | boolean;
+  minimumHireDuration?: string;
+  securityDeposit?: number | string;
+  availableEquipment?: string[] | string;
+  rentalRules?: string;
+  availabilityNotes?: string;
 
   // Boating Specific Fields (Phase 4)
   boatType?: string;
