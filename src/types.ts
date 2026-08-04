@@ -59,6 +59,8 @@ export interface MarketplaceSettings {
   showTotalUsersBadge?: boolean;
   searchGroupBgColor?: string;
   searchGroupOpacity?: number;
+  featuredSalesColor?: string;
+  featuredHireColor?: string;
   compactCardMode?: boolean;
   enableFotosFeature?: boolean;
   launchPromoActive?: boolean;

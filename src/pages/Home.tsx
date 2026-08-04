@@ -48,11 +48,16 @@ const Home = () => {
   
   const hexToRgba = (hex: string | undefined, opacity: number | undefined) => {
     const color = hex || '#ffffff';
-    const alpha = opacity !== undefined ? opacity / 100 : 0.1;
+    let alpha = 0.1;
+    if (opacity !== undefined) {
+      alpha = opacity > 1 ? opacity / 100 : opacity;
+    }
     const cleanHex = color.replace('#', '');
-    const r = parseInt(cleanHex.substring(0, 2), 16) || 255;
-    const g = parseInt(cleanHex.substring(2, 4), 16) || 255;
-    const b = parseInt(cleanHex.substring(4, 6), 16) || 255;
+    let fullHex = cleanHex;
+    if (cleanHex.length === 3) fullHex = cleanHex.split('').map(x => x + x).join('');
+    const r = parseInt(fullHex.substring(0, 2), 16) || 0;
+    const g = parseInt(fullHex.substring(2, 4), 16) || 0;
+    const b = parseInt(fullHex.substring(4, 6), 16) || 0;
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   };
 
@@ -1488,136 +1493,144 @@ const Home = () => {
         </section>
 
         {/* 3. ✨ ANÚNCIOS EM DESTAQUE */}
-        {filteredFeaturedAds.length > 0 && (
-          <section className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 md:p-6 my-3 shadow-xs">
-            {/* Soft 4-Edge Navy Vignette & Pure White Center Overlay */}
-            <div 
-              className="absolute inset-0 pointer-events-none z-0 rounded-2xl md:rounded-3xl"
-              style={{
-                boxShadow: 'inset 0 0 36px 3px rgba(12, 34, 63, 0.12)',
-                background: 'radial-gradient(ellipse at 50% 50%, #ffffff 30%, rgba(255, 255, 255, 0.96) 55%, rgba(20, 50, 93, 0.05) 80%, rgba(12, 34, 63, 0.14) 100%)'
-              }}
-            />
-            {/* Subtle radial glow behind listing cards */}
-            <div 
-              className="absolute inset-0 pointer-events-none z-0"
-              style={{
-                background: 'radial-gradient(ellipse 80% 60% at 50% 65%, rgba(20, 50, 93, 0.04) 0%, rgba(12, 34, 63, 0.02) 55%, transparent 85%)'
-              }}
-            />
+        {filteredFeaturedAds.length > 0 && (() => {
+          const salesColor = settings?.featuredSalesColor || '#0c223f';
+          return (
+            <section className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 md:p-6 my-3 shadow-xs">
+              {/* Soft 4-Edge Vignette & Pure White Center Overlay */}
+              <div 
+                className="absolute inset-0 pointer-events-none z-0 rounded-2xl md:rounded-3xl"
+                style={{
+                  boxShadow: `inset 0 0 36px 3px ${hexToRgba(salesColor, 0.12)}`,
+                  background: `radial-gradient(ellipse at 50% 50%, #ffffff 30%, rgba(255, 255, 255, 0.96) 55%, ${hexToRgba(salesColor, 0.05)} 80%, ${hexToRgba(salesColor, 0.14)} 100%)`
+                }}
+              />
+              {/* Subtle radial glow behind listing cards */}
+              <div 
+                className="absolute inset-0 pointer-events-none z-0"
+                style={{
+                  background: `radial-gradient(ellipse 80% 60% at 50% 65%, ${hexToRgba(salesColor, 0.05)} 0%, ${hexToRgba(salesColor, 0.02)} 55%, transparent 85%)`
+                }}
+              />
 
-            <div className="relative z-10">
-              <div className="flex flex-col gap-0.5 mb-4 text-left">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-base sm:text-lg">✨</span>
-                  <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                    Featured Marine Listings
-                  </h2>
+              <div className="relative z-10">
+                <div className="flex flex-col gap-0.5 mb-4 text-left">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base sm:text-lg">✨</span>
+                    <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                      Featured Marine Listings
+                    </h2>
+                  </div>
+                  <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
+                    Promoted boats, engines, moorings and equipment across the UK
+                  </p>
                 </div>
-                <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
-                  Promoted boats, engines, moorings and equipment across the UK
-                </p>
-              </div>
-              
-              {/* Carrossel Horizontal Responsivo */}
-              <div className="relative w-full overflow-hidden py-1">
-                <div 
-                  onMouseEnter={() => setIsHovered(true)}
-                  onMouseLeave={() => setIsHovered(false)}
-                  onTouchStart={() => setIsHovered(true)}
-                  onTouchEnd={() => setIsHovered(false)}
-                  className="carouselTrack flex gap-4 md:gap-6"
-                  style={{
-                    animationName: (settings?.highlightSpeed !== 0) ? 'scrollCarousel' : 'none',
-                    animationDuration: marqueeData.duration,
-                    animationTimingFunction: 'linear',
-                    animationIterationCount: 'infinite',
-                    animationPlayState: (isHovered || settings?.highlightSpeed === 0) ? 'paused' : 'running',
-                  }}
-                >
-                  {marqueeData.items.map((ad, idx) => (
-                    <div key={`${ad.id}-${idx}`} className="w-[140px] sm:w-[165px] md:w-[195px] shrink-0">
-                      <AdCard ad={ad} variant="featured" />
-                    </div>
-                  ))}
+                
+                {/* Carrossel Horizontal Responsivo */}
+                <div className="relative w-full overflow-hidden py-1">
+                  <div 
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => setIsHovered(false)}
+                    onTouchStart={() => setIsHovered(true)}
+                    onTouchEnd={() => setIsHovered(false)}
+                    className="carouselTrack flex gap-4 md:gap-6"
+                    style={{
+                      animationName: (settings?.highlightSpeed !== 0) ? 'scrollCarousel' : 'none',
+                      animationDuration: marqueeData.duration,
+                      animationTimingFunction: 'linear',
+                      animationIterationCount: 'infinite',
+                      animationPlayState: (isHovered || settings?.highlightSpeed === 0) ? 'paused' : 'running',
+                    }}
+                  >
+                    {marqueeData.items.map((ad, idx) => (
+                      <div key={`${ad.id}-${idx}`} className="w-[140px] sm:w-[165px] md:w-[195px] shrink-0">
+                        <AdCard ad={ad} variant="featured" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </section>
-        )}
+            </section>
+          );
+        })()}
 
         {/* 4. ⚓ BOATS FOR HIRE SECTION */}
-        <section className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 md:p-6 my-3 shadow-xs text-left" id="boats-for-hire-section">
-          {/* Soft 4-Edge Turquoise Vignette & Pure White Center Overlay */}
-          <div 
-            className="absolute inset-0 pointer-events-none z-0 rounded-2xl md:rounded-3xl"
-            style={{
-              boxShadow: 'inset 0 0 36px 3px rgba(16, 183, 199, 0.14)',
-              background: 'radial-gradient(ellipse at 50% 50%, #ffffff 30%, rgba(255, 255, 255, 0.96) 55%, rgba(25, 197, 216, 0.06) 80%, rgba(16, 183, 199, 0.14) 100%)'
-            }}
-          />
-          {/* Subtle radial turquoise glow behind content */}
-          <div 
-            className="absolute inset-0 pointer-events-none z-0"
-            style={{
-              background: 'radial-gradient(ellipse 80% 60% at 50% 65%, rgba(70, 217, 232, 0.06) 0%, rgba(140, 236, 245, 0.03) 55%, transparent 85%)'
-            }}
-          />
-
-          <div className="relative z-10">
-            <div className="flex items-center justify-between gap-4 mb-4">
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-1.5">
-                  <Anchor className="text-sky-600 dark:text-sky-400 shrink-0" size={18} />
-                  <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                    Boats for Hire & Charter
-                  </h2>
-                </div>
-                <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
-                  Explore luxury yachts, motorboats & RIBs available for charter across the UK
-                </p>
-              </div>
-
-              <button
-                onClick={() => {
-                  setCategory('Boats for Hire');
-                  if (resultsSectionRef.current) {
-                    resultsSectionRef.current.scrollIntoView({ behavior: 'smooth' });
-                  }
+        {(() => {
+          const hireColor = settings?.featuredHireColor || '#10b7c7';
+          return (
+            <section className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 md:p-6 my-3 shadow-xs text-left" id="boats-for-hire-section">
+              {/* Soft 4-Edge Vignette & Pure White Center Overlay */}
+              <div 
+                className="absolute inset-0 pointer-events-none z-0 rounded-2xl md:rounded-3xl"
+                style={{
+                  boxShadow: `inset 0 0 36px 3px ${hexToRgba(hireColor, 0.14)}`,
+                  background: `radial-gradient(ellipse at 50% 50%, #ffffff 30%, rgba(255, 255, 255, 0.96) 55%, ${hexToRgba(hireColor, 0.06)} 80%, ${hexToRgba(hireColor, 0.14)} 100%)`
                 }}
-                className="px-3.5 py-1.5 bg-slate-100 hover:bg-sky-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-[11px] rounded-xl transition-all border border-slate-200 dark:border-slate-700 flex items-center gap-1 shrink-0 cursor-pointer"
-              >
-                <span>View All Hire Listings</span>
-                <ArrowRight size={13} />
-              </button>
-            </div>
+              />
+              {/* Subtle radial glow behind content */}
+              <div 
+                className="absolute inset-0 pointer-events-none z-0"
+                style={{
+                  background: `radial-gradient(ellipse 80% 60% at 50% 65%, ${hexToRgba(hireColor, 0.06)} 0%, ${hexToRgba(hireColor, 0.03)} 55%, transparent 85%)`
+                }}
+              />
 
-            {hireAds.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                {hireAds.slice(0, 5).map((ad) => (
-                  <AdCard key={`hire-${ad.id}`} ad={ad} />
-                ))}
+              <div className="relative z-10">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <Anchor className="text-sky-600 dark:text-sky-400 shrink-0" size={18} />
+                      <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                        Boats for Hire & Charter
+                      </h2>
+                    </div>
+                    <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
+                      Explore luxury yachts, motorboats & RIBs available for charter across the UK
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setCategory('Boats for Hire');
+                      if (resultsSectionRef.current) {
+                        resultsSectionRef.current.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
+                    className="px-3.5 py-1.5 bg-slate-100 hover:bg-sky-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-extrabold text-[11px] rounded-xl transition-all border border-slate-200 dark:border-slate-700 flex items-center gap-1 shrink-0 cursor-pointer"
+                  >
+                    <span>View All Hire Listings</span>
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+
+                {hireAds.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+                    {hireAds.slice(0, 5).map((ad) => (
+                      <AdCard key={`hire-${ad.id}`} ad={ad} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-6 bg-white dark:bg-slate-900/80 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center gap-2 shadow-xs">
+                    <Anchor size={28} className="text-sky-500/60" />
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                      Are you a boat owner or charter operator?
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-md">
+                      List your yacht, powerboat or RIB for hire on ConnectBoat and connect directly with interested clients via WhatsApp.
+                    </p>
+                    <Link
+                      to="/criar-anuncio"
+                      className="mt-1 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                    >
+                      <span>List Boat for Hire</span>
+                      <ArrowRight size={14} />
+                    </Link>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="p-6 bg-white dark:bg-slate-900/80 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center gap-2 shadow-xs">
-                <Anchor size={28} className="text-sky-500/60" />
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                  Are you a boat owner or charter operator?
-                </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-md">
-                  List your yacht, powerboat or RIB for hire on ConnectBoat and connect directly with interested clients via WhatsApp.
-                </p>
-                <Link
-                  to="/criar-anuncio"
-                  className="mt-1 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5"
-                >
-                  <span>List Boat for Hire</span>
-                  <ArrowRight size={14} />
-                </Link>
-              </div>
-            )}
-          </div>
-        </section>
+            </section>
+          );
+        })()}
 
         {/* 5. ⛵ GRID DE ANÚNCIOS (Últimos anúncios) */}
         <section className="py-2 md:py-4 text-left">

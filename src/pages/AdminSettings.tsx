@@ -150,6 +150,8 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
           showTotalUsersBadge: data.showTotalUsersBadge !== undefined ? data.showTotalUsersBadge : false,
           searchGroupBgColor: data.searchGroupBgColor || '#ffffff',
           searchGroupOpacity: data.searchGroupOpacity !== undefined ? data.searchGroupOpacity : 10,
+          featuredSalesColor: data.featuredSalesColor || '#0c223f',
+          featuredHireColor: data.featuredHireColor || '#10b7c7',
           compactCardMode: data.compactCardMode !== undefined ? data.compactCardMode : false,
           enableFotosFeature: data.enableFotosFeature !== undefined ? data.enableFotosFeature : false,
           launchPromoActive: data.launchPromoActive !== undefined ? data.launchPromoActive : false
@@ -170,6 +172,8 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
           showTotalUsersBadge: false,
           searchGroupBgColor: '#ffffff',
           searchGroupOpacity: 10,
+          featuredSalesColor: '#0c223f',
+          featuredHireColor: '#10b7c7',
           compactCardMode: false,
           enableFotosFeature: false,
           launchPromoActive: false
@@ -664,6 +668,129 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Opaco</span>
               </div>
               <p className="text-[11px] text-slate-400">Um valor menor torna os elementos mais transparentes com o fundo da imagem, maior é mais sólido.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Controle de Cores das Áreas de Destaque (Vendas & Aluguer) */}
+        <section className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-sky-50 text-sky-600 rounded-xl flex items-center justify-center">
+              <Sliders size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Cores das Secções de Destaque na Home</h2>
+              <p className="text-xs text-slate-500 font-medium">Defina o tom da vinheta de fundo para a área de Anúncios em Destaque (Vendas) e a área de Embarcações para Aluguer.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Regulador de Cor: Área de Destaque Vendas */}
+            <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">✨</span>
+                  <label className="text-sm font-black text-slate-900 uppercase tracking-wider">Destaque Vendas</label>
+                </div>
+                <div 
+                  className="w-6 h-6 rounded-full border border-slate-300 shadow-xs"
+                  style={{ backgroundColor: settings.featuredSalesColor || '#0c223f' }}
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input 
+                  type="color" 
+                  value={settings.featuredSalesColor || '#0c223f'} 
+                  onChange={(e) => setSettings({ ...settings, featuredSalesColor: e.target.value })} 
+                  className="w-12 h-12 rounded-xl cursor-pointer border-2 border-slate-200 shrink-0"
+                />
+                <input 
+                  type="text" 
+                  value={settings.featuredSalesColor || '#0c223f'} 
+                  onChange={(e) => setSettings({ ...settings, featuredSalesColor: e.target.value })} 
+                  placeholder="#0c223f"
+                  className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl focus:border-sky-600 outline-none transition-all font-mono font-bold text-sm"
+                />
+              </div>
+
+              {/* Sugestões de Cores Vendas */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Paleta Recomendada (Vendas):</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[
+                    { name: 'Navy Marinho', hex: '#0c223f' },
+                    { name: 'Azul Escuro', hex: '#0f172a' },
+                    { name: 'Azul Real', hex: '#1e3a8a' },
+                    { name: 'Índigo', hex: '#312e81' },
+                    { name: 'Azul Oceano', hex: '#0369a1' }
+                  ].map((preset) => (
+                    <button
+                      key={preset.hex}
+                      type="button"
+                      onClick={() => setSettings({ ...settings, featuredSalesColor: preset.hex })}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-700 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full border border-slate-300" style={{ backgroundColor: preset.hex }} />
+                      <span>{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Regulador de Cor: Área de Destaque Aluguel / Hire */}
+            <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">⚓</span>
+                  <label className="text-sm font-black text-slate-900 uppercase tracking-wider">Destaque Aluguer</label>
+                </div>
+                <div 
+                  className="w-6 h-6 rounded-full border border-slate-300 shadow-xs"
+                  style={{ backgroundColor: settings.featuredHireColor || '#10b7c7' }}
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input 
+                  type="color" 
+                  value={settings.featuredHireColor || '#10b7c7'} 
+                  onChange={(e) => setSettings({ ...settings, featuredHireColor: e.target.value })} 
+                  className="w-12 h-12 rounded-xl cursor-pointer border-2 border-slate-200 shrink-0"
+                />
+                <input 
+                  type="text" 
+                  value={settings.featuredHireColor || '#10b7c7'} 
+                  onChange={(e) => setSettings({ ...settings, featuredHireColor: e.target.value })} 
+                  placeholder="#10b7c7"
+                  className="w-full px-4 py-2.5 bg-white border-2 border-slate-200 rounded-xl focus:border-sky-600 outline-none transition-all font-mono font-bold text-sm"
+                />
+              </div>
+
+              {/* Sugestões de Cores Aluguer */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Paleta Recomendada (Aluguer):</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {[
+                    { name: 'Turquesa Água', hex: '#10b7c7' },
+                    { name: 'Aqua Tropical', hex: '#14b8a6' },
+                    { name: 'Ciano Mar', hex: '#06b6d4' },
+                    { name: 'Verde Esmeralda', hex: '#059669' },
+                    { name: 'Azul Céu', hex: '#0284c7' }
+                  ].map((preset) => (
+                    <button
+                      key={preset.hex}
+                      type="button"
+                      onClick={() => setSettings({ ...settings, featuredHireColor: preset.hex })}
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-700 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full border border-slate-300" style={{ backgroundColor: preset.hex }} />
+                      <span>{preset.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>
