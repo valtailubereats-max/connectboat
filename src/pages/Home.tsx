@@ -516,11 +516,15 @@ const Home = () => {
         return;
       }
       try {
+        const targetCountries = (country === 'Reino Unido' || country === 'United Kingdom')
+          ? ['Reino Unido', 'United Kingdom', 'UK']
+          : ['Portugal'];
+
         const qPaid = query(
           collection(db, 'ads'),
           where('status', '==', 'approved'),
           where('isFeatured', '==', true),
-          where('country', '==', country),
+          where('country', 'in', targetCountries),
           limit(20)
         );
         const qPerm = query(
@@ -641,12 +645,16 @@ const Home = () => {
 
       try {
         let snapshot;
+        const targetCountries = (country === 'Reino Unido' || country === 'United Kingdom')
+          ? ['Reino Unido', 'United Kingdom', 'UK']
+          : ['Portugal'];
+
         // Primeira tentativa: Buscar anúncios ordenados pela criação (createdAt desc), limitando a dbLimit documentos (otimização de leituras)
         try {
           const q = query(
             collection(db, 'ads'),
             where('status', '==', 'approved'),
-            where('country', '==', country),
+            where('country', 'in', targetCountries),
             // @ts-ignore
             orderBy('createdAt', 'desc'),
             limit(dbLimit)
@@ -657,7 +665,7 @@ const Home = () => {
           const q = query(
             collection(db, 'ads'),
             where('status', '==', 'approved'),
-            where('country', '==', country),
+            where('country', 'in', targetCountries),
             limit(dbLimit)
           );
           snapshot = await withTimeout(getDocsWithCacheFallback(q, `home/approved-ads-${country}-flat-${dbLimit}`), 20000);
@@ -747,8 +755,9 @@ const Home = () => {
       if (!matchesSearch || !matchesStatus) return false;
 
       // Allow country match or Ambos (for permanent)
-      const adCountry = ad.country || 'Portugal';
-      const matchesCountry = adCountry === country || (ad.isPermanentFeatured && adCountry === 'Ambos');
+      const adCountry = ad.country || 'Reino Unido';
+      const isUkMatch = (country === 'Reino Unido' || country === 'United Kingdom') && (adCountry === 'Reino Unido' || adCountry === 'United Kingdom' || adCountry === 'UK');
+      const matchesCountry = isUkMatch || adCountry === country || (ad.isPermanentFeatured && adCountry === 'Ambos');
       if (!matchesCountry) return false;
 
       // Category filter
@@ -1106,9 +1115,11 @@ const Home = () => {
   // Contagem calculada de anúncios aprovados em tempo real de acordo com as diretrizes de contexto de país e expiração de anúncios
   const totalApprovedCount = useMemo(() => {
     return ads.filter(ad => {
-      const adCountry = ad.country || 'Portugal';
+      const adCountry = ad.country || 'Reino Unido';
       const isActive = ad.status === 'approved' && (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
-      return adCountry === country && isActive;
+      const isUkMatch = (country === 'Reino Unido' || country === 'United Kingdom') && (adCountry === 'Reino Unido' || adCountry === 'United Kingdom' || adCountry === 'UK');
+      const matchesCountry = isUkMatch || adCountry === country;
+      return matchesCountry && isActive;
     }).length;
   }, [ads, country]);
 

@@ -9,7 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { Ad, BOAT_TYPES } from '../types';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, clearDocsCache } from '../firebase';
+import { clearHomeCache } from '../utils/cache';
 import { formatPrice, parsePrice } from '../utils';
 
 export interface PresetItem {
@@ -409,7 +410,7 @@ const AdminDemoListings: React.FC = () => {
           imageUrl: item.imageUrl,
           images: item.images,
           city: item.city,
-          country: item.country,
+          country: item.country === 'Portugal' ? 'Portugal' : 'Reino Unido',
           category: item.category,
           sellerId: item.sellerId,
           sellerName: item.sellerName,
@@ -452,6 +453,9 @@ const AdminDemoListings: React.FC = () => {
         type: 'success',
         text: `Success! ${publishedCount} demo/external listing(s) created in Firestore successfully.`
       });
+
+      clearHomeCache();
+      clearDocsCache();
 
       // Refresh duplicate check to show newly published items
       await checkDuplicateListings();

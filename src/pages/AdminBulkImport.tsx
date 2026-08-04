@@ -8,10 +8,28 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-import { Ad, BOAT_TYPES } from '../types';
+import { Ad, BOAT_TYPES, CATEGORIES, getRegionForCity } from '../types';
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, clearDocsCache } from '../firebase';
+import { clearHomeCache } from '../utils/cache';
 import { formatPrice, parsePrice } from '../utils';
+
+function inferConnectBoatCategory(title: string = '', description: string = '', rawCategory: string = ''): string {
+  const text = `${title} ${description} ${rawCategory}`.toLowerCase();
+  if (text.includes('hire') || text.includes('charter') || text.includes('rent')) return 'Boats for Hire';
+  if (text.includes('engine') || text.includes('outboard') || text.includes('motor') || text.includes('yamaha') || text.includes('mercury') || text.includes('honda') || text.includes('tohatsu') || text.includes('mariner') || text.includes('suzuki') || text.includes('hp')) {
+    if (!text.includes('boat') || text.includes('engine for sale') || text.includes('outboard engine')) return 'Boat Engines';
+  }
+  if (text.includes('trailer') || text.includes('reboque')) return 'Trailers';
+  if (text.includes('part') || text.includes('propeller') || text.includes('anchor') || text.includes('fender') || text.includes('rigging') || text.includes('sail')) return 'Boat Parts';
+  if (text.includes('vhf') || text.includes('gps') || text.includes('sonar') || text.includes('radar') || text.includes('chartplotter') || text.includes('electronics')) return 'Marine Electronics';
+  if (text.includes('marina') || text.includes('berth') || text.includes('moor')) return 'Marinas';
+  if (text.includes('service') || text.includes('repair') || text.includes('maintenance') || text.includes('survey')) return 'Boat Services';
+  if (text.includes('wanted') || text.includes('procura-se')) return 'Wanted';
+  if (text.includes('jacket') || text.includes('wetsuit') || text.includes('paddle') || text.includes('accessory') || text.includes('accessories')) return 'Accessories';
+
+  return 'Boats for Sale';
+}
 import { getSourceSiteFromUrl, getSupportedMarketplace } from '../utils/marketplaces';
 import { normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
 import { AdminSearchPageDiscovery } from '../components/AdminSearchPageDiscovery';
@@ -315,17 +333,28 @@ const AdminBulkImport: React.FC = () => {
         const cleanImages = normalizeAndLimitImages(item.images || [item.imageUrl || ''], 6);
         const primaryImage = cleanImages[0] || item.imageUrl || '';
 
+        const normCountry = (item.country && item.country.toLowerCase().includes('portugal')) ? 'Portugal' : 'Reino Unido';
+
+        let cat = item.category || 'Boats for Sale';
+        if (!CATEGORIES.includes(cat) || cat === 'Carros, motos e barcos' || cat === 'Other' || cat === 'Outros') {
+          cat = inferConnectBoatCategory(item.title || '', item.description || '', item.category || '');
+        }
+
         const payload: Partial<Ad> = {
           title: item.title || 'Imported Listing',
           description: item.description || '',
           price: item.price || 0,
-          category: item.category || 'Other',
+          category: cat,
           city: item.city || '',
-          country: item.country || 'United Kingdom',
+          country: normCountry,
+          region: getRegionForCity(item.city || ''),
           imageUrl: primaryImage,
           images: cleanImages,
           status: asDraft ? 'draft' : 'approved',
           adStatus: asDraft ? 'inactive' : 'active',
+          active: !asDraft,
+          approved: !asDraft,
+          published: !asDraft,
           views: 0,
           whatsappClicks: 0,
           createdAt: serverTimestamp(),
@@ -342,6 +371,8 @@ const AdminBulkImport: React.FC = () => {
           externalStatus: 'active',
           importedBy: user?.email || user?.uid || 'admin',
           importedAt: new Date(),
+          sellerId: user?.uid || 'admin',
+          sellerName: user?.displayName || user?.email || 'ConnectBoat Admin',
           // Phone details optional for external imports
           sellerPhone: '',
           contactPhone: '',
@@ -372,6 +403,10 @@ const AdminBulkImport: React.FC = () => {
         // Update item status locally
         setItems(prev => prev.map(i => i.id === item.id ? { ...i, status: asDraft ? 'draft_saved' : 'published', selected: false } : i));
       }
+
+      // Invalidate home and firestore caches so published items appear immediately
+      clearHomeCache();
+      clearDocsCache();
 
       setActionStatus({
         type: 'success',

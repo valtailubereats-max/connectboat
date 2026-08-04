@@ -61,6 +61,23 @@ export const SUPPORTED_MARKETPLACES: SupportedMarketplace[] = [
   }
 ];
 
+function inferConnectBoatCategory(title: string = '', description: string = '', rawCategory: string = ''): string {
+  const text = `${title} ${description} ${rawCategory}`.toLowerCase();
+  if (text.includes('hire') || text.includes('charter') || text.includes('rent')) return 'Boats for Hire';
+  if (text.includes('engine') || text.includes('outboard') || text.includes('motor') || text.includes('yamaha') || text.includes('mercury') || text.includes('honda') || text.includes('tohatsu') || text.includes('mariner') || text.includes('suzuki') || text.includes('hp')) {
+    if (!text.includes('boat') || text.includes('engine for sale') || text.includes('outboard engine')) return 'Boat Engines';
+  }
+  if (text.includes('trailer') || text.includes('reboque')) return 'Trailers';
+  if (text.includes('part') || text.includes('propeller') || text.includes('anchor') || text.includes('fender') || text.includes('rigging') || text.includes('sail')) return 'Boat Parts';
+  if (text.includes('vhf') || text.includes('gps') || text.includes('sonar') || text.includes('radar') || text.includes('chartplotter') || text.includes('electronics')) return 'Marine Electronics';
+  if (text.includes('marina') || text.includes('berth') || text.includes('moor')) return 'Marinas';
+  if (text.includes('service') || text.includes('repair') || text.includes('maintenance') || text.includes('survey')) return 'Boat Services';
+  if (text.includes('wanted') || text.includes('procura-se')) return 'Wanted';
+  if (text.includes('jacket') || text.includes('wetsuit') || text.includes('paddle') || text.includes('accessory') || text.includes('accessories')) return 'Accessories';
+
+  return 'Boats for Sale';
+}
+
 export function getSupportedMarketplace(rawUrl: string): SupportedMarketplace | null {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
 
@@ -1197,7 +1214,7 @@ export default async function handler(req: any, res: any) {
           currency: "EUR",
           priceOnApplication: false,
           priceRequiresReview: false,
-          category: "Carros, motos e barcos",
+          category: "Boats for Sale",
           city: "Faro",
           country: "Portugal",
           locationRequiresReview: false,
@@ -1393,7 +1410,7 @@ export default async function handler(req: any, res: any) {
       parsedCategory = extractMetaContent(responseText, 'category') || '';
     }
 
-    let category = 'Carros, motos e barcos';
+    let category = inferConnectBoatCategory(title, description, parsedCategory);
 
     // Extração de Imagens
     let images: string[] = [];

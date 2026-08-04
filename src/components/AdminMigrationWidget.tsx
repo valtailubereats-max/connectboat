@@ -41,14 +41,14 @@ export const AdminMigrationWidget = () => {
       let blankCount = 0;
       adsSnap.forEach((docSnap) => {
         const data = docSnap.data();
-        if (!data.country) {
+        if (!data.country || data.country === 'United Kingdom' || data.category === 'Carros, motos e barcos') {
           blankCount++;
         }
       });
 
       setTotalAds(adsSnap.size);
       setMissingCountryCount(blankCount);
-      addLog(`Analysis complete: ${blankCount} listings do not have the "country" field.`);
+      addLog(`Analysis complete: ${blankCount} listings require country/category normalization.`);
     } catch (err: any) {
       console.error(err);
       setErrorMessage(`Error analyzing listings: ${err.message || err}`);
@@ -70,12 +70,12 @@ export const AdminMigrationWidget = () => {
 
       adsSnap.forEach((docSnap) => {
         const data = docSnap.data();
-        if (!data.country) {
+        if (!data.country || data.country === 'United Kingdom' || data.category === 'Carros, motos e barcos') {
           oldAdsToMigrate.push(docSnap.id);
         }
       });
 
-      addLog(`Confirmed ${oldAdsToMigrate.length} listings without country field to migrate.`);
+      addLog(`Confirmed ${oldAdsToMigrate.length} listings to normalize.`);
       
       let batch = writeBatch(db);
       let countInBatch = 0;
@@ -84,7 +84,18 @@ export const AdminMigrationWidget = () => {
 
       for (const adId of oldAdsToMigrate) {
         const adRef = doc(db, 'ads', adId);
-        batch.update(adRef, { country: 'United Kingdom' });
+        const docSnap = adsSnap.docs.find(d => d.id === adId);
+        const data = docSnap ? docSnap.data() : {};
+        const updates: any = {};
+
+        if (!data.country || data.country === 'United Kingdom') {
+          updates.country = 'Reino Unido';
+        }
+        if (data.category === 'Carros, motos e barcos') {
+          updates.category = 'Boats for Sale';
+        }
+
+        batch.update(adRef, updates);
         countInBatch++;
         totalUpdated++;
 
