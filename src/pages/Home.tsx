@@ -1484,40 +1484,58 @@ const Home = () => {
 
         {/* 3. ✨ ANÚNCIOS EM DESTAQUE */}
         {filteredFeaturedAds.length > 0 && (
-          <section className="py-2 md:py-4 border-b border-slate-250/20">
-            <div className="flex flex-col gap-0.5 mb-4 text-left">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base sm:text-lg">✨</span>
-                <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                  Featured Marine Listings
-                </h2>
+          <section className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 md:p-6 my-3 shadow-xs">
+            {/* Soft 4-Edge Navy Vignette & Pure White Center Overlay */}
+            <div 
+              className="absolute inset-0 pointer-events-none z-0 rounded-2xl md:rounded-3xl"
+              style={{
+                boxShadow: 'inset 0 0 36px 3px rgba(12, 34, 63, 0.12)',
+                background: 'radial-gradient(ellipse at 50% 50%, #ffffff 30%, rgba(255, 255, 255, 0.96) 55%, rgba(20, 50, 93, 0.05) 80%, rgba(12, 34, 63, 0.14) 100%)'
+              }}
+            />
+            {/* Subtle radial glow behind listing cards */}
+            <div 
+              className="absolute inset-0 pointer-events-none z-0"
+              style={{
+                background: 'radial-gradient(ellipse 80% 60% at 50% 65%, rgba(20, 50, 93, 0.04) 0%, rgba(12, 34, 63, 0.02) 55%, transparent 85%)'
+              }}
+            />
+
+            <div className="relative z-10">
+              <div className="flex flex-col gap-0.5 mb-4 text-left">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base sm:text-lg">✨</span>
+                  <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                    Featured Marine Listings
+                  </h2>
+                </div>
+                <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
+                  Promoted boats, engines, moorings and equipment across the UK
+                </p>
               </div>
-              <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
-                Promoted boats, engines, moorings and equipment across the UK
-              </p>
-            </div>
-            
-            {/* Carrossel Horizontal Responsivo */}
-            <div className="relative w-full overflow-hidden py-1">
-              <div 
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-                onTouchStart={() => setIsHovered(true)}
-                onTouchEnd={() => setIsHovered(false)}
-                className="carouselTrack flex gap-4 md:gap-6"
-                style={{
-                  animationName: (settings?.highlightSpeed !== 0) ? 'scrollCarousel' : 'none',
-                  animationDuration: marqueeData.duration,
-                  animationTimingFunction: 'linear',
-                  animationIterationCount: 'infinite',
-                  animationPlayState: (isHovered || settings?.highlightSpeed === 0) ? 'paused' : 'running',
-                }}
-              >
-                {marqueeData.items.map((ad, idx) => (
-                  <div key={`${ad.id}-${idx}`} className="w-[140px] sm:w-[165px] md:w-[195px] shrink-0">
-                    <AdCard ad={ad} variant="featured" />
-                  </div>
-                ))}
+              
+              {/* Carrossel Horizontal Responsivo */}
+              <div className="relative w-full overflow-hidden py-1">
+                <div 
+                  onMouseEnter={() => setIsHovered(true)}
+                  onMouseLeave={() => setIsHovered(false)}
+                  onTouchStart={() => setIsHovered(true)}
+                  onTouchEnd={() => setIsHovered(false)}
+                  className="carouselTrack flex gap-4 md:gap-6"
+                  style={{
+                    animationName: (settings?.highlightSpeed !== 0) ? 'scrollCarousel' : 'none',
+                    animationDuration: marqueeData.duration,
+                    animationTimingFunction: 'linear',
+                    animationIterationCount: 'infinite',
+                    animationPlayState: (isHovered || settings?.highlightSpeed === 0) ? 'paused' : 'running',
+                  }}
+                >
+                  {marqueeData.items.map((ad, idx) => (
+                    <div key={`${ad.id}-${idx}`} className="w-[140px] sm:w-[165px] md:w-[195px] shrink-0">
+                      <AdCard ad={ad} variant="featured" />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </section>
@@ -1820,30 +1838,48 @@ const Home = () => {
 
         {/* 4. ANÚNCIOS EM DESTAQUE (Carrossel Compacto) */}
         {filteredFeaturedAds.length > 0 && (
-          <section className="w-full border-b border-slate-100 dark:border-slate-800/60 pb-3" id="mobile-featured-section">
-            <div className="flex items-center gap-1.5 mb-2.5 text-left">
-              <span className="text-base">✨</span>
-              <h2 className="text-xs font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                Featured
-              </h2>
-            </div>
-            
-            {/* Esteira horizontal compacta */}
-            <div className="relative w-full overflow-hidden">
-              <div 
-                className="carouselTrack flex gap-3"
-                style={{
-                  animationName: (settings?.highlightSpeed !== 0) ? 'scrollCarousel' : 'none',
-                  animationDuration: marqueeData.duration,
-                  animationTimingFunction: 'linear',
-                  animationIterationCount: 'infinite',
-                }}
-              >
-                {marqueeData.items.map((ad, idx) => (
-                  <div key={`${ad.id}-${idx}`} className="w-[125px] shrink-0">
-                    <AdCard ad={ad} variant="featured" />
-                  </div>
-                ))}
+          <section className="relative w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 my-1 shadow-2xs overflow-hidden" id="mobile-featured-section">
+            {/* Soft 4-Edge Navy Vignette & Pure White Center Overlay */}
+            <div 
+              className="absolute inset-0 pointer-events-none z-0 rounded-2xl"
+              style={{
+                boxShadow: 'inset 0 0 28px 2px rgba(12, 34, 63, 0.12)',
+                background: 'radial-gradient(ellipse at 50% 50%, #ffffff 25%, rgba(255, 255, 255, 0.96) 50%, rgba(20, 50, 93, 0.05) 80%, rgba(12, 34, 63, 0.14) 100%)'
+              }}
+            />
+            {/* Subtle radial glow behind listing cards */}
+            <div 
+              className="absolute inset-0 pointer-events-none z-0"
+              style={{
+                background: 'radial-gradient(ellipse 85% 55% at 50% 60%, rgba(20, 50, 93, 0.04) 0%, rgba(12, 34, 63, 0.02) 55%, transparent 80%)'
+              }}
+            />
+
+            <div className="relative z-10">
+              <div className="flex items-center gap-1.5 mb-2.5 text-left">
+                <span className="text-base">✨</span>
+                <h2 className="text-xs font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                  Featured
+                </h2>
+              </div>
+              
+              {/* Esteira horizontal compacta */}
+              <div className="relative w-full overflow-hidden">
+                <div 
+                  className="carouselTrack flex gap-3"
+                  style={{
+                    animationName: (settings?.highlightSpeed !== 0) ? 'scrollCarousel' : 'none',
+                    animationDuration: marqueeData.duration,
+                    animationTimingFunction: 'linear',
+                    animationIterationCount: 'infinite',
+                  }}
+                >
+                  {marqueeData.items.map((ad, idx) => (
+                    <div key={`${ad.id}-${idx}`} className="w-[125px] shrink-0">
+                      <AdCard ad={ad} variant="featured" />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </section>
