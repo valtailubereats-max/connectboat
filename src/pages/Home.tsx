@@ -1465,15 +1465,15 @@ const Home = () => {
               </div>
             </motion.div>
 
-            {/* Base do Banner: Subtítulo Flutuante sem container na Parte Inferior (Lado Direito) */}
+            {/* Base do Banner: Subtítulo Flutuante sem container na Parte Inferior (Lado Direito) em 2 linhas */}
             {bannerConfig?.enabled !== false && (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }} 
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-auto pt-3 sm:pt-6 w-full flex justify-end text-right"
+                className="mt-auto pt-2 sm:pt-4 w-full flex justify-end text-right"
               >
                 <p 
-                  className="text-xs xs:text-sm sm:text-base md:text-lg font-medium text-white/95 leading-snug sm:leading-normal tracking-wide drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] max-w-[280px] xs:max-w-[340px] sm:max-w-[420px] md:max-w-[480px] text-right"
+                  className="text-xs sm:text-sm md:text-base font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-w-[280px] xs:max-w-[340px] sm:max-w-[420px] md:max-w-[460px] text-right"
                 >
                   Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.
                 </p>
@@ -1674,15 +1674,15 @@ const Home = () => {
               </div>
             </motion.div>
 
-            {/* Base do Banner: Subtítulo Flutuante sem container na Parte Inferior (Lado Direito) */}
+            {/* Base do Banner: Subtítulo Flutuante sem container na Parte Inferior (Lado Direito) em 2 linhas no Mobile */}
             {bannerConfig?.enabled !== false && (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }} 
                 animate={{ opacity: 1, y: 0 }}
-                className="mt-auto pt-3 sm:pt-6 w-full flex justify-end text-right"
+                className="mt-auto pt-2 w-full flex justify-end text-right"
               >
                 <p 
-                  className="text-xs xs:text-sm font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] max-w-[250px] xs:max-w-[290px] sm:max-w-[360px] text-right"
+                  className="text-[11px] xs:text-xs sm:text-sm font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-w-[215px] xs:max-w-[250px] sm:max-w-[300px] text-right"
                 >
                   Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.
                 </p>
