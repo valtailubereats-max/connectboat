@@ -1115,287 +1115,282 @@ const Home = () => {
       {/* 💻 LAYOUT DESKTOP (Aparece apenas em ecrãs médios e superiores) */}
       {/* ============================================================== */}
       <div className="hidden md:flex flex-col gap-4 md:gap-5 max-w-full">
-        {/* 1. BARRA DE PESQUISA PRINCIPAL (Estilo OLX / Mercado Livre / Airbnb) */}
-        <section className="w-full" id="desktop-search-section">
-          <div className="w-full bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-2.5 shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="flex flex-row items-center gap-2.5 w-full">
-              
-              {/* Campo de Pesquisa Textual */}
-              <div className="flex-1 min-w-[200px] h-11 flex items-center gap-2.5 px-3.5 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 rounded-xl border border-slate-200/90 dark:border-slate-700/60 focus-within:ring-2 focus-within:ring-sky-500/20 focus-within:border-sky-500 transition-all">
-                <Search size={16} className="text-slate-400 dark:text-slate-400 shrink-0" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onFocus={() => {
-                    handleSearchFocus();
-                    setIsSearchFocused(true);
-                  }}
-                  onBlur={() => setIsSearchFocused(false)}
-                  placeholder="Search"
-                  className="w-full bg-transparent text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:outline-none text-xs lg:text-sm"
-                />
-                {searchTerm && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchTerm('')}
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-1 font-semibold text-xs"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-
-              {/* Seletor de Categoria */}
-              <div className="relative h-11 w-44 lg:w-52 flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-3.5 transition-all">
-                <Tag size={15} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
-                <select 
-                  value={category} 
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setCategory(val);
-                    setFilterRegion(false);
-                    setFilterNational(false);
-                    setFilterOnline(false);
-                  }} 
-                  className="w-full bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0 truncate"
-                >
-                  <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
-                  {categories.map((c, i) => (
-                    <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
-                  ))}
-                </select>
-                <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
-              </div>
-
-              {/* Seletor de Cidade / Região */}
-              <div className="relative h-11 w-40 lg:w-48 flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 border border-slate-200/90 dark:border-slate-700/60 rounded-xl px-3.5 transition-all">
-                <MapPin size={15} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
-                <select 
-                  value={city} 
-                  onChange={(e) => setCity(e.target.value)} 
-                  className="w-full bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-4 border-none py-0 pl-0 min-w-0 truncate"
-                >
-                  <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
-                  {selectableCitiesOnHome.map((c, i) => (
-                    <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
-                  ))}
-                </select>
-                <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
-              </div>
-
-              {/* Botão de Filtros Avançados */}
-              <button
-                type="button"
-                onClick={() => setFilterDrawerOpen(true)}
-                className={`h-11 flex items-center gap-2 px-3.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer shrink-0 ${
-                  activeMarineFilterCount > 0
-                    ? 'bg-sky-600 text-white border-sky-600 shadow-sm'
-                    : 'bg-slate-50/80 dark:bg-slate-800/60 hover:bg-slate-100/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200/90 dark:border-slate-700/60'
-                }`}
+        {/* 1. BARRA DE PESQUISA PRINCIPAL (Layout Replicado do Mobile) */}
+        <section className="w-full flex flex-col gap-2 bg-transparent" id="desktop-search-section">
+          
+          {/* 3 Dropdowns na Primeira Linha */}
+          <div className="grid grid-cols-3 gap-2 w-full" id="desktop-filters-section">
+            {/* Categoria */}
+            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0 shadow-2xs">
+              <Tag size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
+              <select
+                value={category}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCategory(val);
+                  setFilterRegion(false);
+                  setFilterNational(false);
+                  setFilterOnline(false);
+                }}
+                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
               >
-                <SlidersHorizontal size={14} className="shrink-0" />
-                <span>Filters</span>
-                {activeMarineFilterCount > 0 && (
-                  <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
-                    {activeMarineFilterCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Botão de Pesquisa */}
-              <button
-                type="button"
-                onClick={() => handleSearchFocus()}
-                className="h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-5 rounded-xl transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95 shadow-sm shadow-indigo-600/10 cursor-pointer"
-              >
-                <Search size={15} />
-                <span>Search</span>
-              </button>
-
+                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
+                {categories.map((c, i) => (
+                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
+                ))}
+              </select>
+              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
             </div>
 
-            {/* Chips de Filtros Ativos (Removíveis) */}
-            {(activeMarineFilterCount > 0 || searchTerm || category !== 'Todas' || city !== 'Todas') && (
-              <div className="flex flex-wrap items-center gap-1.5 mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800 text-xs text-left px-1">
-                <span className="text-slate-400 font-extrabold uppercase text-[10px] tracking-wider flex items-center gap-1">
-                  <Filter size={11} /> Filters ({filteredAds.length} found):
+            {/* Cidade / Localização */}
+            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0 shadow-2xs">
+              <MapPin size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
+              >
+                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
+                {selectableCitiesOnHome.map((c, i) => (
+                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
+                ))}
+              </select>
+              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
+            </div>
+
+            {/* Botão de Filtros */}
+            <button
+              type="button"
+              onClick={() => setFilterDrawerOpen(true)}
+              className={`h-11 flex items-center justify-center gap-1.5 px-3 sm:px-3.5 rounded-2xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer min-w-0 truncate shadow-2xs ${
+                activeMarineFilterCount > 0
+                  ? 'bg-sky-600 text-white border-sky-600'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <SlidersHorizontal size={14} className="shrink-0 text-slate-500 dark:text-slate-400" />
+              <span className="truncate">Filters</span>
+              {activeMarineFilterCount > 0 && (
+                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
+                  {activeMarineFilterCount}
                 </span>
-
-                {searchTerm && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-[11px] border border-slate-300 dark:border-slate-700">
-                    Search: "{searchTerm}"
-                    <button onClick={() => setSearchTerm('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {category !== 'Todas' && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 font-extrabold text-[11px] border border-indigo-200 dark:border-indigo-800">
-                    Cat: {category}
-                    <button onClick={() => setCategory('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {city !== 'Todas' && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 font-extrabold text-[11px] border border-rose-200 dark:border-rose-800">
-                    Location: {city}
-                    <button onClick={() => setCity('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {filterBoatType !== 'Todas' && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 font-extrabold text-[11px] border border-sky-200 dark:border-sky-800">
-                    Type: {filterBoatType}
-                    <button onClick={() => setFilterBoatType('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {(filterMinPrice || filterMaxPrice) && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-extrabold text-[11px] border border-emerald-200 dark:border-emerald-800">
-                    Price: {filterMinPrice ? `${country === 'Portugal' ? '€' : '£'}${filterMinPrice}` : '0'} - {filterMaxPrice ? `${country === 'Portugal' ? '€' : '£'}${filterMaxPrice}` : 'Any'}
-                    <button onClick={() => { setFilterMinPrice(''); setFilterMaxPrice(''); }} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {filterManufacturer && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 font-extrabold text-[11px] border border-indigo-200 dark:border-indigo-800">
-                    Make: {filterManufacturer}
-                    <button onClick={() => setFilterManufacturer('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {filterModel && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 font-extrabold text-[11px] border border-indigo-200 dark:border-indigo-800">
-                    Model: {filterModel}
-                    <button onClick={() => setFilterModel('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {(filterMinYear || filterMaxYear) && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-extrabold text-[11px] border border-amber-200 dark:border-amber-800">
-                    Year: {filterMinYear || 'Any'} - {filterMaxYear || 'Any'}
-                    <button onClick={() => { setFilterMinYear(''); setFilterMaxYear(''); }} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {filterCondition !== 'Todas' && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 font-extrabold text-[11px] border border-purple-200 dark:border-purple-800">
-                    Cond: {filterCondition}
-                    <button onClick={() => setFilterCondition('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {(filterMinLength || filterMaxLength) && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 font-extrabold text-[11px] border border-teal-200 dark:border-teal-800">
-                    Length: {filterMinLength ? `${filterMinLength}m` : '0m'} - {filterMaxLength ? `${filterMaxLength}m` : 'Any'}
-                    <button onClick={() => { setFilterMinLength(''); setFilterMaxLength(''); }} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {filterFuelType !== 'Todas' && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 font-extrabold text-[11px] border border-blue-200 dark:border-blue-800">
-                    Fuel: {filterFuelType}
-                    <button onClick={() => setFilterFuelType('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {filterHullMaterial !== 'Todas' && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-[11px] border border-slate-300 dark:border-slate-700">
-                    Hull: {filterHullMaterial}
-                    <button onClick={() => setFilterHullMaterial('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {filterLocationKeyword && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 font-extrabold text-[11px] border border-rose-200 dark:border-rose-800">
-                    Region: {filterLocationKeyword}
-                    <button onClick={() => setFilterLocationKeyword('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {filterMinCabins && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-cyan-100 dark:bg-cyan-950/80 text-cyan-800 dark:text-cyan-300 font-extrabold text-[11px] border border-cyan-200 dark:border-cyan-800">
-                    Cabins: {filterMinCabins}+
-                    <button onClick={() => setFilterMinCabins('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                {filterTrailer !== 'Any' && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-800 dark:text-orange-300 font-extrabold text-[11px] border border-orange-200 dark:border-orange-800">
-                    Trailer: {filterTrailer}
-                    <button onClick={() => setFilterTrailer('Any')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                  </span>
-                )}
-
-                <button
-                  onClick={clearAllFilters}
-                  className="text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 font-black text-[11px] underline underline-offset-2 ml-1 cursor-pointer transition-colors"
-                >
-                  Clear All
-                </button>
-              </div>
-            )}
-
-            {/* Filtro de Área de Atendimento para Categoria Serviços */}
-            {(() => {
-              const isServiceCategory = category === 'Boat Services' || category === 'Serviços' || category?.includes('Services') || category?.includes('Serviços');
-              return isServiceCategory && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="w-full mt-3 border-t border-slate-100 dark:border-slate-800 pt-3"
-                >
-                  <div className="text-left">
-                    <h3 className="text-xs font-black uppercase tracking-wider mb-2 text-slate-500 flex items-center gap-2">
-                      <span>📍</span> Service Coverage Filter
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <label className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800 select-none bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200">
-                        <input 
-                          type="checkbox" 
-                          checked={filterRegion} 
-                          onChange={(e) => setFilterRegion(e.target.checked)}
-                          className="w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
-                        />
-                        <div className="flex flex-col">
-                          <span className="text-xs md:text-sm font-extrabold">Local Area Only</span>
-                          <span className="text-[10px] text-slate-400">Local harbour, marina or county</span>
-                        </div>
-                      </label>
-
-                      <label className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800 select-none bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200">
-                        <input 
-                          type="checkbox" 
-                          checked={filterNational} 
-                          onChange={(e) => setFilterNational(e.target.checked)}
-                          className="w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
-                        />
-                        <div className="flex flex-col">
-                          <span className="text-xs md:text-sm font-extrabold">Nationwide Service</span>
-                          <span className="text-[10px] text-slate-400">Across the entire United Kingdom</span>
-                        </div>
-                      </label>
-
-                      <label className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800 select-none bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200">
-                        <input 
-                          type="checkbox" 
-                          checked={filterOnline} 
-                          onChange={(e) => setFilterOnline(e.target.checked)}
-                          className="w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
-                        />
-                        <div className="flex flex-col">
-                          <span className="text-xs md:text-sm font-extrabold">Online / Remote Service</span>
-                          <span className="text-[10px] text-slate-400">100% remote marine services</span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })()}
+              )}
+            </button>
           </div>
+
+          {/* Campo de Pesquisa Textual na Segunda Linha (Destaque visual com borda azul e brilho suave) */}
+          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white dark:bg-slate-900 rounded-2xl border-2 border-sky-400/90 dark:border-sky-500/80 shadow-[0_0_15px_rgba(2,132,199,0.14)] focus-within:ring-2 focus-within:ring-sky-500/25 transition-all">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => {
+                handleSearchFocus();
+                setIsSearchFocused(true);
+              }}
+              onBlur={() => setIsSearchFocused(false)}
+              placeholder="Search boats, engines, parts, services..."
+              className="w-full bg-transparent text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-1 font-semibold text-xs shrink-0"
+              >
+                ✕
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => handleSearchFocus()}
+              className="w-9 h-9 sm:w-10 sm:h-10 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white rounded-xl flex items-center justify-center shrink-0 transition-all shadow-sm cursor-pointer"
+              aria-label="Search"
+            >
+              <Search size={18} />
+            </button>
+          </div>
+
+          {/* Chips de Filtros Ativos (Removíveis) */}
+          {(activeMarineFilterCount > 0 || searchTerm || category !== 'Todas' || city !== 'Todas') && (
+            <div className="flex flex-wrap items-center gap-1.5 mt-1 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-left px-1">
+              <span className="text-slate-400 font-extrabold uppercase text-[10px] tracking-wider flex items-center gap-1">
+                <Filter size={11} /> Filters ({filteredAds.length} found):
+              </span>
+
+              {searchTerm && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-[11px] border border-slate-300 dark:border-slate-700">
+                  Search: "{searchTerm}"
+                  <button onClick={() => setSearchTerm('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {category !== 'Todas' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 font-extrabold text-[11px] border border-indigo-200 dark:border-indigo-800">
+                  Cat: {category}
+                  <button onClick={() => setCategory('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {city !== 'Todas' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 font-extrabold text-[11px] border border-rose-200 dark:border-rose-800">
+                  Location: {city}
+                  <button onClick={() => setCity('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {filterBoatType !== 'Todas' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 font-extrabold text-[11px] border border-sky-200 dark:border-sky-800">
+                  Type: {filterBoatType}
+                  <button onClick={() => setFilterBoatType('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {(filterMinPrice || filterMaxPrice) && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-extrabold text-[11px] border border-emerald-200 dark:border-emerald-800">
+                  Price: {filterMinPrice ? `${country === 'Portugal' ? '€' : '£'}${filterMinPrice}` : '0'} - {filterMaxPrice ? `${country === 'Portugal' ? '€' : '£'}${filterMaxPrice}` : 'Any'}
+                  <button onClick={() => { setFilterMinPrice(''); setFilterMaxPrice(''); }} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {filterManufacturer && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 font-extrabold text-[11px] border border-indigo-200 dark:border-indigo-800">
+                  Make: {filterManufacturer}
+                  <button onClick={() => setFilterManufacturer('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {filterModel && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 font-extrabold text-[11px] border border-indigo-200 dark:border-indigo-800">
+                  Model: {filterModel}
+                  <button onClick={() => setFilterModel('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {(filterMinYear || filterMaxYear) && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-extrabold text-[11px] border border-amber-200 dark:border-amber-800">
+                  Year: {filterMinYear || 'Any'} - {filterMaxYear || 'Any'}
+                  <button onClick={() => { setFilterMinYear(''); setFilterMaxYear(''); }} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {filterCondition !== 'Todas' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 font-extrabold text-[11px] border border-purple-200 dark:border-purple-800">
+                  Cond: {filterCondition}
+                  <button onClick={() => setFilterCondition('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {(filterMinLength || filterMaxLength) && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 font-extrabold text-[11px] border border-teal-200 dark:border-teal-800">
+                  Length: {filterMinLength ? `${filterMinLength}m` : '0m'} - {filterMaxLength ? `${filterMaxLength}m` : 'Any'}
+                  <button onClick={() => { setFilterMinLength(''); setFilterMaxLength(''); }} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {filterFuelType !== 'Todas' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 font-extrabold text-[11px] border border-blue-200 dark:border-blue-800">
+                  Fuel: {filterFuelType}
+                  <button onClick={() => setFilterFuelType('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {filterHullMaterial !== 'Todas' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-[11px] border border-slate-300 dark:border-slate-700">
+                  Hull: {filterHullMaterial}
+                  <button onClick={() => setFilterHullMaterial('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {filterLocationKeyword && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 font-extrabold text-[11px] border border-rose-200 dark:border-rose-800">
+                  Region: {filterLocationKeyword}
+                  <button onClick={() => setFilterLocationKeyword('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {filterMinCabins && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-cyan-100 dark:bg-cyan-950/80 text-cyan-800 dark:text-cyan-300 font-extrabold text-[11px] border border-cyan-200 dark:border-cyan-800">
+                  Cabins: {filterMinCabins}+
+                  <button onClick={() => setFilterMinCabins('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              {filterTrailer !== 'Any' && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-800 dark:text-orange-300 font-extrabold text-[11px] border border-orange-200 dark:border-orange-800">
+                  Trailer: {filterTrailer}
+                  <button onClick={() => setFilterTrailer('Any')} className="hover:text-red-500 font-black ml-0.5">✕</button>
+                </span>
+              )}
+
+              <button
+                onClick={clearAllFilters}
+                className="text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 font-black text-[11px] underline underline-offset-2 ml-1 cursor-pointer transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+          )}
+
+          {/* Filtro de Área de Atendimento para Categoria Serviços */}
+          {(() => {
+            const isServiceCategory = category === 'Boat Services' || category === 'Serviços' || category?.includes('Services') || category?.includes('Serviços');
+            return isServiceCategory && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="w-full mt-2 border-t border-slate-100 dark:border-slate-800 pt-2.5"
+              >
+                <div className="text-left">
+                  <h3 className="text-xs font-black uppercase tracking-wider mb-2 text-slate-500 flex items-center gap-2">
+                    <span>📍</span> Service Coverage Filter
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <label className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800 select-none bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200">
+                      <input 
+                        type="checkbox" 
+                        checked={filterRegion} 
+                        onChange={(e) => setFilterRegion(e.target.checked)}
+                        className="w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-xs md:text-sm font-extrabold">Local Area Only</span>
+                        <span className="text-[10px] text-slate-400">Local harbour, marina or county</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800 select-none bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200">
+                      <input 
+                        type="checkbox" 
+                        checked={filterNational} 
+                        onChange={(e) => setFilterNational(e.target.checked)}
+                        className="w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-xs md:text-sm font-extrabold">Nationwide Service</span>
+                        <span className="text-[10px] text-slate-400">Across the entire United Kingdom</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800 select-none bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200">
+                      <input 
+                        type="checkbox" 
+                        checked={filterOnline} 
+                        onChange={(e) => setFilterOnline(e.target.checked)}
+                        className="w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-xs md:text-sm font-extrabold">Online / Remote Service</span>
+                        <span className="text-[10px] text-slate-400">100% remote marine services</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()}
         </section>
 
         {/* 2. HERO BANNER LUXURY (Título no topo esquerdo, stats à direita e subtítulo flutuante abaixo do casco) */}
