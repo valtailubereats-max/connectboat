@@ -71,6 +71,41 @@ const Home = () => {
     return luminance > 0.6;
   };
 
+  const getFeaturedSectionTheme = (hexColor: string | undefined, defaultHex: string) => {
+    const colorStr = (hexColor && hexColor.trim()) ? hexColor.trim() : defaultHex;
+    const cleanHex = colorStr.replace('#', '');
+    let fullHex = cleanHex;
+    if (cleanHex.length === 3) {
+      fullHex = cleanHex.split('').map(x => x + x).join('');
+    }
+    
+    let r = parseInt(fullHex.substring(0, 2), 16);
+    let g = parseInt(fullHex.substring(2, 4), 16);
+    let b = parseInt(fullHex.substring(4, 6), 16);
+
+    if (isNaN(r) || isNaN(g) || isNaN(b)) {
+      const fallbackClean = defaultHex.replace('#', '');
+      r = parseInt(fallbackClean.substring(0, 2), 16) || 16;
+      g = parseInt(fallbackClean.substring(2, 4), 16) || 183;
+      b = parseInt(fallbackClean.substring(4, 6), 16) || 199;
+    }
+
+    // Derive a deep dark version of the base color for outer edge vignette
+    const rDark = Math.max(0, Math.round(r * 0.55));
+    const gDark = Math.max(0, Math.round(g * 0.55));
+    const bDark = Math.max(0, Math.round(b * 0.55));
+
+    return {
+      hex: `#${fullHex}`,
+      // 4-edge vignette shadow strictly derived from selected color
+      boxShadow: `inset 0 0 38px 4px rgba(${rDark}, ${gDark}, ${bDark}, 0.22)`,
+      // Radial gradient background starting from pure white (#ffffff) at center and shading to the derived dark edge
+      radialBackground: `radial-gradient(ellipse at 50% 50%, #ffffff 30%, rgba(255, 255, 255, 0.96) 55%, rgba(${r}, ${g}, ${b}, 0.08) 78%, rgba(${rDark}, ${gDark}, ${bDark}, 0.18) 100%)`,
+      // Subtle radial glow behind listing cards
+      glowBackground: `radial-gradient(ellipse 80% 60% at 50% 65%, rgba(${r}, ${g}, ${b}, 0.08) 0%, rgba(${r}, ${g}, ${b}, 0.03) 55%, transparent 85%)`
+    };
+  };
+
   const hasCustomStyles = settings?.searchGroupBgColor !== undefined || settings?.searchGroupOpacity !== undefined;
   
   const customBg = hasCustomStyles 
@@ -1222,7 +1257,7 @@ const Home = () => {
           {/* 3 Dropdowns na Primeira Linha */}
           <div className="grid grid-cols-3 gap-2 w-full" id="desktop-filters-section">
             {/* Categoria */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0 shadow-2xs">
+            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
               <Tag size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
               <select
                 value={category}
@@ -1244,7 +1279,7 @@ const Home = () => {
             </div>
 
             {/* Cidade / Localização */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0 shadow-2xs">
+            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
               <MapPin size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
               <select
                 value={city}
@@ -1263,10 +1298,10 @@ const Home = () => {
             <button
               type="button"
               onClick={() => setFilterDrawerOpen(true)}
-              className={`h-11 flex items-center justify-center gap-1.5 px-3 sm:px-3.5 rounded-2xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer min-w-0 truncate shadow-2xs ${
+              className={`h-11 flex items-center justify-center gap-1.5 px-3 sm:px-3.5 rounded-2xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer min-w-0 truncate ${
                 activeMarineFilterCount > 0
                   ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
               <SlidersHorizontal size={14} className="shrink-0 text-slate-500 dark:text-slate-400" />
@@ -1279,8 +1314,8 @@ const Home = () => {
             </button>
           </div>
 
-          {/* Campo de Pesquisa Textual na Segunda Linha (Destaque visual com borda azul e brilho suave) */}
-          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white dark:bg-slate-900 rounded-2xl border-2 border-sky-400/90 dark:border-sky-500/80 shadow-[0_0_15px_rgba(2,132,199,0.14)] focus-within:ring-2 focus-within:ring-sky-500/25 transition-all">
+          {/* Campo de Pesquisa Textual na Segunda Linha */}
+          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 focus-within:border-sky-500 transition-all">
             <input
               type="text"
               value={searchTerm}
@@ -1496,22 +1531,22 @@ const Home = () => {
 
         {/* 3. ✨ ANÚNCIOS EM DESTAQUE */}
         {filteredFeaturedAds.length > 0 && (() => {
-          const salesColor = settings?.featuredSalesColor || '#0c223f';
+          const salesTheme = getFeaturedSectionTheme(settings?.featuredSalesColor, '#0c223f');
           return (
             <section className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 md:p-6 my-3 shadow-xs">
               {/* Soft 4-Edge Vignette & Pure White Center Overlay */}
               <div 
                 className="absolute inset-0 pointer-events-none z-0 rounded-2xl md:rounded-3xl"
                 style={{
-                  boxShadow: `inset 0 0 36px 3px ${hexToRgba(salesColor, 0.12)}`,
-                  background: `radial-gradient(ellipse at 50% 50%, #ffffff 30%, rgba(255, 255, 255, 0.96) 55%, ${hexToRgba(salesColor, 0.05)} 80%, ${hexToRgba(salesColor, 0.14)} 100%)`
+                  boxShadow: salesTheme.boxShadow,
+                  background: salesTheme.radialBackground
                 }}
               />
               {/* Subtle radial glow behind listing cards */}
               <div 
                 className="absolute inset-0 pointer-events-none z-0"
                 style={{
-                  background: `radial-gradient(ellipse 80% 60% at 50% 65%, ${hexToRgba(salesColor, 0.05)} 0%, ${hexToRgba(salesColor, 0.02)} 55%, transparent 85%)`
+                  background: salesTheme.glowBackground
                 }}
               />
 
@@ -1558,22 +1593,22 @@ const Home = () => {
 
         {/* 4. ⚓ BOATS FOR HIRE SECTION */}
         {(() => {
-          const hireColor = settings?.featuredHireColor || '#10b7c7';
+          const hireTheme = getFeaturedSectionTheme(settings?.featuredHireColor, '#10b7c7');
           return (
             <section className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 md:p-6 my-3 shadow-xs text-left" id="boats-for-hire-section">
               {/* Soft 4-Edge Vignette & Pure White Center Overlay */}
               <div 
                 className="absolute inset-0 pointer-events-none z-0 rounded-2xl md:rounded-3xl"
                 style={{
-                  boxShadow: `inset 0 0 36px 3px ${hexToRgba(hireColor, 0.14)}`,
-                  background: `radial-gradient(ellipse at 50% 50%, #ffffff 30%, rgba(255, 255, 255, 0.96) 55%, ${hexToRgba(hireColor, 0.06)} 80%, ${hexToRgba(hireColor, 0.14)} 100%)`
+                  boxShadow: hireTheme.boxShadow,
+                  background: hireTheme.radialBackground
                 }}
               />
               {/* Subtle radial glow behind content */}
               <div 
                 className="absolute inset-0 pointer-events-none z-0"
                 style={{
-                  background: `radial-gradient(ellipse 80% 60% at 50% 65%, ${hexToRgba(hireColor, 0.06)} 0%, ${hexToRgba(hireColor, 0.03)} 55%, transparent 85%)`
+                  background: hireTheme.glowBackground
                 }}
               />
 
@@ -1800,10 +1835,10 @@ const Home = () => {
         {/* 2. FILTROS DROPDOWNS E BARRA DE PESQUISA MOBILE */}
         <section className="w-full flex flex-col gap-2 bg-transparent" id="mobile-search-section">
           
-          {/* 3 Dropdowns na Mesma Linha (Slightly stronger border, softer than Search Bar) */}
+          {/* 3 Dropdowns na Mesma Linha */}
           <div className="grid grid-cols-3 gap-1.5 xs:gap-2 w-full" id="mobile-filters-section">
             {/* Categoria */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl px-2.5 transition-all min-w-0 shadow-2xs">
+            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-2.5 transition-all min-w-0">
               <Tag size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
               <select
                 value={category}
@@ -1825,7 +1860,7 @@ const Home = () => {
             </div>
 
             {/* Cidade / Localização */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl px-2.5 transition-all min-w-0 shadow-2xs">
+            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-2.5 transition-all min-w-0">
               <MapPin size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
               <select
                 value={city}
@@ -1844,10 +1879,10 @@ const Home = () => {
             <button
               type="button"
               onClick={() => setFilterDrawerOpen(true)}
-              className={`h-11 flex items-center justify-center gap-1.5 px-2 xs:px-2.5 rounded-2xl border text-[11px] xs:text-xs font-semibold transition-all cursor-pointer min-w-0 truncate shadow-2xs ${
+              className={`h-11 flex items-center justify-center gap-1.5 px-2 xs:px-2.5 rounded-2xl border text-[11px] xs:text-xs font-semibold transition-all cursor-pointer min-w-0 truncate ${
                 activeMarineFilterCount > 0
                   ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
               }`}
             >
               <SlidersHorizontal size={14} className="shrink-0 text-slate-500 dark:text-slate-400" />
@@ -1860,8 +1895,8 @@ const Home = () => {
             </button>
           </div>
 
-          {/* Campo de Pesquisa Textual Mobile (Highlight focal element, blue border + soft blue glow) */}
-          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white dark:bg-slate-900 rounded-2xl border-2 border-sky-400/90 dark:border-sky-500/80 shadow-[0_0_15px_rgba(2,132,199,0.14)] focus-within:ring-2 focus-within:ring-sky-500/25 transition-all">
+          {/* Campo de Pesquisa Textual Mobile */}
+          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 focus-within:border-sky-500 transition-all">
             <input
               type="text"
               value={searchTerm}
