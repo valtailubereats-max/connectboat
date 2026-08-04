@@ -92,7 +92,7 @@ export default function AdminBannerEditor() {
     }
   };
 
-  const textEn = currentDeviceConfig.customTextEn || 'Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.';
+  const textEn = currentDeviceConfig.customTextEn || 'Buy, sell and hire boats, yachts, gear & marine services across the United Kingdom.';
   const textPt = currentDeviceConfig.customTextPt || 'Compre, venda e alugue barcos, iates, equipamentos e serviços marítimos.';
 
   return (
@@ -277,7 +277,7 @@ export default function AdminBannerEditor() {
                 rows={3}
                 value={currentDeviceConfig.customTextEn || ''}
                 onChange={(e) => updateDeviceConfig('customTextEn', e.target.value)}
-                placeholder="Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom."
+                placeholder="Buy, sell and hire boats, yachts, gear & marine services across the United Kingdom."
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
             </div>

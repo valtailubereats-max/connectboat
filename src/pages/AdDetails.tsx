@@ -1989,7 +1989,7 @@ const AdDetails = () => {
               <span className="text-lg block mb-1">💬</span>
               <h4 className="text-xs font-bold text-slate-800">No reviews yet</h4>
               <p className="text-[9px] text-slate-400 mt-0.5 leading-normal">
-                Transact safely with the seller and be the first buyer to leave feedback!
+                Transact safely with the seller or hire operator and be the first to leave feedback!
               </p>
             </div>
           )}

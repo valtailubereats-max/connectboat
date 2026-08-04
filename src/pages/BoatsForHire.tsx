@@ -162,8 +162,8 @@ const BoatsForHire = () => {
   return (
     <div className="min-h-screen pb-16 space-y-6 text-left">
       <Helmet>
-        <title>Boats for Hire & Charter | ConnectBoat UK</title>
-        <meta name="description" content="Explore luxury yachts, motorboats, RIBs and powerboats available for hire and charter across the UK. Direct WhatsApp contact with boat owners." />
+        <title>Boats for Hire Across the UK | ConnectBoat</title>
+        <meta name="description" content="Explore motorboats, luxury yachts, RIBs and powerboats available for hire across the UK. Connect directly with boat owners and hire operators on WhatsApp." />
       </Helmet>
 
       {/* Header Banner */}
@@ -186,7 +186,7 @@ const BoatsForHire = () => {
               <Anchor size={22} />
             </div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-brand font-black uppercase tracking-tight text-white">
-              Boats for Hire & Charter
+              Boats for Hire
             </h1>
           </div>
 
@@ -298,7 +298,7 @@ const BoatsForHire = () => {
         <div className="py-20 text-center space-y-3">
           <RefreshCcw className="animate-spin text-sky-600 mx-auto" size={28} />
           <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
-            Loading charter & hire listings...
+            Loading boat hire listings...
           </p>
         </div>
       ) : filteredAds.length > 0 ? (

@@ -110,7 +110,7 @@ const Convite: React.FC = () => {
               <span className="text-slate-900">Boat</span>
             </h1>
             <p className="text-xs uppercase tracking-widest font-black text-slate-400 mt-1">
-              Buy, Sell & Charter Boats
+              Buy, Sell & Hire Boats
             </p>
           </div>
         </div>
@@ -124,7 +124,7 @@ const Convite: React.FC = () => {
             Join the Premier Boat & Marine Marketplace
           </h2>
           <p className="text-slate-600 font-medium leading-relaxed max-w-lg mx-auto md:text-md text-sm">
-            <strong>ConnectBoat</strong> connects boat owners, buyers, brokers, and marine service providers. Post listings, feature your marine business, and connect directly with the boating community.
+            <strong>ConnectBoat</strong> connects boat owners, buyers, sellers, hire operators, brokers, and marine service providers. Post listings, list boats for hire, feature your marine business, and connect directly with the boating community.
           </p>
         </div>
 

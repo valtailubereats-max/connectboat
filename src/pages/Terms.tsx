@@ -13,7 +13,7 @@ const Terms = () => {
     <div className="max-w-4xl mx-auto px-4 py-12">
       <Helmet>
         <title>Terms of Use | ConnectBoat</title>
-        <meta name="description" content="Read the ConnectBoat Terms of Use for buyers, sellers, brokers, and marine service providers." />
+        <meta name="description" content="Read the ConnectBoat Terms of Use for boat buyers, sellers, boat hire operators, brokers, and marine service providers." />
         <link rel="canonical" href="https://connectboat.co.uk/terms" />
         <meta property="og:url" content="https://connectboat.co.uk/terms" />
         <meta property="og:title" content="Terms of Use | ConnectBoat" />
@@ -48,7 +48,7 @@ const Terms = () => {
               <h2 className="text-xl font-bold m-0">1. Nature of the Platform</h2>
             </div>
             <p className="text-slate-600 leading-relaxed">
-              ConnectBoat is an online marine marketplace acting exclusively as a venue connecting boat buyers, sellers, charters, and marine service providers. We are not an e-commerce platform, auction house, or financial institution.
+              ConnectBoat is an online marine marketplace acting exclusively as a venue connecting boat buyers, sellers, boat hire operators, charter brokers, and marine service providers. We are not an e-commerce platform, auction house, or financial institution.
             </p>
           </section>
 

@@ -205,7 +205,7 @@ export default function Precos() {
             <div className="mb-6">
               <h3 className="text-xl font-brand font-black text-slate-900 mb-2">Standard Listing</h3>
               <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Ideal option to sell occasional items, used boats, or simple local services.
+                Ideal option to sell or hire occasional items, boats, or marine services.
               </p>
             </div>
 
@@ -270,7 +270,7 @@ export default function Precos() {
                 ⭐ Local Featured
               </h3>
               <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Boost your local sales by appearing in priority carousels specific to your region.
+                Boost your local visibility by appearing in priority carousels specific to your region.
               </p>
             </div>
 
@@ -335,7 +335,7 @@ export default function Precos() {
                 👑 National Featured
               </h3>
               <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Reach buyers across the entire nation with maximum visibility and national priority.
+                Reach buyers and hirers across the entire nation with maximum visibility and national priority.
               </p>
             </div>
 

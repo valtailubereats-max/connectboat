@@ -84,7 +84,7 @@ const Privacy = () => {
               <h2 className="text-xl font-bold m-0">3. Purpose of Data Usage</h2>
             </div>
             <p className="text-slate-600 leading-relaxed">
-              Data is used exclusively to enable listing publication, account management, and direct communication between buyers and sellers on the ConnectBoat platform.
+              Data is used exclusively to enable listing publication, account management, and direct communication between buyers, sellers, and hirers on the ConnectBoat platform.
             </p>
           </section>
 

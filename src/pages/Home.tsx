@@ -1146,21 +1146,21 @@ const Home = () => {
   return (
     <div className="w-full">
       <Helmet>
-        <title>ConnectBoat - UK Marine & Boat Marketplace</title>
-        <meta name="description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
+        <title>ConnectBoat - Buy, Sell & Hire Boats Across the UK</title>
+        <meta name="description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, hire, and advertise boats, yachts, outboard engines, gear, and marine services." />
         <link rel="canonical" href="https://connectboat.co.uk/" />
         <meta property="og:url" content="https://connectboat.co.uk/" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="ConnectBoat" />
-        <meta property="og:title" content="ConnectBoat - UK Marine & Boat Marketplace" />
-        <meta property="og:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
+        <meta property="og:title" content="ConnectBoat - Buy, Sell & Hire Boats Across the UK" />
+        <meta property="og:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, hire, and advertise boats, yachts, outboard engines, gear, and marine services." />
         <meta property="og:image" content="https://connectboat.co.uk/api/og-image" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="ConnectBoat - UK Marine & Boat Marketplace" />
+        <meta property="og:image:alt" content="ConnectBoat - Buy, Sell & Hire Boats Across the UK" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="ConnectBoat - UK Marine & Boat Marketplace" />
-        <meta name="twitter:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
+        <meta name="twitter:title" content="ConnectBoat - Buy, Sell & Hire Boats Across the UK" />
+        <meta name="twitter:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, hire, and advertise boats, yachts, outboard engines, gear, and marine services." />
         <meta name="twitter:image" content="https://connectboat.co.uk/api/og-image" />
       </Helmet>
       {/* ============================================================== */}
@@ -1244,7 +1244,7 @@ const Home = () => {
                 <p 
                   className="text-xs sm:text-sm md:text-base font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-w-[280px] xs:max-w-[340px] sm:max-w-[420px] md:max-w-[460px] text-right"
                 >
-                  Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.
+                  Buy, sell and hire boats, yachts, marine gear & services across the United Kingdom.
                 </p>
               </motion.div>
             )}
@@ -1622,7 +1622,7 @@ const Home = () => {
                       </h2>
                     </div>
                     <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
-                      Explore luxury yachts, motorboats & RIBs available for charter across the UK
+                      Explore luxury yachts, motorboats & RIBs available for hire across the UK
                     </p>
                   </div>
 
@@ -1825,7 +1825,7 @@ const Home = () => {
                 <p 
                   className="text-[11px] xs:text-xs sm:text-sm font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-w-[215px] xs:max-w-[250px] sm:max-w-[300px] text-right"
                 >
-                  Buy, sell and charter boats, yachts, gear & marine services across the United Kingdom.
+                  Buy, sell and hire boats, yachts, marine gear & services across the United Kingdom.
                 </p>
               </motion.div>
             )}

@@ -2569,11 +2569,11 @@ const CreateAd = () => {
                   <div className="flex items-center gap-2">
                     <Anchor className="text-sky-600 dark:text-sky-400 shrink-0" size={20} />
                     <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                      Boat for Hire & Charter Listing
+                      Boat for Hire Listing
                     </h3>
                   </div>
                   <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-                    Your listing will be published directly in the dedicated <strong>Boats for Hire & Charter</strong> section with direct WhatsApp inquiry connection. Promotion plans for the sales carousel apply exclusively to Boats for Sale.
+                    Your listing will be published directly in the dedicated <strong>Boats for Hire</strong> section with direct WhatsApp inquiry connection. Promotion plans for the sales carousel apply exclusively to Boats for Sale.
                   </p>
                 </div>
               ) : (

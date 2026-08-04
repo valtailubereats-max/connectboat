@@ -861,20 +861,20 @@ export default function App() {
   return (
     <HelmetProvider>
       <Helmet>
-        <title>ConnectBoat - UK Marine & Boat Marketplace</title>
-        <meta name="description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
+        <title>ConnectBoat - Buy, Sell & Hire Boats Across the UK</title>
+        <meta name="description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, hire, and advertise boats, yachts, outboard engines, gear, and marine services." />
         <link rel="canonical" href="https://connectboat.co.uk" />
         <meta property="og:url" content="https://connectboat.co.uk" />
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="ConnectBoat - UK Marine & Boat Marketplace" />
-        <meta property="og:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
+        <meta property="og:title" content="ConnectBoat - Buy, Sell & Hire Boats Across the UK" />
+        <meta property="og:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, hire, and advertise boats, yachts, outboard engines, gear, and marine services." />
         <meta property="og:image" content="https://connectboat.co.uk/api/og-image" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="ConnectBoat - UK Marine & Boat Marketplace" />
+        <meta property="og:image:alt" content="ConnectBoat - Buy, Sell & Hire Boats Across the UK" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="ConnectBoat - UK Marine & Boat Marketplace" />
-        <meta name="twitter:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, and charter boats, yachts, outboard engines, gear, and marine services." />
+        <meta name="twitter:title" content="ConnectBoat - Buy, Sell & Hire Boats Across the UK" />
+        <meta name="twitter:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, hire, and advertise boats, yachts, outboard engines, gear, and marine services." />
         <meta name="twitter:image" content="https://connectboat.co.uk/api/og-image" />
       </Helmet>
       <SettingsProvider>
@@ -948,10 +948,10 @@ export default function App() {
                     </div>
                     <div className="space-y-2">
                       <p className="text-xs font-black uppercase tracking-widest text-sky-600">
-                        Buy, Sell & Charter Boats
+                        Buy, Sell & Hire Boats Across the UK
                       </p>
                       <p className="text-xs text-slate-500 leading-relaxed max-w-sm font-semibold">
-                        The UK's dedicated boat & marine marketplace for vessels, equipment, charters and nautical services.
+                        The UK's dedicated marketplace for boat sales, boat hire, marine equipment, charters and nautical services.
                       </p>
                     </div>
                   </div>

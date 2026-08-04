@@ -66,7 +66,7 @@ const FAQ = () => {
     <div className="max-w-4xl mx-auto px-4 py-12" id="faq-page">
       <Helmet>
         <title>Frequently Asked Questions (FAQ) | ConnectBoat</title>
-        <meta name="description" content="Find answers to common questions about buying, selling, and chartering boats on ConnectBoat." />
+        <meta name="description" content="Find answers to common questions about buying, selling, and hiring boats on ConnectBoat." />
         <link rel="canonical" href="https://connectboat.co.uk/faq" />
         <meta property="og:url" content="https://connectboat.co.uk/faq" />
         <meta property="og:title" content="FAQ | ConnectBoat" />
@@ -108,7 +108,7 @@ const FAQ = () => {
           </div>
           <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">Frequently Asked Questions</h1>
           <p className="text-slate-500 text-sm max-w-lg mx-auto">
-            Find answers to common questions about buying, selling, and advertising on ConnectBoat.
+            Find answers to common questions about buying, selling, hiring, and advertising on ConnectBoat.
           </p>
         </div>
 
