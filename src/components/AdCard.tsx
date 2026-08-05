@@ -610,6 +610,12 @@ const AdCard: React.FC<AdCardProps> = ({
             referrerPolicy="no-referrer"
             style={getCardFramingStyle(ad, { isHovered, listingType: ad.listingType })}
           />
+          {ad.videoPaid && Boolean(ad.videoUrl) && (
+            <div className="absolute bottom-1.5 right-1.5 z-20 bg-slate-900/85 text-white backdrop-blur-md px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 shadow-md border border-white/20 select-none pointer-events-none">
+              <span className="text-xs leading-none">🎥</span>
+              <span className="tracking-tight">Video</span>
+            </div>
+          )}
         </div>
 
         <div className={

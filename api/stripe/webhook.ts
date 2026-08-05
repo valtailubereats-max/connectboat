@@ -112,6 +112,123 @@ function getAdminDb(): admin.firestore.Firestore {
   return dbInstance!;
 }
 
+function getAdminBucket() {
+  const firebaseAdmin = (admin as any).default || admin;
+  getAdminDb();
+  const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'navlink-489413.firebasestorage.app';
+  return firebaseAdmin.storage().bucket(bucketName);
+}
+
+async function finalizeTempVideoStorage(adId: string, adData: any) {
+  const tempPath = adData?.tempVideoPath || (adData?.videoStoragePath?.startsWith('temporary-listing-videos/') ? adData.videoStoragePath : null);
+
+  if (!tempPath) {
+    console.log(`[Stripe Webhook Media Boost] No temporary video path found for ad ${adId}`);
+    return null;
+  }
+
+  try {
+    const bucket = getAdminBucket();
+    const tempFile = bucket.file(tempPath);
+    const [exists] = await tempFile.exists();
+
+    if (!exists) {
+      console.warn(`[Stripe Webhook Media Boost] Temp file ${tempPath} does not exist in bucket`);
+      return null;
+    }
+
+    const fileName = tempPath.split('/').pop() || `video_${Date.now()}.mp4`;
+    const userId = adData.sellerId || adData.userId || 'user';
+    const permPath = `listing-videos/${userId}/${adId}/${fileName}`;
+    const permFile = bucket.file(permPath);
+
+    console.log(`[Stripe Webhook Media Boost] Copying temp video ${tempPath} -> permanent ${permPath}`);
+    await tempFile.copy(permFile);
+
+    try {
+      await permFile.makePublic();
+    } catch (e) {
+      console.warn(`[Stripe Webhook Media Boost] makePublic note:`, e);
+    }
+
+    await tempFile.delete({ ignoreNotFound: true }).catch(e => console.warn(`[Stripe Webhook Media Boost] Could not delete temp file:`, e));
+
+    const encodedPath = encodeURIComponent(permPath);
+    const permUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodedPath}?alt=media`;
+
+    const firebaseAdmin = (admin as any).default || admin;
+
+    return {
+      videoUrl: permUrl,
+      videoStoragePath: permPath,
+      videoPaid: true,
+      mediaBoostEnabled: true,
+      mediaBoostPrice: 2.00,
+      tempVideoPath: firebaseAdmin.firestore.FieldValue.delete(),
+      tempVideoUrl: firebaseAdmin.firestore.FieldValue.delete(),
+    };
+  } catch (err) {
+    console.error(`[Stripe Webhook Media Boost Error] Failed to finalize video storage for ad ${adId}:`, err);
+    return null;
+  }
+}
+
+async function cleanupTempVideoForAd(adId: string) {
+  try {
+    const db = getAdminDb();
+    const adDoc = await db.collection('ads').doc(adId).get();
+    if (!adDoc.exists) return;
+    const adData = adDoc.data() || {};
+
+    if (adData.videoPaid) {
+      console.log(`[Stripe Webhook Cleanup] Ad ${adId} video is already paid. Skipping cleanup.`);
+      return;
+    }
+
+    const tempPath = adData.tempVideoPath || (adData.videoStoragePath?.startsWith('temporary-listing-videos/') ? adData.videoStoragePath : null);
+    if (tempPath) {
+      const bucket = getAdminBucket();
+      await bucket.file(tempPath).delete({ ignoreNotFound: true }).catch(() => {});
+      console.log(`[Stripe Webhook Cleanup] Deleted temporary video ${tempPath} for unpaid/cancelled ad ${adId}`);
+
+      const firebaseAdmin = (admin as any).default || admin;
+      await db.collection('ads').doc(adId).update({
+        mediaBoostEnabled: false,
+        videoUrl: firebaseAdmin.firestore.FieldValue.delete(),
+        videoStoragePath: firebaseAdmin.firestore.FieldValue.delete(),
+        tempVideoPath: firebaseAdmin.firestore.FieldValue.delete(),
+        tempVideoUrl: firebaseAdmin.firestore.FieldValue.delete(),
+      }).catch(() => {});
+    }
+  } catch (err) {
+    console.error(`[Stripe Webhook Cleanup Error] for ad ${adId}:`, err);
+  }
+}
+
+async function cleanupAbandonedTempVideos() {
+  try {
+    const bucket = getAdminBucket();
+    const [files] = await bucket.getFiles({ prefix: 'temporary-listing-videos/' });
+    const now = Date.now();
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+    for (const file of files) {
+      try {
+        const [metadata] = await file.getMetadata();
+        const createdTime = new Date(metadata.timeCreated).getTime();
+        if (now - createdTime > TWO_HOURS_MS) {
+          console.log(`[Temp Video Sweeper] Deleting abandoned temporary video: ${file.name} (created ${metadata.timeCreated})`);
+          await file.delete({ ignoreNotFound: true }).catch(() => {});
+        }
+      } catch (e) {
+        // file check warning ignored
+      }
+    }
+  } catch (e) {
+    // sweep note
+  }
+}
+
 async function getRawBody(req: Request): Promise<Buffer> {
   if ((req as any).rawBody && Buffer.isBuffer((req as any).rawBody)) {
     return (req as any).rawBody;
@@ -206,21 +323,39 @@ export default async function stripeWebhookHandler(req: Request & { rawBody?: Bu
           }
 
           const firebaseAdmin = (admin as any).default || admin;
+          const isMediaBoostPaid = metadata.mediaBoostEnabled === 'true' || metadata.mediaBoostEnabled === '1';
+
+          const updatePayload: Record<string, any> = {
+            plan: activePlan,
+            status: 'approved',
+            isFeatured: isFeatured,
+            featuredLevel: level,
+            expirationDate: firebaseAdmin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
+            featuredUntil: firebaseAdmin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
+            featuredActivatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+            paidAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+          };
+
+          const adDoc = await db.collection('ads').doc(adId).get();
+          const adData = adDoc.data() || {};
+
+          if (isMediaBoostPaid || adData.mediaBoostEnabled || adData.tempVideoPath) {
+            const videoUpdates = await finalizeTempVideoStorage(adId, adData);
+            if (videoUpdates) {
+              Object.assign(updatePayload, videoUpdates);
+            } else {
+              updatePayload.mediaBoostEnabled = true;
+              updatePayload.videoPaid = true;
+              updatePayload.mediaBoostPrice = 2.00;
+            }
+          }
+
           await db.collection('ads').doc(adId).set(
-            {
-              plan: activePlan,
-              status: 'approved',
-              isFeatured: isFeatured,
-              featuredLevel: level,
-              expirationDate: firebaseAdmin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
-              featuredUntil: firebaseAdmin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
-              featuredActivatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
-              paidAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
-            },
+            updatePayload,
             { merge: true }
           );
 
-          console.log(`[Stripe Webhook] Successfully updated ad ${adId} to plan ${activePlan} (featuredLevel: ${level})`);
+          console.log(`[Stripe Webhook] Successfully updated ad ${adId} to plan ${activePlan} (featuredLevel: ${level}, mediaBoostPaid: ${isMediaBoostPaid})`);
 
           // Dispatch confirmation email
           const customerEmail = session.customer_details?.email || session.customer_email;
@@ -279,7 +414,17 @@ export default async function stripeWebhookHandler(req: Request & { rawBody?: Bu
       console.error(`[Stripe Webhook Fulfillment Error]: ${err.message}`, err);
       return res.status(500).send(`Firestore update failed: ${err.message}`);
     }
+  } else if (event && (event.type === 'checkout.session.expired' || event.type === 'payment_intent.payment_failed')) {
+    const session = event.data.object as any;
+    const adId = session?.metadata?.adId;
+    if (adId) {
+      console.log(`[Stripe Webhook] Session expired or payment failed for ad ${adId}. Cleaning up temporary video...`);
+      await cleanupTempVideoForAd(adId);
+    }
   }
+
+  // Trigger non-blocking background cleanup sweep of abandoned temp videos
+  cleanupAbandonedTempVideos().catch(() => {});
 
   return res.status(200).json({ received: true });
 }

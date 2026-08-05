@@ -281,6 +281,18 @@ export interface Ad {
   invitationLastMessage?: string;
   invitationCount?: number;
 
+  // Media Boost Fields
+  mediaBoostEnabled?: boolean;
+  videoUrl?: string | null;
+  videoStoragePath?: string | null;
+  tempVideoPath?: string | null;
+  tempVideoUrl?: string | null;
+  videoDurationSeconds?: number | null;
+  videoFileSize?: number | null;
+  videoMimeType?: string | null;
+  videoPaid?: boolean;
+  mediaBoostPrice?: number;
+
   // Rental / Hire Specific Fields
   listingIntent?: 'sale' | 'hire';
   pricingUnit?: 'Per Hour' | 'Per Half Day' | 'Per Day' | 'Per Week' | string;

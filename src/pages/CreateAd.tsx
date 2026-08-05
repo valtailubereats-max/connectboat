@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { doc, getDoc, setDoc, updateDoc, collection, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType, getDocWithCacheFallback } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
@@ -150,8 +150,151 @@ const CreateAd = () => {
     hullMaterial: prefill?.hullMaterial || '',
     trailerIncluded: prefill?.trailerIncluded || '',
     vatPaid: prefill?.vatPaid || '',
-    ceCertified: prefill?.ceCertified || ''
+    ceCertified: prefill?.ceCertified || '',
+    // Media Boost fields
+    mediaBoostEnabled: false,
+    videoUrl: null as string | null,
+    videoStoragePath: null as string | null,
+    tempVideoPath: null as string | null,
+    tempVideoUrl: null as string | null,
+    videoDurationSeconds: null as number | null,
+    videoFileSize: null as number | null,
+    videoMimeType: null as string | null,
+    videoPaid: false
   });
+
+  // Media Boost Upload States & Handlers
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const uploadTaskRef = useRef<any>(null);
+
+  const handleVideoFileSelect = (file: File) => {
+    setVideoError(null);
+
+    const validMimes = ['video/mp4', 'video/quicktime', 'video/webm'];
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const validExts = ['mp4', 'mov', 'webm'];
+
+    if (!validMimes.includes(file.type) && !validExts.includes(ext)) {
+      setVideoError("Please upload an MP4, MOV or WebM video.");
+      return;
+    }
+
+    if (file.size > 150 * 1024 * 1024) {
+      setVideoError("Video file size must not exceed 150 MB.");
+      return;
+    }
+
+    const videoEl = document.createElement('video');
+    videoEl.preload = 'metadata';
+    const objectUrl = URL.createObjectURL(file);
+    videoEl.src = objectUrl;
+
+    videoEl.onloadedmetadata = () => {
+      URL.revokeObjectURL(objectUrl);
+      const durationSeconds = Math.round(videoEl.duration);
+      if (videoEl.duration > 60) {
+        setVideoError("Video must be 60 seconds or shorter.");
+        return;
+      }
+      startVideoUpload(file, durationSeconds);
+    };
+
+    videoEl.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      setVideoError("Please upload an MP4, MOV or WebM video.");
+    };
+  };
+
+  const startVideoUpload = (file: File, durationSeconds: number) => {
+    if (!user) return;
+    setVideoUploading(true);
+    setVideoUploadProgress(0);
+    setVideoError(null);
+
+    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const isAlreadyPaidOrStaff = isStaff || Boolean(originalAd?.videoPaid);
+    const path = isAlreadyPaidOrStaff
+      ? `listing-videos/${user.uid}/${id || Date.now()}/${cleanFileName}`
+      : `temporary-listing-videos/${user.uid}/${id || Date.now()}/${cleanFileName}`;
+    const storageRef = ref(storage, path);
+
+    const uploadTask = uploadBytesResumable(storageRef, file);
+    uploadTaskRef.current = uploadTask;
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setVideoUploadProgress(Math.round(progress));
+      },
+      (err: any) => {
+        console.error('Video upload error:', err);
+        if (err.code !== 'storage/canceled') {
+          setVideoError('Error uploading video to server. Please try again.');
+        }
+        setVideoUploading(false);
+        uploadTaskRef.current = null;
+      },
+      async () => {
+        try {
+          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          const isTemp = path.startsWith('temporary-listing-videos/');
+          setFormData((prev) => ({
+            ...prev,
+            videoUrl: downloadUrl,
+            videoStoragePath: path,
+            tempVideoPath: isTemp ? path : null,
+            tempVideoUrl: isTemp ? downloadUrl : null,
+            videoDurationSeconds: durationSeconds,
+            videoFileSize: file.size,
+            videoMimeType: file.type || 'video/mp4',
+          }));
+          setVideoUploading(false);
+          setVideoUploadProgress(100);
+        } catch (e) {
+          setVideoError('Error getting video download URL.');
+          setVideoUploading(false);
+        } finally {
+          uploadTaskRef.current = null;
+        }
+      }
+    );
+  };
+
+  const handleCancelVideoUpload = () => {
+    if (uploadTaskRef.current) {
+      uploadTaskRef.current.cancel();
+      uploadTaskRef.current = null;
+    }
+    setVideoUploading(false);
+    setVideoUploadProgress(0);
+  };
+
+  const handleRemoveVideo = async () => {
+    handleCancelVideoUpload();
+    const pathToDelete = formData.tempVideoPath || formData.videoStoragePath;
+    if (pathToDelete) {
+      try {
+        const videoRef = ref(storage, pathToDelete);
+        await deleteObject(videoRef);
+      } catch (e) {
+        console.warn('Could not delete video object:', e);
+      }
+    }
+    setFormData((prev) => ({
+      ...prev,
+      videoUrl: null,
+      videoStoragePath: null,
+      tempVideoPath: null,
+      tempVideoUrl: null,
+      videoDurationSeconds: null,
+      videoFileSize: null,
+      videoMimeType: null,
+    }));
+    setVideoError(null);
+  };
 
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
@@ -171,6 +314,16 @@ const CreateAd = () => {
     if (!formData.city) {
       showValidationError('Please select a city/region.');
       return false;
+    }
+    if (formData.mediaBoostEnabled) {
+      if (videoUploading) {
+        showValidationError('Please wait for the video upload to finish before proceeding.');
+        return false;
+      }
+      if (!formData.videoUrl || videoError) {
+        showValidationError('Please upload a valid video to enable Media Boost, or untick the option to proceed.');
+        return false;
+      }
     }
     setFormError(null);
     return true;
@@ -605,7 +758,17 @@ const CreateAd = () => {
           hullMaterial: data.hullMaterial || '',
           trailerIncluded: data.trailerIncluded || '',
           vatPaid: data.vatPaid || '',
-          ceCertified: data.ceCertified || ''
+          ceCertified: data.ceCertified || '',
+          // Media Boost fields
+          mediaBoostEnabled: !!data.mediaBoostEnabled,
+          videoUrl: data.videoUrl || null,
+          videoStoragePath: data.videoStoragePath || null,
+          tempVideoPath: data.tempVideoPath || null,
+          tempVideoUrl: data.tempVideoUrl || null,
+          videoDurationSeconds: data.videoDurationSeconds || null,
+          videoFileSize: data.videoFileSize || null,
+          videoMimeType: data.videoMimeType || null,
+          videoPaid: !!data.videoPaid
         });
         const loadedFraming = getAdFraming(data);
         setImagePositionX(loadedFraming.x);
@@ -1066,7 +1229,18 @@ const CreateAd = () => {
         hullMaterial: formData.hullMaterial || '',
         trailerIncluded: formData.trailerIncluded || '',
         vatPaid: formData.vatPaid || '',
-        ceCertified: formData.ceCertified || ''
+        ceCertified: formData.ceCertified || '',
+        // Media Boost fields
+        mediaBoostEnabled: !!formData.mediaBoostEnabled,
+        videoUrl: formData.mediaBoostEnabled ? (formData.videoUrl || null) : null,
+        videoStoragePath: formData.mediaBoostEnabled ? (formData.videoStoragePath || null) : null,
+        tempVideoPath: formData.mediaBoostEnabled ? (formData.tempVideoPath || (formData.videoStoragePath?.startsWith('temporary-listing-videos/') ? formData.videoStoragePath : null)) : null,
+        tempVideoUrl: formData.mediaBoostEnabled ? (formData.tempVideoUrl || (formData.videoStoragePath?.startsWith('temporary-listing-videos/') ? formData.videoUrl : null)) : null,
+        videoDurationSeconds: formData.mediaBoostEnabled ? (formData.videoDurationSeconds || null) : null,
+        videoFileSize: formData.mediaBoostEnabled ? (formData.videoFileSize || null) : null,
+        videoMimeType: formData.mediaBoostEnabled ? (formData.videoMimeType || null) : null,
+        videoPaid: isStaff ? true : (originalAd?.videoPaid ? true : false),
+        mediaBoostPrice: 2.00
       };
 
       // Preservar metadados de anúncios importados/externos/reivindicáveis
@@ -1267,6 +1441,7 @@ const CreateAd = () => {
           userId: user?.uid,
           userEmail: user?.email,
           adId: finalizedId,
+          mediaBoostEnabled: !!formData.mediaBoostEnabled && (!originalAd || !originalAd.videoPaid),
           successUrl: `${window.location.origin}/create-ad?stripe_success=true&ad_id=${finalizedId}&plan=${activePlan}`,
           cancelUrl: `${window.location.origin}/create-ad?stripe_cancel=true`
         })
@@ -1857,6 +2032,139 @@ const CreateAd = () => {
                         Reset
                       </button>
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Media Boost Optional Add-on Block */}
+              <div className="p-6 bg-gradient-to-br from-indigo-50/80 via-white to-sky-50/60 border-2 border-indigo-200/90 rounded-3xl space-y-4 shadow-sm relative overflow-hidden">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="bg-indigo-600 text-white p-1.5 rounded-xl text-xs font-black shadow-sm flex items-center justify-center">
+                        📹
+                      </span>
+                      <h3 className="text-base font-black text-slate-900">
+                        Media Boost — +£2.00
+                      </h3>
+                      <span className="text-[10px] font-extrabold bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        Optional Extra
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 font-medium max-w-xl leading-relaxed">
+                      “Add a video of up to 60 seconds to showcase your boat and increase buyer or renter confidence.”
+                    </p>
+                  </div>
+
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1 select-none">
+                    <input
+                      type="checkbox"
+                      checked={formData.mediaBoostEnabled}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFormData(prev => ({ ...prev, mediaBoostEnabled: checked }));
+                        if (!checked && videoUploading) {
+                          handleCancelVideoUpload();
+                        }
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
+                {formData.mediaBoostEnabled && (
+                  <div className="pt-4 border-t border-indigo-100/90 space-y-3">
+                    {formData.videoUrl ? (
+                      <div className="p-4 bg-white border border-indigo-200 rounded-2xl flex items-center justify-between gap-4 shadow-sm">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 shrink-0 text-xl">
+                            🎬
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 truncate">Video attached to listing</p>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium flex-wrap mt-0.5">
+                              {formData.videoDurationSeconds && <span>⏱️ {formData.videoDurationSeconds}s</span>}
+                              {formData.videoFileSize && <span>• 📁 {(formData.videoFileSize / (1024 * 1024)).toFixed(1)} MB</span>}
+                              <span className="text-emerald-600 font-bold">✅ Video Ready</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <a
+                            href={formData.videoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-xl transition-all"
+                          >
+                            Preview
+                          </a>
+                          <button
+                            type="button"
+                            onClick={handleRemoveVideo}
+                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-xl transition-all"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : videoUploading ? (
+                      <div className="p-4 bg-white border border-indigo-200 rounded-2xl space-y-2.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-700 flex items-center gap-2">
+                            <RefreshCcw className="animate-spin text-indigo-600" size={14} />
+                            Uploading video... {videoUploadProgress}%
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleCancelVideoUpload}
+                            className="text-xs font-bold text-rose-600 hover:underline"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-indigo-600 transition-all duration-300"
+                            style={{ width: `${videoUploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <label className="block border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-white hover:bg-indigo-50/40 rounded-2xl p-6 text-center cursor-pointer transition-all">
+                          <input
+                            type="file"
+                            accept="video/mp4,video/quicktime,video/webm"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleVideoFileSelect(file);
+                              e.target.value = '';
+                            }}
+                            className="hidden"
+                          />
+                          <div className="flex flex-col items-center gap-1.5">
+                            <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600">
+                              <Upload size={20} />
+                            </div>
+                            <p className="text-xs font-bold text-slate-800">
+                              Click to upload video
+                            </p>
+                            <p className="text-[11px] text-slate-500 font-medium">
+                              MP4, MOV or WebM • Max 60 seconds • Max 150 MB
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+                    )}
+
+                    {videoError && (
+                      <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-bold flex items-center gap-2">
+                        <AlertCircle size={16} className="shrink-0" />
+                        <span>{videoError}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2700,6 +3008,47 @@ const CreateAd = () => {
                 )}
               </div>
 
+              {/* Order Summary Breakdown */}
+              <div className="p-6 bg-slate-50/80 border-2 border-slate-200/80 rounded-3xl space-y-3">
+                <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <span>💳</span> Order Summary
+                </h4>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between font-medium text-slate-700">
+                    <span>
+                      {formData.plan === 'premium' ? 'Premium Featured Listing' : formData.plan === 'featured' ? 'Featured Listing' : 'Standard Listing'} (30 Days)
+                    </span>
+                    <span className="font-bold text-slate-900">
+                      £{formData.plan === 'premium' ? '9.99' : formData.plan === 'featured' ? '4.99' : '2.99'}
+                    </span>
+                  </div>
+
+                  {formData.mediaBoostEnabled && (
+                    <div className="flex items-center justify-between font-medium text-slate-700">
+                      <span className="flex items-center gap-1.5 text-indigo-700 font-bold">
+                        <span>📹</span> Media Boost — 60s Video Extra
+                      </span>
+                      <span className="font-bold text-indigo-600">
+                        {originalAd?.videoPaid ? 'Included (Paid)' : '£2.00'}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-sm font-black text-slate-900">
+                    <span>Total Payment</span>
+                    <span className="text-indigo-600 text-lg">
+                      £{
+                        (
+                          (formData.plan === 'premium' ? 9.99 : formData.plan === 'featured' ? 4.99 : 2.99) +
+                          (formData.mediaBoostEnabled && !originalAd?.videoPaid ? 2.00 : 0)
+                        ).toFixed(2)
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {formError && (
                 <div className="p-4 bg-rose-50 border-2 border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between text-xs font-bold">
                   <span>{formError}</span>
@@ -2872,6 +3221,14 @@ const CreateAd = () => {
                       {formData.plan === 'premium' ? '£9.99' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? '£4.99' : '£2.99'}
                     </span>
                   </div>
+                  {formData.mediaBoostEnabled && (
+                    <div className="flex justify-between text-xs text-slate-600">
+                      <span className="font-bold text-indigo-700">Media Boost — Listing Video (60s)</span>
+                      <span className="font-bold text-indigo-600">
+                        {originalAd?.videoPaid ? 'Paid' : '£2.00'}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-xs text-slate-600">
                     <span>Fees & processing</span>
                     <span className="font-semibold text-emerald-600">Free</span>
@@ -2879,7 +3236,12 @@ const CreateAd = () => {
                   <div className="border-t border-slate-200/50 pt-2 flex justify-between text-sm font-bold text-slate-900">
                     <span>Total due</span>
                     <span className="text-indigo-600">
-                      {formData.plan === 'premium' ? '£9.99' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? '£4.99' : '£2.99'}
+                      £{
+                        (
+                          (formData.plan === 'premium' ? 9.99 : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? 4.99 : 2.99) +
+                          (formData.mediaBoostEnabled && !originalAd?.videoPaid ? 2.00 : 0)
+                        ).toFixed(2)
+                      }
                     </span>
                   </div>
                 </div>

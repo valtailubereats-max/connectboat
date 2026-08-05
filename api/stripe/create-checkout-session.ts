@@ -32,6 +32,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       adId,
       showcaseData,
       selectedAddOns,
+      mediaBoostEnabled,
       successUrl,
       cancelUrl
     } = req.body || {};
@@ -95,7 +96,34 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       });
     }
 
-    const totalAmountCents = amountCents + addOnsExtraCents;
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      {
+        price_data: {
+          currency,
+          product_data: {
+            name: productName,
+            description: productDescription,
+          },
+          unit_amount: amountCents + addOnsExtraCents,
+        },
+        quantity: 1,
+      },
+    ];
+
+    const hasMediaBoost = !!mediaBoostEnabled;
+    if (hasMediaBoost) {
+      lineItems.push({
+        price_data: {
+          currency,
+          product_data: {
+            name: 'Media Boost — 60-second listing video',
+            description: `Optional paid extra (${currencySymbol}2.00) to showcase video on listing`,
+          },
+          unit_amount: 200,
+        },
+        quantity: 1,
+      });
+    }
 
     const metadata: Record<string, string> = {
       itemType: String(itemType),
@@ -103,6 +131,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       adId: String(adId || ''),
       plan: String(activePlan),
       country: String(country || ''),
+      mediaBoostEnabled: hasMediaBoost ? 'true' : 'false',
     };
 
     if (Array.isArray(selectedAddOns) && selectedAddOns.length > 0) {
@@ -119,23 +148,8 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      managed_payments: {
-        enabled: false,
-      },
       customer_email: userEmail && typeof userEmail === 'string' && userEmail.includes('@') ? userEmail : undefined,
-      line_items: [
-        {
-          price_data: {
-            currency,
-            product_data: {
-              name: productName,
-              description: productDescription,
-            },
-            unit_amount: totalAmountCents,
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       metadata,
       success_url: successUrl || `${req.headers.origin || 'http://localhost:3000'}?stripe_success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl || `${req.headers.origin || 'http://localhost:3000'}?stripe_cancel=true`,
