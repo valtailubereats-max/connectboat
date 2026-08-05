@@ -295,11 +295,11 @@ const Navbar = () => {
 
   return (
     <nav ref={navRef} className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
-          <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2 sm:gap-3 group">
-            <ConnectBoatLogo className="h-9 sm:h-10 w-auto shrink-0" />
-            <span className="text-[23px] sm:text-[28px] font-black tracking-tight leading-none text-white select-none">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16 items-center gap-2">
+          <Link to="/" onClick={handleLogoClick} className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 group shrink min-w-0 overflow-hidden">
+            <ConnectBoatLogo className="h-7 xs:h-8 sm:h-10 w-auto shrink-0 text-white" />
+            <span className="text-[18px] xs:text-[22px] sm:text-[28px] font-black tracking-tight leading-none text-white select-none truncate">
               ConnectBoat
             </span>
           </Link>
@@ -600,29 +600,29 @@ const Navbar = () => {
           </div>
 
           {/* Mobile Menu */}
-          <div className="md:hidden flex items-center gap-3">
+          <div className="md:hidden flex items-center gap-1 xs:gap-2.5 shrink-0">
             <button 
               onClick={handlePublishClick} 
               title="Post Listing" 
-              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-1.5 cursor-pointer hover:bg-slate-800 rounded-xl"
+              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-1 xs:p-1.5 cursor-pointer hover:bg-slate-800 rounded-xl"
             >
-              <Plus size={20}/>
+              <Plus size={18} className="xs:w-5 xs:h-5" />
               <span className="text-[9px] font-bold tracking-tight mt-0.5 leading-none">Post</span>
             </button>
             <button 
               onClick={handleShare} 
               title="Share"
-              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-1.5 cursor-pointer hover:bg-slate-800 rounded-xl"
+              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-1 xs:p-1.5 cursor-pointer hover:bg-slate-800 rounded-xl"
             >
-              <Share2 size={20}/>
+              <Share2 size={18} className="xs:w-5 xs:h-5" />
               <span className="text-[9px] font-bold tracking-tight mt-0.5 leading-none">Share</span>
             </button>
             <button 
               onClick={() => setIsOpen(!isOpen)} 
               title="Menu"
-              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-1.5 cursor-pointer hover:bg-slate-800 rounded-xl"
+              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-1 xs:p-1.5 cursor-pointer hover:bg-slate-800 rounded-xl"
             >
-              {isOpen ? <X size={20}/> : <Menu size={20}/>}
+              {isOpen ? <X size={18} className="xs:w-5 xs:h-5" /> : <Menu size={18} className="xs:w-5 xs:h-5" />}
               <span className="text-[9px] font-bold tracking-tight mt-0.5 leading-none">Menu</span>
             </button>
           </div>
