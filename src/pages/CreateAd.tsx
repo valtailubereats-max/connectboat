@@ -1453,22 +1453,32 @@ const CreateAd = () => {
 
   const isBoatCategory = useMemo(() => {
     if (!formData.category) return true;
-    const cat = formData.category;
-    return (
-      cat === 'Barcos a Motor' ||
-      cat === 'Veleiros' ||
-      cat === 'Pequenas Embarcações' ||
-      cat === 'Jet Skis' ||
-      cat === 'Iates / Superyachts' ||
-      cat === 'Outros'
-    );
+    const cat = formData.category.trim();
+    const nonBoatCategories = [
+      'Boat Parts',
+      'Boat Engines',
+      'Marine Electronics',
+      'Trailers',
+      'Marinas',
+      'Boat Services',
+      'Accessories',
+      'Jobs & Crew',
+      'Wanted',
+      'Peças & Acessórios',
+      'Motores',
+      'Electrónica Marítima',
+      'Serviços',
+      'Trabalho/Empregos',
+      'Imigração'
+    ];
+    return !nonBoatCategories.includes(cat);
   }, [formData.category]);
 
-  const isEngineCategory = formData.category === 'Motores';
-  const isPartsCategory = formData.category === 'Peças & Acessórios' || formData.category === 'Electrónica Marítima';
-  const isJobCategory = formData.category === 'Trabalho/Empregos';
+  const isEngineCategory = formData.category === 'Boat Engines' || formData.category === 'Motores';
+  const isPartsCategory = formData.category === 'Boat Parts' || formData.category === 'Marine Electronics' || formData.category === 'Trailers' || formData.category === 'Accessories' || formData.category === 'Peças & Acessórios' || formData.category === 'Electrónica Marítima';
+  const isJobCategory = formData.category === 'Jobs & Crew' || formData.category === 'Trabalho/Empregos' || formData.category === 'Boat Jobs';
   const isImmigrationCategory = formData.category === 'Imigração';
-  const isServiceCategory = formData.category === 'Serviços' || formData.category?.startsWith('Serviços') || formData.category?.includes('Serviços');
+  const isServiceCategory = formData.category === 'Boat Services' || formData.category === 'Marinas' || formData.category === 'Serviços' || formData.category?.startsWith('Serviços') || formData.category?.includes('Serviços');
   const isDonationCategory = formData.category === '💚 Doações & Solidariedade';
 
   if (fetching) return <div className="text-center py-20">Loading...</div>;
