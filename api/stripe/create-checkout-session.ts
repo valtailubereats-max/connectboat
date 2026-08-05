@@ -148,6 +148,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       mode: 'payment',
       customer_email: userEmail && typeof userEmail === 'string' && userEmail.includes('@') ? userEmail : undefined,
       line_items: lineItems,
+      automatic_tax: {
+        enabled: false,
+      },
       metadata,
       success_url: successUrl || `${req.headers.origin || 'http://localhost:3000'}?stripe_success=true&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl || `${req.headers.origin || 'http://localhost:3000'}?stripe_cancel=true`,
