@@ -31,6 +31,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       userEmail,
       adId,
       showcaseData,
+      selectedAddOns,
       successUrl,
       cancelUrl
     } = req.body || {};
@@ -57,29 +58,56 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
     let productName = '';
     let productDescription = '';
-    let amountCents = 499;
+    let amountCents = 299;
 
-    if (itemType === 'featured_ad') {
-      const isNational = plan === 'national';
-      amountCents = isNational ? 799 : 499;
-      productName = `ConnectBoat - ${isNational ? 'Featured National' : 'Featured Local'} Listing`;
-      productDescription = `30-day highlight boost (${currencySymbol}${(amountCents / 100).toFixed(2)}) for listing ${adId ? '#' + adId : ''}`.trim();
+    // Calculate base plan price
+    const activePlan = (plan || 'standard').toLowerCase();
+    if (activePlan === 'premium') {
+      amountCents = 999;
+      productName = 'ConnectBoat - Premium Featured Listing';
+      productDescription = `30-day top priority exposure & premium badge (${currencySymbol}9.99) for listing ${adId ? '#' + adId : ''}`.trim();
+    } else if (activePlan === 'featured' || activePlan === 'national' || activePlan === 'local') {
+      amountCents = 499;
+      productName = 'ConnectBoat - Featured Listing';
+      productDescription = `30-day homepage highlight & featured badge (${currencySymbol}4.99) for listing ${adId ? '#' + adId : ''}`.trim();
+    } else if (activePlan === 'standard' || activePlan === 'free') {
+      amountCents = 299;
+      productName = 'ConnectBoat - Standard Listing';
+      productDescription = `30-day active listing (${currencySymbol}2.99) for listing ${adId ? '#' + adId : ''}`.trim();
     } else if (itemType === 'digital_showcase') {
       amountCents = 899;
       const name = showcaseData?.showcaseName || 'Business Showcase';
       productName = `ConnectBoat - Digital Showcase (${name})`;
       productDescription = `Monthly Digital Showcase subscription (${currencySymbol}8.99/month)`;
     } else {
-      return res.status(400).json({ success: false, error: 'Invalid itemType specified' });
+      amountCents = 299;
+      productName = 'ConnectBoat - Standard Listing';
+      productDescription = `30-day active listing (${currencySymbol}2.99)`;
     }
+
+    // Add optional add-ons calculation if provided
+    let addOnsExtraCents = 0;
+    if (Array.isArray(selectedAddOns) && selectedAddOns.length > 0) {
+      selectedAddOns.forEach((addon: any) => {
+        if (typeof addon === 'object' && addon.price) {
+          addOnsExtraCents += Math.round(Number(addon.price) * 100);
+        }
+      });
+    }
+
+    const totalAmountCents = amountCents + addOnsExtraCents;
 
     const metadata: Record<string, string> = {
       itemType: String(itemType),
       userId: String(userId || ''),
       adId: String(adId || ''),
-      plan: String(plan || ''),
+      plan: String(activePlan),
       country: String(country || ''),
     };
+
+    if (Array.isArray(selectedAddOns) && selectedAddOns.length > 0) {
+      metadata.addOnsJson = JSON.stringify(selectedAddOns);
+    }
 
     if (showcaseData) {
       try {
@@ -103,7 +131,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
               name: productName,
               description: productDescription,
             },
-            unit_amount: amountCents,
+            unit_amount: totalAmountCents,
           },
           quantity: 1,
         },

@@ -1353,12 +1353,10 @@ const Profile = () => {
                   return 'Featured 24h';
                 }
                 const isPaidPlan =
-                  ['local', 'national', 'highlight', 'intermediate', 'premium', 'featured'].includes(ad.plan || '') ||
-                  ad.featuredLevel === 'local' ||
-                  ad.featuredLevel === 'national';
+                  ['standard', 'featured', 'premium', 'local', 'national', 'highlight', 'intermediate'].includes(ad.plan || '') ||
+                  ad.isFeatured;
 
                 if (isPaidPlan) return 'Featured 30 days';
-                if (ad.plan === 'free' || !ad.plan) return 'Featured 24h';
                 return 'Featured 30 days';
               };
 

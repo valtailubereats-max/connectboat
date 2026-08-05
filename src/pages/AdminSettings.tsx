@@ -159,9 +159,9 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
       } else {
         const defaultSettings: MarketplaceSettings = {
           id: 'global',
-          planDurations: { free: 30, local: 30, national: 30, showcase: 30, intermediate: 180, premium: 365 },
-          planPrices: { local: 4.99, national: 7.99, showcase: 8.99 },
-          maxImages: { free: 2, local: 4, national: 6, showcase: 6, intermediate: 3, premium: 5 },
+          planDurations: { standard: 30, featured: 30, premium: 30, free: 30, local: 30, national: 30, showcase: 30, intermediate: 180 },
+          planPrices: { standard: 2.99, featured: 4.99, premium: 9.99, local: 4.99, national: 7.99, showcase: 8.99 },
+          maxImages: { standard: 4, featured: 6, premium: 10, free: 2, local: 4, national: 6, showcase: 6, intermediate: 3 },
           maxShowcaseProducts: 6,
           expirationAction: 'archive',
           warningDays: 3,
@@ -297,43 +297,56 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
           </div>
 
           <div className="space-y-6">
-            {/* Anúncio Gratuito */}
-            <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-4">
-              <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
-                <span>⚪</span> Anúncio Gratuito
+            {/* Standard Listing */}
+            <div className="p-5 bg-emerald-50/20 rounded-2xl border border-emerald-100 space-y-4">
+              <h3 className="text-sm font-black text-emerald-700 uppercase tracking-widest flex items-center gap-2">
+                <span>⚓</span> Standard Listing
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Valor (£ / €)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={settings.planPrices?.standard ?? 2.99}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      planPrices: { ...settings.planPrices, standard: parseFloat(e.target.value) || 0 }
+                    })}
+                    className="w-full px-4 py-2.5 bg-white border border-emerald-200 rounded-xl focus:border-emerald-500 outline-none transition-all font-bold text-sm"
+                  />
+                </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500">Duração (Dias)</label>
                   <input
                     type="number"
-                    value={settings.planDurations.free}
+                    value={settings.planDurations.standard ?? 30}
                     onChange={(e) => setSettings({
                       ...settings,
-                      planDurations: { ...settings.planDurations, free: parseInt(e.target.value) || 0 }
+                      planDurations: { ...settings.planDurations, standard: parseInt(e.target.value) || 0 }
                     })}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all font-bold text-sm"
+                    className="w-full px-4 py-2.5 bg-white border border-emerald-200 rounded-xl focus:border-emerald-500 outline-none transition-all font-bold text-sm"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500">Máximo de Fotos</label>
                   <input
                     type="number"
-                    value={settings.maxImages.free}
+                    value={settings.maxImages.standard ?? 6}
                     onChange={(e) => setSettings({
                       ...settings,
-                      maxImages: { ...settings.maxImages, free: parseInt(e.target.value) || 0 }
+                      maxImages: { ...settings.maxImages, standard: parseInt(e.target.value) || 0 }
                     })}
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all font-bold text-sm"
+                    className="w-full px-4 py-2.5 bg-white border border-emerald-200 rounded-xl focus:border-emerald-500 outline-none transition-all font-bold text-sm"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Destaque Local */}
+            {/* Featured Listing */}
             <div className="p-5 bg-amber-50/20 rounded-2xl border border-amber-100 space-y-4">
               <h3 className="text-sm font-black text-amber-700 uppercase tracking-widest flex items-center gap-2">
-                <span>⭐</span> Destaque Local
+                <span>⭐</span> Featured Listing
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
@@ -341,10 +354,10 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <input
                     type="number"
                     step="0.01"
-                    value={settings.planPrices?.local ?? 4.99}
+                    value={settings.planPrices?.featured ?? 4.99}
                     onChange={(e) => setSettings({
                       ...settings,
-                      planPrices: { ...settings.planPrices, local: parseFloat(e.target.value) || 0 }
+                      planPrices: { ...settings.planPrices, featured: parseFloat(e.target.value) || 0 }
                     })}
                     className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl focus:border-amber-500 outline-none transition-all font-bold text-sm"
                   />
@@ -353,10 +366,10 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <label className="text-xs font-bold text-slate-500">Duração (Dias)</label>
                   <input
                     type="number"
-                    value={settings.planDurations.local}
+                    value={settings.planDurations.featured ?? 30}
                     onChange={(e) => setSettings({
                       ...settings,
-                      planDurations: { ...settings.planDurations, local: parseInt(e.target.value) || 0 }
+                      planDurations: { ...settings.planDurations, featured: parseInt(e.target.value) || 0 }
                     })}
                     className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl focus:border-amber-500 outline-none transition-all font-bold text-sm"
                   />
@@ -365,10 +378,10 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <label className="text-xs font-bold text-slate-500">Máximo de Fotos</label>
                   <input
                     type="number"
-                    value={settings.maxImages.local}
+                    value={settings.maxImages.featured ?? 10}
                     onChange={(e) => setSettings({
                       ...settings,
-                      maxImages: { ...settings.maxImages, local: parseInt(e.target.value) || 0 }
+                      maxImages: { ...settings.maxImages, featured: parseInt(e.target.value) || 0 }
                     })}
                     className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl focus:border-amber-500 outline-none transition-all font-bold text-sm"
                   />
@@ -376,10 +389,10 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
               </div>
             </div>
 
-            {/* Destaque Nacional */}
+            {/* Premium Featured */}
             <div className="p-5 bg-indigo-50/20 rounded-2xl border border-indigo-100 space-y-4">
               <h3 className="text-sm font-black text-indigo-700 uppercase tracking-widest flex items-center gap-2">
-                <span>👑</span> Destaque Nacional
+                <span>👑</span> Premium Featured
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
@@ -387,10 +400,10 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <input
                     type="number"
                     step="0.01"
-                    value={settings.planPrices?.national ?? 7.99}
+                    value={settings.planPrices?.premium ?? 9.99}
                     onChange={(e) => setSettings({
                       ...settings,
-                      planPrices: { ...settings.planPrices, national: parseFloat(e.target.value) || 0 }
+                      planPrices: { ...settings.planPrices, premium: parseFloat(e.target.value) || 0 }
                     })}
                     className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold text-sm"
                   />
@@ -399,10 +412,10 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <label className="text-xs font-bold text-slate-500">Duração (Dias)</label>
                   <input
                     type="number"
-                    value={settings.planDurations.national}
+                    value={settings.planDurations.premium ?? 30}
                     onChange={(e) => setSettings({
                       ...settings,
-                      planDurations: { ...settings.planDurations, national: parseInt(e.target.value) || 0 }
+                      planDurations: { ...settings.planDurations, premium: parseInt(e.target.value) || 0 }
                     })}
                     className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold text-sm"
                   />
@@ -411,10 +424,10 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <label className="text-xs font-bold text-slate-500">Máximo de Fotos</label>
                   <input
                     type="number"
-                    value={settings.maxImages.national}
+                    value={settings.maxImages.premium ?? 15}
                     onChange={(e) => setSettings({
                       ...settings,
-                      maxImages: { ...settings.maxImages, national: parseInt(e.target.value) || 0 }
+                      maxImages: { ...settings.maxImages, premium: parseInt(e.target.value) || 0 }
                     })}
                     className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold text-sm"
                   />

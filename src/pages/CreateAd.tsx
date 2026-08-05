@@ -1119,13 +1119,14 @@ const CreateAd = () => {
         }
       }
 
-      // STRICT RULE: Boats for Hire are published exclusively in the Hire section and NEVER in the Featured Sale carousel
+      // Boats for Hire will be featured in the dedicated Boats for Hire section if plan is featured/premium
       if (formData.listingIntent === 'hire' || formData.category === 'Boats for Hire') {
-        adData.isFeatured = false;
-        adData.isPermanentFeatured = false;
-        adData.plan = 'normal';
-        delete adData.featuredLevel;
-        delete adData.featuredUntil;
+        if (formData.plan === 'featured' || formData.plan === 'premium' || formData.plan === 'local' || formData.plan === 'national') {
+          adData.isFeatured = true;
+          adData.featuredLevel = formData.plan === 'premium' || formData.plan === 'national' ? 'premium' : 'featured';
+          adData.featuredUntil = expirationDate;
+          adData.featuredActivatedAt = adData.featuredActivatedAt || new Date();
+        }
       }
 
       // Proteger contra edição não autorizada de campos estratégicos em anúncios destacados com mais de 24h
@@ -1143,8 +1144,9 @@ const CreateAd = () => {
         }
       }
 
-      const isPaidDestaque = formData.plan === 'local' || formData.plan === 'national';
-      const alreadyHasThisDestaque = originalAd?.isFeatured && (originalAd?.plan === formData.plan || (originalAd?.plan === 'highlight' && formData.plan === 'local'));
+      const activePlan = (formData.plan || 'standard').toLowerCase();
+      const isPaidPlan = true;
+      const isExistingPaidListing = id && originalAd && originalAd.paidAt && (originalAd.plan === activePlan);
 
       // --- VERIFICAÇÃO DE DUPLICIDADE ---
       setLoading(true);
@@ -1226,8 +1228,8 @@ const CreateAd = () => {
         return;
       }
 
-      // Se não houver duplicado local, prosseguir normalmente para salvar ou cobrar destaque
-      if (isPaidDestaque && !alreadyHasThisDestaque && !formData.isPermanentFeatured && formData.category !== '💚 Doações & Solidariedade' && !isStaff) {
+      // Se não for edição de anúncio já pago e não for staff/permanente, encaminhar para Stripe Checkout
+      if (isPaidPlan && !isExistingPaidListing && !formData.isPermanentFeatured && !isStaff) {
         setPendingAdData(adData);
         setShowPaymentModal(true);
         setLoading(false);
@@ -1249,23 +1251,23 @@ const CreateAd = () => {
     try {
       // 1. Guardar o anúncio base primeiro no Firestore para termos um ID válido
       const finalizedId = pendingAdData.id || `ad_${user?.uid?.substring(0, 5) || 'user'}_${Date.now()}`;
-      const payloadToSave = { ...pendingAdData, id: finalizedId, isFeatured: false };
+      const activePlan = (formData.plan || 'standard').toLowerCase();
+      const payloadToSave = { ...pendingAdData, id: finalizedId, plan: activePlan, status: 'pending' };
       
       await executeSaveAd(payloadToSave, finalizedId);
 
       // 2. Criar sessão de Stripe Hosted Checkout
-      const isUK = formData.country === 'Reino Unido' || formData.country === 'United Kingdom';
       const res = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          itemType: 'featured_ad',
-          plan: formData.plan || 'local',
+          itemType: 'ad_listing',
+          plan: activePlan,
           country: formData.country,
           userId: user?.uid,
           userEmail: user?.email,
           adId: finalizedId,
-          successUrl: `${window.location.origin}/create-ad?stripe_success=true&ad_id=${finalizedId}&plan=${formData.plan || 'local'}`,
+          successUrl: `${window.location.origin}/create-ad?stripe_success=true&ad_id=${finalizedId}&plan=${activePlan}`,
           cancelUrl: `${window.location.origin}/create-ad?stripe_cancel=true`
         })
       });
@@ -2563,111 +2565,130 @@ const CreateAd = () => {
                 </div>
               </div>
 
-              {/* Select Promotion Plan (Sales Only; Hire listings are published directly to Boats for Hire) */}
-              {(formData.listingIntent === 'hire' || formData.category === 'Boats for Hire') ? (
-                <div className="p-5 bg-sky-50 dark:bg-sky-950/40 border-2 border-sky-200 dark:border-sky-800 rounded-3xl space-y-2 text-left">
-                  <div className="flex items-center gap-2">
-                    <Anchor className="text-sky-600 dark:text-sky-400 shrink-0" size={20} />
-                    <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
-                      Boat for Hire Listing
-                    </h3>
-                  </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 font-medium leading-relaxed">
-                    Your listing will be published directly in the dedicated <strong>Boats for Hire</strong> section with direct WhatsApp inquiry connection. Promotion plans for the sales carousel apply exclusively to Boats for Sale.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
+              {/* Select Plan (Standard £2.99, Featured £4.99, Premium £9.99) */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <span>⭐</span> Select Promotion Plan
+                    <span>⭐</span> Choose Listing Plan
                   </h3>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Local Highlight */}
-                    <button
-                      type="button"
-                      disabled={!isAdmin && isEditLocked}
-                      onClick={() => setFormData({ ...formData, plan: 'local' })}
-                      className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
-                        formData.plan === 'local' || formData.plan === 'highlight'
-                          ? 'border-amber-400 bg-amber-50/30 ring-4 ring-amber-100'
-                          : 'border-slate-200 bg-white hover:border-amber-300'
-                      }`}
-                    >
-                      <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-yellow-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
-                        Local ⭐
-                      </div>
-                      <p className="font-black text-slate-900 text-base">Local Highlight</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Featured in your city & local carousel</p>
-
-                      <ul className="text-xs text-slate-600 space-y-1 my-3 font-medium">
-                        <li>🌟 <strong>Up to 4 photos</strong></li>
-                        <li>🌟 Priority in local search</li>
-                        <li>🌟 Star Badge ⭐</li>
-                      </ul>
-
-                      <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-                        <span className="font-bold text-slate-500">Duration: 30 Days</span>
-                        <span className="font-black text-amber-600 text-sm">
-                          <span className={isPromoActive ? "line-through text-slate-400 font-bold mr-1" : ""}>
-                            {formData.country === 'Reino Unido' ? '£4.99' : '€4.99'}
-                          </span>
-                          {isPromoActive && <span className="text-emerald-600 font-black">Free 🎁</span>}
-                        </span>
-                      </div>
-                    </button>
-
-                    {/* National Highlight */}
-                    <button
-                      type="button"
-                      disabled={!isAdmin && isEditLocked}
-                      onClick={() => setFormData({ ...formData, plan: 'national' })}
-                      className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
-                        formData.plan === 'national'
-                          ? 'border-indigo-600 bg-indigo-50/30 ring-4 ring-indigo-100'
-                          : 'border-slate-200 bg-white hover:border-indigo-300'
-                      }`}
-                    >
-                      <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-indigo-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
-                        National ⭐⭐⭐
-                      </div>
-                      <p className="font-black text-slate-900 text-base">National Highlight</p>
-                      <p className="text-xs text-slate-500 mt-0.5">Maximum nationwide visibility across all cities</p>
-
-                      <ul className="text-xs text-slate-600 space-y-1 my-3 font-medium">
-                        <li>🚀 <strong>Maximum Priority</strong></li>
-                        <li>🌟 <strong>Up to 6 photos</strong></li>
-                        <li>🌟 Triple Star Badge ⭐⭐⭐</li>
-                      </ul>
-
-                      <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-                        <span className="font-bold text-slate-500">Duration: 30 Days</span>
-                        <span className="font-black text-indigo-600 text-sm">
-                          <span className={isPromoActive ? "line-through text-slate-400 font-bold mr-1" : ""}>
-                            {formData.country === 'Reino Unido' ? '£7.99' : '€7.99'}
-                          </span>
-                          {isPromoActive && <span className="text-emerald-600 font-black">Free 🎁</span>}
-                        </span>
-                      </div>
-                    </button>
-                  </div>
-
-                  {isStaff && (
-                    <div className="p-4 bg-amber-500/10 border-2 border-amber-500/25 rounded-2xl flex items-center gap-3 mt-4">
-                      <input
-                        id="isPermanentFeatured"
-                        type="checkbox"
-                        checked={formData.isPermanentFeatured}
-                        onChange={(e) => setFormData(prev => ({ ...prev, isPermanentFeatured: e.target.checked }))}
-                        className="w-5 h-5 accent-amber-600 rounded cursor-pointer"
-                      />
-                      <label htmlFor="isPermanentFeatured" className="text-xs font-bold text-slate-800 cursor-pointer">
-                        ⭐ Permanent Staff Highlight (Never Expires)
-                      </label>
-                    </div>
-                  )}
+                  <span className="text-[11px] font-bold text-slate-500">
+                    {formData.listingIntent === 'hire' || formData.category === 'Boats for Hire' ? '⚓ Boat for Hire' : '🛥️ Boat for Sale'}
+                  </span>
                 </div>
-              )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Standard Listing */}
+                  <button
+                    type="button"
+                    disabled={!isAdmin && isEditLocked}
+                    onClick={() => setFormData({ ...formData, plan: 'standard' })}
+                    className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
+                      formData.plan === 'standard' || (!formData.plan || formData.plan === 'free')
+                        ? 'border-emerald-600 bg-emerald-50/40 ring-4 ring-emerald-100'
+                        : 'border-slate-200 bg-white hover:border-emerald-300'
+                    }`}
+                  >
+                    <div className="absolute top-0 right-0 bg-slate-800 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+                      Standard
+                    </div>
+                    <p className="font-black text-slate-900 text-base">Standard Listing</p>
+                    <p className="text-xs text-slate-500 mt-0.5">30 days active listing in marketplace search</p>
+
+                    <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
+                      <li>✅ <strong>30 Days Active</strong></li>
+                      <li>📷 Photos & Full Ad Page</li>
+                      <li>💬 Direct WhatsApp Contact</li>
+                      <li>🔍 Standard Search & Category</li>
+                    </ul>
+
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-500">Duration: 30 Days</span>
+                      <span className="font-black text-emerald-700 text-base">
+                        £2.99
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Featured Listing */}
+                  <button
+                    type="button"
+                    disabled={!isAdmin && isEditLocked}
+                    onClick={() => setFormData({ ...formData, plan: 'featured' })}
+                    className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
+                      formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'highlight'
+                        ? 'border-amber-500 bg-amber-50/40 ring-4 ring-amber-100'
+                        : 'border-slate-200 bg-white hover:border-amber-300'
+                    }`}
+                  >
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-yellow-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+                      Featured ⭐
+                    </div>
+                    <p className="font-black text-slate-900 text-base">Featured Listing</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Homepage highlight & priority placement</p>
+
+                    <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
+                      <li>🌟 <strong>Everything in Standard</strong></li>
+                      <li>🌟 <strong>Homepage Highlight</strong></li>
+                      <li>🌟 Featured Badge ⭐</li>
+                      <li>🌟 Priority in Search Results</li>
+                    </ul>
+
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-500">Duration: 30 Days</span>
+                      <span className="font-black text-amber-600 text-base">
+                        £4.99
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* Premium Featured */}
+                  <button
+                    type="button"
+                    disabled={!isAdmin && isEditLocked}
+                    onClick={() => setFormData({ ...formData, plan: 'premium' })}
+                    className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
+                      formData.plan === 'premium' || formData.plan === 'national'
+                        ? 'border-indigo-600 bg-indigo-50/40 ring-4 ring-indigo-100'
+                        : 'border-slate-200 bg-white hover:border-indigo-300'
+                    }`}
+                  >
+                    <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-indigo-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+                      Premium 👑
+                    </div>
+                    <p className="font-black text-slate-900 text-base">Premium Featured</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Top positions inside featured section & max reach</p>
+
+                    <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
+                      <li>👑 <strong>Everything in Featured</strong></li>
+                      <li>🚀 <strong>Top Spot Priority</strong></li>
+                      <li>👑 Premium Badge 👑</li>
+                      <li>💥 Maximum Exposure</li>
+                    </ul>
+
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-500">Duration: 30 Days</span>
+                      <span className="font-black text-indigo-600 text-base">
+                        £9.99
+                      </span>
+                    </div>
+                  </button>
+                </div>
+
+                {isStaff && (
+                  <div className="p-4 bg-amber-500/10 border-2 border-amber-500/25 rounded-2xl flex items-center gap-3 mt-4">
+                    <input
+                      id="isPermanentFeatured"
+                      type="checkbox"
+                      checked={formData.isPermanentFeatured}
+                      onChange={(e) => setFormData(prev => ({ ...prev, isPermanentFeatured: e.target.checked }))}
+                      className="w-5 h-5 accent-amber-600 rounded cursor-pointer"
+                    />
+                    <label htmlFor="isPermanentFeatured" className="text-xs font-bold text-slate-800 cursor-pointer">
+                      ⭐ Permanent Staff Highlight (Never Expires)
+                    </label>
+                  </div>
+                )}
+              </div>
 
               {formError && (
                 <div className="p-4 bg-rose-50 border-2 border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between text-xs font-bold">
@@ -2835,12 +2856,10 @@ const CreateAd = () => {
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
                   <div className="flex justify-between text-xs text-slate-600">
                     <span>
-                      {formData.plan === 'national' ? 'National Highlight (30 days)' : 'Local Highlight (30 days)'}
+                      {formData.plan === 'premium' ? 'Premium Featured Listing (30 days)' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? 'Featured Listing (30 days)' : 'Standard Listing (30 days)'}
                     </span>
                     <span className="font-bold text-slate-900">
-                      {formData.country === 'Reino Unido' || formData.country === 'United Kingdom'
-                        ? (formData.plan === 'national' ? '£7.99' : '£4.99')
-                        : (formData.plan === 'national' ? '€7.99' : '€4.99')}
+                      {formData.plan === 'premium' ? '£9.99' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? '£4.99' : '£2.99'}
                     </span>
                   </div>
                   <div className="flex justify-between text-xs text-slate-600">
@@ -2850,9 +2869,7 @@ const CreateAd = () => {
                   <div className="border-t border-slate-200/50 pt-2 flex justify-between text-sm font-bold text-slate-900">
                     <span>Total due</span>
                     <span className="text-indigo-600">
-                      {formData.country === 'Reino Unido' || formData.country === 'United Kingdom'
-                        ? (formData.plan === 'national' ? '£7.99' : '£4.99')
-                        : (formData.plan === 'national' ? '€7.99' : '€4.99')}
+                      {formData.plan === 'premium' ? '£9.99' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? '£4.99' : '£2.99'}
                     </span>
                   </div>
                 </div>
@@ -2893,9 +2910,7 @@ const CreateAd = () => {
                       </span>
                     ) : (
                       <span>
-                        Pay {formData.country === 'Reino Unido' || formData.country === 'United Kingdom'
-                          ? (formData.plan === 'national' ? '£7.99' : '£4.99')
-                          : (formData.plan === 'national' ? '€7.99' : '€4.99')} with Stripe
+                        Pay {formData.plan === 'premium' ? '£9.99' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? '£4.99' : '£2.99'} with Stripe
                       </span>
                     )}
                   </button>

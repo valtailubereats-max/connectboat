@@ -180,34 +180,58 @@ export default async function stripeWebhookHandler(req: Request & { rawBody?: Bu
     try {
       const db = getAdminDb();
 
-      if (itemType === 'featured_ad') {
+      if (itemType === 'featured_ad' || itemType === 'ad_listing' || itemType === 'ad_promotion') {
         if (!adId) {
-          console.error(`[Stripe Webhook Error] itemType is 'featured_ad' but adId is missing from metadata!`);
+          console.error(`[Stripe Webhook Error] itemType is '${itemType}' but adId is missing from metadata!`);
         } else {
           const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-          const level = plan === 'national' ? 'national' : 'local';
+          const activePlan = (plan || 'standard').toLowerCase();
+          
+          let level = 'standard';
+          let isFeatured = false;
+          let humanPlanTitle = 'Standard Listing';
+
+          if (activePlan === 'premium') {
+            level = 'premium';
+            isFeatured = true;
+            humanPlanTitle = 'Premium Featured Listing (£9.99)';
+          } else if (activePlan === 'featured' || activePlan === 'national' || activePlan === 'local') {
+            level = activePlan === 'national' ? 'national' : 'featured';
+            isFeatured = true;
+            humanPlanTitle = 'Featured Listing (£4.99)';
+          } else {
+            level = 'standard';
+            isFeatured = false;
+            humanPlanTitle = 'Standard Listing (£2.99)';
+          }
 
           const firebaseAdmin = (admin as any).default || admin;
           await db.collection('ads').doc(adId).set(
             {
-              isFeatured: true,
+              plan: activePlan,
+              status: 'approved',
+              isFeatured: isFeatured,
               featuredLevel: level,
+              expirationDate: firebaseAdmin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
               featuredUntil: firebaseAdmin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
               featuredActivatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+              paidAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
             },
             { merge: true }
           );
 
-          console.log(`[Stripe Webhook] Successfully updated ad ${adId} to featured level ${level}`);
+          console.log(`[Stripe Webhook] Successfully updated ad ${adId} to plan ${activePlan} (featuredLevel: ${level})`);
 
           // Dispatch confirmation email
           const customerEmail = session.customer_details?.email || session.customer_email;
           if (customerEmail) {
+            const currencySymbol = session.currency?.toUpperCase() === 'GBP' ? '£' : '€';
+            const amountFormatted = session.amount_total ? `${currencySymbol}${(session.amount_total / 100).toFixed(2)}` : undefined;
             sendPaymentEmail(
               customerEmail,
               session.customer_details?.name || 'Valued Member',
-              `Featured Listing (${level === 'national' ? 'National' : 'Local'} Plan)`,
-              session.amount_total ? `£${(session.amount_total / 100).toFixed(2)}` : undefined
+              `ConnectBoat - ${humanPlanTitle}`,
+              amountFormatted
             ).catch(err => console.warn('[Stripe Email Error]', err));
           }
         }

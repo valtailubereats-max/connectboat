@@ -28,8 +28,8 @@ const FAQ = () => {
       answer: 'Click the "Post Listing" button in the menu. If you do not have an account, registration takes only seconds. Fill in details (title, price, category, photos, location) and submit for quick approval.'
     },
     {
-      question: 'Is listing free on ConnectBoat?',
-      answer: 'Yes! Basic listings on ConnectBoat are free. There are no seller commissions or hidden fees for basic posts.'
+      question: 'How much does it cost to post a listing on ConnectBoat?',
+      answer: 'Standard 30-day listings on ConnectBoat are available for £2.99. You can also boost your post with Featured (£4.99) or Premium (£9.99) plans for homepage highlight and maximum nationwide exposure.'
     },
     {
       question: 'How do I contact a seller?',

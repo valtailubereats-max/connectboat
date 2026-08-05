@@ -39,25 +39,29 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           setSettings({
             ...data,
             planDurations: {
+              standard: data.planDurations?.standard || 30,
+              featured: data.planDurations?.featured || 30,
+              premium: data.planDurations?.premium || 30,
               free: data.planDurations?.free || 30,
               local: data.planDurations?.local || 30,
               national: data.planDurations?.national || 30,
               showcase: data.planDurations?.showcase || 30,
-              intermediate: data.planDurations?.intermediate || 180,
-              premium: data.planDurations?.premium || 365
             },
-            planPrices: data.planPrices || {
-              local: 4.99,
-              national: 7.99,
-              showcase: 8.99
+            planPrices: {
+              standard: data.planPrices?.standard || 2.99,
+              featured: data.planPrices?.featured || 4.99,
+              premium: data.planPrices?.premium || 9.99,
+              local: data.planPrices?.local || 4.99,
+              national: data.planPrices?.national || 7.99,
+              showcase: data.planPrices?.showcase || 8.99
             },
             maxImages: {
+              standard: data.maxImages?.standard || 6,
+              featured: data.maxImages?.featured || 10,
+              premium: data.maxImages?.premium || 15,
               free: data.maxImages?.free || 2,
               local: data.maxImages?.local || 4,
-              national: data.maxImages?.national === 4 ? 6 : (data.maxImages?.national || 6),
-              showcase: data.maxImages?.showcase || 6,
-              intermediate: data.maxImages?.intermediate || 3,
-              premium: data.maxImages?.premium || 5
+              national: data.maxImages?.national || 6,
             },
             maxShowcaseProducts: data.maxShowcaseProducts || 6,
             showTotalAdsBadge: data.showTotalAdsBadge !== undefined ? data.showTotalAdsBadge : false,
@@ -70,9 +74,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           // Initialize local state if document doesn't exist in Firestore
           const defaultSettings: MarketplaceSettings = {
             id: 'global',
-            planDurations: { free: 30, local: 30, national: 30, showcase: 30, intermediate: 180, premium: 365 },
-            planPrices: { local: 4.99, national: 7.99, showcase: 8.99 },
-            maxImages: { free: 2, local: 4, national: 6, showcase: 6, intermediate: 3, premium: 5 },
+            planDurations: { standard: 30, featured: 30, premium: 30 },
+            planPrices: { standard: 2.99, featured: 4.99, premium: 9.99 },
+            maxImages: { standard: 6, featured: 10, premium: 15 },
             maxShowcaseProducts: 6,
             expirationAction: 'archive',
             warningDays: 3,
