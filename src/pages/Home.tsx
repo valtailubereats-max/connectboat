@@ -2031,6 +2031,81 @@ const Home = () => {
           </section>
         )}
 
+        {/* 5. ⚓ BOATS FOR HIRE SECTION MOBILE */}
+        {(() => {
+          const hireTheme = getFeaturedSectionTheme(settings?.featuredHireColor, '#10b7c7');
+          return (
+            <section 
+              className="relative w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 my-1 shadow-2xs overflow-hidden text-left" 
+              id="mobile-hire-section"
+            >
+              {/* Soft 4-Edge Vignette & Pure White Center Overlay */}
+              <div 
+                className="absolute inset-0 pointer-events-none z-0 rounded-2xl"
+                style={{
+                  boxShadow: hireTheme.boxShadow,
+                  background: hireTheme.radialBackground
+                }}
+              />
+              <div 
+                className="absolute inset-0 pointer-events-none z-0"
+                style={{
+                  background: hireTheme.glowBackground
+                }}
+              />
+
+              <div className="relative z-10">
+                <div className="flex items-center justify-between gap-2 mb-2.5 text-left">
+                  <div className="flex items-center gap-1.5">
+                    <Anchor className="text-sky-600 dark:text-sky-400 shrink-0" size={16} />
+                    <h2 className="text-xs font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                      Boats for Hire & Charter
+                    </h2>
+                  </div>
+                  
+                  <Link
+                    to="/boats-for-hire"
+                    className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-[10px] rounded-lg transition-all shadow-2xs flex items-center gap-1 shrink-0 cursor-pointer"
+                  >
+                    <span>View All</span>
+                    <ArrowRight size={11} />
+                  </Link>
+                </div>
+
+                {hireAds.length > 0 ? (
+                  /* Manual horizontal scrollable row with same proportion as featured cards */
+                  <div className="w-full overflow-x-auto scrollbar-none pb-1 pt-0.5">
+                    <div className="flex gap-3 min-w-min">
+                      {hireAds.map((ad) => (
+                        <div key={`mobile-hire-${ad.id}`} className="w-[125px] shrink-0">
+                          <AdCard ad={ad} variant="featured" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center gap-1">
+                    <Anchor size={20} className="text-sky-500/60" />
+                    <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                      Are you a boat owner or charter operator?
+                    </p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 max-w-xs leading-tight">
+                      List your boat or yacht for hire on ConnectBoat.
+                    </p>
+                    <Link
+                      to="/criar-anuncio"
+                      className="mt-1 px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white font-bold text-[10px] rounded-lg transition-all shadow-2xs flex items-center gap-1"
+                    >
+                      <span>List Boat for Hire</span>
+                      <ArrowRight size={11} />
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </section>
+          );
+        })()}
+
         {/* 6. ÚLTIMOS ANÚNCIOS (Grid Compacta de 2 Colunas) */}
         <section className="w-full text-left" id="mobile-latest-section">
           <div className="flex items-center gap-1.5 mb-3">
