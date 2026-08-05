@@ -329,6 +329,13 @@ const CreateAd = () => {
     return true;
   };
 
+  const getCheckoutTotalAmountFormatted = () => {
+    const activePlan = (formData.plan || 'standard').toLowerCase();
+    const planBase = activePlan === 'premium' ? 9.99 : (activePlan === 'featured' || activePlan === 'local' || activePlan === 'national') ? 4.99 : 2.99;
+    const mediaBoostExtra = (formData.mediaBoostEnabled && !originalAd?.videoPaid) ? 2.00 : 0;
+    return (planBase + mediaBoostExtra).toFixed(2);
+  };
+
   const validateStep1AndProceed = () => {
     if (validateStep1()) {
       setCurrentStep(2);
@@ -3038,12 +3045,7 @@ const CreateAd = () => {
                   <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-sm font-black text-slate-900">
                     <span>Total Payment</span>
                     <span className="text-indigo-600 text-lg">
-                      £{
-                        (
-                          (formData.plan === 'premium' ? 9.99 : formData.plan === 'featured' ? 4.99 : 2.99) +
-                          (formData.mediaBoostEnabled && !originalAd?.videoPaid ? 2.00 : 0)
-                        ).toFixed(2)
-                      }
+                      £{getCheckoutTotalAmountFormatted()}
                     </span>
                   </div>
                 </div>
@@ -3236,12 +3238,7 @@ const CreateAd = () => {
                   <div className="border-t border-slate-200/50 pt-2 flex justify-between text-sm font-bold text-slate-900">
                     <span>Total due</span>
                     <span className="text-indigo-600">
-                      £{
-                        (
-                          (formData.plan === 'premium' ? 9.99 : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? 4.99 : 2.99) +
-                          (formData.mediaBoostEnabled && !originalAd?.videoPaid ? 2.00 : 0)
-                        ).toFixed(2)
-                      }
+                      £{getCheckoutTotalAmountFormatted()}
                     </span>
                   </div>
                 </div>
@@ -3282,7 +3279,7 @@ const CreateAd = () => {
                       </span>
                     ) : (
                       <span>
-                        Pay {formData.plan === 'premium' ? '£9.99' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? '£4.99' : '£2.99'} with Stripe
+                        Pay £{getCheckoutTotalAmountFormatted()} with Stripe
                       </span>
                     )}
                   </button>

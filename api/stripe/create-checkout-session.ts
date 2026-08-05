@@ -9,9 +9,7 @@ function getStripe(): Stripe {
     throw new Error('STRIPE_SECRET_KEY environment variable is missing.');
   }
   if (!stripeClient) {
-    stripeClient = new Stripe(secretKey, {
-      apiVersion: '2025-02-24.acacia' as any,
-    });
+    stripeClient = new Stripe(secretKey);
   }
   return stripeClient;
 }
@@ -103,7 +101,6 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
           product_data: {
             name: productName,
             description: productDescription,
-            tax_code: 'txcd_10103000',
           },
           unit_amount: amountCents + addOnsExtraCents,
         },
@@ -119,7 +116,6 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
           product_data: {
             name: 'Media Boost — 60-second listing video',
             description: `Optional paid extra (${currencySymbol}2.00) to showcase video on listing`,
-            tax_code: 'txcd_10103000',
           },
           unit_amount: 200,
         },
