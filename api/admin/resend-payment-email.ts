@@ -50,43 +50,77 @@ function getAdminDb() {
 }
 
 export default async function resendPaymentEmailHandler(req: Request, res: Response) {
+  // Ensure JSON response header is set immediately
   res.setHeader('Content-Type', 'application/json');
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'METHOD_NOT_ALLOWED', errorMessage: 'Method not allowed' });
-  }
-
-  const { adId } = req.body || {};
-  console.log(`[Admin Resend Payment Email] Started request for adId: ${adId}`);
+  let currentStep = '[1] Endpoint started';
 
   try {
-    if (!adId || typeof adId !== 'string') {
-      console.warn('[Admin Resend Payment Email] Request rejected: missing adId');
-      return res.status(400).json({ success: false, error: 'MISSING_AD_ID', errorMessage: 'O ID do anúncio é obrigatório.' });
-    }
+    console.log('[1] Endpoint started');
 
-    const db = getAdminDb();
-    const adDoc = await db.collection('ads').doc(adId).get();
-
-    if (!adDoc.exists) {
-      console.warn(`[Admin Resend Payment Email] Ad document not found in Firestore: ${adId}`);
-      return res.status(404).json({ success: false, error: 'AD_NOT_FOUND', errorMessage: 'Anúncio não encontrado no banco de dados.' });
-    }
-
-    const adData = adDoc.data() || {};
-    const recipientEmail = adData.sellerEmail || adData.email || adData.userEmail;
-
-    if (!recipientEmail || !recipientEmail.includes('@')) {
-      console.warn(`[Admin Resend Payment Email] No valid recipient email found for adId ${adId}`);
-      return res.status(400).json({ 
-        success: false, 
-        error: 'NO_RECIPIENT_EMAIL', 
-        errorMessage: 'Não foi encontrado nenhum e-mail válido para este anunciante.' 
+    if (req.method !== 'POST') {
+      return res.status(405).json({
+        success: false,
+        error: 'METHOD_NOT_ALLOWED',
+        errorMessage: 'Method not allowed. Use POST.'
       });
     }
 
-    console.log(`[Admin Resend Payment Email] Found ad "${adData.title || adId}" with recipient: ${recipientEmail}`);
+    currentStep = '[2] Admin authenticated / Request body parsed';
+    let body = req.body || {};
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        body = {};
+      }
+    }
+    console.log('[2] Admin request validated');
 
+    currentStep = '[3] Received adId';
+    const adId = body.adId;
+    console.log(`[3] Received adId: "${adId}"`);
+
+    if (!adId || typeof adId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'MISSING_AD_ID',
+        errorMessage: 'O ID do anúncio (adId) é obrigatório.'
+      });
+    }
+
+    currentStep = '[4] Firestore initialized';
+    const db = getAdminDb();
+    console.log('[4] Firestore initialized');
+
+    currentStep = '[5] Querying Firestore for listing';
+    const adDoc = await db.collection('ads').doc(adId).get();
+
+    if (!adDoc.exists) {
+      console.warn(`[5] Ad document not found in Firestore for id: ${adId}`);
+      return res.status(404).json({
+        success: false,
+        error: 'AD_NOT_FOUND',
+        errorMessage: `Anúncio com ID "${adId}" não foi encontrado no banco de dados.`
+      });
+    }
+    const adData = adDoc.data() || {};
+    console.log(`[5] Listing found: "${adData.title || adId}"`);
+
+    currentStep = '[6] Searching seller email';
+    const recipientEmail = adData.sellerEmail || adData.email || adData.userEmail;
+
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+      console.warn(`[6] No valid seller email in ad data:`, adData);
+      return res.status(400).json({
+        success: false,
+        error: 'NO_RECIPIENT_EMAIL',
+        errorMessage: 'Não foi encontrado nenhum e-mail válido para este anunciante no cadastro do anúncio.'
+      });
+    }
+    console.log(`[6] Seller email found: ${recipientEmail}`);
+
+    currentStep = '[7] Preparing email payload';
     const firebaseAdmin = (admin as any).default || admin;
     const isHire = adData.category === 'aluguel' || adData.listingType === 'hire' || adData.type === 'hire';
     const activePlan = (adData.plan || 'standard').toLowerCase();
@@ -126,18 +160,24 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
       adUrl: `${baseUrl}/anuncio/${adId}`,
       manageUrl: `${baseUrl}/profile`,
     };
+    console.log('[7] Email payload prepared');
 
-    console.log(`[Admin Resend Payment Email] Dispatching email to ${recipientEmail}...`);
+    currentStep = '[8] Calling Resend via sendEmailDirect';
+    console.log(`[8] Calling Resend for recipient: ${recipientEmail}...`);
     const dispatchResult = await sendEmailDirect(recipientEmail, 'recibo_pagamento_anuncio', emailPayload);
+    console.log('[9] Resend response received:', JSON.stringify(dispatchResult));
 
+    currentStep = '[10] Updating Firestore status';
     await db.collection('ads').doc(adId).update({
       paymentConfirmationEmailSent: true,
       paymentConfirmationEmailStatus: 'sent',
       paymentConfirmationEmailSentAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
       paymentConfirmationEmailError: null,
     });
+    console.log('[10] Firestore updated successfully');
 
-    console.log(`[Admin Resend Payment Email] SUCCESS for adId ${adId}. Email sent to ${recipientEmail}`);
+    currentStep = '[11] Success';
+    console.log(`[11] Success sending receipt email to ${recipientEmail} for adId ${adId}`);
 
     return res.status(200).json({
       success: true,
@@ -145,24 +185,31 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
       dispatchResult
     });
 
-  } catch (err: any) {
-    console.error('[Admin Resend Payment Email ERROR]:', err);
-    if (req.body?.adId) {
-      try {
-        const db = getAdminDb();
-        const firebaseAdmin = (admin as any).default || admin;
+  } catch (error: any) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[Admin Resend Payment Email ERROR at step "${currentStep}"]:`, error);
+
+    // Attempt to log failure in Firestore without throwing
+    try {
+      const db = getAdminDb();
+      const firebaseAdmin = (admin as any).default || admin;
+      if (req.body?.adId && typeof req.body.adId === 'string') {
         await db.collection('ads').doc(req.body.adId).update({
           paymentConfirmationEmailStatus: 'failed',
-          paymentConfirmationEmailError: err.message || String(err),
+          paymentConfirmationEmailError: `Error at ${currentStep}: ${errorMsg}`,
           paymentConfirmationEmailLastAttemptAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
         });
-      } catch (e) {}
+      }
+    } catch (dbErr) {
+      console.warn('[Admin Resend Payment Email] Could not log failure to Firestore:', dbErr);
     }
 
     return res.status(500).json({
       success: false,
-      error: 'RESEND_FAILED',
-      errorMessage: err.message || 'Falha ao reenviar o e-mail de confirmação de pagamento.'
+      stepFailed: currentStep,
+      error: errorMsg,
+      errorMessage: `Erro no passo ${currentStep}: ${errorMsg}`,
+      stack: process.env.NODE_ENV !== 'production' ? (error as Error)?.stack : undefined
     });
   }
 }
