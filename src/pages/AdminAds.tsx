@@ -490,8 +490,16 @@ const AdminAds = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adId })
       });
-      const data = await res.json();
-      if (data.success) {
+
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        alert(`Erro na resposta do servidor (HTTP ${res.status} ${res.statusText}). O servidor não retornou JSON válido.`);
+        return;
+      }
+
+      if (res.ok && data.success) {
         alert(data.message || 'E-mail de confirmação de pagamento enviado com sucesso!');
         setAds(prev => prev.map(a => a.id === adId ? {
           ...a,
@@ -508,11 +516,12 @@ const AdminAds = () => {
           } as any : null);
         }
       } else {
-        alert(`Erro: ${data.errorMessage || data.error || 'Falha ao enviar e-mail de pagamento.'}`);
+        const errorMsg = data.errorMessage || data.error || `HTTP ${res.status} - ${res.statusText}`;
+        alert(`Falha no envio do e-mail (HTTP ${res.status}): ${errorMsg}`);
       }
     } catch (err: any) {
       console.error('Error resending payment email:', err);
-      alert('Erro de ligação ao servidor ao tentar enviar o e-mail de pagamento.');
+      alert(`Erro de ligação ao servidor: ${err?.message || 'Indisponibilidade de rede ou servidor'}`);
     } finally {
       setResendingEmailId(null);
     }
@@ -903,6 +912,19 @@ const AdminAds = () => {
                         {ad.adStatus}
                       </span>
                     )}
+                    {ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200" title="E-mail de recibo enviado ao anunciante">
+                        ✉️ Email: Sent
+                      </span>
+                    ) : ad.paymentConfirmationEmailStatus === 'failed' ? (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-red-50 text-red-700 border border-red-200" title={ad.paymentConfirmationEmailError || 'Falha ao enviar e-mail'}>
+                        ✉️ Email: Failed
+                      </span>
+                    ) : (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-100 text-slate-600 border border-slate-200" title="E-mail de confirmação não enviado">
+                        ✉️ Email: Not sent
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2 break-all mb-1.5" title={ad.title}>
@@ -1227,6 +1249,19 @@ const AdminAds = () => {
                                 'bg-amber-50 text-amber-600 border border-amber-100'
                               }`}>
                                 {ad.adStatus}
+                              </span>
+                            )}
+                            {ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-emerald-50 text-emerald-700 border border-emerald-200 mt-0.5" title="E-mail de recibo enviado">
+                                ✉️ Sent
+                              </span>
+                            ) : ad.paymentConfirmationEmailStatus === 'failed' ? (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-red-50 text-red-700 border border-red-200 mt-0.5" title={ad.paymentConfirmationEmailError || 'Falha no e-mail'}>
+                                ✉️ Failed
+                              </span>
+                            ) : (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-slate-100 text-slate-600 border border-slate-200 mt-0.5" title="E-mail não enviado">
+                                ✉️ Not sent
                               </span>
                             )}
                           </div>
