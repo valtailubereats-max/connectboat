@@ -1180,6 +1180,8 @@ const CreateAd = () => {
         country: formData.country,
         category: formData.category,
         sellerId: id && originalAd ? (originalAd.sellerId || user.uid) : user.uid,
+        sellerEmail: id && originalAd && originalAd.sellerEmail ? originalAd.sellerEmail : (user?.email || profile?.email || ''),
+        userEmail: id && originalAd && originalAd.userEmail ? originalAd.userEmail : (user?.email || profile?.email || ''),
         sellerPhone: finalSellerPhoneValue || (originalAd?.sellerPhone || ''),
         contactPhone: contactPhoneValue || (originalAd?.contactPhone || ''),
         useProfilePhone: useProfilePhoneValue,

@@ -272,17 +272,88 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
     console.log(`[5] Listing found: "${adData.title || adId}"`);
 
     currentStep = '[6] Searching seller email';
-    const recipientEmail = adData.sellerEmail || adData.email || adData.userEmail;
+    let recipientEmail: string | null = null;
+    let emailSource: 'listing' | 'Firestore profile' | 'Firebase Authentication' | null = null;
 
+    // 1. Search in listing document fields first
+    const listingEmailCandidate = adData.sellerEmail || adData.userEmail || adData.ownerEmail || adData.contactEmail || adData.email;
+    if (typeof listingEmailCandidate === 'string' && listingEmailCandidate.trim().includes('@')) {
+      recipientEmail = listingEmailCandidate.trim().toLowerCase();
+      emailSource = 'listing';
+      console.log(`[6] Email found in listing document: ${recipientEmail}`);
+    }
+
+    // 2. If not found, get UID from sellerId, userId, ownerId, createdBy
+    const sellerUidCandidate = adData.sellerId || adData.userId || adData.ownerId || adData.createdBy;
+    const sellerUid = typeof sellerUidCandidate === 'string' ? sellerUidCandidate.trim() : null;
+
+    if (!recipientEmail && sellerUid) {
+      console.log(`[6] Searching user profile in Firestore for UID: "${sellerUid}"...`);
+      // 3. Search in Firestore collections users/{uid} and profiles/{uid}
+      try {
+        const userDocRef = db.collection('users').doc(sellerUid);
+        const userDocSnap = await userDocRef.get();
+
+        if (userDocSnap.exists) {
+          const uData = userDocSnap.data() || {};
+          const profileEmailCandidate = uData.email || uData.userEmail || uData.contactEmail;
+          if (typeof profileEmailCandidate === 'string' && profileEmailCandidate.trim().includes('@')) {
+            recipientEmail = profileEmailCandidate.trim().toLowerCase();
+            emailSource = 'Firestore profile';
+            console.log(`[6] Email found in Firestore users/${sellerUid}: ${recipientEmail}`);
+          }
+        }
+      } catch (uErr: any) {
+        console.warn(`[6] Firestore users/${sellerUid} lookup error:`, uErr?.message || uErr);
+      }
+
+      if (!recipientEmail) {
+        try {
+          const profileDocRef = db.collection('profiles').doc(sellerUid);
+          const profileDocSnap = await profileDocRef.get();
+          if (profileDocSnap.exists) {
+            const pData = profileDocSnap.data() || {};
+            const profileEmailCandidate = pData.email || pData.userEmail || pData.contactEmail;
+            if (typeof profileEmailCandidate === 'string' && profileEmailCandidate.trim().includes('@')) {
+              recipientEmail = profileEmailCandidate.trim().toLowerCase();
+              emailSource = 'Firestore profile';
+              console.log(`[6] Email found in Firestore profiles/${sellerUid}: ${recipientEmail}`);
+            }
+          }
+        } catch (pErr: any) {
+          console.warn(`[6] Firestore profiles/${sellerUid} lookup error:`, pErr?.message || pErr);
+        }
+      }
+
+      // 5. If still not found, try Firebase Admin Authentication
+      if (!recipientEmail) {
+        console.log(`[6] Searching Firebase Authentication for UID: "${sellerUid}"...`);
+        try {
+          const firebaseAdmin = (admin as any).default || admin;
+          const userRecord = await firebaseAdmin.auth().getUser(sellerUid);
+          if (userRecord && userRecord.email && userRecord.email.includes('@')) {
+            recipientEmail = userRecord.email.trim().toLowerCase();
+            emailSource = 'Firebase Authentication';
+            console.log(`[6] Email found in Firebase Auth for UID ${sellerUid}: ${recipientEmail}`);
+          }
+        } catch (authErr: any) {
+          console.warn(`[6] Firebase Auth lookup failed for UID ${sellerUid}:`, authErr?.message || authErr);
+        }
+      }
+    }
+
+    // 6. Validate email or return clear JSON failure
     if (!recipientEmail || !recipientEmail.includes('@')) {
-      console.warn(`[6] No valid seller email in ad data:`, adData);
+      console.warn(`[6] Seller email resolution failed for adId ${adId} (sellerUid: ${sellerUid || 'none'})`);
       return res.status(400).json({
         success: false,
-        error: 'NO_RECIPIENT_EMAIL',
-        errorMessage: 'Não foi encontrado nenhum e-mail válido para este anunciante no cadastro do anúncio.'
+        stepFailed: '[6] Resolving seller email',
+        error: 'Seller email not found in listing, user profile or Firebase Authentication.',
+        errorMessage: 'Não foi encontrado nenhum e-mail válido para este anunciante no cadastro do anúncio, perfil ou Firebase Auth.'
       });
     }
-    console.log(`[6] Seller email found: ${recipientEmail}`);
+
+    console.log(`[6] Seller email resolved successfully: ${recipientEmail} (Source: ${emailSource})`);
 
     currentStep = '[7] Preparing email payload';
     const firebaseAdmin = (admin as any).default || admin;
@@ -345,6 +416,8 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
     return res.status(200).json({
       success: true,
       message: `E-mail de confirmação enviado com sucesso para ${recipientEmail}!`,
+      recipientEmail,
+      emailSource,
       dispatchResult
     });
 
