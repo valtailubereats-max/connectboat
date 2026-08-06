@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import * as admin from 'firebase-admin';
-import { sendEmailDirect } from '../email/send.ts';
+import { sendEmailDirect } from '../email/send';
 
 const PROJECT_ID = 'navlink-489413';
 const DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
