@@ -1,6 +1,7 @@
+console.log('[MODULE] resend-payment-email loaded');
+
 import type { Request, Response } from 'express';
 import * as admin from 'firebase-admin';
-import { sendEmailDirect } from '../email/send';
 
 const PROJECT_ID = 'navlink-489413';
 const DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
@@ -49,8 +50,171 @@ function getAdminDb() {
   return dbInstance;
 }
 
+// Local private email dispatch function via direct Resend HTTP API fetch call
+async function sendPaymentEmailDirect(recipientEmail: string, data: any) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY environment variable is not configured on the server');
+  }
+
+  const fromEmail = process.env.EMAIL_FROM || 'ConnectBoat <no-reply@connectboat.co.uk>';
+  const replyTo = process.env.EMAIL_REPLY_TO || 'contato@connectboat.co.uk';
+
+  let baseUrl = process.env.PUBLIC_SITE_URL || process.env.SITE_URL || process.env.APP_URL || 'https://www.connectboat.co.uk';
+  baseUrl = baseUrl.replace(/\/$/, '');
+
+  const subject = `Your ConnectBoat listing payment is confirmed`;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${subject}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f8fafc; padding: 20px 0;">
+        <tr>
+          <td align="center">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+              <tr style="background-color: #0f172a;">
+                <td style="padding: 24px; text-align: center;">
+                  <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.05em;">⛵ ConnectBoat</h1>
+                  <p style="margin: 4px 0 0 0; color: #38bdf8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;">UK Boat & Marine Marketplace</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 40px 30px; color: #334155; font-size: 15px; line-height: 1.6;">
+                  <p style="font-size: 16px; font-weight: bold; margin-top: 0; color: #0f172a;">Hello ${data.userName || 'Valued Member'},</p>
+                  <p style="color: #475569; margin-bottom: 20px;">
+                    Thank you for advertising on ConnectBoat! Your payment has been confirmed and your listing is now <strong>active</strong>.
+                  </p>
+                  <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px; margin-bottom: 24px;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td>
+                          <span style="font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #166534; display: block;">Payment Status</span>
+                          <span style="font-size: 18px; font-weight: 800; color: #15803d;">CONFIRMED & ACTIVE</span>
+                        </td>
+                        <td align="right" style="font-size: 20px; font-weight: 800; color: #166534;">${data.totalAmount || 'Paid'}</td>
+                      </tr>
+                    </table>
+                  </div>
+                  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 24px; font-size: 14px;">
+                    <tr>
+                      <td colspan="2" style="padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #0f172a; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">Itemized Summary</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 10px 0; color: #475569;">${data.planTitle || 'Listing Fee'}</td>
+                      <td align="right" style="padding: 10px 0; font-weight: bold; color: #0f172a;">${data.planPrice || '£2.99'}</td>
+                    </tr>
+                    ${data.hasMediaBoost ? `
+                    <tr>
+                      <td style="padding: 10px 0; color: #475569;">Media Boost (60s Listing Video)</td>
+                      <td align="right" style="padding: 10px 0; font-weight: bold; color: #0f172a;">${data.mediaBoostPrice || '£2.00'}</td>
+                    </tr>
+                    ` : ''}
+                    <tr>
+                      <td style="padding-top: 12px; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0f172a; font-size: 15px;">Total Paid</td>
+                      <td align="right" style="padding-top: 12px; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0284c7; font-size: 16px;">${data.totalAmount || '£2.99'}</td>
+                    </tr>
+                  </table>
+                  <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+                    <h3 style="margin: 0 0 12px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">Listing & Transaction Details</h3>
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #334155;">
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748b; width: 40%;">Listing Title:</td>
+                        <td style="padding: 5px 0; font-weight: bold; color: #0f172a;">${data.adTitle || 'Boat Listing'}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748b;">Listing Reference:</td>
+                        <td style="padding: 5px 0; font-family: monospace; color: #0f172a;">#${data.adId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748b;">Listing Type:</td>
+                        <td style="padding: 5px 0; font-weight: bold; color: #0f172a;">${data.listingType || 'Boat for Sale'}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748b;">Status:</td>
+                        <td style="padding: 5px 0;"><span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;">Active</span></td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748b;">Payment Date:</td>
+                        <td style="padding: 5px 0; color: #0f172a;">${data.paymentDate}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748b;">Expiry Date:</td>
+                        <td style="padding: 5px 0; color: #0f172a; font-weight: bold;">${data.expiryDate}</td>
+                      </tr>
+                      ${data.paymentRef ? `
+                      <tr>
+                        <td style="padding: 5px 0; color: #64748b;">Session / Payment Ref:</td>
+                        <td style="padding: 5px 0; font-family: monospace; font-size: 11px; color: #64748b;">${data.paymentRef}</td>
+                      </tr>
+                      ` : ''}
+                    </table>
+                  </div>
+                  <div style="text-align: center; margin: 25px 0;">
+                    <a href="${data.adUrl || `${baseUrl}/anuncio/${data.adId}`}" target="_blank" style="background-color: #0284c7; color: #ffffff; padding: 12px 22px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 14px; margin-right: 8px; margin-bottom: 8px;">Open Listing</a>
+                    <a href="${data.manageUrl || `${baseUrl}/profile`}" target="_blank" style="background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 12px 22px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 14px; margin-bottom: 8px;">My Listings</a>
+                  </div>
+                  <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+                  <p style="font-size: 12px; color: #64748b; margin: 0;">Need assistance or have questions? Contact us at <a href="mailto:contato@connectboat.co.uk" style="color: #0284c7; text-decoration: underline;">contato@connectboat.co.uk</a>.</p>
+                </td>
+              </tr>
+              <tr style="background-color: #f1f5f9;">
+                <td style="padding: 20px; text-align: center; color: #64748b; font-size: 12px;">
+                  <p style="margin: 0 0 6px 0; font-weight: 700;">ConnectBoat UK</p>
+                  <p style="margin: 0;">United Kingdom Marine & Boat Marketplace</p>
+                  <p style="margin: 12px 0 0 0; font-size: 10px; color: #94a3b8;">This is an automated notification. Please write to contato@connectboat.co.uk for customer support.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  console.log(`[sendPaymentEmailDirect] Dispatching to Resend for ${recipientEmail}...`);
+
+  const resendResponse = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: fromEmail,
+      to: [recipientEmail],
+      reply_to: replyTo,
+      subject: subject,
+      html: htmlContent,
+    }),
+  });
+
+  const responseText = await resendResponse.text();
+  let jsonRes: any = {};
+  try {
+    jsonRes = JSON.parse(responseText);
+  } catch (e) {
+    // Raw text response
+  }
+
+  if (!resendResponse.ok) {
+    const errorDetail = jsonRes.message || jsonRes.error || responseText || `HTTP ${resendResponse.status}`;
+    console.error(`[sendPaymentEmailDirect] Resend API error (${resendResponse.status}):`, errorDetail);
+    throw new Error(`Resend API Error (HTTP ${resendResponse.status}): ${errorDetail}`);
+  }
+
+  console.log(`[sendPaymentEmailDirect] Success! Email ID:`, jsonRes.id || 'sent');
+  return jsonRes;
+}
+
 export default async function resendPaymentEmailHandler(req: Request, res: Response) {
-  // Ensure JSON response header is set immediately
+  // Guarantee application/json content-type header for every response
   res.setHeader('Content-Type', 'application/json');
 
   let currentStep = '[1] Endpoint started';
@@ -66,7 +230,7 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
       });
     }
 
-    currentStep = '[2] Admin authenticated / Request body parsed';
+    currentStep = '[2] Request body parsed';
     let body = req.body || {};
     if (typeof body === 'string') {
       try {
@@ -75,7 +239,7 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
         body = {};
       }
     }
-    console.log('[2] Admin request validated');
+    console.log('[2] Request body parsed successfully');
 
     currentStep = '[3] Received adId';
     const adId = body.adId;
@@ -162,9 +326,8 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
     };
     console.log('[7] Email payload prepared');
 
-    currentStep = '[8] Calling Resend via sendEmailDirect';
-    console.log(`[8] Calling Resend for recipient: ${recipientEmail}...`);
-    const dispatchResult = await sendEmailDirect(recipientEmail, 'recibo_pagamento_anuncio', emailPayload);
+    currentStep = '[8] Calling Resend via sendPaymentEmailDirect';
+    const dispatchResult = await sendPaymentEmailDirect(recipientEmail, emailPayload);
     console.log('[9] Resend response received:', JSON.stringify(dispatchResult));
 
     currentStep = '[10] Updating Firestore status';
