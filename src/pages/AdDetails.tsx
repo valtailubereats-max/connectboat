@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   MapPin, MessageCircle, Clock, ChevronLeft, ChevronRight, X, Heart, Star, 
   Trash2, Edit, AlertCircle, ShieldAlert, Eye, Award, Calendar, Share2, ExternalLink,
-  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag
+  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video
 } from 'lucide-react';
 import { 
   doc, updateDoc, increment, setDoc, collection, query, where, limit, getDoc, serverTimestamp, Timestamp 
@@ -22,6 +22,13 @@ import ImageLightboxModal from '../components/ImageLightboxModal';
 import { normalizeDescription } from '../utils/textFormatter';
 import { triggerShare } from '../utils/shareUtils';
 
+export interface MediaItem {
+  type: 'video' | 'image';
+  url: string;
+  thumbUrl?: string;
+  imageIndex?: number;
+}
+
 const AdDetails = () => {
   const { id } = useParams<{ id: string }>();
   const { user, profile, favorites, toggleFavoriteGlobal, isAdmin } = useAuth();
@@ -36,6 +43,17 @@ const AdDetails = () => {
   // Imagens e galeria
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showFullImage, setShowFullImage] = useState(false);
+  const mainVideoRef = useRef<HTMLVideoElement | null>(null);
+  const mobileVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const pauseVideos = () => {
+    if (mainVideoRef.current) mainVideoRef.current.pause();
+    if (mobileVideoRef.current) mobileVideoRef.current.pause();
+  };
+
+  useEffect(() => {
+    pauseVideos();
+  }, [currentImageIndex]);
 
   // Vendedor e avaliações gerais
   const [sellerProfile, setSellerProfile] = useState<UserProfile | null>(null);
@@ -59,10 +77,11 @@ const AdDetails = () => {
     if (touchStartX === null) return;
     const touchEndX = e.changedTouches[0].clientX;
     const diff = touchStartX - touchEndX;
-    if (diff > 50 && images.length > 1) {
-      setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-    } else if (diff < -50 && images.length > 1) {
-      setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+    pauseVideos();
+    if (diff > 50 && mediaItems.length > 1) {
+      setCurrentImageIndex((prev) => (prev === mediaItems.length - 1 ? 0 : prev + 1));
+    } else if (diff < -50 && mediaItems.length > 1) {
+      setCurrentImageIndex((prev) => (prev === 0 ? mediaItems.length - 1 : prev - 1));
     }
     setTouchStartX(null);
   };
@@ -655,6 +674,39 @@ const AdDetails = () => {
   if (images.length === 0) {
     images.push('https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&w=600&q=80');
   }
+
+  const hasValidVideo = Boolean(
+    (ad.videoPaid || ad.mediaBoostEnabled) && 
+    ad.videoUrl && 
+    typeof ad.videoUrl === 'string' && 
+    ad.videoUrl.trim() !== ''
+  );
+
+  if ((ad.videoPaid || ad.mediaBoostEnabled) && (!ad.videoUrl || typeof ad.videoUrl !== 'string' || !ad.videoUrl.trim())) {
+    console.warn('[AdDetails] Listing has videoPaid/mediaBoostEnabled set to true, but videoUrl is missing or invalid.', { adId: ad.id, videoUrl: ad.videoUrl });
+  }
+
+  const mediaItems: MediaItem[] = [];
+
+  if (hasValidVideo) {
+    mediaItems.push({
+      type: 'video',
+      url: ad.videoUrl!.trim(),
+      thumbUrl: images[0] || undefined
+    });
+  }
+
+  images.forEach((imgUrl, idx) => {
+    mediaItems.push({
+      type: 'image',
+      url: imgUrl,
+      imageIndex: idx
+    });
+  });
+
+  const validMediaIndex = Math.min(Math.max(0, currentImageIndex), mediaItems.length - 1);
+  const currentMedia = mediaItems[validMediaIndex] || mediaItems[0];
+
   const normalizedDescription = normalizeDescription(ad.description);
   
   const hasPrice =
@@ -736,33 +788,46 @@ const AdDetails = () => {
         {/* LADO ESQUERDO: Imagens e Galeria */}
         <div className="lg:col-span-7 space-y-4">
           <div className="relative aspect-[4/3] md:aspect-[16/10] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-none flex items-center justify-center">
-            {/* Ambient Background Blur Effect */}
-            <div 
-              className="absolute inset-0 bg-cover bg-center blur-2xl opacity-25 select-none pointer-events-none scale-110"
-              style={{ backgroundImage: `url(${images[currentImageIndex]})` }}
-            />
-            {/* Main Carousel Image */}
-            <img
-              src={images[currentImageIndex]}
-              alt={ad.title}
-              className="w-full h-full object-contain relative z-10 cursor-zoom-in"
-              onClick={() => setShowFullImage(true)}
-              referrerPolicy="no-referrer"
-              style={currentImageIndex === 0 ? {
-                objectPosition: ad.imagePositionX !== undefined && ad.imagePositionY !== undefined
-                  ? `${ad.imagePositionX}% ${ad.imagePositionY}%`
-                  : '50% 50%',
-                transform: `scale(${ad.imageZoom || 1}) translate(${
-                  ad.imageZoom && ad.imageZoom > 1
-                    ? ((ad.imagePositionX || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                    : 0
-                }%, ${
-                  ad.imageZoom && ad.imageZoom > 1
-                    ? ((ad.imagePositionY || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                    : 0
-                }%)`
-              } : undefined}
-            />
+            {currentMedia.type === 'video' ? (
+              <video
+                ref={mainVideoRef}
+                src={currentMedia.url}
+                controls
+                preload="metadata"
+                playsInline
+                className="w-full h-full object-contain relative z-10 bg-black rounded-3xl"
+              />
+            ) : (
+              <>
+                {/* Ambient Background Blur Effect */}
+                <div 
+                  className="absolute inset-0 bg-cover bg-center blur-2xl opacity-25 select-none pointer-events-none scale-110"
+                  style={{ backgroundImage: `url(${currentMedia.url})` }}
+                />
+                {/* Main Carousel Image */}
+                <img
+                  src={currentMedia.url}
+                  alt={ad.title}
+                  className="w-full h-full object-contain relative z-10 cursor-zoom-in"
+                  onClick={() => setShowFullImage(true)}
+                  referrerPolicy="no-referrer"
+                  style={currentMedia.imageIndex === 0 ? {
+                    objectPosition: ad.imagePositionX !== undefined && ad.imagePositionY !== undefined
+                      ? `${ad.imagePositionX}% ${ad.imagePositionY}%`
+                      : '50% 50%',
+                    transform: `scale(${ad.imageZoom || 1}) translate(${
+                      ad.imageZoom && ad.imageZoom > 1
+                        ? ((ad.imagePositionX || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
+                        : 0
+                    }%, ${
+                      ad.imageZoom && ad.imageZoom > 1
+                        ? ((ad.imagePositionY || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
+                        : 0
+                    }%)`
+                  } : undefined}
+                />
+              </>
+            )}
 
             {/* Favorito Button */}
             <button
@@ -776,18 +841,24 @@ const AdDetails = () => {
             </button>
 
             {/* Carousel Buttons */}
-            {images.length > 1 && (
+            {mediaItems.length > 1 && (
               <>
                 <button
-                  onClick={() => setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))}
-                  aria-label="Imagem anterior"
+                  onClick={() => {
+                    pauseVideos();
+                    setCurrentImageIndex((prev) => (prev === 0 ? mediaItems.length - 1 : prev - 1));
+                  }}
+                  aria-label="Anterior"
                   className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 bg-white/90 dark:bg-slate-900/90 hover:bg-white backdrop-blur-md rounded-full text-slate-900 shadow-md z-20"
                 >
                   <ChevronLeft size={20} />
                 </button>
                 <button
-                  onClick={() => setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))}
-                  aria-label="Próxima imagem"
+                  onClick={() => {
+                    pauseVideos();
+                    setCurrentImageIndex((prev) => (prev === mediaItems.length - 1 ? 0 : prev + 1));
+                  }}
+                  aria-label="Próximo"
                   className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 bg-white/90 dark:bg-slate-900/90 hover:bg-white backdrop-blur-md rounded-full text-slate-900 shadow-md z-20"
                 >
                   <ChevronRight size={20} />
@@ -797,35 +868,58 @@ const AdDetails = () => {
           </div>
 
           {/* Thumbnails strip */}
-          {images.length > 1 && (
+          {mediaItems.length > 1 && (
             <div className="flex gap-2 mr-1 overflow-x-auto py-2">
-              {images.map((img, i) => (
+              {mediaItems.map((item, i) => (
                 <button
                   key={i}
-                  onClick={() => setCurrentImageIndex(i)}
-                  className={`w-20 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
-                    currentImageIndex === i ? 'border-indigo-600 scale-95 shadow-sm' : 'border-transparent opacity-60 hover:opacity-100'
+                  onClick={() => {
+                    pauseVideos();
+                    setCurrentImageIndex(i);
+                  }}
+                  className={`relative w-20 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
                   }`}
                 >
-                  <img 
-                    src={img} 
-                    alt={`Miniatura ${i}`} 
-                    className="w-full h-full object-cover" 
-                    style={i === 0 ? {
-                      objectPosition: ad.imagePositionX !== undefined && ad.imagePositionY !== undefined
-                        ? `${ad.imagePositionX}% ${ad.imagePositionY}%`
-                        : '50% 50%',
-                      transform: `scale(${ad.imageZoom || 1}) translate(${
-                        ad.imageZoom && ad.imageZoom > 1
-                          ? ((ad.imagePositionX || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                          : 0
-                      }%, ${
-                        ad.imageZoom && ad.imageZoom > 1
-                          ? ((ad.imagePositionY || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                          : 0
-                      }%)`
-                    } : undefined}
-                  />
+                  {item.type === 'video' ? (
+                    <>
+                      {images[0] ? (
+                        <img src={images[0]} alt="Video Thumbnail" className="w-full h-full object-cover brightness-75" />
+                      ) : (
+                        <div className="w-full h-full bg-slate-900 flex items-center justify-center text-slate-400">
+                          <Video size={20} />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-md">
+                          <Play size={14} className="fill-white ml-0.5" />
+                        </div>
+                      </div>
+                      <span className="absolute bottom-1 right-1 bg-indigo-900/90 text-white text-[9px] font-black px-1 py-0.5 rounded tracking-wider uppercase">
+                        VIDEO
+                      </span>
+                    </>
+                  ) : (
+                    <img 
+                      src={item.url} 
+                      alt={`Miniatura ${i}`} 
+                      className="w-full h-full object-cover" 
+                      style={item.imageIndex === 0 ? {
+                        objectPosition: ad.imagePositionX !== undefined && ad.imagePositionY !== undefined
+                          ? `${ad.imagePositionX}% ${ad.imagePositionY}%`
+                          : '50% 50%',
+                        transform: `scale(${ad.imageZoom || 1}) translate(${
+                          ad.imageZoom && ad.imageZoom > 1
+                            ? ((ad.imagePositionX || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
+                            : 0
+                        }%, ${
+                          ad.imageZoom && ad.imageZoom > 1
+                            ? ((ad.imagePositionY || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
+                            : 0
+                        }%)`
+                      } : undefined}
+                    />
+                  )}
                 </button>
               ))}
             </div>
@@ -1412,31 +1506,44 @@ const AdDetails = () => {
         {/* CAROUSEL FLOW */}
         <div className="space-y-3">
           <div className="relative aspect-[4/3] bg-slate-950 rounded-2xl overflow-hidden shadow-md group touch-none flex items-center justify-center">
-            <div 
-              className="absolute inset-0 bg-cover bg-center blur-2xl opacity-25 select-none pointer-events-none scale-110"
-              style={{ backgroundImage: `url(${images[currentImageIndex]})` }}
-            />
-            <img
-              src={images[currentImageIndex]}
-              alt={ad.title}
-              className="w-full h-full object-contain relative z-10 cursor-zoom-in"
-              onClick={() => setShowFullImage(true)}
-              referrerPolicy="no-referrer"
-              style={currentImageIndex === 0 ? {
-                objectPosition: ad.imagePositionX !== undefined && ad.imagePositionY !== undefined
-                  ? `${ad.imagePositionX}% ${ad.imagePositionY}%`
-                  : '50% 50%',
-                transform: `scale(${ad.imageZoom || 1}) translate(${
-                  ad.imageZoom && ad.imageZoom > 1
-                    ? ((ad.imagePositionX || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                    : 0
-                }%, ${
-                  ad.imageZoom && ad.imageZoom > 1
-                    ? ((ad.imagePositionY || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                    : 0
-                }%)`
-              } : undefined}
-            />
+            {currentMedia.type === 'video' ? (
+              <video
+                ref={mobileVideoRef}
+                src={currentMedia.url}
+                controls
+                preload="metadata"
+                playsInline
+                className="w-full h-full object-contain relative z-10 bg-black rounded-2xl"
+              />
+            ) : (
+              <>
+                <div 
+                  className="absolute inset-0 bg-cover bg-center blur-2xl opacity-25 select-none pointer-events-none scale-110"
+                  style={{ backgroundImage: `url(${currentMedia.url})` }}
+                />
+                <img
+                  src={currentMedia.url}
+                  alt={ad.title}
+                  className="w-full h-full object-contain relative z-10 cursor-zoom-in"
+                  onClick={() => setShowFullImage(true)}
+                  referrerPolicy="no-referrer"
+                  style={currentMedia.imageIndex === 0 ? {
+                    objectPosition: ad.imagePositionX !== undefined && ad.imagePositionY !== undefined
+                      ? `${ad.imagePositionX}% ${ad.imagePositionY}%`
+                      : '50% 50%',
+                    transform: `scale(${ad.imageZoom || 1}) translate(${
+                      ad.imageZoom && ad.imageZoom > 1
+                        ? ((ad.imagePositionX || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
+                        : 0
+                    }%, ${
+                      ad.imageZoom && ad.imageZoom > 1
+                        ? ((ad.imagePositionY || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
+                        : 0
+                    }%)`
+                  } : undefined}
+                />
+              </>
+            )}
 
             {/* Favorito Button */}
             <button
@@ -1449,16 +1556,22 @@ const AdDetails = () => {
             </button>
 
             {/* Carousel Buttons */}
-            {images.length > 1 && (
+            {mediaItems.length > 1 && (
               <>
                 <button
-                  onClick={() => setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1))}
+                  onClick={() => {
+                    pauseVideos();
+                    setCurrentImageIndex((prev) => (prev === 0 ? mediaItems.length - 1 : prev - 1));
+                  }}
                   className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-white/95 backdrop-blur-md rounded-full text-slate-900 shadow-md z-20"
                 >
                   <ChevronLeft size={16} />
                 </button>
                 <button
-                  onClick={() => setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1))}
+                  onClick={() => {
+                    pauseVideos();
+                    setCurrentImageIndex((prev) => (prev === mediaItems.length - 1 ? 0 : prev + 1));
+                  }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-white/95 backdrop-blur-md rounded-full text-slate-900 shadow-md z-20"
                 >
                   <ChevronRight size={16} />
@@ -1468,35 +1581,55 @@ const AdDetails = () => {
           </div>
 
           {/* Thumbnails list */}
-          {images.length > 1 && (
+          {mediaItems.length > 1 && (
             <div className="flex gap-2 overflow-x-auto py-1 scrollbar-none">
-              {images.map((img, i) => (
+              {mediaItems.map((item, i) => (
                 <button
                   key={i}
-                  onClick={() => setCurrentImageIndex(i)}
-                  className={`w-14 h-11 rounded-lg overflow-hidden shrink-0 border-2 transition-all ${
-                    currentImageIndex === i ? 'border-indigo-600 scale-95 shadow-sm' : 'border-transparent opacity-60 hover:opacity-100'
+                  onClick={() => {
+                    pauseVideos();
+                    setCurrentImageIndex(i);
+                  }}
+                  className={`relative w-14 h-11 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
                   }`}
                 >
-                  <img 
-                    src={img} 
-                    alt={`Miniatura ${i}`} 
-                    className="w-full h-full object-cover"
-                    style={i === 0 ? {
-                      objectPosition: ad.imagePositionX !== undefined && ad.imagePositionY !== undefined
-                        ? `${ad.imagePositionX}% ${ad.imagePositionY}%`
-                        : '50% 50%',
-                      transform: `scale(${ad.imageZoom || 1}) translate(${
-                        ad.imageZoom && ad.imageZoom > 1
-                          ? ((ad.imagePositionX || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                          : 0
-                      }%, ${
-                        ad.imageZoom && ad.imageZoom > 1
-                          ? ((ad.imagePositionY || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
-                          : 0
-                      }%)`
-                    } : undefined}
-                  />
+                  {item.type === 'video' ? (
+                    <>
+                      {images[0] ? (
+                        <img src={images[0]} alt="Video Thumbnail" className="w-full h-full object-cover brightness-75" />
+                      ) : (
+                        <div className="w-full h-full bg-slate-900 flex items-center justify-center text-slate-400">
+                          <Video size={16} />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow-md">
+                          <Play size={10} className="fill-white ml-0.5" />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <img 
+                      src={item.url} 
+                      alt={`Miniatura ${i}`} 
+                      className="w-full h-full object-cover"
+                      style={item.imageIndex === 0 ? {
+                        objectPosition: ad.imagePositionX !== undefined && ad.imagePositionY !== undefined
+                          ? `${ad.imagePositionX}% ${ad.imagePositionY}%`
+                          : '50% 50%',
+                        transform: `scale(${ad.imageZoom || 1}) translate(${
+                          ad.imageZoom && ad.imageZoom > 1
+                            ? ((ad.imagePositionX || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
+                            : 0
+                        }%, ${
+                          ad.imageZoom && ad.imageZoom > 1
+                            ? ((ad.imagePositionY || 50) - 50) * (ad.imageZoom - 1) / ad.imageZoom
+                            : 0
+                        }%)`
+                      } : undefined}
+                    />
+                  )}
                 </button>
               ))}
             </div>
@@ -2080,8 +2213,12 @@ const AdDetails = () => {
         isOpen={showFullImage}
         onClose={() => setShowFullImage(false)}
         images={images}
-        currentIndex={currentImageIndex}
-        onIndexChange={setCurrentImageIndex}
+        mediaItems={mediaItems}
+        currentIndex={validMediaIndex}
+        onIndexChange={(idx) => {
+          pauseVideos();
+          setCurrentImageIndex(idx);
+        }}
         title={ad?.title}
       />
 
