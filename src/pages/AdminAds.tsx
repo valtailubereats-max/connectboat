@@ -130,6 +130,7 @@ const AdminAds = () => {
   const [savingPosition, setSavingPosition] = useState(false);
   const [savedPositionSuccess, setSavedPositionSuccess] = useState(false);
   const [claimActionLoading, setClaimActionLoading] = useState(false);
+  const [resendingEmailId, setResendingEmailId] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedAd) {
@@ -478,6 +479,42 @@ const AdminAds = () => {
       alert('Error updating listing: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setClaimActionLoading(false);
+    }
+  };
+
+  const handleResendPaymentEmail = async (adId: string) => {
+    setResendingEmailId(adId);
+    try {
+      const res = await fetch('/api/admin/resend-payment-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || 'E-mail de confirmação de pagamento enviado com sucesso!');
+        setAds(prev => prev.map(a => a.id === adId ? {
+          ...a,
+          paymentConfirmationEmailSent: true,
+          paymentConfirmationEmailStatus: 'sent',
+          paymentConfirmationEmailError: null
+        } as any : a));
+        if (selectedAd?.id === adId) {
+          setSelectedAd(prev => prev ? {
+            ...prev,
+            paymentConfirmationEmailSent: true,
+            paymentConfirmationEmailStatus: 'sent',
+            paymentConfirmationEmailError: null
+          } as any : null);
+        }
+      } else {
+        alert(`Erro: ${data.errorMessage || data.error || 'Falha ao enviar e-mail de pagamento.'}`);
+      }
+    } catch (err: any) {
+      console.error('Error resending payment email:', err);
+      alert('Erro de ligação ao servidor ao tentar enviar o e-mail de pagamento.');
+    } finally {
+      setResendingEmailId(null);
     }
   };
 
@@ -1677,6 +1714,20 @@ const AdminAds = () => {
                       Plan: {selectedAd.plan}
                     </span>
                   )}
+                  {/* Payment Email Status Badge */}
+                  {selectedAd.paymentConfirmationEmailStatus === 'sent' || selectedAd.paymentConfirmationEmailSent ? (
+                    <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-emerald-50 text-emerald-700 border border-emerald-200" title="E-mail de recibo enviado ao anunciante">
+                      ✉️ Email: Sent
+                    </span>
+                  ) : selectedAd.paymentConfirmationEmailStatus === 'failed' ? (
+                    <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-red-50 text-red-700 border border-red-200" title={selectedAd.paymentConfirmationEmailError || 'Falha ao enviar e-mail'}>
+                      ✉️ Email: Failed
+                    </span>
+                  ) : (
+                    <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-slate-100 text-slate-600 border border-slate-200">
+                      ✉️ Email: Not sent
+                    </span>
+                  )}
                 </div>
 
                 {/* Primary Details Row */}
@@ -1772,6 +1823,19 @@ const AdminAds = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleResendPaymentEmail(selectedAd.id)}
+                    disabled={resendingEmailId === selectedAd.id}
+                    className="h-10 px-4 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-sm shadow-sky-100 disabled:opacity-50"
+                    title="Reenviar E-mail de Recibo/Pagamento ao Anunciante"
+                  >
+                    {resendingEmailId === selectedAd.id ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <MessageSquare size={16} />
+                    )}
+                    <span>Reenviar E-mail Pagamento</span>
+                  </button>
                   <button
                     onClick={() => {
                       setSelectedAd(null);

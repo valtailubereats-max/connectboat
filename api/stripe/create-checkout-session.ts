@@ -144,9 +144,14 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       }
     }
 
+    const isValidEmail = userEmail && typeof userEmail === 'string' && userEmail.includes('@');
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      customer_email: userEmail && typeof userEmail === 'string' && userEmail.includes('@') ? userEmail : undefined,
+      customer_email: isValidEmail ? userEmail : undefined,
+      payment_intent_data: isValidEmail ? {
+        receipt_email: userEmail
+      } : undefined,
       line_items: lineItems,
       managed_payments: {
         enabled: false,

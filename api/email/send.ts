@@ -71,7 +71,7 @@ function generateConnectBoatTemplate(title: string, bodyContent: string, ctaLink
 }
 
 // Render specific email templates
-function renderEmail(template: string, data: any): { subject: string; html: string } {
+export function renderEmail(template: string, data: any): { subject: string; html: string } {
   let subject = '';
   let bodyContent = '';
   let ctaLink: string | undefined;
@@ -90,6 +90,98 @@ function renderEmail(template: string, data: any): { subject: string; html: stri
   const baseUrl = resolvedUrl.replace(/\/$/, '');
 
   switch (template) {
+    case 'recibo_pagamento_anuncio':
+      subject = `Your ConnectBoat listing payment is confirmed`;
+      bodyContent = `
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0; color: #0f172a;">Hello ${data.userName || 'Valued Member'},</p>
+        <p style="color: #475569; margin-bottom: 20px;">
+          Thank you for advertising on ConnectBoat! Your payment has been confirmed and your listing is now <strong>active</strong>.
+        </p>
+
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px; margin-bottom: 24px;">
+          <table border="0" cellpadding="0" cellspacing="0" width="100%">
+            <tr>
+              <td>
+                <span style="font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #166534; display: block;">Payment Status</span>
+                <span style="font-size: 18px; font-weight: 800; color: #15803d;">CONFIRMED & ACTIVE</span>
+              </td>
+              <td align="right" style="font-size: 20px; font-weight: 800; color: #166534;">
+                ${data.totalAmount || 'Paid'}
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 24px; font-size: 14px;">
+          <tr>
+            <td colspan="2" style="padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; font-weight: bold; color: #0f172a; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;">
+              Itemized Summary
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; color: #475569;">${data.planTitle || 'Listing Fee'}</td>
+            <td align="right" style="padding: 10px 0; font-weight: bold; color: #0f172a;">${data.planPrice || '£2.99'}</td>
+          </tr>
+          ${data.hasMediaBoost ? `
+          <tr>
+            <td style="padding: 10px 0; color: #475569;">Media Boost (60s Listing Video)</td>
+            <td align="right" style="padding: 10px 0; font-weight: bold; color: #0f172a;">${data.mediaBoostPrice || '£2.00'}</td>
+          </tr>
+          ` : ''}
+          <tr>
+            <td style="padding-top: 12px; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0f172a; font-size: 15px;">Total Paid</td>
+            <td align="right" style="padding-top: 12px; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0284c7; font-size: 16px;">${data.totalAmount || '£2.99'}</td>
+          </tr>
+        </table>
+
+        <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">
+            Listing & Transaction Details
+          </h3>
+          <table border="0" cellpadding="0" cellspacing="0" width="100%" style="font-size: 13px; color: #334155;">
+            <tr>
+              <td style="padding: 5px 0; color: #64748b; width: 40%;">Listing Title:</td>
+              <td style="padding: 5px 0; font-weight: bold; color: #0f172a;">${data.adTitle || 'Boat Listing'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; color: #64748b;">Listing Reference:</td>
+              <td style="padding: 5px 0; font-family: monospace; color: #0f172a;">#${data.adId}</td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; color: #64748b;">Listing Type:</td>
+              <td style="padding: 5px 0; font-weight: bold; color: #0f172a;">${data.listingType || 'Boat for Sale'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; color: #64748b;">Status:</td>
+              <td style="padding: 5px 0;"><span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;">Active</span></td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; color: #64748b;">Payment Date:</td>
+              <td style="padding: 5px 0; color: #0f172a;">${data.paymentDate}</td>
+            </tr>
+            <tr>
+              <td style="padding: 5px 0; color: #64748b;">Expiry Date:</td>
+              <td style="padding: 5px 0; color: #0f172a; font-weight: bold;">${data.expiryDate}</td>
+            </tr>
+            ${data.paymentRef ? `
+            <tr>
+              <td style="padding: 5px 0; color: #64748b;">Session / Payment Ref:</td>
+              <td style="padding: 5px 0; font-family: monospace; font-size: 11px; color: #64748b;">${data.paymentRef}</td>
+            </tr>
+            ` : ''}
+          </table>
+        </div>
+
+        <div style="text-align: center; margin: 25px 0;">
+          <a href="${data.adUrl || `${baseUrl}/anuncio/${data.adId}`}" target="_blank" style="background-color: #0284c7; color: #ffffff; padding: 12px 22px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 14px; margin-right: 8px; margin-bottom: 8px;">
+            Open Listing
+          </a>
+          <a href="${data.manageUrl || `${baseUrl}/profile`}" target="_blank" style="background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 12px 22px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 14px; margin-bottom: 8px;">
+            My Listings
+          </a>
+        </div>
+      `;
+      break;
     case 'anuncio_submetido':
       subject = `⛵ Listing Submitted Successfully: ${data.adTitle || 'Your Listing'}`;
       bodyContent = `
@@ -274,6 +366,63 @@ function renderEmail(template: string, data: any): { subject: string; html: stri
 
   const html = generateConnectBoatTemplate(subject, bodyContent, ctaLink, ctaText);
   return { subject, html };
+}
+
+// Direct Programmatic Email Dispatch Helper (for Webhooks & Admin Handlers)
+export async function sendEmailDirect(to: string | string[], template: string, data: any) {
+  if (!EMAIL_FLAG_ACTIVE) {
+    console.log('[API Email] Direct send skipped: EMAIL_ACTIVE is false.');
+    return { success: true, message: "Emails disabled globally" };
+  }
+
+  const { subject, html } = renderEmail(template, data);
+
+  const emailFrom = process.env.EMAIL_FROM || 'ConnectBoat <no-reply@connectboat.co.uk>';
+  const emailReplyTo = process.env.EMAIL_REPLY_TO || 'contato@connectboat.co.uk';
+  const resendApiKey = process.env.RESEND_API_KEY;
+
+  if (resendApiKey) {
+    console.log(`[API Email Direct] Dispatching via Resend to: ${Array.isArray(to) ? to.join(', ') : to}`);
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${resendApiKey}`
+      },
+      body: JSON.stringify({
+        from: emailFrom,
+        to: Array.isArray(to) ? to : [to],
+        subject: subject,
+        html: html,
+        reply_to: emailReplyTo
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[API Email Direct ERROR] Resend return ${response.status}:`, errorText);
+      throw new Error(`Resend API Error (${response.status}): ${errorText}`);
+    }
+
+    const responseJson = await response.json();
+    return { success: true, provider: 'resend', id: responseJson.id };
+  }
+
+  // Simulation log
+  console.log(' ');
+  console.log('========================================================================');
+  console.log(`✉️ [EMAIL DIRECT SIMULATION] DISPATCH LOGGED FOR LOCAL DEVELOPMENT`);
+  console.log(`   Recipient(s): ${Array.isArray(to) ? to.join(', ') : to}`);
+  console.log(`   From:         ${emailFrom}`);
+  console.log(`   Reply-To:     ${emailReplyTo}`);
+  console.log(`   Subject:      ${subject}`);
+  console.log(`   Template:     ${template}`);
+  console.log('------------------------------------------------------------------------');
+  console.log(`   Payload data:`, JSON.stringify(data, null, 2));
+  console.log('========================================================================');
+  console.log(' ');
+
+  return { success: true, simulated: true };
 }
 
 // Vercel Serverless Module Handler

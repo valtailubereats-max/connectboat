@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import Stripe from 'stripe';
 import * as admin from 'firebase-admin';
+import { sendEmailDirect } from '../email/send.ts';
 
 export const config = {
   api: {
@@ -355,17 +356,77 @@ export default async function stripeWebhookHandler(req: Request & { rawBody?: Bu
 
           console.log(`[Stripe Webhook] Successfully updated ad ${adId} to plan ${activePlan} (featuredLevel: ${level}, mediaBoostPaid: ${isMediaBoostPaid})`);
 
-          // Dispatch confirmation email
-          const customerEmail = session.customer_details?.email || session.customer_email;
-          if (customerEmail) {
-            const currencySymbol = session.currency?.toUpperCase() === 'GBP' ? '£' : '€';
-            const amountFormatted = session.amount_total ? `${currencySymbol}${(session.amount_total / 100).toFixed(2)}` : undefined;
-            sendPaymentEmail(
-              customerEmail,
-              session.customer_details?.name || 'Valued Member',
-              `ConnectBoat - ${humanPlanTitle}`,
-              amountFormatted
-            ).catch(err => console.warn('[Stripe Email Error]', err));
+          // Dispatch confirmation email with idempotency protection
+          const customerEmail = session.customer_details?.email || session.customer_email || adData.sellerEmail || adData.email;
+          const isAlreadySent = adData.paymentConfirmationEmailSent === true && adData.stripeCheckoutSessionId === session.id;
+
+          if (isAlreadySent) {
+            console.log(`[Stripe Webhook Email] Email already sent for session ${session.id} (Ad ${adId}). Skipping duplicate dispatch.`);
+          } else if (customerEmail) {
+            const isHire = adData.category === 'aluguel' || adData.listingType === 'hire' || adData.type === 'hire';
+            const currencySymbol = session.currency?.toUpperCase() === 'EUR' ? '€' : '£';
+
+            let planTitle = 'Standard Listing';
+            let planPrice = `${currencySymbol}2.99`;
+            if (activePlan === 'premium') {
+              planTitle = 'Premium Featured Listing';
+              planPrice = `${currencySymbol}9.99`;
+            } else if (activePlan === 'featured' || activePlan === 'national' || activePlan === 'local') {
+              planTitle = 'Featured Listing';
+              planPrice = `${currencySymbol}4.99`;
+            }
+
+            const hasMediaBoost = isMediaBoostPaid || !!adData.mediaBoostEnabled;
+            const totalAmountFormatted = session.amount_total 
+              ? `${currencySymbol}${(session.amount_total / 100).toFixed(2)}`
+              : planPrice;
+
+            let baseUrl = process.env.PUBLIC_SITE_URL || process.env.SITE_URL || 'https://www.connectboat.co.uk';
+            baseUrl = baseUrl.replace(/\/$/, '');
+
+            const emailPayload = {
+              userName: session.customer_details?.name || adData.sellerName || 'Valued Advertiser',
+              adTitle: adData.title || 'Boat Listing',
+              adId: adId,
+              listingType: isHire ? 'Boat for Hire' : 'Boat for Sale',
+              planTitle: planTitle,
+              planPrice: planPrice,
+              hasMediaBoost: hasMediaBoost,
+              mediaBoostPrice: `${currencySymbol}2.00`,
+              totalAmount: totalAmountFormatted,
+              paymentDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+              expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              paymentRef: session.id || session.payment_intent || adId,
+              adUrl: `${baseUrl}/anuncio/${adId}`,
+              manageUrl: `${baseUrl}/profile`,
+            };
+
+            try {
+              await sendEmailDirect(customerEmail, 'recibo_pagamento_anuncio', emailPayload);
+              console.log(`[Stripe Webhook Email] Sent itemized receipt email to ${customerEmail} for ad ${adId}`);
+              
+              await db.collection('ads').doc(adId).update({
+                stripeCheckoutSessionId: session.id,
+                paymentConfirmationEmailSent: true,
+                paymentConfirmationEmailStatus: 'sent',
+                paymentConfirmationEmailSentAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+                paymentConfirmationEmailError: null,
+              }).catch(e => console.warn(`[Stripe Webhook Email] Note on updating email sent status in Firestore:`, e));
+            } catch (emailErr: any) {
+              console.error(`[Stripe Webhook Email ERROR] Failed sending receipt to ${customerEmail} for ad ${adId}:`, emailErr);
+              await db.collection('ads').doc(adId).update({
+                stripeCheckoutSessionId: session.id,
+                paymentConfirmationEmailStatus: 'failed',
+                paymentConfirmationEmailError: emailErr?.message || String(emailErr),
+                paymentConfirmationEmailLastAttemptAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+              }).catch(e => console.warn(`[Stripe Webhook Email] Note on recording email failure in Firestore:`, e));
+            }
+          } else {
+            console.warn(`[Stripe Webhook Email Warning] No customer email available for session ${session.id} (Ad ${adId}). Record email status as not_sent.`);
+            await db.collection('ads').doc(adId).update({
+              stripeCheckoutSessionId: session.id,
+              paymentConfirmationEmailStatus: 'no_email_provided',
+            }).catch(() => {});
           }
         }
       } else if (itemType === 'digital_showcase' && userId) {

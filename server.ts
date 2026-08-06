@@ -16,6 +16,7 @@ import seoHandler from './api/seo.ts';
 import sitemapHandler from './api/sitemap.ts';
 import createCheckoutSessionHandler from './api/stripe/create-checkout-session.ts';
 import stripeWebhookHandler from './api/stripe/webhook.ts';
+import resendPaymentEmailHandler from './api/admin/resend-payment-email.ts';
 
 async function startServer() {
   const app = express();
@@ -125,6 +126,18 @@ async function startServer() {
       console.error('[Server Error /api/stripe/webhook]:', err);
       if (!res.headersSent) {
         res.status(400).send(`Webhook Error: ${err.message}`);
+      }
+    }
+  });
+
+  app.post('/api/admin/resend-payment-email', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      await resendPaymentEmailHandler(req, res);
+    } catch (err: any) {
+      console.error('[Server Error /api/admin/resend-payment-email]:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: err.message || 'Erro interno no servidor' });
       }
     }
   });
