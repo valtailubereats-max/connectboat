@@ -9,8 +9,8 @@ import { clearHomeCache } from '../utils/cache';
 import { sendEmailGeneric } from '../utils/emailService';
 import { CITIES, Ad, MarketplaceSettings, PORTUGAL_CITIES, UK_CITIES, UK_REGIONS, CITIES_BY_REGION, getRegionForCity, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS, PRICING_UNITS } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
-import { motion, AnimatePresence } from 'motion/react';
-import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, ChevronRight, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard } from 'lucide-react';
+import { motion, AnimatePresence, Reorder } from 'motion/react';
+import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, ChevronRight, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard, GripVertical } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 import { normalizeDescription } from '../utils/textFormatter';
 import { parsePrice, formatPrice } from '../utils';
@@ -903,6 +903,7 @@ const CreateAd = () => {
     processFiles(files);
   };
   const removeImage = async (index: number) => {
+    if (isEditLocked && !isAdmin) return;
     setFormData(prev => {
       const imageUrl = prev.images[index];
       const newImages = prev.images.filter((_, i) => i !== index);
@@ -917,6 +918,37 @@ const CreateAd = () => {
       
       return { ...prev, images: newImages };
     });
+  };
+
+  const handleReorderImages = (newImages: string[]) => {
+    if (isEditLocked && !isAdmin) return;
+    setFormData(prev => ({
+      ...prev,
+      images: newImages
+    }));
+  };
+
+  const moveImage = (index: number, direction: 'left' | 'right') => {
+    if (isEditLocked && !isAdmin) return;
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= formData.images.length) return;
+    
+    const updated = [...formData.images];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(targetIndex, 0, moved);
+
+    setFormData(prev => ({ ...prev, images: updated }));
+  };
+
+  const setAsMainImage = (index: number) => {
+    if (isEditLocked && !isAdmin) return;
+    if (index <= 0 || index >= formData.images.length) return;
+
+    const updated = [...formData.images];
+    const [moved] = updated.splice(index, 1);
+    updated.splice(0, 0, moved);
+
+    setFormData(prev => ({ ...prev, images: updated }));
   };
 
   const normalizeTextForDuplicates = (text: string) => {
@@ -1921,40 +1953,118 @@ const CreateAd = () => {
                     className="hidden"
                     disabled={uploading}
                   />
-                  <AnimatePresence mode="popLayout">
-                    {formData.images.map((url, index) => (
-                      url && (
-                        <motion.div
-                          key={`${url}-${index}`}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          className="aspect-square bg-slate-100 rounded-2xl overflow-hidden relative group border border-slate-200"
-                        >
-                          <img 
-                            src={url} 
-                            alt={`Preview ${index}`} 
-                            className={formData.listingType === 'informativo' ? "w-full h-full object-contain p-2 bg-slate-50" : "w-full h-full object-cover"} 
-                            style={index === 0 && formData.listingType !== 'informativo' ? getAdImageStyle(imagePositionX, imagePositionY, imageZoom) : undefined} 
-                          />
-                          {!(isEditLocked && !isAdmin) && (
-                            <button
-                              type="button"
-                              onClick={() => removeImage(index)}
-                              className="absolute top-2 right-2 bg-red-500 text-white p-2 md:p-1.5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-95 shadow-lg z-10 cursor-pointer"
-                            >
-                              <X size={14} />
-                            </button>
-                          )}
-                          {index === 0 && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] font-bold py-1 text-center uppercase tracking-tighter">
-                              Main Photo
-                            </div>
-                          )}
-                        </motion.div>
-                      )
-                    ))}
-                  </AnimatePresence>
+                  <Reorder.Group
+                    axis="y"
+                    values={formData.images}
+                    onReorder={handleReorderImages}
+                    className="contents"
+                  >
+                    <AnimatePresence mode="popLayout">
+                      {formData.images.map((url, index) => (
+                        url && (
+                          <Reorder.Item
+                            key={url}
+                            value={url}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            whileDrag={{ scale: 1.05, zIndex: 30, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)" }}
+                            dragListener={!(isEditLocked && !isAdmin)}
+                            className="aspect-square bg-slate-100 rounded-2xl overflow-hidden relative group border border-slate-200 select-none touch-none"
+                          >
+                            <img 
+                              src={url} 
+                              alt={`Preview ${index}`} 
+                              className={formData.listingType === 'informativo' ? "w-full h-full object-contain p-2 bg-slate-50 pointer-events-none" : "w-full h-full object-cover pointer-events-none"} 
+                              style={index === 0 && formData.listingType !== 'informativo' ? getAdImageStyle(imagePositionX, imagePositionY, imageZoom) : undefined} 
+                            />
+
+                            {/* Drag Indicator / Grip Handle */}
+                            {!(isEditLocked && !isAdmin) && (
+                              <div className="absolute top-2 left-2 bg-slate-900/60 hover:bg-slate-900/80 text-white p-1.5 rounded-lg opacity-80 group-hover:opacity-100 transition-all cursor-grab active:cursor-grabbing backdrop-blur-sm z-10 flex items-center justify-center">
+                                <GripVertical size={14} />
+                              </div>
+                            )}
+
+                            {/* Delete Button */}
+                            {!(isEditLocked && !isAdmin) && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeImage(index);
+                                }}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 md:p-1.5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-95 shadow-lg z-10 cursor-pointer"
+                                title="Remove photo"
+                                aria-label="Remove photo"
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+
+                            {/* Quick Accessible Reorder Controls */}
+                            {!(isEditLocked && !isAdmin) && formData.images.length > 1 && (
+                              <div 
+                                className="absolute bottom-2 right-2 flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 bg-slate-900/70 p-1 rounded-xl backdrop-blur-sm"
+                                onPointerDown={(e) => e.stopPropagation()}
+                              >
+                                {index > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      moveImage(index, 'left');
+                                    }}
+                                    className="p-1 bg-white/20 hover:bg-white/40 text-white rounded-lg text-xs font-bold transition-colors"
+                                    title="Move earlier"
+                                    aria-label="Move earlier"
+                                  >
+                                    <ChevronLeft size={14} />
+                                  </button>
+                                )}
+                                {index < formData.images.length - 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      moveImage(index, 'right');
+                                    }}
+                                    className="p-1 bg-white/20 hover:bg-white/40 text-white rounded-lg text-xs font-bold transition-colors"
+                                    title="Move later"
+                                    aria-label="Move later"
+                                  >
+                                    <ChevronRight size={14} />
+                                  </button>
+                                )}
+                                {index !== 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAsMainImage(index);
+                                    }}
+                                    className="px-1.5 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-[10px] font-extrabold uppercase tracking-tight transition-colors"
+                                    title="Set as Main Photo"
+                                    aria-label="Set as Main Photo"
+                                  >
+                                    Main
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Main Photo Badge */}
+                            {index === 0 && (
+                              <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] font-bold py-1 text-center uppercase tracking-tighter z-10 pointer-events-none shadow-md">
+                                ★ Main Photo
+                              </div>
+                            )}
+                          </Reorder.Item>
+                        )
+                      ))}
+                    </AnimatePresence>
+                  </Reorder.Group>
 
                   {formData.images.length < maxAllowed && !(isEditLocked && !isAdmin) && (
                     <button
@@ -1992,7 +2102,7 @@ const CreateAd = () => {
                   )}
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium">
-                  * First photo is the cover photo. Max 5MB per file.
+                  * First photo is the cover photo. Drag thumbnails or use arrows to reorder. Max 5MB per file.
                 </p>
 
                 {formData.images.length > 0 && (
