@@ -17,6 +17,7 @@ import { parsePrice, formatPrice } from '../utils';
 import { getSourceSiteFromUrl, getSupportedMarketplace, getSupportedMarketplacesMessage } from '../utils/marketplaces';
 import { isImportedOrExternalAd, normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
 import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../utils/imageFraming';
+import { evaluateListingDuplicates, DuplicateCheckResult } from '../utils/duplicateDetector';
 
 const CreateAd = () => {
   const { categories } = useSettings();
@@ -53,9 +54,15 @@ const CreateAd = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<{
     show: boolean;
+    level: 'confirmed' | 'possible';
     reason: string;
+    explanationDetails?: string;
+    matchedFields: string[];
+    matchedAdId?: string;
+    matchedAdTitle?: string;
     adData: any;
     adId: string;
+    score: number;
   } | null>(null);
 
   const showValidationError = (message: string, fieldId?: string) => {
@@ -1343,67 +1350,33 @@ const CreateAd = () => {
         }
       }
 
-      // 2. Buscar outros anúncios do mesmo vendedor para verificar similaridade
+      // 2. Buscar outros anúncios do mesmo vendedor para verificação inteligente de duplicidade
       const qSeller = query(collection(db, 'ads'), where('sellerId', '==', user.uid));
       const snapSeller = await getDocs(qSeller);
       const sellerAds = snapSeller.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as any));
 
-      let isDuplicateLocal = false;
-      let dupReasonLocal = '';
-      let dupOfIdLocal = '';
+      const dupEval = evaluateListingDuplicates(adData, sellerAds, adId);
 
-      for (const existingAd of sellerAds) {
-        if (existingAd.id === adId) continue;
-        
-        let matchCount = 0;
-        const reasons: string[] = [];
+      adData.isDuplicate = dupEval.isDuplicate;
+      adData.duplicateLevel = dupEval.level;
+      adData.duplicateReason = dupEval.explanationDetails || dupEval.reason;
+      adData.duplicateOf = dupEval.matchedAdId || '';
+      adData.duplicateScore = dupEval.score;
+      adData.duplicateMatchedFields = dupEval.matchedFields || [];
 
-        // Comparar título parecido
-        if (areTitlesSimilarForDuplicates(adData.title, existingAd.title)) {
-          matchCount++;
-          reasons.push('título muito parecido');
-        }
-        // Comparar cidade
-        if (adData.city && existingAd.city && adData.city.toLowerCase().trim() === existingAd.city.toLowerCase().trim()) {
-          matchCount++;
-          reasons.push('mesma cidade');
-        }
-        // Comparar preço
-        if (adData.price > 0 && existingAd.price > 0 && Math.abs(adData.price - existingAd.price) < 0.01) {
-          matchCount++;
-          reasons.push('mesmo preço');
-        }
-        // Comparar imagem principal
-        if (adData.imageUrl && existingAd.imageUrl && adData.imageUrl === existingAd.imageUrl) {
-          matchCount++;
-          reasons.push('mesma imagem principal');
-        }
-
-        if (matchCount >= 2) {
-          isDuplicateLocal = true;
-          dupReasonLocal = `Potencial duplicado com o seu anúncio "${existingAd.title}" (${reasons.join(', ')}).`;
-          dupOfIdLocal = existingAd.id;
-          break;
-        }
-      }
-
-      if (isDuplicateLocal) {
-        adData.isDuplicate = true;
-        adData.duplicateReason = dupReasonLocal;
-        adData.duplicateOf = dupOfIdLocal;
-      } else {
-        adData.isDuplicate = false;
-        adData.duplicateReason = '';
-        adData.duplicateOf = '';
-      }
-
-      // Se for detetado potencial duplicado, exibe aviso e interrompe para confirmação do usuário
-      if (isDuplicateLocal) {
+      // Se for detetado duplicado (confirmado ou possível), exibe o aviso com opções adequadas
+      if (dupEval.isDuplicate && dupEval.level !== 'none') {
         setDuplicateWarning({
           show: true,
-          reason: dupReasonLocal,
+          level: dupEval.level,
+          reason: dupEval.reason,
+          explanationDetails: dupEval.explanationDetails,
+          matchedFields: dupEval.matchedFields,
+          matchedAdId: dupEval.matchedAdId,
+          matchedAdTitle: dupEval.matchedAdTitle,
           adData: adData,
-          adId: adId
+          adId: adId,
+          score: dupEval.score
         });
         setLoading(false);
         return;
@@ -3307,63 +3280,112 @@ const CreateAd = () => {
               className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100"
             >
               {/* Header */}
-              <div className="relative p-6 bg-amber-50 border-b border-amber-100 text-slate-900 flex items-start gap-4">
-                <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shrink-0">
-                  <AlertCircle size={24} />
+              {duplicateWarning.level === 'confirmed' ? (
+                <div className="relative p-6 bg-red-50 border-b border-red-100 text-slate-900 flex items-start gap-4">
+                  <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center shrink-0">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-red-950">Exact Duplicate Listing</h3>
+                    <p className="text-xs text-red-700 mt-1 font-medium">
+                      This listing appears to be an exact duplicate of one you already published.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900">Similar Listing Detected</h3>
-                  <p className="text-xs text-slate-500 mt-1 font-medium">
-                    It looks like this listing already exists in your profile. Would you like to review before publishing?
-                  </p>
+              ) : (
+                <div className="relative p-6 bg-amber-50 border-b border-amber-100 text-slate-900 flex items-start gap-4">
+                  <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shrink-0">
+                    <AlertCircle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-amber-950">Similar Listing Found</h3>
+                    <p className="text-xs text-amber-800 mt-1 font-medium">
+                      We found a similar listing. Please confirm that this is a different boat before continuing.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Body */}
               <div className="p-6 space-y-4">
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
-                  <span className="text-[10px] uppercase font-black tracking-wider text-amber-700 block">Notice Reason:</span>
-                  <p className="text-sm text-slate-700 leading-relaxed font-semibold">
+                  <span className="text-[10px] uppercase font-black tracking-wider text-slate-500 block">Matching Details:</span>
+                  <p className="text-sm text-slate-800 leading-relaxed font-semibold">
                     {duplicateWarning.reason}
                   </p>
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    Publishing duplicate listings may lead to moderation action by the ConnectBoat team. We recommend updating your existing listing instead.
-                  </p>
+                  {duplicateWarning.explanationDetails && (
+                    <p className="text-xs text-slate-600 leading-relaxed bg-white p-2.5 rounded-xl border border-slate-100 font-mono">
+                      {duplicateWarning.explanationDetails}
+                    </p>
+                  )}
+                  {duplicateWarning.matchedFields && duplicateWarning.matchedFields.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {duplicateWarning.matchedFields.map((field) => (
+                        <span key={field} className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold rounded-md uppercase tracking-wider">
+                          {field.replace(/_/g, ' ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
+                {duplicateWarning.level === 'confirmed' ? (
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Duplicate listings are strictly prevented to maintain marketplace quality. Please review or update your existing advertisement.
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    If this is a different boat (e.g. same price or marina, but different specifications/photos), you can safely continue publishing.
+                  </p>
+                )}
               </div>
 
               {/* Actions */}
-              <div className="p-6 pt-0 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDuplicateWarning(null);
-                  }}
-                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold py-4 rounded-xl transition-all text-center text-sm cursor-pointer"
-                >
-                  Review and Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const finalAdData = duplicateWarning.adData;
-                    const finalAdId = duplicateWarning.adId;
-                    setDuplicateWarning(null);
-                    
-                    const isPaidDestaque = finalAdData.plan === 'local' || finalAdData.plan === 'national';
-                    const alreadyHasThisDestaque = originalAd?.isFeatured && (originalAd?.plan === finalAdData.plan || (originalAd?.plan === 'highlight' && finalAdData.plan === 'local'));
+              <div className="p-6 pt-0 flex flex-col sm:flex-row gap-3">
+                {duplicateWarning.matchedAdId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.open(`/listing/${duplicateWarning.matchedAdId}`, '_blank');
+                    }}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-3.5 px-4 rounded-xl transition-all text-center text-sm cursor-pointer border border-slate-200 flex items-center justify-center gap-1.5"
+                  >
+                    View existing listing
+                  </button>
+                )}
 
-                    if (isPaidDestaque && !alreadyHasThisDestaque) {
-                      setPendingAdData(finalAdData);
-                      setShowPaymentModal(true);
-                    } else {
-                      await executeSaveAd(finalAdData, finalAdId);
-                    }
-                  }}
-                  className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-4 rounded-xl transition-all text-center text-sm shadow-md cursor-pointer"
-                >
-                  Publish Anyway
-                </button>
+                {duplicateWarning.level === 'confirmed' ? (
+                  <button
+                    type="button"
+                    onClick={() => setDuplicateWarning(null)}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-extrabold py-3.5 px-4 rounded-xl transition-all text-center text-sm shadow-md cursor-pointer"
+                  >
+                    Edit listing details
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const finalAdData = duplicateWarning.adData;
+                      const finalAdId = duplicateWarning.adId;
+                      finalAdData.duplicateUserChoice = 'continued_different_boat';
+                      setDuplicateWarning(null);
+                      
+                      const isPaidDestaque = finalAdData.plan === 'local' || finalAdData.plan === 'national';
+                      const alreadyHasThisDestaque = originalAd?.isFeatured && (originalAd?.plan === finalAdData.plan || (originalAd?.plan === 'highlight' && finalAdData.plan === 'local'));
+
+                      if (isPaidDestaque && !alreadyHasThisDestaque) {
+                        setPendingAdData(finalAdData);
+                        setShowPaymentModal(true);
+                      } else {
+                        await executeSaveAd(finalAdData, finalAdId);
+                      }
+                    }}
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3.5 px-4 rounded-xl transition-all text-center text-sm shadow-md cursor-pointer"
+                  >
+                    Continue — this is a different boat
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>

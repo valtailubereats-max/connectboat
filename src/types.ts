@@ -261,8 +261,12 @@ export interface Ad {
   contactPhone?: string;
   useProfilePhone?: boolean;
   isDuplicate?: boolean;
+  duplicateLevel?: 'confirmed' | 'possible' | 'none';
   duplicateReason?: string;
   duplicateOf?: string;
+  duplicateScore?: number;
+  duplicateMatchedFields?: string[];
+  duplicateUserChoice?: 'continued_different_boat' | 'blocked' | 'reviewed';
   listingType?: 'normal' | 'informativo';
   listingMode?: 'external' | 'claimable';
   currency?: string;

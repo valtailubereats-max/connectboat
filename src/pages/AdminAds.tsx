@@ -1704,17 +1704,41 @@ const AdminAds = () => {
                 </div>
 
                 {selectedAd.isDuplicate && (
-                  <div className="bg-amber-50 text-amber-900 border-2 border-amber-200 rounded-2xl p-4 text-xs font-semibold space-y-1">
-                    <div className="flex items-center gap-1.5 font-bold text-amber-800">
-                      <AlertCircle size={16} className="text-amber-600 shrink-0" />
-                      <span>DUPLICATE LISTING ALERT</span>
+                  <div className="bg-amber-50 text-amber-900 border-2 border-amber-200 rounded-2xl p-4 text-xs font-semibold space-y-2">
+                    <div className="flex items-center justify-between font-bold text-amber-800">
+                      <div className="flex items-center gap-1.5">
+                        <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                        <span>
+                          {selectedAd.duplicateLevel === 'confirmed' ? 'EXACT DUPLICATE LISTING ALERT' : 'POSSIBLE DUPLICATE ALERT'}
+                        </span>
+                      </div>
+                      {selectedAd.duplicateScore !== undefined && (
+                        <span className="px-2 py-0.5 bg-amber-200 text-amber-900 rounded-full text-[10px] font-black">
+                          {selectedAd.duplicateScore}% Confidence
+                        </span>
+                      )}
                     </div>
-                    <p className="text-slate-705 leading-relaxed font-medium">
-                      The system identified this listing as a potential duplicate from the same seller.
+                    <p className="text-slate-700 leading-relaxed font-medium">
+                      The system identified similarity with an existing listing from the seller.
                     </p>
-                    <p className="text-slate-900 font-black bg-amber-100/40 p-2.5 rounded-xl mt-1 select-text">
+                    <p className="text-slate-900 font-black bg-amber-100/50 p-2.5 rounded-xl select-text">
                       Reason: {selectedAd.duplicateReason}
                     </p>
+                    {selectedAd.duplicateMatchedFields && selectedAd.duplicateMatchedFields.length > 0 && (
+                      <div className="flex flex-wrap gap-1 items-center pt-1">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase mr-1">Matched Fields:</span>
+                        {selectedAd.duplicateMatchedFields.map(f => (
+                          <span key={f} className="px-2 py-0.5 bg-amber-200/60 text-amber-900 text-[10px] font-extrabold rounded-md uppercase">
+                            {f.replace(/_/g, ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {selectedAd.duplicateUserChoice && (
+                      <div className="text-[11px] font-bold text-indigo-700 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                        User Decision: {selectedAd.duplicateUserChoice === 'continued_different_boat' ? 'User confirmed this is a different boat and proceeded' : selectedAd.duplicateUserChoice}
+                      </div>
+                    )}
                   </div>
                 )}
 
