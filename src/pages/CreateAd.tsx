@@ -340,7 +340,7 @@ const CreateAd = () => {
   const getPlanTier = (planName?: string): number => {
     if (!planName) return 0;
     const p = planName.toLowerCase();
-    if (['national', 'premium'].includes(p)) return 2;
+    if (['national', 'premium', 'showcase'].includes(p)) return 2;
     if (['local', 'highlight', 'featured', 'intermediate'].includes(p)) return 1;
     return 0;
   };
@@ -353,8 +353,8 @@ const CreateAd = () => {
     const isEditing = Boolean(id && originalAd);
 
     if (!isEditing) {
-      const activePlan = (formData.plan || 'free').toLowerCase();
-      const isFree = activePlan === 'free' || activePlan === 'standard';
+      const activePlan = (formData.plan || 'standard').toLowerCase();
+      const isFree = activePlan === 'free';
       const mediaBoostNew = formData.mediaBoostEnabled;
       return !isFree || mediaBoostNew;
     }
@@ -372,6 +372,25 @@ const CreateAd = () => {
     return isPlanUpgrade || isNewMediaBoost;
   };
 
+  const getMaxPhotosForPlan = (planKey: string): number => {
+    if (settings?.maxImages) {
+      const val = settings.maxImages[planKey as keyof typeof settings.maxImages];
+      if (val) return val;
+      if ((planKey === 'featured' || planKey === 'highlight' || planKey === 'local') && settings.maxImages.featured) {
+        return settings.maxImages.featured;
+      }
+      if ((planKey === 'premium' || planKey === 'national') && settings.maxImages.premium) {
+        return settings.maxImages.premium;
+      }
+      if ((planKey === 'standard' || planKey === 'free') && settings.maxImages.standard) {
+        return settings.maxImages.standard;
+      }
+    }
+    if (planKey === 'premium' || planKey === 'national') return 15;
+    if (planKey === 'featured' || planKey === 'local' || planKey === 'highlight') return 10;
+    return 6;
+  };
+
   const getCheckoutTotalAmountFormatted = () => {
     if (!checkRequiresPayment()) return '0.00';
     const activePlan = (formData.plan || 'standard').toLowerCase();
@@ -386,12 +405,6 @@ const CreateAd = () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
-
-  useEffect(() => {
-    if (!isAdmin && formData.plan === 'free') {
-      setFormData(prev => ({ ...prev, plan: 'local' }));
-    }
-  }, [isAdmin, formData.plan]);
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPhotoSourceMenu, setShowPhotoSourceMenu] = useState(false);
@@ -834,10 +847,7 @@ const CreateAd = () => {
   };
 
   const maxAllowed = React.useMemo(() => {
-    if (settings?.maxImages) {
-      return settings.maxImages[formData.plan as keyof typeof settings.maxImages] || (formData.plan === 'national' ? 6 : 4);
-    }
-    return formData.plan === 'free' ? 2 : (formData.plan === 'national' ? 6 : 4);
+    return getMaxPhotosForPlan(formData.plan);
   }, [formData.plan, settings]);
 
   // Corta imagens para 2 se o utilizador trocar de Destaque para Grátis
@@ -3025,7 +3035,7 @@ const CreateAd = () => {
 
                     <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
                       <li>✅ <strong>30 Days Active</strong></li>
-                      <li>📷 Photos & Full Ad Page</li>
+                      <li>📷 <strong>Up to {getMaxPhotosForPlan('standard')} Photos</strong></li>
                       <li>💬 Direct WhatsApp Contact</li>
                       <li>🔍 Standard Search & Category</li>
                     </ul>
@@ -3057,6 +3067,7 @@ const CreateAd = () => {
 
                     <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
                       <li>🌟 <strong>Everything in Standard</strong></li>
+                      <li>📷 <strong>Up to {getMaxPhotosForPlan('featured')} Photos</strong></li>
                       <li>🌟 <strong>Homepage Highlight</strong></li>
                       <li>🌟 Featured Badge ⭐</li>
                       <li>🌟 Priority in Search Results</li>
@@ -3089,6 +3100,7 @@ const CreateAd = () => {
 
                     <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
                       <li>👑 <strong>Everything in Featured</strong></li>
+                      <li>📷 <strong>Up to {getMaxPhotosForPlan('premium')} Photos</strong></li>
                       <li>🚀 <strong>Top Spot Priority</strong></li>
                       <li>👑 Premium Badge 👑</li>
                       <li>💥 Maximum Exposure</li>
