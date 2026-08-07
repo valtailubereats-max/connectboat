@@ -217,6 +217,12 @@ export interface Ad {
   status: AdStatus;
   adStatus?: AdLifecycleStatus;
   plan?: AdPlan;
+  paidAt?: any; // Firestore Timestamp
+  stripeCheckoutSessionId?: string;
+  paymentConfirmationEmailSent?: boolean;
+  paymentConfirmationEmailStatus?: string;
+  paymentConfirmationEmailError?: string;
+  featuredLevel?: string;
   selectedAddOns?: string[];
   expirationDate?: any; // Firestore Timestamp
   renewalHistory?: RenewalAction[];

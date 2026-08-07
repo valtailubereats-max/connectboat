@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { MapPin, Search, ChevronDown, Plus, Check } from 'lucide-react';
 import { CITIES, UK_CITIES, CITIES_BY_REGION } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { LocationDoc, subscribeToCustomLocations, combineAndSortCities, normalizeCityName } from '../utils/locationService';
 
 interface SearchableCitySelectProps {
   value: string;
@@ -23,6 +24,7 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [customLocations, setCustomLocations] = useState<LocationDoc[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +41,13 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
   }, []);
 
   useEffect(() => {
+    const unsubscribe = subscribeToCustomLocations((locs) => {
+      setCustomLocations(locs);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     if (isOpen && searchInputRef.current) {
       setTimeout(() => {
         searchInputRef.current?.focus();
@@ -47,19 +56,27 @@ export const SearchableCitySelect: React.FC<SearchableCitySelectProps> = ({
   }, [isOpen]);
 
   const activeCities = useMemo(() => {
+    let baseList = UK_CITIES;
     if (region && CITIES_BY_REGION[region]) {
-      return CITIES_BY_REGION[region];
+      baseList = CITIES_BY_REGION[region];
     }
-    return UK_CITIES;
-  }, [region]);
+    return combineAndSortCities(baseList, customLocations);
+  }, [region, customLocations]);
 
-  const filteredCities = activeCities.filter(city =>
-    city.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredCities = useMemo(() => {
+    const normSearch = normalizeCityName(search);
+    if (!normSearch) return activeCities;
+    return activeCities.filter(city =>
+      normalizeCityName(city).includes(normSearch) ||
+      city.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [activeCities, search]);
 
-  const exactMatchExists = activeCities.some(city => 
-    city.toLowerCase() === search.trim().toLowerCase()
-  );
+  const exactMatchExists = useMemo(() => {
+    const normSearch = normalizeCityName(search);
+    if (!normSearch) return false;
+    return activeCities.some(city => normalizeCityName(city) === normSearch);
+  }, [activeCities, search]);
 
   const handleSelect = (city: string) => {
     onChange(city);

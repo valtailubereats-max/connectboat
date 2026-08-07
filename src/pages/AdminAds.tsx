@@ -27,7 +27,8 @@ import {
   LayoutGrid,
   List,
   ShieldAlert,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard
 } from 'lucide-react';
 import { format, formatDistanceToNow, addDays } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -46,6 +47,7 @@ const ALL_COLUMNS: ColumnOption[] = [
   { id: 'titulo', label: 'Title', mandatory: true },
   { id: 'preco', label: 'Price' },
   { id: 'status', label: 'Status' },
+  { id: 'pagamento', label: 'Payment' },
   { id: 'vendedor', label: 'Seller' },
   { id: 'pais', label: 'Country' },
   { id: 'cidade', label: 'City' },
@@ -55,6 +57,77 @@ const ALL_COLUMNS: ColumnOption[] = [
   { id: 'cliques', label: 'Clicks' },
   { id: 'acoes', label: 'Quick actions', mandatory: true },
 ];
+
+export const isPaidAd = (ad: Ad): boolean => {
+  if (!ad) return false;
+  return Boolean(
+    ad.paidAt ||
+    (ad as any).paymentCompletedAt ||
+    (ad as any).paymentStatus === 'paid' ||
+    (ad as any).paymentStatus === 'completed'
+  );
+};
+
+export const getAdPlanLabel = (ad: Ad): { label: string; color: string } => {
+  const plan = (ad.plan || '').toLowerCase();
+  if (plan === 'premium') {
+    return { label: 'Premium', color: 'bg-purple-100 text-purple-800 border-purple-200' };
+  }
+  if (plan === 'featured' || plan === 'national' || plan === 'local' || ad.isFeatured) {
+    return { label: 'Featured', color: 'bg-amber-100 text-amber-800 border-amber-200' };
+  }
+  if (plan === 'standard' || plan === 'basic') {
+    return { label: 'Standard', color: 'bg-blue-100 text-blue-800 border-blue-200' };
+  }
+  if (ad.isPermanentFeatured) {
+    return { label: 'Permanent Featured', color: 'bg-purple-100 text-purple-800 border-purple-200' };
+  }
+  if (ad.plan) {
+    const capitalized = ad.plan.charAt(0).toUpperCase() + ad.plan.slice(1);
+    return { label: capitalized, color: 'bg-slate-100 text-slate-700 border-slate-200' };
+  }
+  return { label: 'Standard (Free)', color: 'bg-slate-100 text-slate-600 border-slate-200' };
+};
+
+export const formatUKDate = (dateVal: any): string | null => {
+  if (!dateVal) return null;
+  try {
+    let dateObj: Date | null = null;
+    if (typeof dateVal?.toDate === 'function') {
+      dateObj = dateVal.toDate();
+    } else if (dateVal instanceof Date) {
+      dateObj = dateVal;
+    } else if (typeof dateVal === 'string' || typeof dateVal === 'number') {
+      dateObj = new Date(dateVal);
+    }
+    if (dateObj && !isNaN(dateObj.getTime())) {
+      return format(dateObj, 'dd/MM/yyyy');
+    }
+  } catch (e) {
+    console.error('Error formatting UK date:', e);
+  }
+  return null;
+};
+
+export const formatUKDateTime = (dateVal: any): string | null => {
+  if (!dateVal) return null;
+  try {
+    let dateObj: Date | null = null;
+    if (typeof dateVal?.toDate === 'function') {
+      dateObj = dateVal.toDate();
+    } else if (dateVal instanceof Date) {
+      dateObj = dateVal;
+    } else if (typeof dateVal === 'string' || typeof dateVal === 'number') {
+      dateObj = new Date(dateVal);
+    }
+    if (dateObj && !isNaN(dateObj.getTime())) {
+      return format(dateObj, 'dd/MM/yyyy HH:mm');
+    }
+  } catch (e) {
+    console.error('Error formatting UK datetime:', e);
+  }
+  return null;
+};
 
 const AdminAds = () => {
   const navigate = useNavigate();
@@ -82,7 +155,9 @@ const AdminAds = () => {
           ? true 
           : targetFilter === 'duplicates' 
             ? ad.isDuplicate === true 
-            : (ad.status === targetFilter || ad.adStatus === targetFilter);
+            : targetFilter === 'paid'
+              ? isPaidAd(ad)
+              : (ad.status === targetFilter || ad.adStatus === targetFilter);
         return matchesFilter;
       });
       if (targetFiltered.length > 0) {
@@ -533,7 +608,9 @@ const AdminAds = () => {
       ? true 
       : adFilter === 'duplicates' 
         ? ad.isDuplicate === true 
-        : (ad.status === adFilter || ad.adStatus === adFilter);
+        : adFilter === 'paid'
+          ? isPaidAd(ad)
+          : (ad.status === adFilter || ad.adStatus === adFilter);
 
     // 2. Country Filter
     const adCountry = ad.country || 'Portugal';
@@ -586,6 +663,7 @@ const AdminAds = () => {
     total: ads.length,
     pending: ads.filter(a => a.status === 'pending').length,
     approved: ads.filter(a => a.status === 'approved' || a.adStatus === 'active').length,
+    paid: ads.filter(a => isPaidAd(a)).length,
     expired: ads.filter(a => a.status === 'expired' || a.adStatus === 'expired').length,
   };
 
@@ -597,11 +675,12 @@ const AdminAds = () => {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {[
           { label: 'Total', value: stats.total, color: 'bg-slate-100 text-slate-600' },
           { label: 'Pending', value: stats.pending, color: stats.pending > 0 ? 'animate-pending-highlight text-amber-950 border-amber-300' : 'bg-amber-50 text-amber-600' },
           { label: 'Approved', value: stats.approved, color: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Paid', value: stats.paid, color: 'bg-emerald-100 text-emerald-800 border border-emerald-200' },
           { label: 'Expired', value: stats.expired, color: 'bg-red-50 text-red-600' },
         ].map((stat, idx) => (
           <div key={idx} className={`p-4 rounded-2xl border border-slate-100 shadow-sm transition-all ${stat.color}`}>
@@ -674,6 +753,7 @@ const AdminAds = () => {
                 { id: 'pending', label: 'Pending' },
                 { id: 'duplicates', label: 'Duplicates⚠️' },
                 { id: 'approved', label: 'Active' },
+                { id: 'paid', label: 'Paid listings' },
                 { id: 'expired', label: 'Expired' },
                 { id: 'rejected', label: 'Rejected' },
                 { id: 'archived', label: 'Archived' }
@@ -912,6 +992,27 @@ const AdminAds = () => {
                         {ad.adStatus}
                       </span>
                     )}
+                    {/* Paid Status & Plan Badges */}
+                    {isPaidAd(ad) ? (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200" title={`Paid on ${formatUKDate(ad.paidAt) || 'N/A'}`}>
+                        💳 Paid
+                      </span>
+                    ) : (
+                      <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-100 text-slate-500 border border-slate-200" title="Payment data unavailable or free listing">
+                        Payment data unavailable
+                      </span>
+                    )}
+
+                    <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider border ${getAdPlanLabel(ad).color}`}>
+                      Plan: {getAdPlanLabel(ad).label}
+                    </span>
+
+                    {ad.mediaBoostEnabled && (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
+                        ⚡ Media Boost
+                      </span>
+                    )}
+
                     {ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? (
                       <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200" title="E-mail de recibo enviado ao anunciante">
                         ✉️ Email: Sent
@@ -956,6 +1057,10 @@ const AdminAds = () => {
                 <div className="flex items-center gap-1" title="Creation Date">
                   <Clock size={13} className="text-indigo-400" />
                   <span>Created: {ad.createdAt?.toDate ? format(ad.createdAt.toDate(), 'dd MMM yyyy') : 'Recently'}</span>
+                </div>
+                <div className="flex items-center gap-1" title="Payment Date">
+                  <CreditCard size={13} className="text-emerald-500" />
+                  <span>Payment Date: {isPaidAd(ad) && (formatUKDate(ad.paidAt) || formatUKDate((ad as any).paymentCompletedAt)) ? <strong className="text-emerald-700">{formatUKDate(ad.paidAt) || formatUKDate((ad as any).paymentCompletedAt)}</strong> : <span className="text-slate-400 italic">Payment data unavailable</span>}</span>
                 </div>
                 {ad.expirationDate && (
                   <div className="flex items-center gap-1" title="Expiration Date">
@@ -1142,6 +1247,7 @@ const AdminAds = () => {
                   {isColVisible('cidade') && <th className="py-3 px-4">City / Location</th>}
                   {isColVisible('preco') && <th className="py-3 px-4">Price</th>}
                   {isColVisible('status') && <th className="py-3 px-4 text-center">Status</th>}
+                  {isColVisible('pagamento') && <th className="py-3 px-4 text-center">Payment</th>}
                   {isColVisible('vendedor') && <th className="py-3 px-4">Seller</th>}
                   {isColVisible('criacao') && <th className="py-3 px-4">Created</th>}
                   {isColVisible('expiracao') && <th className="py-3 px-4">Expiry</th>}
@@ -1251,6 +1357,11 @@ const AdminAds = () => {
                                 {ad.adStatus}
                               </span>
                             )}
+                            {isPaidAd(ad) && !isColVisible('pagamento') && (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-emerald-100 text-emerald-800 border border-emerald-200 mt-0.5">
+                                💳 Paid ({getAdPlanLabel(ad).label})
+                              </span>
+                            )}
                             {ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? (
                               <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-emerald-50 text-emerald-700 border border-emerald-200 mt-0.5" title="E-mail de recibo enviado">
                                 ✉️ Sent
@@ -1264,6 +1375,29 @@ const AdminAds = () => {
                                 ✉️ Not sent
                               </span>
                             )}
+                          </div>
+                        </td>
+                      )}
+
+                      {/* Payment Column */}
+                      {isColVisible('pagamento') && (
+                        <td className="py-3 px-4 border-none text-center">
+                          <div className="flex flex-col gap-1 items-center">
+                            {isPaidAd(ad) ? (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                💳 Paid
+                              </span>
+                            ) : (
+                              <span className="inline-block text-[8px] font-semibold px-1 py-0.5 rounded uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200" title="Payment data unavailable">
+                                Data N/A
+                              </span>
+                            )}
+                            <span className={`inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border ${getAdPlanLabel(ad).color}`}>
+                              {getAdPlanLabel(ad).label}
+                            </span>
+                            <span className="text-[9px] text-slate-500 font-bold whitespace-nowrap">
+                              {isPaidAd(ad) && formatUKDate(ad.paidAt) ? formatUKDate(ad.paidAt) : <span className="text-slate-300 italic font-normal">N/A</span>}
+                            </span>
                           </div>
                         </td>
                       )}
@@ -1786,6 +1920,49 @@ const AdminAds = () => {
                         <span>{selectedAd.category}</span>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Payment Information Card */}
+                <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-100/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <CreditCard size={15} className="text-emerald-600" />
+                      <span>Payment & Plan Information</span>
+                    </h4>
+                    {isPaidAd(selectedAd) ? (
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-md border border-emerald-200">
+                        💳 Paid
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-semibold uppercase rounded-md border border-slate-200">
+                        Payment data unavailable
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                    <div>
+                      <span className="text-slate-500 font-medium">Acquired Plan:</span>{' '}
+                      <span className="font-bold text-slate-900">{getAdPlanLabel(selectedAd).label}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-medium">Payment Date (UK):</span>{' '}
+                      <span className="font-bold text-slate-900">
+                        {isPaidAd(selectedAd) && (formatUKDateTime(selectedAd.paidAt) || formatUKDate(selectedAd.paidAt)) ? (
+                          formatUKDateTime(selectedAd.paidAt) || formatUKDate(selectedAd.paidAt)
+                        ) : (
+                          <span className="text-slate-400 italic font-normal">Payment data unavailable</span>
+                        )}
+                      </span>
+                    </div>
+                    {selectedAd.stripeCheckoutSessionId && (
+                      <div className="sm:col-span-2">
+                        <span className="text-slate-500 font-medium">Stripe Session ID:</span>{' '}
+                        <span className="font-mono text-[11px] text-slate-800 bg-emerald-100/50 px-1.5 py-0.5 rounded select-all break-all">
+                          {selectedAd.stripeCheckoutSessionId}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

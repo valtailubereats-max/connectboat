@@ -15,6 +15,7 @@ import {
   getLastFeaturedFetchTime,
   clearHomeCache
 } from '../utils/cache';
+import { LocationDoc, subscribeToCustomLocations, combineAndSortCities } from '../utils/locationService';
 import AdCard from '../components/AdCard';
 import { 
   Search, Tag, MapPin, ArrowRight, AlertCircle, RefreshCcw, ArrowUp, Store,
@@ -147,6 +148,14 @@ const Home = () => {
   const [reloadCounter, setReloadCounter] = useState(0);
   const [category, setCategory] = useState('Todas');
   const [city, setCity] = useState('Todas');
+  const [customLocations, setCustomLocations] = useState<LocationDoc[]>([]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToCustomLocations((locs) => {
+      setCustomLocations(locs);
+    });
+    return () => unsubscribe();
+  }, []);
   const [filterRegion, setFilterRegion] = useState(false);
   const [filterNational, setFilterNational] = useState(false);
   const [filterOnline, setFilterOnline] = useState(false);
@@ -734,12 +743,8 @@ const Home = () => {
 
   const selectableCitiesOnHome = useMemo(() => {
     const defaultCities = country === 'Portugal' ? PORTUGAL_CITIES : UK_CITIES;
-    const customCities = ads
-      .filter(ad => ad.country === country && ad.city && !defaultCities.includes(ad.city))
-      .map(ad => ad.city) as string[];
-    const uniqueCustom = Array.from(new Set(customCities)).filter(Boolean).sort();
-    return [...defaultCities, ...uniqueCustom];
-  }, [country, ads]);
+    return combineAndSortCities(defaultCities, customLocations);
+  }, [country, customLocations]);
 
   const filteredFeaturedAds = useMemo(() => {
     const now = new Date();

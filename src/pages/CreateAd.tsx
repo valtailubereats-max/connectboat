@@ -9,8 +9,8 @@ import { clearHomeCache } from '../utils/cache';
 import { sendEmailGeneric } from '../utils/emailService';
 import { CITIES, Ad, MarketplaceSettings, PORTUGAL_CITIES, UK_CITIES, UK_REGIONS, CITIES_BY_REGION, getRegionForCity, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS, PRICING_UNITS } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
-import { motion, AnimatePresence, Reorder } from 'motion/react';
-import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, ChevronRight, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard, GripVertical } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, ChevronRight, Upload, X, Plus, RefreshCcw, Link, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 import { normalizeDescription } from '../utils/textFormatter';
 import { parsePrice, formatPrice } from '../utils';
@@ -18,6 +18,7 @@ import { getSourceSiteFromUrl, getSupportedMarketplace, getSupportedMarketplaces
 import { isImportedOrExternalAd, normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
 import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../utils/imageFraming';
 import { evaluateListingDuplicates, DuplicateCheckResult } from '../utils/duplicateDetector';
+import { saveCustomCity } from '../utils/locationService';
 
 const CreateAd = () => {
   const { categories } = useSettings();
@@ -336,7 +337,43 @@ const CreateAd = () => {
     return true;
   };
 
+  const getPlanTier = (planName?: string): number => {
+    if (!planName) return 0;
+    const p = planName.toLowerCase();
+    if (['national', 'premium'].includes(p)) return 2;
+    if (['local', 'highlight', 'featured', 'intermediate'].includes(p)) return 1;
+    return 0;
+  };
+
+  const checkRequiresPayment = (): boolean => {
+    const isStaff = isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator';
+    if (isStaff) return false;
+    if (formData.isPermanentFeatured) return false;
+
+    const isEditing = Boolean(id && originalAd);
+
+    if (!isEditing) {
+      const activePlan = (formData.plan || 'free').toLowerCase();
+      const isFree = activePlan === 'free' || activePlan === 'standard';
+      const mediaBoostNew = formData.mediaBoostEnabled;
+      return !isFree || mediaBoostNew;
+    }
+
+    // When editing an existing ad:
+    const isExpired = originalAd?.status === 'expired' || originalAd?.adStatus === 'expired';
+    if (isExpired) return true;
+
+    const oldTier = getPlanTier(originalAd?.plan);
+    const newTier = getPlanTier(formData.plan);
+    const isPlanUpgrade = newTier > oldTier;
+
+    const isNewMediaBoost = formData.mediaBoostEnabled && !originalAd?.videoPaid;
+
+    return isPlanUpgrade || isNewMediaBoost;
+  };
+
   const getCheckoutTotalAmountFormatted = () => {
+    if (!checkRequiresPayment()) return '0.00';
     const activePlan = (formData.plan || 'standard').toLowerCase();
     const planBase = activePlan === 'premium' ? 9.99 : (activePlan === 'featured' || activePlan === 'local' || activePlan === 'national') ? 4.99 : 2.99;
     const mediaBoostExtra = (formData.mediaBoostEnabled && !originalAd?.videoPaid) ? 2.00 : 0;
@@ -920,19 +957,14 @@ const CreateAd = () => {
     });
   };
 
-  const handleReorderImages = (newImages: string[]) => {
-    if (isEditLocked && !isAdmin) return;
-    setFormData(prev => ({
-      ...prev,
-      images: newImages
-    }));
-  };
-
   const moveImage = (index: number, direction: 'left' | 'right') => {
     if (isEditLocked && !isAdmin) return;
+    if (index <= 0) return; // Main photo cannot be moved via arrows
     const targetIndex = direction === 'left' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= formData.images.length) return;
-    
+    // Arrows only reorder among secondary photos (index >= 1)
+    if (direction === 'left' && targetIndex < 1) return;
+    if (direction === 'right' && targetIndex >= formData.images.length) return;
+
     const updated = [...formData.images];
     const [moved] = updated.splice(index, 1);
     updated.splice(targetIndex, 0, moved);
@@ -989,6 +1021,11 @@ const CreateAd = () => {
       });
       try {
         await setDoc(doc(db, 'ads', targetAdId), cleanPayload, { merge: true });
+        if (cleanPayload.city) {
+          saveCustomCity(cleanPayload.city, cleanPayload.region, cleanPayload.country).catch((err) => {
+            console.error('[CreateAd] Error auto-saving custom city:', err);
+          });
+        }
       } catch (saveErr: any) {
         console.error('[Ad Save Failure]', saveErr);
         showValidationError(`Erro ao guardar anúncio no Firestore: ${saveErr?.message || String(saveErr)}`);
@@ -1291,7 +1328,7 @@ const CreateAd = () => {
         mediaBoostPrice: 2.00
       };
 
-      // Preservar metadados de anúncios importados/externos/reivindicáveis
+      // Preservar metadados e dados de pagamento de anúncios existentes
       if (id && originalAd) {
         if (originalAd.sourceUrl) adData.sourceUrl = originalAd.sourceUrl;
         if (originalAd.sourceSite) adData.sourceSite = originalAd.sourceSite;
@@ -1307,6 +1344,13 @@ const CreateAd = () => {
         if (originalAd.externalListing !== undefined) adData.externalListing = originalAd.externalListing;
         if (originalAd.externalStatus) adData.externalStatus = originalAd.externalStatus;
         if (originalAd.demoListing !== undefined) adData.demoListing = originalAd.demoListing;
+        // Preservar dados de pagamento confirmados
+        if (originalAd.paidAt) adData.paidAt = originalAd.paidAt;
+        if ((originalAd as any).paymentCompletedAt) adData.paymentCompletedAt = (originalAd as any).paymentCompletedAt;
+        if ((originalAd as any).paymentStatus) adData.paymentStatus = (originalAd as any).paymentStatus;
+        if (originalAd.stripeCheckoutSessionId) adData.stripeCheckoutSessionId = originalAd.stripeCheckoutSessionId;
+        if ((originalAd as any).paymentConfirmationEmailSent !== undefined) adData.paymentConfirmationEmailSent = (originalAd as any).paymentConfirmationEmailSent;
+        if (originalAd.videoPaid !== undefined) adData.videoPaid = originalAd.videoPaid;
       }
 
       if (formData.category === '💚 Doações & Solidariedade') {
@@ -1366,10 +1410,6 @@ const CreateAd = () => {
         }
       }
 
-      const activePlan = (formData.plan || 'standard').toLowerCase();
-      const isPaidPlan = true;
-      const isExistingPaidListing = id && originalAd && originalAd.paidAt && (originalAd.plan === activePlan);
-
       // --- VERIFICAÇÃO DE DUPLICIDADE ---
       setLoading(true);
       
@@ -1416,8 +1456,8 @@ const CreateAd = () => {
         return;
       }
 
-      // Se não for edição de anúncio já pago e não for staff/permanente, encaminhar para Stripe Checkout
-      if (isPaidPlan && !isExistingPaidListing && !formData.isPermanentFeatured && !isStaff) {
+      // Se requerer pagamento (anúncio novo, upgrade de plano ou renovação), encaminhar para Stripe Checkout
+      if (checkRequiresPayment()) {
         setPendingAdData(adData);
         setShowPaymentModal(true);
         setLoading(false);
@@ -1934,7 +1974,7 @@ const CreateAd = () => {
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1953,118 +1993,97 @@ const CreateAd = () => {
                     className="hidden"
                     disabled={uploading}
                   />
-                  <Reorder.Group
-                    axis="y"
-                    values={formData.images}
-                    onReorder={handleReorderImages}
-                    className="contents"
-                  >
-                    <AnimatePresence mode="popLayout">
-                      {formData.images.map((url, index) => (
-                        url && (
-                          <Reorder.Item
-                            key={url}
-                            value={url}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            whileDrag={{ scale: 1.05, zIndex: 30, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)" }}
-                            dragListener={!(isEditLocked && !isAdmin)}
-                            className="aspect-square bg-slate-100 rounded-2xl overflow-hidden relative group border border-slate-200 select-none touch-none"
-                          >
-                            <img 
-                              src={url} 
-                              alt={`Preview ${index}`} 
-                              className={formData.listingType === 'informativo' ? "w-full h-full object-contain p-2 bg-slate-50 pointer-events-none" : "w-full h-full object-cover pointer-events-none"} 
-                              style={index === 0 && formData.listingType !== 'informativo' ? getAdImageStyle(imagePositionX, imagePositionY, imageZoom) : undefined} 
-                            />
+                  <AnimatePresence mode="popLayout">
+                    {formData.images.map((url, index) => (
+                      url && (
+                        <motion.div
+                          key={url}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          layout
+                          className="relative w-full aspect-square bg-slate-100 rounded-2xl overflow-hidden group border border-slate-200 select-none"
+                        >
+                          <img 
+                            src={url} 
+                            alt={`Preview ${index}`} 
+                            className={formData.listingType === 'informativo' ? "w-full h-full object-contain p-2 bg-slate-50" : "w-full h-full object-cover"} 
+                            style={index === 0 && formData.listingType !== 'informativo' ? getAdImageStyle(imagePositionX, imagePositionY, imageZoom) : undefined} 
+                          />
 
-                            {/* Drag Indicator / Grip Handle */}
-                            {!(isEditLocked && !isAdmin) && (
-                              <div className="absolute top-2 left-2 bg-slate-900/60 hover:bg-slate-900/80 text-white p-1.5 rounded-lg opacity-80 group-hover:opacity-100 transition-all cursor-grab active:cursor-grabbing backdrop-blur-sm z-10 flex items-center justify-center">
-                                <GripVertical size={14} />
+                          {/* Delete Button */}
+                          {!(isEditLocked && !isAdmin) && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeImage(index);
+                              }}
+                              className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-95 shadow-lg z-20 cursor-pointer"
+                              title="Remove photo"
+                              aria-label="Remove photo"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
+
+                          {/* Main Photo Badge vs Secondary Controls */}
+                          {index === 0 ? (
+                            <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] font-bold py-1.5 text-center uppercase tracking-wider z-10 shadow-md">
+                              ★ Main Photo
+                            </div>
+                          ) : (
+                            !(isEditLocked && !isAdmin) && (
+                              <div className="absolute bottom-2 left-1.5 right-1.5 flex items-center justify-between gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 bg-slate-900/80 p-1 rounded-xl backdrop-blur-sm">
+                                <div className="flex items-center gap-0.5">
+                                  {index > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveImage(index, 'left');
+                                      }}
+                                      className="p-1 hover:bg-white/20 text-white rounded-lg transition-colors cursor-pointer"
+                                      title="Move left"
+                                      aria-label="Move photo left"
+                                    >
+                                      <ChevronLeft size={14} />
+                                    </button>
+                                  )}
+                                  {index < formData.images.length - 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        moveImage(index, 'right');
+                                      }}
+                                      className="p-1 hover:bg-white/20 text-white rounded-lg transition-colors cursor-pointer"
+                                      title="Move right"
+                                      aria-label="Move photo right"
+                                    >
+                                      <ChevronRight size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAsMainImage(index);
+                                  }}
+                                  className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-extrabold uppercase tracking-tight transition-colors cursor-pointer ml-auto"
+                                  title="Set as Main Photo"
+                                  aria-label="Set as Main Photo"
+                                >
+                                  Set as Main
+                                </button>
                               </div>
-                            )}
-
-                            {/* Delete Button */}
-                            {!(isEditLocked && !isAdmin) && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeImage(index);
-                                }}
-                                onPointerDown={(e) => e.stopPropagation()}
-                                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 md:p-1.5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-95 shadow-lg z-10 cursor-pointer"
-                                title="Remove photo"
-                                aria-label="Remove photo"
-                              >
-                                <X size={14} />
-                              </button>
-                            )}
-
-                            {/* Quick Accessible Reorder Controls */}
-                            {!(isEditLocked && !isAdmin) && formData.images.length > 1 && (
-                              <div 
-                                className="absolute bottom-2 right-2 flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 bg-slate-900/70 p-1 rounded-xl backdrop-blur-sm"
-                                onPointerDown={(e) => e.stopPropagation()}
-                              >
-                                {index > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      moveImage(index, 'left');
-                                    }}
-                                    className="p-1 bg-white/20 hover:bg-white/40 text-white rounded-lg text-xs font-bold transition-colors"
-                                    title="Move earlier"
-                                    aria-label="Move earlier"
-                                  >
-                                    <ChevronLeft size={14} />
-                                  </button>
-                                )}
-                                {index < formData.images.length - 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      moveImage(index, 'right');
-                                    }}
-                                    className="p-1 bg-white/20 hover:bg-white/40 text-white rounded-lg text-xs font-bold transition-colors"
-                                    title="Move later"
-                                    aria-label="Move later"
-                                  >
-                                    <ChevronRight size={14} />
-                                  </button>
-                                )}
-                                {index !== 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAsMainImage(index);
-                                    }}
-                                    className="px-1.5 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-[10px] font-extrabold uppercase tracking-tight transition-colors"
-                                    title="Set as Main Photo"
-                                    aria-label="Set as Main Photo"
-                                  >
-                                    Main
-                                  </button>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Main Photo Badge */}
-                            {index === 0 && (
-                              <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] font-bold py-1 text-center uppercase tracking-tighter z-10 pointer-events-none shadow-md">
-                                ★ Main Photo
-                              </div>
-                            )}
-                          </Reorder.Item>
-                        )
-                      ))}
-                    </AnimatePresence>
-                  </Reorder.Group>
+                            )
+                          )}
+                        </motion.div>
+                      )
+                    ))}
+                  </AnimatePresence>
 
                   {formData.images.length < maxAllowed && !(isEditLocked && !isAdmin) && (
                     <button
@@ -2102,7 +2121,7 @@ const CreateAd = () => {
                   )}
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium">
-                  * First photo is the cover photo. Drag thumbnails or use arrows to reorder. Max 5MB per file.
+                  * First photo is the cover photo. Use arrows or &quot;Set as Main&quot; to reorder photos. Max 5MB per file.
                 </p>
 
                 {formData.images.length > 0 && (
@@ -3170,7 +3189,11 @@ const CreateAd = () => {
                       <span>Processing...</span>
                     </>
                   ) : (
-                    <span>Proceed to Payment →</span>
+                    <span>
+                      {checkRequiresPayment() 
+                        ? 'Proceed to Payment →' 
+                        : (id ? 'Save Changes' : 'Publish Listing')}
+                    </span>
                   )}
                 </button>
               </div>
@@ -3483,10 +3506,7 @@ const CreateAd = () => {
                       finalAdData.duplicateUserChoice = 'continued_different_boat';
                       setDuplicateWarning(null);
                       
-                      const isPaidDestaque = finalAdData.plan === 'local' || finalAdData.plan === 'national';
-                      const alreadyHasThisDestaque = originalAd?.isFeatured && (originalAd?.plan === finalAdData.plan || (originalAd?.plan === 'highlight' && finalAdData.plan === 'local'));
-
-                      if (isPaidDestaque && !alreadyHasThisDestaque) {
+                      if (checkRequiresPayment()) {
                         setPendingAdData(finalAdData);
                         setShowPaymentModal(true);
                       } else {

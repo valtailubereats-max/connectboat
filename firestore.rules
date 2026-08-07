@@ -540,5 +540,11 @@ service cloud.firestore {
         resource.data.ownerId == request.auth.uid
       );
     }
+
+    match /locations/{locationId} {
+      allow read: if true;
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
   }
 }

@@ -18,6 +18,7 @@ import { getCardFramingStyle } from '../utils/imageFraming';
 import ReviewModal from '../components/ReviewModal';
 import AdCard from '../components/AdCard';
 import { InstallButton } from '../components/InstallButton';
+import { saveCustomCity } from '../utils/locationService';
 import { calculateTotalPoints, calculateProgressPoints, POINTS_THRESHOLD, POINTS_PER_REFERRAL, POINTS_PER_AD } from '../utils/rewards';
 
 const Profile = () => {
@@ -952,6 +953,12 @@ const Profile = () => {
         country,
         ...showcasePayload
       }, { merge: true });
+
+      if (city) {
+        saveCustomCity(city, region || getRegionForCity(city), country).catch(err => {
+          console.error('[Profile] Error auto-saving city:', err);
+        });
+      }
       
       // Synchronise to public profile (sellerPublicProfiles)
       try {
