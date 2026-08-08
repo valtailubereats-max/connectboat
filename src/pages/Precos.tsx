@@ -157,11 +157,11 @@ export default function Precos() {
             </div>
             <div className="flex items-center gap-2.5 text-slate-700 text-xs sm:text-sm font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px]">✓</span>
-              <span>Transparent fixed-fee listings (£2.99).</span>
+              <span>Listing plans start from just £2.99.</span>
             </div>
             <div className="flex items-center gap-2.5 text-slate-700 text-xs sm:text-sm font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px]">✓</span>
-              <span>Only pay if you choose premium features.</span>
+              <span>Transparent fixed-fee pricing.</span>
             </div>
             <div className="flex items-center gap-2.5 text-slate-700 text-xs sm:text-sm font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px]">✓</span>

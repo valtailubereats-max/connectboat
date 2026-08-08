@@ -2962,18 +2962,10 @@ const CreateAd = () => {
               </div>
 
               {/* Complete Listing Summary */}
-              <div className="p-6 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-4">
+              <div className="p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-3">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <span>📋</span> Complete Listing Summary
                 </h3>
-
-                {formData.images.length > 0 && (
-                  <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                    {formData.images.map((img, idx) => (
-                      <img key={idx} src={img} alt={`Thumb ${idx}`} className="w-16 h-16 object-cover rounded-xl border border-slate-200 shrink-0" />
-                    ))}
-                  </div>
-                )}
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-white p-4 rounded-2xl border border-slate-200">
                   <div>
@@ -2983,7 +2975,7 @@ const CreateAd = () => {
                   <div>
                     <span className="text-slate-400 block font-semibold">Price</span>
                     <span className="font-extrabold text-indigo-600">
-                      {formData.category === '💚 Doações & Solidariedade' ? 'Free' : formData.price ? `£${formData.price}` : 'On request'}
+                      {formData.category === '💚 Doações & Solidariedade' ? 'Free' : formData.price ? (formData.country === 'Reino Unido' ? `£${formData.price}` : `€${formData.price}`) : 'On request'}
                     </span>
                   </div>
                   <div>
