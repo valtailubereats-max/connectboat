@@ -365,18 +365,28 @@ const Home = () => {
   const fetchedFeaturedCountry = useRef<'Portugal' | 'Reino Unido' | null>(null);
 
   // Available countries configuration for Filters panel
-  const AVAILABLE_COUNTRIES: Array<{ id: 'Reino Unido' | 'Portugal'; label: string; flagCode: 'Reino Unido' | 'Portugal' }> = [
-    { id: 'Reino Unido', label: 'United Kingdom', flagCode: 'Reino Unido' },
-    // { id: 'Portugal', label: 'Portugal', flagCode: 'Portugal' }, // Prepared for future expansion
-  ];
+  const AVAILABLE_COUNTRIES: Array<{ id: 'Reino Unido' | 'Portugal'; label: string; flagCode: 'Reino Unido' | 'Portugal' }> = React.useMemo(() => {
+    if (settings?.enablePortugalMarket === true) {
+      return [
+        { id: 'Reino Unido', label: 'United Kingdom', flagCode: 'Reino Unido' },
+        { id: 'Portugal', label: 'Portugal', flagCode: 'Portugal' },
+      ];
+    }
+    return [
+      { id: 'Reino Unido', label: 'United Kingdom', flagCode: 'Reino Unido' },
+    ];
+  }, [settings?.enablePortugalMarket]);
 
   // Sync with Profile country if registered
   useEffect(() => {
-    if (profile?.country && (profile.country === 'Portugal' || profile.country === 'Reino Unido')) {
+    const enablePortugal = settings?.enablePortugalMarket === true;
+    if (enablePortugal && profile?.country && (profile.country === 'Portugal' || profile.country === 'Reino Unido')) {
       setCountry(profile.country);
       localStorage.setItem('selectedCountry', profile.country);
+    } else if (!enablePortugal && country !== 'Reino Unido') {
+      setCountry('Reino Unido');
     }
-  }, [profile]);
+  }, [profile, settings?.enablePortugalMarket, country]);
 
   // Handle Country Change
   const handleCountryChange = (val: 'Portugal' | 'Reino Unido') => {

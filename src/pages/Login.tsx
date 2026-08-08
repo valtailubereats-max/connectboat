@@ -15,10 +15,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ShieldCheck, Mail, Lock, User as UserIcon, ArrowRight, Github, Eye, EyeOff } from 'lucide-react';
 import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const { refreshProfile } = useAuth();
+  const { settings } = useSettings();
+  const enablePortugal = settings?.enablePortugalMarket === true;
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -111,7 +114,7 @@ const Login = () => {
 
       if (!docSnap?.exists()) {
         const homeCountry = localStorage.getItem('selectedCountry') as 'Portugal' | 'Reino Unido' | null;
-        const finalCountry = homeCountry === 'Portugal' || homeCountry === 'Reino Unido' ? homeCountry : 'Reino Unido';
+        const finalCountry = enablePortugal && (homeCountry === 'Portugal' || homeCountry === 'Reino Unido') ? homeCountry : 'Reino Unido';
         
         // Create basic profile if it doesn't exist
         const isAdminEmail = user.email === 'valtailubereats@gmail.com' || user.email === 'valtail@gmail.com' || user.email === 'generalsales2021@gmail.com';
@@ -200,6 +203,7 @@ const Login = () => {
 
         const docRef = doc(db, 'users', user.uid);
         const isAdminEmail = user.email === 'valtailubereats@gmail.com' || user.email === 'valtail@gmail.com' || user.email === 'generalsales2021@gmail.com';
+        const targetCountry = enablePortugal ? profileCountry : 'Reino Unido';
         try {
           const refParam = searchParams.get('ref') || localStorage.getItem('referred_by_code_raw') || localStorage.getItem('referred_by_code');
           await setDoc(docRef, {
@@ -207,7 +211,7 @@ const Login = () => {
             name: name,
             email: user.email || '',
             phone: '',
-            country: profileCountry,
+            country: targetCountry,
             role: isAdminEmail ? 'admin' : 'user',
             acceptedTerms: true,
             acceptedTermsAt: serverTimestamp(),
@@ -218,7 +222,7 @@ const Login = () => {
           try {
             await setDoc(doc(db, 'sellerPublicProfiles', user.uid), {
               displayName: name,
-              country: profileCountry,
+              country: targetCountry,
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp()
             });
@@ -233,7 +237,7 @@ const Login = () => {
             }).catch(emailErr => console.warn('[Email Register Welcome] Erro ao enviar email de boas-vindas:', emailErr));
           }
           // Synchronize locally too
-          localStorage.setItem('selectedCountry', profileCountry);
+          localStorage.setItem('selectedCountry', targetCountry);
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, `users/${user.uid}`);
         }

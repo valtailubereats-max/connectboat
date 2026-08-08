@@ -154,7 +154,8 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
           featuredHireColor: data.featuredHireColor || '#10b7c7',
           compactCardMode: data.compactCardMode !== undefined ? data.compactCardMode : false,
           enableFotosFeature: data.enableFotosFeature !== undefined ? data.enableFotosFeature : false,
-          launchPromoActive: data.launchPromoActive !== undefined ? data.launchPromoActive : false
+          launchPromoActive: data.launchPromoActive !== undefined ? data.launchPromoActive : false,
+          enablePortugalMarket: data.enablePortugalMarket !== undefined ? data.enablePortugalMarket : false
         });
       } else {
         const defaultSettings: MarketplaceSettings = {
@@ -572,6 +573,26 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   type="checkbox" 
                   checked={settings.enableFotosFeature !== false} 
                   onChange={(e) => setSettings({ ...settings, enableFotosFeature: e.target.checked })} 
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-indigo-100">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                  <span>🇵🇹 Mercado de Portugal Ativo</span>
+                </h3>
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  Quando ativo, permite a escolha entre Portugal (€) e Reino Unido (£) nas páginas de preços, criação de anúncios, perfil, pesquisas e cabeçalho. Quando desativado, o site opera exclusivamente no Reino Unido (£).
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={settings.enablePortugalMarket === true} 
+                  onChange={(e) => setSettings({ ...settings, enablePortugalMarket: e.target.checked })} 
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>

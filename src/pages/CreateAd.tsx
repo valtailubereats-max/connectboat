@@ -21,7 +21,7 @@ import { evaluateListingDuplicates, DuplicateCheckResult } from '../utils/duplic
 import { saveCustomCity } from '../utils/locationService';
 
 const CreateAd = () => {
-  const { categories } = useSettings();
+  const { categories, settings: globalSettings } = useSettings();
   const { id } = useParams();
   const { user, profile, isAdmin, isModerator, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -386,9 +386,9 @@ const CreateAd = () => {
         return settings.maxImages.standard;
       }
     }
-    if (planKey === 'premium' || planKey === 'national') return 15;
-    if (planKey === 'featured' || planKey === 'local' || planKey === 'highlight') return 10;
-    return 6;
+    if (planKey === 'premium' || planKey === 'national') return 8;
+    if (planKey === 'featured' || planKey === 'local' || planKey === 'highlight') return 6;
+    return 4;
   };
 
   const getCheckoutTotalAmountFormatted = () => {
@@ -703,6 +703,7 @@ const CreateAd = () => {
     });
   };
   const [settings, setSettings] = useState<MarketplaceSettings | null>(null);
+  const enablePortugal = (globalSettings?.enablePortugalMarket ?? settings?.enablePortugalMarket) === true;
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const uploadRef = useRef(false);
@@ -735,10 +736,12 @@ const CreateAd = () => {
       const saved = localStorage.getItem('selectedCountry') as 'Portugal' | 'Reino Unido' | null;
       let targetCountry: 'Portugal' | 'Reino Unido' = 'Reino Unido';
       
-      if (profile?.country === 'Reino Unido' || profile?.country === 'Portugal') {
-        targetCountry = profile.country;
-      } else if (saved === 'Reino Unido' || saved === 'Portugal') {
-        targetCountry = saved;
+      if (enablePortugal) {
+        if (profile?.country === 'Reino Unido' || profile?.country === 'Portugal') {
+          targetCountry = profile.country;
+        } else if (saved === 'Reino Unido' || saved === 'Portugal') {
+          targetCountry = saved;
+        }
       }
       
       let targetCity = targetCountry === 'Reino Unido' ? UK_CITIES[0] : PORTUGAL_CITIES[0];
@@ -3034,7 +3037,6 @@ const CreateAd = () => {
                     <p className="text-xs text-slate-500 mt-0.5">30 days active listing in marketplace search</p>
 
                     <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
-                      <li>✅ <strong>30 Days Active</strong></li>
                       <li>📷 <strong>Up to {getMaxPhotosForPlan('standard')} Photos</strong></li>
                       <li>💬 Direct WhatsApp Contact</li>
                       <li>🔍 Standard Search & Category</li>
@@ -3066,10 +3068,9 @@ const CreateAd = () => {
                     <p className="text-xs text-slate-500 mt-0.5">Homepage highlight & priority placement</p>
 
                     <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
-                      <li>🌟 <strong>Everything in Standard</strong></li>
+                      <li>🌟 <strong>Includes Standard benefits</strong></li>
                       <li>📷 <strong>Up to {getMaxPhotosForPlan('featured')} Photos</strong></li>
                       <li>🌟 <strong>Homepage Highlight</strong></li>
-                      <li>🌟 Featured Badge ⭐</li>
                       <li>🌟 Priority in Search Results</li>
                     </ul>
 
@@ -3099,10 +3100,9 @@ const CreateAd = () => {
                     <p className="text-xs text-slate-500 mt-0.5">Top positions inside featured section & max reach</p>
 
                     <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
-                      <li>👑 <strong>Everything in Featured</strong></li>
+                      <li>👑 <strong>Includes Featured benefits</strong></li>
                       <li>📷 <strong>Up to {getMaxPhotosForPlan('premium')} Photos</strong></li>
                       <li>🚀 <strong>Top Spot Priority</strong></li>
-                      <li>👑 Premium Badge 👑</li>
                       <li>💥 Maximum Exposure</li>
                     </ul>
 

@@ -635,11 +635,10 @@ const Profile = () => {
       }
       setName(profile.name || '');
       setCity(profile.city || '');
-      if (profile.country === 'Portugal' || profile.country === 'Reino Unido') {
+      if (settings?.enablePortugalMarket === true && (profile.country === 'Portugal' || profile.country === 'Reino Unido')) {
         setCountry(profile.country);
       } else {
-        // Primeira vez: Deixa em branco para forçar o utilizador a escolher o país
-        setCountry('');
+        setCountry('Reino Unido');
       }
       setShowcaseActive(profile.showcaseActive || false);
       setShowcaseName(profile.showcaseName || '');

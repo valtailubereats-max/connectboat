@@ -68,7 +68,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             showTotalUsersBadge: data.showTotalUsersBadge !== undefined ? data.showTotalUsersBadge : false,
             compactCardMode: data.compactCardMode !== undefined ? data.compactCardMode : false,
             enableFotosFeature: data.enableFotosFeature !== undefined ? data.enableFotosFeature : false,
-            launchPromoActive: data.launchPromoActive !== undefined ? data.launchPromoActive : false
+            launchPromoActive: data.launchPromoActive !== undefined ? data.launchPromoActive : false,
+            enablePortugalMarket: data.enablePortugalMarket !== undefined ? data.enablePortugalMarket : false
           });
         } else {
           // Initialize local state if document doesn't exist in Firestore
@@ -85,7 +86,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             showTotalUsersBadge: false,
             compactCardMode: false,
             enableFotosFeature: false,
-            launchPromoActive: false
+            launchPromoActive: false,
+            enablePortugalMarket: false
           };
           setSettings(defaultSettings);
           setDoc(doc(db, 'settings', 'global'), defaultSettings).catch((err) => {

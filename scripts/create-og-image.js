@@ -113,7 +113,7 @@ async function generateOgImage() {
     </g>
 
     <!-- ConnectBoat Emblem Icon on Right side of Card -->
-    <g transform="translate(710, 150) scale(0.65)">
+    <g transform="translate(660, 150) scale(0.60)">
       <!-- Render logo vector with glowing white/cyan hues -->
       <!-- White Yacht Hull -->
       <path fill="#FFFFFF" d="M 205 472 C 305 402, 425 332, 575 307 C 665 292, 765 277, 872 252 C 785 337, 715 412, 670 444 C 595 497, 490 497, 340 467 C 265 452, 212 464, 205 472 Z" />

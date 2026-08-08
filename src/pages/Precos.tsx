@@ -13,13 +13,35 @@ export default function Precos() {
 
   const isPromoActive = settings?.launchPromoActive === true;
 
+  const enablePortugal = settings?.enablePortugalMarket === true;
+
   // Detect selected country for secondary currency presentation
   const [selectedCountry, setSelectedCountry] = React.useState<'Portugal' | 'Reino Unido'>(() => {
+    if (!enablePortugal) return 'Reino Unido';
     const saved = localStorage.getItem('selectedCountry');
     return saved === 'Reino Unido' ? 'Reino Unido' : 'Portugal';
   });
 
-  const isUK = selectedCountry === 'Reino Unido';
+  const isUK = !enablePortugal || selectedCountry === 'Reino Unido';
+
+  const getMaxPhotosForPlan = (planKey: string): number => {
+    if (settings?.maxImages) {
+      const val = settings.maxImages[planKey as keyof typeof settings.maxImages];
+      if (val) return val;
+      if ((planKey === 'featured' || planKey === 'highlight' || planKey === 'local') && settings.maxImages.featured) {
+        return settings.maxImages.featured;
+      }
+      if ((planKey === 'premium' || planKey === 'national') && settings.maxImages.premium) {
+        return settings.maxImages.premium;
+      }
+      if ((planKey === 'standard' || planKey === 'free') && settings.maxImages.standard) {
+        return settings.maxImages.standard;
+      }
+    }
+    if (planKey === 'premium' || planKey === 'national') return 8;
+    if (planKey === 'featured' || planKey === 'local' || planKey === 'highlight') return 6;
+    return 4;
+  };
 
   const handlePublishClick = () => {
     if (user) {
@@ -40,7 +62,7 @@ export default function Precos() {
           <span className="text-4xl font-brand font-black text-slate-900 tracking-tight">{mainPrice}</span>
           {labelSuff && <span className="text-slate-500 text-sm font-semibold ml-1">{labelSuff}</span>}
         </div>
-        <span className="text-xs text-slate-400 font-semibold mt-1">~ {altPrice}{labelSuff}</span>
+        {enablePortugal && <span className="text-xs text-slate-400 font-semibold mt-1">~ {altPrice}{labelSuff}</span>}
       </div>
     );
   };
@@ -149,36 +171,38 @@ export default function Precos() {
         </motion.div>
 
         {/* Currency toggle picker to showcase dynamic detail orientation */}
-        <div className="flex justify-center mb-10">
-          <div className="bg-white/80 p-1.5 rounded-2xl border border-slate-200 shadow-sm flex gap-1">
-            <button
-              onClick={() => {
-                setSelectedCountry('Portugal');
-                localStorage.setItem('selectedCountry', 'Portugal');
-              }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                selectedCountry === 'Portugal'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              🇵🇹 Portugal (€)
-            </button>
-            <button
-              onClick={() => {
-                setSelectedCountry('Reino Unido');
-                localStorage.setItem('selectedCountry', 'Reino Unido');
-              }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                selectedCountry === 'Reino Unido'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              🇬🇧 United Kingdom (£)
-            </button>
+        {enablePortugal && (
+          <div className="flex justify-center mb-10">
+            <div className="bg-white/80 p-1.5 rounded-2xl border border-slate-200 shadow-sm flex gap-1">
+              <button
+                onClick={() => {
+                  setSelectedCountry('Portugal');
+                  localStorage.setItem('selectedCountry', 'Portugal');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  selectedCountry === 'Portugal'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                🇵🇹 Portugal (€)
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedCountry('Reino Unido');
+                  localStorage.setItem('selectedCountry', 'Reino Unido');
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  selectedCountry === 'Reino Unido'
+                    ? 'bg-slate-900 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                🇬🇧 United Kingdom (£)
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
@@ -188,58 +212,30 @@ export default function Precos() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="flex flex-col bg-white rounded-3xl border border-slate-100 shadow-lg shadow-black/[0.02] p-6 hover:-translate-y-2 transition-all relative overflow-hidden"
+            className="p-5 rounded-3xl border-2 border-slate-200 bg-white hover:border-emerald-300 transition-all relative overflow-hidden flex flex-col text-left shadow-lg shadow-black/[0.02]"
           >
-            {/* Top Border Accent - Green */}
-            <div className="absolute top-0 inset-x-0 h-2 bg-emerald-600"></div>
+            <div className="absolute top-0 right-0 bg-slate-800 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+              Standard
+            </div>
+            <p className="font-black text-slate-900 text-base">Standard Listing</p>
+            <p className="text-xs text-slate-500 mt-0.5">30 days active listing in marketplace search</p>
 
-            <div className="mb-6 flex justify-between items-center">
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider">
-                Standard
+            <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium flex-1">
+              <li>📷 <strong>Up to {getMaxPhotosForPlan('standard')} Photos</strong></li>
+              <li>💬 Direct WhatsApp Contact</li>
+              <li>🔍 Standard Search & Category</li>
+            </ul>
+
+            <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-500">Duration: 30 Days</span>
+              <span className="font-black text-emerald-700 text-base">
+                {isUK ? '£2.99' : '€2.99'}
               </span>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                <Store size={20} />
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-brand font-black text-slate-900 mb-2">Standard Listing</h3>
-              <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Full 30-day active listing for boats for sale or hire, engines, parts, and marine services.
-              </p>
-            </div>
-
-            <div className="mb-8 text-center bg-emerald-50/50 rounded-2xl py-4 border border-emerald-100/50">
-              {renderPrice('2.99', '2.99')}
-              <span className="block text-[10px] font-bold text-emerald-700 uppercase mt-1.5 tracking-wider">For 30 Days</span>
-            </div>
-
-            <div className="space-y-4 mb-8 flex-1">
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">30 Days Active Listing</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">High Resolution Photos</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Full Details & Specs Page</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Standard Search & Category</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Direct WhatsApp Inquiry Button</span>
-              </div>
             </div>
 
             <button
               onClick={handlePublishClick}
-              className="w-full py-3.5 px-4 bg-slate-900 border border-slate-900 text-white hover:bg-slate-800 rounded-2xl font-black text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+              className="mt-4 w-full py-3.5 px-4 bg-slate-900 border border-slate-900 text-white hover:bg-slate-800 rounded-2xl font-black text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>Create Standard Listing</span>
               <ArrowRight size={14} />
@@ -251,60 +247,31 @@ export default function Precos() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="flex flex-col bg-white rounded-3xl border border-amber-200/60 shadow-lg shadow-black/[0.02] p-6 hover:-translate-y-2 transition-all relative overflow-hidden"
+            className="p-5 rounded-3xl border-2 border-amber-300/80 bg-amber-50/20 hover:border-amber-400 transition-all relative overflow-hidden flex flex-col text-left shadow-lg shadow-black/[0.02]"
           >
-            {/* Top Border Accent - Gold */}
-            <div className="absolute top-0 inset-x-0 h-2 bg-amber-500"></div>
+            <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-yellow-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+              Featured ⭐
+            </div>
+            <p className="font-black text-slate-900 text-base">Featured Listing</p>
+            <p className="text-xs text-slate-500 mt-0.5">Homepage highlight & priority placement</p>
 
-            <div className="mb-6 flex justify-between items-center">
-              <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-wider border border-amber-100">
-                Most Popular ⭐
+            <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium flex-1">
+              <li>🌟 <strong>Includes Standard benefits</strong></li>
+              <li>📷 <strong>Up to {getMaxPhotosForPlan('featured')} Photos</strong></li>
+              <li>🌟 <strong>Homepage Highlight</strong></li>
+              <li>🌟 Priority in Search Results</li>
+            </ul>
+
+            <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-500">Duration: 30 Days</span>
+              <span className="font-black text-amber-600 text-base">
+                {isUK ? '£4.99' : '€4.99'}
               </span>
-              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-                <Star size={20} className="fill-amber-500 text-amber-500" />
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-brand font-black text-slate-900 mb-2 flex items-center gap-1.5">
-                ⭐ Featured Listing
-              </h3>
-              <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Featured section highlight on the homepage and priority ranking across searches.
-              </p>
-            </div>
-
-            <div className="mb-8 text-center bg-amber-50/50 rounded-2xl py-4 border border-amber-100/50">
-              {renderPrice('4.99', '4.99')}
-              <span className="block text-[10px] font-bold text-amber-600 uppercase mt-1.5 tracking-wider">For 30 Days</span>
-            </div>
-
-            <div className="space-y-4 mb-8 flex-1">
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug font-bold">Everything in Standard</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Homepage Featured Highlight</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Featured Star Badge ⭐</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Priority Search Ranking</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-600 font-semibold leading-snug">Up to 3x More Views</span>
-              </div>
             </div>
 
             <button
               onClick={handlePublishClick}
-              className="w-full py-3.5 px-4 bg-amber-500 text-white hover:bg-amber-600 rounded-2xl font-black text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+              className="mt-4 w-full py-3.5 px-4 bg-amber-500 text-white hover:bg-amber-600 rounded-2xl font-black text-sm transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>Get Featured Listing</span>
               <ArrowRight size={14} />
@@ -316,60 +283,31 @@ export default function Precos() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex flex-col bg-slate-900 rounded-3xl border border-indigo-500/20 shadow-xl p-6 hover:-translate-y-2 transition-all relative overflow-hidden text-white"
+            className="p-5 rounded-3xl border-2 border-indigo-200/80 bg-indigo-50/20 hover:border-indigo-300 transition-all relative overflow-hidden flex flex-col text-left shadow-lg shadow-black/[0.02]"
           >
-            {/* Top Border Accent - Indigo Premium */}
-            <div className="absolute top-0 inset-x-0 h-2 bg-indigo-500"></div>
+            <div className="absolute top-0 right-0 bg-gradient-to-l from-indigo-600 to-indigo-500 text-white text-[9px] font-black px-3 py-1 rounded-bl-xl uppercase tracking-wider">
+              Premium 👑
+            </div>
+            <p className="font-black text-slate-900 text-base">Premium Featured</p>
+            <p className="text-xs text-slate-500 mt-0.5">Top positions inside featured section & max reach</p>
 
-            <div className="mb-6 flex justify-between items-center">
-              <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-[10px] font-black uppercase tracking-wider border border-indigo-500/20">
-                Maximum Exposure 👑
+            <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium flex-1">
+              <li>👑 <strong>Includes Featured benefits</strong></li>
+              <li>📷 <strong>Up to {getMaxPhotosForPlan('premium')} Photos</strong></li>
+              <li>🚀 <strong>Top Spot Priority</strong></li>
+              <li>💥 Maximum Exposure</li>
+            </ul>
+
+            <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+              <span className="font-bold text-slate-500">Duration: 30 Days</span>
+              <span className="font-black text-indigo-600 text-base">
+                {isUK ? '£9.99' : '€9.99'}
               </span>
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                <Crown size={20} className="fill-indigo-500 text-indigo-400" />
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xl font-brand font-black text-white mb-2 flex items-center gap-1.5">
-                👑 Premium Featured
-              </h3>
-              <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                Top position priority inside featured carousels and maximum nationwide visibility.
-              </p>
-            </div>
-
-            <div className="mb-8 text-center bg-white/5 rounded-2xl py-4 border border-white/5">
-              {renderPrice('9.99', '9.99')}
-              <span className="block text-[10px] font-bold text-indigo-400 uppercase mt-1.5 tracking-wider">For 30 Days</span>
-            </div>
-
-            <div className="space-y-4 mb-8 flex-1">
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-350 font-semibold leading-snug font-bold">Everything in Featured</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-350 font-semibold leading-snug">Top Spots inside Featured Section</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-350 font-semibold leading-snug">Premium Crown Badge 👑</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-300 font-bold leading-snug">Maximum Search Priority</span>
-              </div>
-              <div className="flex items-start gap-2.5">
-                <Check size={16} className="text-indigo-400 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-350 font-semibold leading-snug">Up to 10x Exposure</span>
-              </div>
             </div>
 
             <button
               onClick={handlePublishClick}
-              className="w-full py-3.5 px-4 bg-indigo-600 text-white hover:bg-indigo-700 rounded-2xl font-black text-sm transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 cursor-pointer"
+              className="mt-4 w-full py-3.5 px-4 bg-indigo-600 text-white hover:bg-indigo-700 rounded-2xl font-black text-sm transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>Activate Premium Featured</span>
               <ArrowRight size={14} />

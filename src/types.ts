@@ -71,6 +71,7 @@ export interface MarketplaceSettings {
   compactCardMode?: boolean;
   enableFotosFeature?: boolean;
   launchPromoActive?: boolean;
+  enablePortugalMarket?: boolean;
 }
 
 export interface BannerDeviceConfig {

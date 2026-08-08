@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { ExternalLink, ArrowLeft, Globe, MapPin, Compass, Search } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { useSettings } from '../context/SettingsContext';
 
 interface UsefulLink {
   name: string;
@@ -255,18 +256,22 @@ const PT_LINKS: CategoryLinks[] = [
 
 export default function Links() {
   const navigate = useNavigate();
+  const { settings } = useSettings();
+  const enablePortugal = settings?.enablePortugalMarket === true;
   const [activeCountry, setActiveCountry] = useState<'Portugal' | 'Reino Unido'>('Reino Unido');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Sync with global user-selected country
   useEffect(() => {
-    const saved = localStorage.getItem('selectedCountry') as 'Portugal' | 'Reino Unido' | null;
-    if (saved === 'Reino Unido') {
-      setActiveCountry(saved);
-    } else {
-      setActiveCountry('Reino Unido');
+    if (enablePortugal) {
+      const saved = localStorage.getItem('selectedCountry') as 'Portugal' | 'Reino Unido' | null;
+      if (saved === 'Portugal' || saved === 'Reino Unido') {
+        setActiveCountry(saved);
+        return;
+      }
     }
-  }, []);
+    setActiveCountry('Reino Unido');
+  }, [enablePortugal]);
 
   const linksData = activeCountry === 'Portugal' ? PT_LINKS : UK_LINKS;
 

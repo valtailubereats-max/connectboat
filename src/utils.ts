@@ -7,9 +7,10 @@ export const formatPrice = (price: number | string | undefined | null, country?:
   if (price === undefined || price === null || price === '') return 'Free';
   const num = typeof price === 'number' ? (isNaN(price) ? 0 : price) : parsePrice(price);
   if (num === 0) return 'Free';
-  return new Intl.NumberFormat('en-GB', {
+  const isEUR = country === 'Portugal';
+  return new Intl.NumberFormat(isEUR ? 'pt-PT' : 'en-GB', {
     style: 'currency',
-    currency: 'GBP',
+    currency: isEUR ? 'EUR' : 'GBP',
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(num);

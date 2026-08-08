@@ -785,6 +785,22 @@ const Navbar = () => {
   );
 };
 
+const FooterCoverageBadges = () => {
+  const { settings } = useSettings();
+  return (
+    <div className="flex flex-wrap gap-2">
+      <span className="flex items-center gap-1 bg-white border border-slate-200 text-slate-700 px-2.5 py-1 rounded-xl text-[10px] select-none hover:shadow-2xs transition-all pointer-events-none">
+        🇬🇧 United Kingdom
+      </span>
+      {settings?.enablePortugalMarket === true && (
+        <span className="flex items-center gap-1 bg-white border border-slate-200 text-slate-700 px-2.5 py-1 rounded-xl text-[10px] select-none hover:shadow-2xs transition-all pointer-events-none">
+          🇵🇹 Portugal
+        </span>
+      )}
+    </div>
+  );
+};
+
 const ScrollToTop = () => {
   const { pathname } = useLocation();
 
@@ -1031,11 +1047,7 @@ export default function App() {
                       {/* Geographic badges */}
                       <li className="pt-2 border-t border-slate-200/50">
                         <span className="uppercase text-[9px] text-slate-450 tracking-wider font-bold block mb-2 select-none">Coverage</span>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="flex items-center gap-1 bg-white border border-slate-200 text-slate-700 px-2.5 py-1 rounded-xl text-[10px] select-none hover:shadow-2xs transition-all pointer-events-none">
-                            🇬🇧 United Kingdom
-                          </span>
-                        </div>
+                        <FooterCoverageBadges />
                       </li>
                     </ul>
                   </div>
