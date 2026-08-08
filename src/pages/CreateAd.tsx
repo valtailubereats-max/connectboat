@@ -108,8 +108,8 @@ const CreateAd = () => {
     region: prefill?.region || (prefill?.city ? getRegionForCity(prefill.city) : 'England'),
     country: 'United Kingdom',
     category: urlCategory || prefill?.category || categories[0] || 'Outros',
-    plan: 'free' as 'free' | 'local' | 'national' | 'highlight',
-    duration: 30, // Default for free
+    plan: 'standard' as 'standard' | 'free' | 'local' | 'national' | 'highlight' | 'featured' | 'premium',
+    duration: 30, // Default for standard
     contactEmail: '',
     externalUrl: '',
     sellerPhone: prefill?.sellerPhone || '',
