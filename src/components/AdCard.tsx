@@ -815,7 +815,7 @@ const AdCard: React.FC<AdCardProps> = ({
               </button>
 
               <div className="overflow-y-auto flex-1 min-h-0">
-                <div className="h-72 md:h-96 bg-slate-950 relative group/img overflow-hidden touch-none flex items-center justify-center">
+                <div className="h-72 md:h-96 bg-slate-950 relative group/img overflow-hidden touch-pan-y flex items-center justify-center">
                   {/* Backdrop com desfoque ambiente premium para fotos verticais/horizontais se integrarem sem cortes */}
                   <div 
                     className="absolute inset-0 bg-cover bg-center blur-xl opacity-35 select-none pointer-events-none scale-110"

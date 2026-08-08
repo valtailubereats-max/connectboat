@@ -46,6 +46,68 @@ const AdDetails = () => {
   const mainVideoRef = useRef<HTMLVideoElement | null>(null);
   const mobileVideoRef = useRef<HTMLVideoElement | null>(null);
 
+  // Smart Touch Gesture Handling for Main Gallery Photo
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const touchDirectionRef = useRef<'horizontal' | 'vertical' | null>(null);
+
+  const handleGalleryTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now(),
+    };
+    touchDirectionRef.current = null;
+  };
+
+  const handleGalleryTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || e.touches.length !== 1) return;
+
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const deltaX = currentX - touchStartRef.current.x;
+    const deltaY = currentY - touchStartRef.current.y;
+
+    // Determine gesture direction once movement exceeds threshold (8px)
+    if (!touchDirectionRef.current) {
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      if (absX > 8 || absY > 8) {
+        if (absX > absY) {
+          touchDirectionRef.current = 'horizontal';
+        } else {
+          touchDirectionRef.current = 'vertical';
+        }
+      }
+    }
+  };
+
+  const handleGalleryTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+
+    const endX = e.changedTouches[0]?.clientX ?? touchStartRef.current.x;
+    const deltaX = endX - touchStartRef.current.x;
+    const duration = Date.now() - touchStartRef.current.time;
+
+    // Navigate photos ONLY if the gesture direction was predominantly horizontal
+    if (touchDirectionRef.current === 'horizontal' && mediaItems.length > 1) {
+      const minSwipeDistance = 40;
+      if (Math.abs(deltaX) >= minSwipeDistance && duration < 800) {
+        pauseVideos();
+        if (deltaX < 0) {
+          // Swiped Left -> Next image
+          setCurrentImageIndex((prev) => (prev === mediaItems.length - 1 ? 0 : prev + 1));
+        } else {
+          // Swiped Right -> Previous image
+          setCurrentImageIndex((prev) => (prev === 0 ? mediaItems.length - 1 : prev - 1));
+        }
+      }
+    }
+
+    touchStartRef.current = null;
+    touchDirectionRef.current = null;
+  };
+
   const pauseVideos = () => {
     if (mainVideoRef.current) mainVideoRef.current.pause();
     if (mobileVideoRef.current) mobileVideoRef.current.pause();
@@ -787,7 +849,12 @@ const AdDetails = () => {
       <div className="hidden lg:grid lg:grid-cols-12 gap-8">
         {/* LADO ESQUERDO: Imagens e Galeria */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="relative aspect-[4/3] md:aspect-[16/10] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-none flex items-center justify-center">
+          <div 
+            className="relative aspect-[4/3] md:aspect-[16/10] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-pan-y flex items-center justify-center select-none"
+            onTouchStart={handleGalleryTouchStart}
+            onTouchMove={handleGalleryTouchMove}
+            onTouchEnd={handleGalleryTouchEnd}
+          >
             {currentMedia.type === 'video' ? (
               <video
                 ref={mainVideoRef}
@@ -1505,7 +1572,12 @@ const AdDetails = () => {
         
         {/* CAROUSEL FLOW */}
         <div className="space-y-3">
-          <div className="relative aspect-[4/3] bg-slate-950 rounded-2xl overflow-hidden shadow-md group touch-none flex items-center justify-center">
+          <div 
+            className="relative aspect-[4/3] bg-slate-950 rounded-2xl overflow-hidden shadow-md group touch-pan-y flex items-center justify-center select-none"
+            onTouchStart={handleGalleryTouchStart}
+            onTouchMove={handleGalleryTouchMove}
+            onTouchEnd={handleGalleryTouchEnd}
+          >
             {currentMedia.type === 'video' ? (
               <video
                 ref={mobileVideoRef}
