@@ -95,27 +95,27 @@ export function ShareModal() {
           </div>
 
           {/* Subtitle / Details */}
-          <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl mb-5">
-            <p className="text-slate-450 text-[10px] uppercase font-black tracking-widest block mb-2">Generated message:</p>
-            <div className="text-xs text-slate-700 leading-relaxed font-semibold max-h-36 overflow-y-auto whitespace-pre-wrap select-text pr-1">
+          <div className="bg-slate-50/70 border border-slate-200/60 p-4 rounded-2xl mb-5 shadow-2xs">
+            <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider block mb-1.5">Generated Message</p>
+            <div className="text-xs text-slate-700 leading-relaxed font-normal max-h-36 overflow-y-auto whitespace-pre-wrap select-text pr-1">
               {text}
             </div>
-            <div className="text-[10px] text-indigo-600 font-mono font-bold break-all mt-2.5">
+            <div className="text-[11px] text-indigo-600 font-mono font-medium break-all mt-2.5 pt-2.5 border-t border-slate-200/50">
               {url}
             </div>
           </div>
 
           {/* Share Grid Grid spacing */}
-          <div className="grid grid-cols-2 gap-3 mb-5">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             {/* WhatsApp */}
             <a
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 bg-[#e8fbf1] hover:bg-[#d1f7e3] text-[#0f5132] font-black py-3 px-4 rounded-2xl transition-all border border-[#d1f7e3] text-xs cursor-pointer"
+              className="flex items-center justify-center gap-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-3 px-4 rounded-2xl transition-all shadow-xs text-xs cursor-pointer active:scale-[0.98]"
             >
-              <MessageCircle size={18} className="text-[#198754]" />
-              WhatsApp
+              <MessageCircle size={18} className="text-white shrink-0" />
+              <span>WhatsApp</span>
             </a>
 
             {/* Facebook */}
@@ -123,10 +123,10 @@ export function ShareModal() {
               href={facebookUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 bg-[#e8f4fd] hover:bg-[#d1e8fa] text-[#084298] font-black py-3 px-4 rounded-2xl transition-all border border-[#d1e8fa] text-xs cursor-pointer"
+              className="flex items-center justify-center gap-2.5 bg-[#1877F2] hover:bg-[#166fe0] text-white font-bold py-3 px-4 rounded-2xl transition-all shadow-xs text-xs cursor-pointer active:scale-[0.98]"
             >
-              <Facebook size={18} className="text-[#0d6efd]" />
-              Facebook
+              <Facebook size={18} className="text-white shrink-0" />
+              <span>Facebook</span>
             </a>
 
             {/* Telegram */}
@@ -134,30 +134,30 @@ export function ShareModal() {
               href={telegramUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-3 bg-[#e8f7fd] hover:bg-[#d1f1fb] text-[#055160] font-black py-3 px-4 rounded-2xl transition-all border border-[#d1f1fb] text-xs cursor-pointer"
+              className="flex items-center justify-center gap-2.5 bg-[#229ED9] hover:bg-[#1e8ec3] text-white font-bold py-3 px-4 rounded-2xl transition-all shadow-xs text-xs cursor-pointer active:scale-[0.98]"
             >
-              <Send size={18} className="text-[#0dcaf0]" />
-              Telegram
+              <Send size={18} className="text-white shrink-0" />
+              <span>Telegram</span>
             </a>
 
             {/* Copiar Link */}
             <button
               onClick={handleCopyLink}
-              className={`flex items-center gap-3 font-brand font-black py-3 px-4 rounded-2xl transition-all border text-xs cursor-pointer ${
+              className={`flex items-center justify-center gap-2.5 font-bold py-3 px-4 rounded-2xl transition-all text-xs cursor-pointer active:scale-[0.98] ${
                 copied
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/60'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80 shadow-2xs'
               }`}
             >
               {copied ? (
                 <>
-                  <Check size={18} className="text-emerald-600" />
-                  Copied!
+                  <Check size={18} className="text-white shrink-0" />
+                  <span>Copied!</span>
                 </>
               ) : (
                 <>
-                  <Copy size={18} className="text-slate-500" />
-                  Copy Link
+                  <Copy size={18} className="text-slate-500 shrink-0" />
+                  <span>Copy Link</span>
                 </>
               )}
             </button>
@@ -167,10 +167,10 @@ export function ShareModal() {
           {navigator.share && (
             <button
               onClick={handleNativeShare}
-              className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-2xl border border-indigo-200 hover:border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-black transition-all cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2.5 py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20 cursor-pointer active:scale-[0.99]"
             >
-              <Share2 size={16} />
-              Native Device Share
+              <Share2 size={16} className="text-white shrink-0" />
+              <span>Native Device Share</span>
             </button>
           )}
         </motion.div>
