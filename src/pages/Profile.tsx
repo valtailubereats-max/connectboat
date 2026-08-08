@@ -9,10 +9,11 @@ import { clearHomeCache } from '../utils/cache';
 import { Ad, UserProfile, COUNTRY_CODES, CITIES, UK_REGIONS, getRegionForCity } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, MessageSquare, MapPin, Tag, Star, Plus, X, CreditCard } from 'lucide-react';
+import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, MessageSquare, MapPin, Tag, Star, Plus, X, CreditCard, HelpCircle } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 import { formatPrice, parsePrice } from '../utils';
+import { getAdPaymentClassification } from '../utils/paymentUtils';
 import OptimizedImage from '../components/OptimizedImage';
 import { getCardFramingStyle } from '../utils/imageFraming';
 import ReviewModal from '../components/ReviewModal';
@@ -1366,6 +1367,8 @@ const Profile = () => {
                 return 'Featured 30 days';
               };
 
+              const paymentInfo = getAdPaymentClassification(ad);
+
               return (
                 <motion.div
                   key={`profile-ad-${ad.id}-${idx}`}
@@ -1451,6 +1454,32 @@ const Profile = () => {
                       {(ad.status === 'sold' || ad.adStatus === 'sold') && ad.category !== 'Imigração' && ad.price !== undefined && Number(ad.price) > 0 && (
                         <span className="flex items-center gap-1 text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
                           <Tag size={14} /> Sold
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Payment Information Badge */}
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
+                      {paymentInfo.isPaid ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
+                          <CreditCard size={13} className="text-emerald-600 shrink-0" />
+                          <span>Paid</span>
+                          <span className="text-emerald-700 font-bold">• {paymentInfo.planLabel}</span>
+                          {paymentInfo.formattedDate && (
+                            <span className="text-emerald-800 font-medium">({paymentInfo.formattedDate})</span>
+                          )}
+                        </span>
+                      ) : paymentInfo.type === 'legacy_free' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200/80">
+                          <Tag size={13} className="text-slate-500 shrink-0" />
+                          <span>Legacy / Free Listing</span>
+                          <span className="text-slate-500 font-normal">• {paymentInfo.planLabel}</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
+                          <HelpCircle size={13} className="text-amber-600 shrink-0" />
+                          <span>Payment data unavailable</span>
+                          <span className="text-amber-700 font-normal">• {paymentInfo.planLabel}</span>
                         </span>
                       )}
                     </div>

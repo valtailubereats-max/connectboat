@@ -35,6 +35,21 @@ import { pt } from 'date-fns/locale';
 import { formatPrice } from '../utils';
 import { sendEmailGeneric, getSellerEmail } from '../utils/emailService';
 import { useAuth } from '../context/AuthContext';
+import { 
+  isPaidAd, 
+  getAdPlanLabel, 
+  formatUKDate, 
+  formatUKDateTime, 
+  getAdPaymentClassification 
+} from '../utils/paymentUtils';
+
+export { 
+  isPaidAd, 
+  getAdPlanLabel, 
+  formatUKDate, 
+  formatUKDateTime, 
+  getAdPaymentClassification 
+};
 
 interface ColumnOption {
   id: string;
@@ -57,77 +72,6 @@ const ALL_COLUMNS: ColumnOption[] = [
   { id: 'cliques', label: 'Clicks' },
   { id: 'acoes', label: 'Quick actions', mandatory: true },
 ];
-
-export const isPaidAd = (ad: Ad): boolean => {
-  if (!ad) return false;
-  return Boolean(
-    ad.paidAt ||
-    (ad as any).paymentCompletedAt ||
-    (ad as any).paymentStatus === 'paid' ||
-    (ad as any).paymentStatus === 'completed'
-  );
-};
-
-export const getAdPlanLabel = (ad: Ad): { label: string; color: string } => {
-  const plan = (ad.plan || '').toLowerCase();
-  if (plan === 'premium') {
-    return { label: 'Premium', color: 'bg-purple-100 text-purple-800 border-purple-200' };
-  }
-  if (plan === 'featured' || plan === 'national' || plan === 'local' || ad.isFeatured) {
-    return { label: 'Featured', color: 'bg-amber-100 text-amber-800 border-amber-200' };
-  }
-  if (plan === 'standard' || plan === 'basic') {
-    return { label: 'Standard', color: 'bg-blue-100 text-blue-800 border-blue-200' };
-  }
-  if (ad.isPermanentFeatured) {
-    return { label: 'Permanent Featured', color: 'bg-purple-100 text-purple-800 border-purple-200' };
-  }
-  if (ad.plan) {
-    const capitalized = ad.plan.charAt(0).toUpperCase() + ad.plan.slice(1);
-    return { label: capitalized, color: 'bg-slate-100 text-slate-700 border-slate-200' };
-  }
-  return { label: 'Standard (Free)', color: 'bg-slate-100 text-slate-600 border-slate-200' };
-};
-
-export const formatUKDate = (dateVal: any): string | null => {
-  if (!dateVal) return null;
-  try {
-    let dateObj: Date | null = null;
-    if (typeof dateVal?.toDate === 'function') {
-      dateObj = dateVal.toDate();
-    } else if (dateVal instanceof Date) {
-      dateObj = dateVal;
-    } else if (typeof dateVal === 'string' || typeof dateVal === 'number') {
-      dateObj = new Date(dateVal);
-    }
-    if (dateObj && !isNaN(dateObj.getTime())) {
-      return format(dateObj, 'dd/MM/yyyy');
-    }
-  } catch (e) {
-    console.error('Error formatting UK date:', e);
-  }
-  return null;
-};
-
-export const formatUKDateTime = (dateVal: any): string | null => {
-  if (!dateVal) return null;
-  try {
-    let dateObj: Date | null = null;
-    if (typeof dateVal?.toDate === 'function') {
-      dateObj = dateVal.toDate();
-    } else if (dateVal instanceof Date) {
-      dateObj = dateVal;
-    } else if (typeof dateVal === 'string' || typeof dateVal === 'number') {
-      dateObj = new Date(dateVal);
-    }
-    if (dateObj && !isNaN(dateObj.getTime())) {
-      return format(dateObj, 'dd/MM/yyyy HH:mm');
-    }
-  } catch (e) {
-    console.error('Error formatting UK datetime:', e);
-  }
-  return null;
-};
 
 const AdminAds = () => {
   const navigate = useNavigate();
@@ -993,15 +937,28 @@ const AdminAds = () => {
                       </span>
                     )}
                     {/* Paid Status & Plan Badges */}
-                    {isPaidAd(ad) ? (
-                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200" title={`Paid on ${formatUKDate(ad.paidAt) || 'N/A'}`}>
-                        💳 Paid
-                      </span>
-                    ) : (
-                      <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-100 text-slate-500 border border-slate-200" title="Payment data unavailable or free listing">
-                        Payment data unavailable
-                      </span>
-                    )}
+                    {(() => {
+                      const pInfo = getAdPaymentClassification(ad);
+                      if (pInfo.isPaid) {
+                        return (
+                          <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200" title={`Paid on ${pInfo.formattedDate || 'N/A'}`}>
+                            💳 Paid
+                          </span>
+                        );
+                      }
+                      if (pInfo.type === 'legacy_free') {
+                        return (
+                          <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-100 text-slate-600 border border-slate-200" title="Legacy / Free Listing">
+                            Legacy / Free Listing
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-100 text-slate-500 border border-slate-200" title="Payment data unavailable">
+                          Payment data unavailable
+                        </span>
+                      );
+                    })()}
 
                     <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider border ${getAdPlanLabel(ad).color}`}>
                       Plan: {getAdPlanLabel(ad).label}
@@ -1383,15 +1340,28 @@ const AdminAds = () => {
                       {isColVisible('pagamento') && (
                         <td className="py-3 px-4 border-none text-center">
                           <div className="flex flex-col gap-1 items-center">
-                            {isPaidAd(ad) ? (
-                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                💳 Paid
-                              </span>
-                            ) : (
-                              <span className="inline-block text-[8px] font-semibold px-1 py-0.5 rounded uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200" title="Payment data unavailable">
-                                Data N/A
-                              </span>
-                            )}
+                            {(() => {
+                              const pInfo = getAdPaymentClassification(ad);
+                              if (pInfo.isPaid) {
+                                return (
+                                  <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    💳 Paid
+                                  </span>
+                                );
+                              }
+                              if (pInfo.type === 'legacy_free') {
+                                return (
+                                  <span className="inline-block text-[8px] font-semibold px-1 py-0.5 rounded uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                                    Legacy / Free
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="inline-block text-[8px] font-semibold px-1 py-0.5 rounded uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200" title="Payment data unavailable">
+                                  Data N/A
+                                </span>
+                              );
+                            })()}
                             <span className={`inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border ${getAdPlanLabel(ad).color}`}>
                               {getAdPlanLabel(ad).label}
                             </span>
@@ -1930,15 +1900,28 @@ const AdminAds = () => {
                       <CreditCard size={15} className="text-emerald-600" />
                       <span>Payment & Plan Information</span>
                     </h4>
-                    {isPaidAd(selectedAd) ? (
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-md border border-emerald-200">
-                        💳 Paid
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-semibold uppercase rounded-md border border-slate-200">
-                        Payment data unavailable
-                      </span>
-                    )}
+                    {(() => {
+                      const pInfo = getAdPaymentClassification(selectedAd);
+                      if (pInfo.isPaid) {
+                        return (
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-md border border-emerald-200">
+                            💳 Paid
+                          </span>
+                        );
+                      }
+                      if (pInfo.type === 'legacy_free') {
+                        return (
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-semibold uppercase rounded-md border border-slate-200">
+                            Legacy / Free Listing
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-semibold uppercase rounded-md border border-slate-200">
+                          Payment data unavailable
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
                     <div>
