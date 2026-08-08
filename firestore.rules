@@ -114,7 +114,7 @@ service cloud.firestore {
              data.id is string &&
              data.adId is string &&
              data.adTitle is string &&
-             (!('adCategory' in data) || data.adCategory is string) &&
+             (!('adCategory' in data) || data.adCategory == null || data.adCategory is string) &&
              data.sellerId is string &&
              data.buyerId is string &&
              data.buyerName is string &&
@@ -421,7 +421,11 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isAuthenticated() &&
                     isValidReview(request.resource.data) &&
-                    request.resource.data.reviewerId == request.auth.uid;
+                    (
+                      request.resource.data.reviewerId == request.auth.uid ||
+                      request.resource.data.sellerId == request.auth.uid ||
+                      request.resource.data.buyerId == request.auth.uid
+                    );
       allow update, delete: if isAdmin();
     }
 

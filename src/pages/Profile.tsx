@@ -82,7 +82,7 @@ const Profile = () => {
         refreshProfile();
       }
 
-      alert('Adesão à Vitrine Digital efetuada com sucesso via Stripe Checkout!');
+      alert('Digital Showcase subscription completed successfully via Stripe Checkout!');
 
       // Clean query params
       const newUrl = `${window.location.pathname}?tab=vitrine`;
@@ -524,7 +524,7 @@ const Profile = () => {
 
   const handleFeatureAd = async (ad: Ad) => {
     if (!user || !profile) {
-      alert("Autenticação necessária para destacar anúncios.");
+      alert("Authentication required to boost listings.");
       return;
     }
 
@@ -532,22 +532,22 @@ const Profile = () => {
     const userId = user?.uid;
 
     if (!adId) {
-      alert("ID de anúncio inválido ou não especificado.");
+      alert("Invalid or unspecified listing ID.");
       return;
     }
 
     if (!userId) {
-      alert("ID de utilizador não encontrado.");
+      alert("User ID not found.");
       return;
     }
 
     const credits = profile.referralCredits || 0;
     if (credits <= 0) {
-      alert("Não possui Créditos de Destaque disponíveis. Convide amigos para obter mais créditos!");
+      alert("You do not have any Boost Credits available. Invite friends to earn more credits!");
       return;
     }
     
-    if (!window.confirm("Deseja utilizar 1 Crédito de Destaque para destacar este anúncio por 24 horas? Ele receberá posicionamento de destaque prioritário!")) {
+    if (!window.confirm("Would you like to use 1 Boost Credit to highlight this listing for 24 hours? It will receive priority placement!")) {
       return;
     }
     
@@ -592,16 +592,16 @@ const Profile = () => {
       }
       await fetchUserAds();
       
-      alert("Anúncio destacado com sucesso por 24 horas!");
+      alert("Listing boosted successfully for 24 hours!");
     } catch (err: any) {
       console.error("Error applying feature listing credit:", err);
-      let errMsg = "Falha ao gravar no Firestore.";
+      let errMsg = "Failed to save to Firestore.";
       if (err?.code === 'permission-denied') {
-        errMsg = "Erro de Permissão: Não possui autorização para atualizar este anúncio no Firestore.";
+        errMsg = "Permission Error: You are not authorised to update this listing in Firestore.";
       } else if (err instanceof Error) {
         errMsg = err.message;
       }
-      alert(`Erro ao destacar anúncio: ${errMsg}`);
+      alert(`Error boosting listing: ${errMsg}`);
     }
   };
 
@@ -783,12 +783,12 @@ const Profile = () => {
       if (data.success && data.url) {
         window.location.href = data.url;
       } else {
-        alert(data.errorMessage || data.error || 'Erro ao iniciar sessão do Stripe Checkout.');
+        alert(data.errorMessage || data.error || 'Error starting Stripe Checkout session.');
         setShowcasePaymentLoading(false);
       }
     } catch (err: any) {
       console.error('[Stripe Showcase Checkout Error]', err);
-      alert('Erro ao ligar ao servidor Stripe: ' + err.message);
+      alert('Error connecting to Stripe server: ' + err.message);
       setShowcasePaymentLoading(false);
     }
   };
@@ -1526,7 +1526,7 @@ const Profile = () => {
                         }`}
                       >
                         <span>✨</span>
-                        <span>Destacar Anúncio (1 crédito)</span>
+                        <span>Boost Listing (1 credit)</span>
                       </button>
                     )}
 
