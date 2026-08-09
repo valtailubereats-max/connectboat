@@ -1318,8 +1318,12 @@ const CreateAd = () => {
         country: formData.country,
         category: formData.category,
         sellerId: id && originalAd ? (originalAd.sellerId || user.uid) : user.uid,
-        sellerEmail: id && originalAd && originalAd.sellerEmail ? originalAd.sellerEmail : (user?.email || profile?.email || ''),
-        userEmail: id && originalAd && originalAd.userEmail ? originalAd.userEmail : (user?.email || profile?.email || ''),
+        sellerEmail: id && originalAd
+          ? (Object.prototype.hasOwnProperty.call(originalAd, 'sellerEmail') ? originalAd.sellerEmail : '')
+          : (user?.email || profile?.email || ''),
+        userEmail: id && originalAd
+          ? (Object.prototype.hasOwnProperty.call(originalAd, 'userEmail') ? originalAd.userEmail : '')
+          : (user?.email || profile?.email || ''),
         sellerPhone: finalSellerPhoneValue || (originalAd?.sellerPhone || ''),
         contactPhone: contactPhoneValue || (originalAd?.contactPhone || ''),
         useProfilePhone: useProfilePhoneValue,
@@ -1328,7 +1332,9 @@ const CreateAd = () => {
         adStatus: id && originalAd ? originalAd.adStatus : 'active',
         plan: formData.category === '💚 Doações & Solidariedade' ? 'local' : formData.plan,
         expirationDate: id && originalAd ? (originalAd.expirationDate || expirationDate) : expirationDate,
-        userNotified: isStaff && id ? true : false,
+        userNotified: id && originalAd
+          ? (Object.prototype.hasOwnProperty.call(originalAd, 'userNotified') ? originalAd.userNotified : false)
+          : false,
         createdAt: id && originalAd ? originalAd.createdAt : serverTimestamp(),
         updatedAt: serverTimestamp(),
         contactEmail: (formData.category === 'Imigração' || isJob) ? (formData.contactEmail || '') : (originalAd?.contactEmail || ''),
@@ -1409,7 +1415,12 @@ const CreateAd = () => {
         if (originalAd.claimStatus !== undefined) adData.claimStatus = originalAd.claimStatus;
         if (originalAd.claimedBy) adData.claimedBy = originalAd.claimedBy;
         if (originalAd.claimedAt) adData.claimedAt = originalAd.claimedAt;
-        if (originalAd.sellerEmail) adData.sellerEmail = originalAd.sellerEmail;
+        if (Object.prototype.hasOwnProperty.call(originalAd, 'sellerEmail')) {
+          adData.sellerEmail = originalAd.sellerEmail;
+        }
+        if (Object.prototype.hasOwnProperty.call(originalAd, 'userEmail')) {
+          adData.userEmail = originalAd.userEmail;
+        }
         if (originalAd.externalListing !== undefined) adData.externalListing = originalAd.externalListing;
         if (originalAd.externalStatus) adData.externalStatus = originalAd.externalStatus;
         if (originalAd.demoListing !== undefined) adData.demoListing = originalAd.demoListing;
