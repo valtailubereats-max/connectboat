@@ -24,6 +24,14 @@ export default function Precos() {
 
   const isUK = !enablePortugal || selectedCountry === 'Reino Unido';
 
+  const getPlanPrice = (plan: 'standard' | 'featured' | 'premium'): number => {
+    const fallbackPrices = { standard: 2.99, featured: 4.99, premium: 9.99 };
+    return Number(settings?.planPrices?.[plan] ?? fallbackPrices[plan]);
+  };
+
+  const formatPlanPrice = (plan: 'standard' | 'featured' | 'premium'): string =>
+    getPlanPrice(plan).toFixed(2);
+
   const getMaxPhotosForPlan = (planKey: string): number => {
     if (settings?.maxImages) {
       const val = settings.maxImages[planKey as keyof typeof settings.maxImages];
@@ -73,7 +81,7 @@ export default function Precos() {
         <title>Pricing Plans | ConnectBoat</title>
         <meta
           name="description"
-          content="Explore ConnectBoat pricing plans. Standard £2.99 listings, Featured options, and Marine Showcase subscriptions for boating professionals."
+          content={`Explore ConnectBoat pricing plans. Standard listings from £${formatPlanPrice('standard')}, Featured options, and Premium promotion for boats across the UK.`}
         />
         <link rel="canonical" href="https://connectboat.co.uk/pricing" />
         <meta property="og:url" content="https://connectboat.co.uk/pricing" />
@@ -157,7 +165,7 @@ export default function Precos() {
             </div>
             <div className="flex items-center gap-2.5 text-slate-700 text-xs sm:text-sm font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px]">✓</span>
-              <span>Listing plans start from just £2.99.</span>
+              <span>Listing plans start from just £{formatPlanPrice('standard')}.</span>
             </div>
             <div className="flex items-center gap-2.5 text-slate-700 text-xs sm:text-sm font-bold">
               <span className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-[10px]">✓</span>
@@ -229,7 +237,7 @@ export default function Precos() {
             <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
               <span className="font-bold text-slate-500">Duration: 30 Days</span>
               <span className="font-black text-emerald-700 text-base">
-                {isUK ? '£2.99' : '€2.99'}
+                {isUK ? `£${formatPlanPrice('standard')}` : `€${formatPlanPrice('standard')}`}
               </span>
             </div>
 
@@ -265,7 +273,7 @@ export default function Precos() {
             <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
               <span className="font-bold text-slate-500">Duration: 30 Days</span>
               <span className="font-black text-amber-600 text-base">
-                {isUK ? '£4.99' : '€4.99'}
+                {isUK ? `£${formatPlanPrice('featured')}` : `€${formatPlanPrice('featured')}`}
               </span>
             </div>
 
@@ -301,7 +309,7 @@ export default function Precos() {
             <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
               <span className="font-bold text-slate-500">Duration: 30 Days</span>
               <span className="font-black text-indigo-600 text-base">
-                {isUK ? '£9.99' : '€9.99'}
+                {isUK ? `£${formatPlanPrice('premium')}` : `€${formatPlanPrice('premium')}`}
               </span>
             </div>
 
