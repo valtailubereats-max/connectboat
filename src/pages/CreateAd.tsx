@@ -1039,6 +1039,27 @@ const CreateAd = () => {
     setLoading(true);
     try {
       const cleanPayload = sanitizeFirestorePayload(finalAdData);
+
+      // During an edit, do not create optional fields that did not exist
+      // in the original Firestore document. Adding an empty/null field still
+      // counts as a field change and can be rejected by the security rules.
+      if (id && originalAd) {
+        const preserveOptionalFieldShape = [
+          'sellerEmail',
+          'userEmail',
+          'tempVideoPath',
+          'tempVideoUrl'
+        ];
+
+        preserveOptionalFieldShape.forEach((key) => {
+          if (Object.prototype.hasOwnProperty.call(originalAd, key)) {
+            (cleanPayload as any)[key] = (originalAd as any)[key];
+          } else {
+            delete (cleanPayload as any)[key];
+          }
+        });
+      }
+
       logFramingDiagnostic('CreateAd Save Payload', {
         targetAdId,
         imageUrl: cleanPayload.imageUrl,
@@ -1048,41 +1069,6 @@ const CreateAd = () => {
         coverImageSettings: cleanPayload.coverImageSettings,
       });
       try {
-        if (id && originalAd) {
-          const normalizeForCompare = (value: any): any => {
-            if (value && typeof value?.toDate === 'function') return value.toDate().toISOString();
-            if (value instanceof Date) return value.toISOString();
-            if (Array.isArray(value)) return value.map(normalizeForCompare);
-            if (value && typeof value === 'object') {
-              const normalized: Record<string, any> = {};
-              Object.keys(value).sort().forEach((k) => {
-                normalized[k] = normalizeForCompare(value[k]);
-              });
-              return normalized;
-            }
-            return value;
-          };
-
-          const changedKeys = Object.keys(cleanPayload).filter((key) => {
-            const before = (originalAd as any)[key];
-            const after = (cleanPayload as any)[key];
-            return JSON.stringify(normalizeForCompare(before)) !== JSON.stringify(normalizeForCompare(after));
-          });
-
-          const diagnosticDetails: Record<string, any> = {};
-          changedKeys.forEach((key) => {
-            diagnosticDetails[key] = {
-              before: normalizeForCompare((originalAd as any)[key]),
-              after: normalizeForCompare((cleanPayload as any)[key]),
-            };
-          });
-
-          console.log('[EDIT DIAGNOSTIC JSON]', JSON.stringify({
-            changedKeys,
-            changedValues: diagnosticDetails
-          }));
-        }
-
         await setDoc(doc(db, 'ads', targetAdId), cleanPayload, { merge: true });
         if (cleanPayload.city) {
           saveCustomCity(cleanPayload.city, cleanPayload.region, cleanPayload.country).catch((err) => {
