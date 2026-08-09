@@ -391,10 +391,25 @@ const CreateAd = () => {
     return 4;
   };
 
+  const getPlanPrice = (planKey: string): number => {
+    const prices = globalSettings?.planPrices;
+    const normalizedPlan = (planKey || 'standard').toLowerCase();
+
+    if (normalizedPlan === 'premium') {
+      return Number(prices?.premium ?? 9.99);
+    }
+
+    if (['featured', 'local', 'national', 'highlight'].includes(normalizedPlan)) {
+      return Number(prices?.featured ?? 4.99);
+    }
+
+    return Number(prices?.standard ?? 2.99);
+  };
+
   const getCheckoutTotalAmountFormatted = () => {
     if (!checkRequiresPayment()) return '0.00';
     const activePlan = (formData.plan || 'standard').toLowerCase();
-    const planBase = activePlan === 'premium' ? 9.99 : (activePlan === 'featured' || activePlan === 'local' || activePlan === 'national') ? 4.99 : 2.99;
+    const planBase = getPlanPrice(activePlan);
     const mediaBoostExtra = (formData.mediaBoostEnabled && !originalAd?.videoPaid) ? 2.00 : 0;
     return (planBase + mediaBoostExtra).toFixed(2);
   };
@@ -2999,7 +3014,7 @@ const CreateAd = () => {
                 </div>
               </div>
 
-              {/* Select Plan (Standard £2.99, Featured £4.99, Premium £9.99) */}
+              {/* Select Plan (prices controlled by Admin settings) */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -3037,7 +3052,7 @@ const CreateAd = () => {
                     <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
                       <span className="font-bold text-slate-500">Duration: 30 Days</span>
                       <span className="font-black text-emerald-700 text-base">
-                        £2.99
+                        £{getPlanPrice('standard').toFixed(2)}
                       </span>
                     </div>
                   </button>
@@ -3069,7 +3084,7 @@ const CreateAd = () => {
                     <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
                       <span className="font-bold text-slate-500">Duration: 30 Days</span>
                       <span className="font-black text-amber-600 text-base">
-                        £4.99
+                        £{getPlanPrice('featured').toFixed(2)}
                       </span>
                     </div>
                   </button>
@@ -3101,7 +3116,7 @@ const CreateAd = () => {
                     <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
                       <span className="font-bold text-slate-500">Duration: 30 Days</span>
                       <span className="font-black text-indigo-600 text-base">
-                        £9.99
+                        £{getPlanPrice('premium').toFixed(2)}
                       </span>
                     </div>
                   </button>
@@ -3135,7 +3150,7 @@ const CreateAd = () => {
                       {formData.plan === 'premium' ? 'Premium Featured Listing' : formData.plan === 'featured' ? 'Featured Listing' : 'Standard Listing'} (30 Days)
                     </span>
                     <span className="font-bold text-slate-900">
-                      £{formData.plan === 'premium' ? '9.99' : formData.plan === 'featured' ? '4.99' : '2.99'}
+                      £{getPlanPrice(formData.plan).toFixed(2)}
                     </span>
                   </div>
 
@@ -3332,7 +3347,7 @@ const CreateAd = () => {
                       {formData.plan === 'premium' ? 'Premium Featured Listing (30 days)' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? 'Featured Listing (30 days)' : 'Standard Listing (30 days)'}
                     </span>
                     <span className="font-bold text-slate-900">
-                      {formData.plan === 'premium' ? '£9.99' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? '£4.99' : '£2.99'}
+                      £{getPlanPrice(formData.plan).toFixed(2)}
                     </span>
                   </div>
                   {formData.mediaBoostEnabled && (
