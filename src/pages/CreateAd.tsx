@@ -1286,7 +1286,7 @@ const CreateAd = () => {
         status: isStaff && id ? (originalAd?.status || 'approved') : 'pending',
         adStatus: id && originalAd ? originalAd.adStatus : 'active',
         plan: formData.category === '💚 Doações & Solidariedade' ? 'local' : formData.plan,
-        expirationDate: expirationDate,
+        expirationDate: id && originalAd ? (originalAd.expirationDate || expirationDate) : expirationDate,
         userNotified: isStaff && id ? true : false,
         createdAt: id && originalAd ? originalAd.createdAt : serverTimestamp(),
         updatedAt: serverTimestamp(),
