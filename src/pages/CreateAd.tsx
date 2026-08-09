@@ -1048,6 +1048,47 @@ const CreateAd = () => {
         coverImageSettings: cleanPayload.coverImageSettings,
       });
       try {
+        if (id && originalAd) {
+          const changedKeys = Object.keys(cleanPayload).filter((key) => {
+            const before = (originalAd as any)[key];
+            const after = (cleanPayload as any)[key];
+
+            const normalizeForCompare = (value: any): any => {
+              if (value && typeof value?.toDate === 'function') return value.toDate().toISOString();
+              if (value instanceof Date) return value.toISOString();
+              if (Array.isArray(value)) return value.map(normalizeForCompare);
+              if (value && typeof value === 'object') {
+                const normalized: Record<string, any> = {};
+                Object.keys(value).sort().forEach((k) => {
+                  normalized[k] = normalizeForCompare(value[k]);
+                });
+                return normalized;
+              }
+              return value;
+            };
+
+            return JSON.stringify(normalizeForCompare(before)) !== JSON.stringify(normalizeForCompare(after));
+          });
+
+          console.log('[EDIT DIAGNOSTIC] Changed Firestore keys:', changedKeys);
+          console.log('[EDIT DIAGNOSTIC] Protected values:', {
+            sellerId: { before: (originalAd as any).sellerId, after: (cleanPayload as any).sellerId },
+            status: { before: (originalAd as any).status, after: (cleanPayload as any).status },
+            adStatus: { before: (originalAd as any).adStatus, after: (cleanPayload as any).adStatus },
+            plan: { before: (originalAd as any).plan, after: (cleanPayload as any).plan },
+            isFeatured: { before: (originalAd as any).isFeatured, after: (cleanPayload as any).isFeatured },
+            featuredLevel: { before: (originalAd as any).featuredLevel, after: (cleanPayload as any).featuredLevel },
+            featuredUntil: { before: (originalAd as any).featuredUntil, after: (cleanPayload as any).featuredUntil },
+            expirationDate: { before: (originalAd as any).expirationDate, after: (cleanPayload as any).expirationDate },
+            paymentStatus: { before: (originalAd as any).paymentStatus, after: (cleanPayload as any).paymentStatus },
+            paidAt: { before: (originalAd as any).paidAt, after: (cleanPayload as any).paidAt },
+            videoPaid: { before: (originalAd as any).videoPaid, after: (cleanPayload as any).videoPaid },
+            mediaBoostEnabled: { before: (originalAd as any).mediaBoostEnabled, after: (cleanPayload as any).mediaBoostEnabled },
+            mediaBoostPrice: { before: (originalAd as any).mediaBoostPrice, after: (cleanPayload as any).mediaBoostPrice },
+            sellerEmail: { before: (originalAd as any).sellerEmail, after: (cleanPayload as any).sellerEmail },
+          });
+        }
+
         await setDoc(doc(db, 'ads', targetAdId), cleanPayload, { merge: true });
         if (cleanPayload.city) {
           saveCustomCity(cleanPayload.city, cleanPayload.region, cleanPayload.country).catch((err) => {
