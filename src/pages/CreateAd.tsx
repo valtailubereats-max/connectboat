@@ -1513,15 +1513,22 @@ const CreateAd = () => {
       await executeSaveAd(payloadToSave, finalizedId);
 
       // 2. Criar sessão de Stripe Hosted Checkout
+      if (!user) {
+        throw new Error('You must be signed in to start Stripe Checkout.');
+      }
+
+      const idToken = await user.getIdToken();
+
       const res = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify({
           itemType: 'ad_listing',
           plan: activePlan,
           country: formData.country,
-          userId: user?.uid,
-          userEmail: user?.email,
           adId: finalizedId,
           mediaBoostEnabled: !!formData.mediaBoostEnabled && (!originalAd || !originalAd.videoPaid),
           successUrl: `${window.location.origin}/create-ad?stripe_success=true&ad_id=${finalizedId}&plan=${activePlan}`,
