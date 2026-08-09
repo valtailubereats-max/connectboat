@@ -760,6 +760,7 @@ const Home = () => {
     const now = new Date();
     
     let result = featuredAds.filter(ad => {
+      if (ad.isHidden) return false;
       if (ad.category === 'Trabalho/Empregos') return false;
       // EXCLUSIVE FOR SALE LISTINGS: Boats for Hire are strictly forbidden from Featured Marine Listings
       if (ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') return false;
@@ -883,6 +884,7 @@ const Home = () => {
 
   const filteredAds = useMemo(() => {
     let result = ads.filter(ad => {
+      if (ad.isHidden) return false;
       if (ad.category === 'Trabalho/Empregos') return false;
 
       // Exclude rental/hire listings from "Latest Marine Listings"

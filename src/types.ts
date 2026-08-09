@@ -217,6 +217,7 @@ export interface Ad {
   sellerName: string;
   status: AdStatus;
   adStatus?: AdLifecycleStatus;
+  isHidden?: boolean;
   plan?: AdPlan;
   paidAt?: any; // Firestore Timestamp
   stripeCheckoutSessionId?: string;

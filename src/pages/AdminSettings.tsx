@@ -115,12 +115,14 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
         setSettings({
           ...data,
           planDurations: {
+            standard: data.planDurations?.standard || 30,
+            featured: data.planDurations?.featured || 30,
+            premium: data.planDurations?.premium || 30,
             free: data.planDurations?.free || 30,
             local: data.planDurations?.local || 30,
             national: data.planDurations?.national || 30,
             showcase: data.planDurations?.showcase || 30,
-            intermediate: data.planDurations?.intermediate || 180,
-            premium: data.planDurations?.premium || 365
+            intermediate: data.planDurations?.intermediate || 180
           },
           planPrices: data.planPrices || {
             local: 4.99,
@@ -128,19 +130,23 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
             showcase: 8.99
           },
           maxImages: data.maxImages ? {
+            standard: data.maxImages.standard || 6,
+            featured: data.maxImages.featured || 10,
+            premium: data.maxImages.premium || 15,
             free: data.maxImages.free || 2,
             local: data.maxImages.local || 4,
             national: data.maxImages.national === 4 ? 6 : (data.maxImages.national || 6),
             showcase: data.maxImages.showcase || 6,
-            intermediate: data.maxImages.intermediate || 3,
-            premium: data.maxImages.premium || 5
+            intermediate: data.maxImages.intermediate || 3
           } : {
+            standard: 6,
+            featured: 10,
+            premium: 15,
             free: 2,
             local: 4,
             national: 6,
             showcase: 6,
-            intermediate: 3,
-            premium: 5
+            intermediate: 3
           },
           maxShowcaseProducts: data.maxShowcaseProducts || 6,
           categories: data.categories || CATEGORIES,
@@ -162,7 +168,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
           id: 'global',
           planDurations: { standard: 30, featured: 30, premium: 30, free: 30, local: 30, national: 30, showcase: 30, intermediate: 180 },
           planPrices: { standard: 2.99, featured: 4.99, premium: 9.99, local: 4.99, national: 7.99, showcase: 8.99 },
-          maxImages: { standard: 4, featured: 6, premium: 10, free: 2, local: 4, national: 6, showcase: 6, intermediate: 3 },
+          maxImages: { standard: 6, featured: 10, premium: 15, free: 2, local: 4, national: 6, showcase: 6, intermediate: 3 },
           maxShowcaseProducts: 6,
           expirationAction: 'archive',
           warningDays: 3,

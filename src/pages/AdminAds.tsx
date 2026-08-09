@@ -16,6 +16,7 @@ import {
   CheckCircle, 
   XCircle, 
   Eye, 
+  EyeOff,
   MessageSquare,
   Search,
   Filter,
@@ -350,6 +351,49 @@ const AdminAds = () => {
     }
   };
 
+  const handleToggleHideAd = async (adId: string, currentIsHidden?: boolean) => {
+    const newIsHidden = !currentIsHidden;
+    try {
+      await updateDoc(doc(db, 'ads', adId), { 
+        isHidden: newIsHidden,
+        updatedAt: serverTimestamp()
+      });
+      clearHomeCache();
+      setAds(prevAds => prevAds.map(ad => ad.id === adId ? { ...ad, isHidden: newIsHidden } as Ad : ad));
+      if (selectedAd?.id === adId) {
+        setSelectedAd(prev => prev ? { ...prev, isHidden: newIsHidden } : null);
+      }
+    } catch (err) {
+      console.error('Error toggling hide status:', err);
+      handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
+    }
+  };
+
+  const handleBatchToggleHide = async (hideState: boolean) => {
+    if (selectedAdIds.length === 0) return;
+    const actionText = hideState ? 'colocar em Standby (ocultar)' : 'tornar visíveis';
+    if (!window.confirm(`Tem a certeza que deseja ${actionText} ${selectedAdIds.length} anúncio(s)?`)) return;
+
+    setBatchLoading(true);
+    try {
+      await Promise.all(selectedAdIds.map(id => 
+        updateDoc(doc(db, 'ads', id), { 
+          isHidden: hideState,
+          updatedAt: serverTimestamp() 
+        })
+      ));
+      clearHomeCache();
+      setAds(prev => prev.map(a => selectedAdIds.includes(a.id) ? { ...a, isHidden: hideState } : a));
+      setSelectedAdIds([]);
+      alert(`Operação concluída: ${selectedAdIds.length} anúncio(s) atualizado(s).`);
+    } catch (err) {
+      console.error('Error batch hiding ads:', err);
+      alert('Erro ao atualizar os anúncios selecionados.');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
   const handleBatchDelete = async () => {
     if (selectedAdIds.length === 0) return;
     if (!window.confirm(`Are you sure you want to permanently delete the ${selectedAdIds.length} selected listings? This action is irreversible.`)) return;
@@ -550,11 +594,13 @@ const AdminAds = () => {
     // 1. Status Filter
     const matchesFilter = adFilter === 'all' 
       ? true 
-      : adFilter === 'duplicates' 
-        ? ad.isDuplicate === true 
-        : adFilter === 'paid'
-          ? isPaidAd(ad)
-          : (ad.status === adFilter || ad.adStatus === adFilter);
+      : adFilter === 'hidden'
+        ? ad.isHidden === true
+        : adFilter === 'duplicates' 
+          ? ad.isDuplicate === true 
+          : adFilter === 'paid'
+            ? isPaidAd(ad)
+            : (ad.status === adFilter || ad.adStatus === adFilter);
 
     // 2. Country Filter
     const adCountry = ad.country || 'Portugal';
@@ -697,6 +743,7 @@ const AdminAds = () => {
                 { id: 'pending', label: 'Pending' },
                 { id: 'duplicates', label: 'Duplicates⚠️' },
                 { id: 'approved', label: 'Active' },
+                { id: 'hidden', label: 'Standby / Ocultos 👁️‍🗨️' },
                 { id: 'paid', label: 'Paid listings' },
                 { id: 'expired', label: 'Expired' },
                 { id: 'rejected', label: 'Rejected' },
@@ -831,6 +878,24 @@ const AdminAds = () => {
               </div>
               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 <button
+                  onClick={() => handleBatchToggleHide(true)}
+                  disabled={batchLoading}
+                  className="flex-1 sm:flex-initial h-9 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="Colocar anúncios selecionados em Standby (Ocultar)"
+                >
+                  <EyeOff size={14} />
+                  <span>Ocultar (Standby)</span>
+                </button>
+                <button
+                  onClick={() => handleBatchToggleHide(false)}
+                  disabled={batchLoading}
+                  className="flex-1 sm:flex-initial h-9 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
+                  title="Tornar anúncios selecionados visíveis no site"
+                >
+                  <Eye size={14} />
+                  <span>Tornar Visíveis</span>
+                </button>
+                <button
                   onClick={() => handleBatchAction('approved')}
                   disabled={batchLoading}
                   className="flex-1 sm:flex-initial h-9 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-100 flex items-center justify-center gap-1.5 cursor-pointer"
@@ -934,6 +999,11 @@ const AdminAds = () => {
                         'bg-amber-50 text-amber-600 border border-amber-100'
                       }`}>
                         {ad.adStatus}
+                      </span>
+                    )}
+                    {ad.isHidden && (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-amber-500 text-white shadow-xs">
+                        🙈 Standby (Oculto)
                       </span>
                     )}
                     {/* Paid Status & Plan Badges */}
@@ -1055,6 +1125,27 @@ const AdminAds = () => {
                   >
                     <Edit size={14} />
                     <span>Edit</span>
+                  </button>
+
+                  {/* Standby / Ocultar Toggle Switch */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleHideAd(ad.id, ad.isHidden)}
+                    className={`h-9 px-3 flex items-center gap-2 rounded-xl border font-bold text-[11px] transition-all cursor-pointer ${
+                      ad.isHidden
+                        ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                    title={ad.isHidden ? 'Anúncio em Standby (Oculto). Clique para Tornar Visível' : 'Anúncio Visível. Clique para Ocultar (Colocar em Standby)'}
+                  >
+                    <div className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors ${
+                      ad.isHidden ? 'bg-amber-600' : 'bg-slate-300'
+                    }`}>
+                      <div className={`w-2.5 h-2.5 bg-white rounded-full shadow-md transform transition-transform ${
+                        ad.isHidden ? 'translate-x-2.5' : 'translate-x-0'
+                      }`} />
+                    </div>
+                    <span>{ad.isHidden ? 'Standby' : 'Ocultar'}</span>
                   </button>
 
                   {ad.isClaimableBusiness ? (
@@ -1314,6 +1405,11 @@ const AdminAds = () => {
                                 {ad.adStatus}
                               </span>
                             )}
+                            {ad.isHidden && (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-amber-500 text-white border border-amber-600 mt-0.5" title="Anúncio em Standby (Oculto)">
+                                🙈 Standby
+                              </span>
+                            )}
                             {isPaidAd(ad) && !isColVisible('pagamento') && (
                               <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-emerald-100 text-emerald-800 border border-emerald-200 mt-0.5">
                                 💳 Paid ({getAdPlanLabel(ad).label})
@@ -1430,6 +1526,23 @@ const AdminAds = () => {
                               title="Edit"
                             >
                               Edit
+                            </button>
+
+                            {/* Standby / Ocultar Toggle */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleHideAd(ad.id, ad.isHidden)}
+                              className={`p-1 px-2 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
+                                ad.isHidden
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                              }`}
+                              title={ad.isHidden ? 'Standby (Oculto) - Clique para tornar visível' : 'Visível - Clique para ocultar (Standby)'}
+                            >
+                              <div className={`w-5 h-3 flex items-center rounded-full p-0.5 transition-colors ${ad.isHidden ? 'bg-amber-600' : 'bg-slate-300'}`}>
+                                <div className={`w-2 h-2 bg-white rounded-full shadow-md transform transition-transform ${ad.isHidden ? 'translate-x-2' : 'translate-x-0'}`} />
+                              </div>
+                              <span>{ad.isHidden ? 'Standby' : 'Ocultar'}</span>
                             </button>
 
                             {/* Claim Controls */}
@@ -1848,6 +1961,11 @@ const AdminAds = () => {
                       Cycle: {selectedAd.adStatus}
                     </span>
                   )}
+                  {selectedAd.isHidden && (
+                    <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-amber-500 text-white font-sans shadow-xs">
+                      🙈 Standby (Oculto)
+                    </span>
+                  )}
                   {selectedAd.plan && (
                     <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-purple-50 text-purple-600 font-sans">
                       Plan: {selectedAd.plan}
@@ -2100,6 +2218,22 @@ const AdminAds = () => {
                       <span>Make Claimable</span>
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleHideAd(selectedAd.id, selectedAd.isHidden)}
+                    className={`h-10 px-4 font-bold text-xs rounded-xl transition-all flex items-center gap-2 border cursor-pointer ${
+                      selectedAd.isHidden
+                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 shadow-xs'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                    }`}
+                    title={selectedAd.isHidden ? 'Anúncio em Standby (Oculto). Clique para tornar visível' : 'Anúncio Visível. Clique para colocar em Standby'}
+                  >
+                    <div className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors ${selectedAd.isHidden ? 'bg-amber-600' : 'bg-slate-300'}`}>
+                      <div className={`w-3 h-3 bg-white rounded-full shadow-md transform transition-transform ${selectedAd.isHidden ? 'translate-x-3' : 'translate-x-0'}`} />
+                    </div>
+                    <span>{selectedAd.isHidden ? 'Standby (Oculto)' : 'Ocultar (Standby)'}</span>
+                  </button>
+
                   <button
                     onClick={() => handleDeleteAd(selectedAd.id)}
                     className="h-10 px-4 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"

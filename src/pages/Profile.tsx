@@ -9,7 +9,7 @@ import { clearHomeCache } from '../utils/cache';
 import { Ad, UserProfile, COUNTRY_CODES, CITIES, UK_REGIONS, getRegionForCity } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, MessageSquare, MapPin, Tag, Star, Plus, X, CreditCard, HelpCircle } from 'lucide-react';
+import { User, Phone, Mail, Edit, Trash2, Clock, CheckCircle, XCircle, Globe, RefreshCcw, Archive, AlertTriangle, Eye, EyeOff, MessageSquare, MapPin, Tag, Star, Plus, X, CreditCard, HelpCircle } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 import { formatPrice, parsePrice } from '../utils';
@@ -1419,6 +1419,11 @@ const Profile = () => {
                       {isAdFeatured && (
                         <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 shadow-sm animate-pulse">
                           ✨ {getFeaturedLabel()}
+                        </span>
+                      )}
+                      {ad.isHidden && (
+                        <span className="flex items-center gap-1 text-xs font-bold text-amber-800 bg-amber-100 border border-amber-200 px-2 py-1 rounded-lg" title="Este anúncio foi colocado em standby pela administração">
+                          <EyeOff size={14} /> Standby (Oculto)
                         </span>
                       )}
                       {ad.status === 'pending' && (

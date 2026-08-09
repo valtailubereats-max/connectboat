@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   MapPin, MessageCircle, Clock, ChevronLeft, ChevronRight, X, Heart, Star, 
-  Trash2, Edit, AlertCircle, ShieldAlert, Eye, Award, Calendar, Share2, ExternalLink,
+  Trash2, Edit, AlertCircle, ShieldAlert, Eye, EyeOff, Award, Calendar, Share2, ExternalLink,
   Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video
 } from 'lucide-react';
 import { 
@@ -274,6 +274,12 @@ const AdDetails = () => {
         }
 
         const adData = { id: adSnap.id, ...adSnap.data() } as Ad;
+
+        if (adData.isHidden && user?.email !== 'valtailubereats@gmail.com' && user?.uid !== adData.sellerId) {
+          setErrorMsg('Este anúncio encontra-se temporariamente em standby / oculto pela administração.');
+          setLoading(false);
+          return;
+        }
 
         // --- NEW BUSINESS VIEWS & MILESTONES LOGIC ---
         if (adData.isClaimableBusiness) {
@@ -833,6 +839,13 @@ const AdDetails = () => {
             })}
           </script>
         </Helmet>
+      )}
+
+      {ad.isHidden && (
+        <div className="mb-6 bg-amber-500 text-white p-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-md">
+          <EyeOff size={18} />
+          <span>⚠️ ESTE ANÚNCIO ENCONTRA-SE EM STANDBY / OCULTO AO PÚBLICO PELA ADMINISTRAÇÃO</span>
+        </div>
       )}
 
       {/* Back Button */}

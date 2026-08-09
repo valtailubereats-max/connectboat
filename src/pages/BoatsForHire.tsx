@@ -57,7 +57,7 @@ const BoatsForHire = () => {
             const isHire = data.listingIntent === 'hire' || data.category === 'Boats for Hire';
             const isActive = data.adStatus === 'active' || data.adStatus === 'sold' || !data.adStatus;
             
-            if (isHire && isActive) {
+            if (isHire && isActive && !data.isHidden) {
               loadedAds.push({
                 ...data,
                 id: docSnap.id
