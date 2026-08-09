@@ -62,7 +62,6 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       userEmail,
       adId,
       showcaseData,
-      selectedAddOns,
       mediaBoostEnabled,
       successUrl,
       cancelUrl
@@ -133,16 +132,6 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       productDescription = `30-day active listing (${currencySymbol}${standardPrice.toFixed(2)})`;
     }
 
-    // Add optional add-ons calculation if provided
-    let addOnsExtraCents = 0;
-    if (Array.isArray(selectedAddOns) && selectedAddOns.length > 0) {
-      selectedAddOns.forEach((addon: any) => {
-        if (typeof addon === 'object' && addon.price) {
-          addOnsExtraCents += Math.round(Number(addon.price) * 100);
-        }
-      });
-    }
-
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
       {
         price_data: {
@@ -151,7 +140,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
             name: productName,
             description: productDescription,
           },
-          unit_amount: amountCents + addOnsExtraCents,
+          unit_amount: amountCents,
         },
         quantity: 1,
       },
@@ -180,10 +169,6 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       country: String(country || ''),
       mediaBoostEnabled: hasMediaBoost ? 'true' : 'false',
     };
-
-    if (Array.isArray(selectedAddOns) && selectedAddOns.length > 0) {
-      metadata.addOnsJson = JSON.stringify(selectedAddOns);
-    }
 
     if (showcaseData) {
       try {
