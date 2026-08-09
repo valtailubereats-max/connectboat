@@ -24,13 +24,22 @@ export default function Precos() {
 
   const isUK = !enablePortugal || selectedCountry === 'Reino Unido';
 
-  const getPlanPrice = (plan: 'standard' | 'featured' | 'premium'): number => {
-    const fallbackPrices = { standard: 2.99, featured: 4.99, premium: 9.99 };
-    return Number(settings?.planPrices?.[plan] ?? fallbackPrices[plan]);
+  const hasLoadedPlanPrices =
+    settings?.planPrices?.standard !== undefined &&
+    settings?.planPrices?.featured !== undefined &&
+    settings?.planPrices?.premium !== undefined;
+
+  const getPlanPrice = (plan: 'standard' | 'featured' | 'premium'): number | null => {
+    if (!hasLoadedPlanPrices) return null;
+
+    const value = Number(settings?.planPrices?.[plan]);
+    return Number.isFinite(value) ? value : null;
   };
 
-  const formatPlanPrice = (plan: 'standard' | 'featured' | 'premium'): string =>
-    getPlanPrice(plan).toFixed(2);
+  const formatPlanPrice = (plan: 'standard' | 'featured' | 'premium'): string => {
+    const price = getPlanPrice(plan);
+    return price === null ? '—' : price.toFixed(2);
+  };
 
   const getMaxPhotosForPlan = (planKey: string): number => {
     if (settings?.maxImages) {
