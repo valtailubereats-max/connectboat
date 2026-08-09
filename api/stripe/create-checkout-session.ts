@@ -1,7 +1,11 @@
 import type { Request, Response } from 'express';
 import Stripe from 'stripe';
+import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 let stripeClient: Stripe | null = null;
+
+const FIRESTORE_DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
 
 function getStripe(): Stripe {
   const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -12,6 +16,35 @@ function getStripe(): Stripe {
     stripeClient = new Stripe(secretKey);
   }
   return stripeClient;
+}
+
+function getAdminDb() {
+  if (!getApps().length) {
+    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!rawServiceAccount) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is missing.');
+    }
+
+    const serviceAccount = JSON.parse(rawServiceAccount);
+
+    if (typeof serviceAccount.private_key === 'string') {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
+  }
+
+  return getFirestore(getApp(), FIRESTORE_DATABASE_ID);
+}
+
+function getValidConfiguredPrice(value: unknown, fallback: number): number {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    return fallback;
+  }
+  return numericValue;
 }
 
 export default async function createCheckoutSessionHandler(req: Request, res: Response) {
@@ -51,37 +84,53 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const stripe = getStripe();
 
     // Determine currency: default GBP for UK, EUR for Portugal & rest
-    const isUK = country === 'Reino Unido' || country === 'United Kingdom' || requestedCurrency?.toLowerCase() === 'gbp';
+    const isUK =
+      country === 'Reino Unido' ||
+      country === 'United Kingdom' ||
+      requestedCurrency?.toLowerCase() === 'gbp';
+
     const currency = isUK ? 'gbp' : 'eur';
     const currencySymbol = isUK ? '£' : '€';
 
+    // Server-side source of truth for listing plan prices.
+    // Never trust a plan price sent by the browser.
+    const db = getAdminDb();
+    const settingsSnapshot = await db.collection('settings').doc('global').get();
+    const settingsData = settingsSnapshot.exists ? settingsSnapshot.data() : {};
+    const configuredPlanPrices = settingsData?.planPrices || {};
+
+    const standardPrice = getValidConfiguredPrice(configuredPlanPrices.standard, 2.99);
+    const featuredPrice = getValidConfiguredPrice(configuredPlanPrices.featured, 4.99);
+    const premiumPrice = getValidConfiguredPrice(configuredPlanPrices.premium, 9.99);
+
     let productName = '';
     let productDescription = '';
-    let amountCents = 299;
+    let amountCents = Math.round(standardPrice * 100);
 
-    // Calculate base plan price
+    // Calculate base plan price using the trusted Firestore settings.
     const activePlan = (plan || 'standard').toLowerCase();
+
     if (activePlan === 'premium') {
-      amountCents = 999;
+      amountCents = Math.round(premiumPrice * 100);
       productName = 'ConnectBoat - Premium Featured Listing';
-      productDescription = `30-day top priority exposure & premium badge (${currencySymbol}9.99) for listing ${adId ? '#' + adId : ''}`.trim();
+      productDescription = `30-day top priority exposure & premium badge (${currencySymbol}${premiumPrice.toFixed(2)}) for listing ${adId ? '#' + adId : ''}`.trim();
     } else if (activePlan === 'featured' || activePlan === 'national' || activePlan === 'local') {
-      amountCents = 499;
+      amountCents = Math.round(featuredPrice * 100);
       productName = 'ConnectBoat - Featured Listing';
-      productDescription = `30-day homepage highlight & featured badge (${currencySymbol}4.99) for listing ${adId ? '#' + adId : ''}`.trim();
+      productDescription = `30-day homepage highlight & featured badge (${currencySymbol}${featuredPrice.toFixed(2)}) for listing ${adId ? '#' + adId : ''}`.trim();
     } else if (activePlan === 'standard' || activePlan === 'free') {
-      amountCents = 299;
+      amountCents = Math.round(standardPrice * 100);
       productName = 'ConnectBoat - Standard Listing';
-      productDescription = `30-day active listing (${currencySymbol}2.99) for listing ${adId ? '#' + adId : ''}`.trim();
+      productDescription = `30-day active listing (${currencySymbol}${standardPrice.toFixed(2)}) for listing ${adId ? '#' + adId : ''}`.trim();
     } else if (itemType === 'digital_showcase') {
       amountCents = 899;
       const name = showcaseData?.showcaseName || 'Business Showcase';
       productName = `ConnectBoat - Digital Showcase (${name})`;
       productDescription = `Monthly Digital Showcase subscription (${currencySymbol}8.99/month)`;
     } else {
-      amountCents = 299;
+      amountCents = Math.round(standardPrice * 100);
       productName = 'ConnectBoat - Standard Listing';
-      productDescription = `30-day active listing (${currencySymbol}2.99)`;
+      productDescription = `30-day active listing (${currencySymbol}${standardPrice.toFixed(2)})`;
     }
 
     // Add optional add-ons calculation if provided
@@ -144,21 +193,30 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       }
     }
 
-    const isValidEmail = userEmail && typeof userEmail === 'string' && userEmail.includes('@');
+    const isValidEmail =
+      userEmail &&
+      typeof userEmail === 'string' &&
+      userEmail.includes('@');
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       customer_email: isValidEmail ? userEmail : undefined,
-      payment_intent_data: isValidEmail ? {
-        receipt_email: userEmail
-      } : undefined,
+      payment_intent_data: isValidEmail
+        ? {
+            receipt_email: userEmail,
+          }
+        : undefined,
       line_items: lineItems,
       managed_payments: {
         enabled: false,
       } as any,
       metadata,
-      success_url: successUrl || `${req.headers.origin || 'http://localhost:3000'}?stripe_success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: cancelUrl || `${req.headers.origin || 'http://localhost:3000'}?stripe_cancel=true`,
+      success_url:
+        successUrl ||
+        `${req.headers.origin || 'http://localhost:3000'}?stripe_success=true&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url:
+        cancelUrl ||
+        `${req.headers.origin || 'http://localhost:3000'}?stripe_cancel=true`,
     });
 
     return res.status(200).json({
