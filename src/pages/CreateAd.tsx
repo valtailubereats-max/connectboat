@@ -1049,24 +1049,23 @@ const CreateAd = () => {
       });
       try {
         if (id && originalAd) {
+          const normalizeForCompare = (value: any): any => {
+            if (value && typeof value?.toDate === 'function') return value.toDate().toISOString();
+            if (value instanceof Date) return value.toISOString();
+            if (Array.isArray(value)) return value.map(normalizeForCompare);
+            if (value && typeof value === 'object') {
+              const normalized: Record<string, any> = {};
+              Object.keys(value).sort().forEach((k) => {
+                normalized[k] = normalizeForCompare(value[k]);
+              });
+              return normalized;
+            }
+            return value;
+          };
+
           const changedKeys = Object.keys(cleanPayload).filter((key) => {
             const before = (originalAd as any)[key];
             const after = (cleanPayload as any)[key];
-
-            const normalizeForCompare = (value: any): any => {
-              if (value && typeof value?.toDate === 'function') return value.toDate().toISOString();
-              if (value instanceof Date) return value.toISOString();
-              if (Array.isArray(value)) return value.map(normalizeForCompare);
-              if (value && typeof value === 'object') {
-                const normalized: Record<string, any> = {};
-                Object.keys(value).sort().forEach((k) => {
-                  normalized[k] = normalizeForCompare(value[k]);
-                });
-                return normalized;
-              }
-              return value;
-            };
-
             return JSON.stringify(normalizeForCompare(before)) !== JSON.stringify(normalizeForCompare(after));
           });
 
