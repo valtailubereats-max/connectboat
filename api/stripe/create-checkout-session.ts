@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import Stripe from 'stripe';
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 
 let stripeClient: Stripe | null = null;
 
@@ -58,8 +59,6 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       plan,
       country,
       currency: requestedCurrency,
-      userId,
-      userEmail,
       adId,
       showcaseData,
       mediaBoostEnabled,
@@ -81,6 +80,66 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     }
 
     const stripe = getStripe();
+    const db = getAdminDb();
+
+    let authenticatedUserId = '';
+    let authenticatedUserEmail = '';
+
+    if (itemType === 'ad_listing') {
+      const authHeader = req.headers.authorization || '';
+      const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+      if (!match) {
+        return res.status(401).json({
+          success: false,
+          error: 'UNAUTHENTICATED',
+          errorMessage: 'Authentication is required to start Stripe Checkout.'
+        });
+      }
+
+      let decodedToken;
+      try {
+        decodedToken = await getAuth(getApp()).verifyIdToken(match[1]);
+      } catch (authError) {
+        console.warn('[Stripe Session] Invalid Firebase ID token', authError);
+        return res.status(401).json({
+          success: false,
+          error: 'INVALID_AUTH_TOKEN',
+          errorMessage: 'Your login session is invalid or expired. Please sign in again.'
+        });
+      }
+
+      authenticatedUserId = decodedToken.uid;
+      authenticatedUserEmail =
+        typeof decodedToken.email === 'string' ? decodedToken.email : '';
+
+      if (!adId || typeof adId !== 'string') {
+        return res.status(400).json({
+          success: false,
+          error: 'MISSING_AD_ID',
+          errorMessage: 'A valid listing ID is required for payment.'
+        });
+      }
+
+      const adSnapshot = await db.collection('ads').doc(adId).get();
+
+      if (!adSnapshot.exists) {
+        return res.status(404).json({
+          success: false,
+          error: 'AD_NOT_FOUND',
+          errorMessage: 'The listing could not be found before payment.'
+        });
+      }
+
+      const adData = adSnapshot.data() || {};
+      if (adData.sellerId !== authenticatedUserId) {
+        return res.status(403).json({
+          success: false,
+          error: 'AD_OWNERSHIP_MISMATCH',
+          errorMessage: 'You are not authorised to pay for this listing.'
+        });
+      }
+    }
 
     // Determine currency: default GBP for UK, EUR for Portugal & rest
     const isUK =
@@ -93,7 +152,6 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
     // Server-side source of truth for listing plan prices.
     // Never trust a plan price sent by the browser.
-    const db = getAdminDb();
     const settingsSnapshot = await db.collection('settings').doc('global').get();
     const settingsData = settingsSnapshot.exists ? settingsSnapshot.data() : {};
     const configuredPlanPrices = settingsData?.planPrices || {};
@@ -163,7 +221,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
     const metadata: Record<string, string> = {
       itemType: String(itemType),
-      userId: String(userId || ''),
+      userId: String(itemType === 'ad_listing' ? authenticatedUserId : ''),
       adId: String(adId || ''),
       plan: String(activePlan),
       country: String(country || ''),
@@ -178,17 +236,20 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       }
     }
 
+    const checkoutEmail =
+      itemType === 'ad_listing' ? authenticatedUserEmail : '';
+
     const isValidEmail =
-      userEmail &&
-      typeof userEmail === 'string' &&
-      userEmail.includes('@');
+      checkoutEmail &&
+      typeof checkoutEmail === 'string' &&
+      checkoutEmail.includes('@');
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      customer_email: isValidEmail ? userEmail : undefined,
+      customer_email: isValidEmail ? checkoutEmail : undefined,
       payment_intent_data: isValidEmail
         ? {
-            receipt_email: userEmail,
+            receipt_email: checkoutEmail,
           }
         : undefined,
       line_items: lineItems,
