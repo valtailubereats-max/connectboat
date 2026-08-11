@@ -548,9 +548,18 @@ const AdminAds = () => {
   const handleResendPaymentEmail = async (adId: string) => {
     setResendingEmailId(adId);
     try {
+      if (!user) {
+        throw new Error('Authentication required.');
+      }
+
+      const idToken = await user.getIdToken();
+
       const res = await fetch('/api/admin/resend-payment-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify({ adId })
       });
 
