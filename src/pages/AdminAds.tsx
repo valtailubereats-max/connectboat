@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, updateDoc, doc, serverTimestamp, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, updateDoc, doc, serverTimestamp, setDoc, deleteDoc, getDoc, getDocs, where } from 'firebase/firestore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db, handleFirestoreError, OperationType, getDocsWithCacheFallback } from '../firebase';
-import { Ad } from '../types';
+import { Ad, UserProfile } from '../types';
 import { clearHomeCache } from '../utils/cache';
 import { motion, AnimatePresence } from 'motion/react';
 import OptimizedImage from '../components/OptimizedImage';
@@ -29,7 +29,11 @@ import {
   List,
   ShieldAlert,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  Mail,
+  Phone,
+  UserRound,
+  ExternalLink
 } from 'lucide-react';
 import { format, formatDistanceToNow, addDays } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -83,6 +87,10 @@ const AdminAds = () => {
   const [adFilter, setAdFilter] = useState<string>(searchParams.get('status') || 'all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
+  const [sellerProfile, setSellerProfile] = useState<UserProfile | null>(null);
+  const [sellerProfileLoading, setSellerProfileLoading] = useState(false);
+  const [sellerProfileError, setSellerProfileError] = useState<string | null>(null);
+  const [sellerAdsCount, setSellerAdsCount] = useState<number | null>(null);
 
   const [selectedAdIds, setSelectedAdIds] = useState<string[]>([]);
   const [batchLoading, setBatchLoading] = useState(false);
@@ -151,6 +159,72 @@ const AdminAds = () => {
   const [savedPositionSuccess, setSavedPositionSuccess] = useState(false);
   const [claimActionLoading, setClaimActionLoading] = useState(false);
   const [resendingEmailId, setResendingEmailId] = useState<string | null>(null);
+
+  const formatSellerDate = (value: any): string => {
+    if (!value) return 'Not available';
+    try {
+      const dateValue = typeof value?.toDate === 'function'
+        ? value.toDate()
+        : value instanceof Date
+          ? value
+          : value?.seconds
+            ? new Date(value.seconds * 1000)
+            : new Date(value);
+
+      if (Number.isNaN(dateValue.getTime())) return 'Not available';
+      return format(dateValue, 'dd MMM yyyy HH:mm');
+    } catch {
+      return 'Not available';
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSellerProfile = async () => {
+      const sellerId = selectedAd?.sellerId?.trim();
+
+      setSellerProfile(null);
+      setSellerAdsCount(null);
+      setSellerProfileError(null);
+
+      if (!sellerId) return;
+
+      setSellerProfileLoading(true);
+      try {
+        const [profileSnap, sellerAdsSnap] = await Promise.all([
+          getDoc(doc(db, 'users', sellerId)),
+          getDocs(query(collection(db, 'ads'), where('sellerId', '==', sellerId)))
+        ]);
+
+        if (cancelled) return;
+
+        if (profileSnap.exists()) {
+          setSellerProfile({
+            id: profileSnap.id,
+            ...(profileSnap.data() as UserProfile)
+          });
+        } else {
+          setSellerProfileError('The user profile was not found in users/{uid}.');
+        }
+
+        setSellerAdsCount(sellerAdsSnap.size);
+      } catch (err) {
+        console.error('[AdminAds] Failed to load seller profile:', err);
+        if (!cancelled) {
+          setSellerProfileError('Could not load the seller account details.');
+        }
+      } finally {
+        if (!cancelled) setSellerProfileLoading(false);
+      }
+    };
+
+    loadSellerProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAd?.id, selectedAd?.sellerId]);
 
   useEffect(() => {
     if (selectedAd) {
@@ -2123,14 +2197,88 @@ const AdminAds = () => {
                   </div>
                 </div>
 
-                {/* Seller Info */}
-                <div className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 space-y-2">
-                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Seller Information</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <p className="text-slate-600 font-medium">Name: <span className="text-slate-900 font-bold">{selectedAd.sellerName}</span></p>
-                    <p className="text-slate-600 font-medium">Phone: <span className="text-slate-900 font-bold">{selectedAd.sellerPhone}</span></p>
-                    <p className="text-slate-600 font-medium sm:col-span-2">Seller ID: <span className="text-slate-950 font-mono select-all bg-slate-100 px-1 py-0.5 rounded">{selectedAd.sellerId}</span></p>
+                {/* Seller / Account Info */}
+                <div className="p-4 rounded-2xl border border-indigo-100 bg-indigo-50/40 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <h4 className="text-xs font-black text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <UserRound size={15} />
+                        Seller / Account Information
+                      </h4>
+                      <p className="text-[11px] text-slate-500 font-medium mt-1">Private support information visible in the Admin panel only.</p>
+                    </div>
+                    {selectedAd.sellerId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const sellerId = selectedAd.sellerId.trim();
+                          setSelectedAd(null);
+                          navigate(`/admin/users?seller=${encodeURIComponent(sellerId)}`);
+                        }}
+                        className="h-9 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+                      >
+                        <ExternalLink size={14} />
+                        Open User Profile
+                      </button>
+                    )}
                   </div>
+
+                  {sellerProfileLoading ? (
+                    <div className="flex items-center gap-2 text-xs font-bold text-indigo-700 py-2">
+                      <div className="w-4 h-4 border-2 border-indigo-300 border-t-indigo-700 rounded-full animate-spin" />
+                      Loading account details...
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Name</span>
+                          <p className="text-slate-900 font-bold mt-1">{sellerProfile?.name || selectedAd.sellerName || 'Not available'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><Mail size={11} /> Email</span>
+                          <p className="text-slate-900 font-bold mt-1 break-all select-all">{sellerProfile?.email || selectedAd.contactEmail || 'Not available'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><Phone size={11} /> Phone / WhatsApp</span>
+                          <p className="text-slate-900 font-bold mt-1 select-all">{sellerProfile?.phone || selectedAd.sellerPhone || 'Not available'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Location</span>
+                          <p className="text-slate-900 font-bold mt-1">
+                            {[sellerProfile?.city, sellerProfile?.country].filter(Boolean).join(', ') || selectedAd.city || 'Not available'}
+                          </p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Account role</span>
+                          <p className="text-slate-900 font-bold mt-1 capitalize">{sellerProfile?.role || 'user'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Listings by this user</span>
+                          <p className="text-slate-900 font-bold mt-1">{sellerAdsCount ?? 'Not available'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Account created / terms accepted</span>
+                          <p className="text-slate-900 font-bold mt-1">{formatSellerDate(sellerProfile?.acceptedTermsAt)}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Last login</span>
+                          <p className="text-slate-900 font-bold mt-1">{formatSellerDate(sellerProfile?.lastLoginAt)}</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                        <span className="text-[10px] font-black uppercase text-slate-400">User UID</span>
+                        <p className="text-slate-950 font-mono text-[11px] mt-1 select-all break-all">{selectedAd.sellerId || 'Not available'}</p>
+                      </div>
+
+                      {sellerProfileError && (
+                        <div className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                          {sellerProfileError} The listing-level seller information above remains available.
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
