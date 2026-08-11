@@ -230,7 +230,8 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                 reviewerName: currentUserProfile?.name || user?.displayName || 'Comprador',
                 rating: rating,
                 comment: comment,
-                adTitle: adTitle
+                adTitle: adTitle,
+                adId: adId
               }).catch(e => console.warn('[ReviewModal] Falha ao enviar email de review:', e));
             }
           }).catch(err => console.warn('[ReviewModal] Falha ao obter email do vendedor para review:', err));
