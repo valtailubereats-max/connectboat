@@ -14,7 +14,7 @@ import AdminBulkImport from './AdminBulkImport';
 
 const AdminImport = () => {
   const { categories } = useSettings();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'bulk' | 'print' | 'demo'>('bulk');
   const [image, setImage] = useState<string | null>(null);
@@ -43,11 +43,18 @@ const AdminImport = () => {
     setError(null);
 
     try {
-      // Chamamos o nosso endpoint do servidor robusto e compatível com Vercel
+      // Chamamos o endpoint protegido do servidor.
+      if (!user) {
+        throw new Error('Authentication required.');
+      }
+
+      const idToken = await user.getIdToken();
+
       const response = await fetch('/api/gemini/analyze', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({ image, categories })
       });
