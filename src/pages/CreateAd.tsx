@@ -1608,16 +1608,21 @@ const CreateAd = () => {
 
     try {
       console.log('[Import Pipeline Stage 2] Sending request to /api/import-ad...');
-      const userRole = isAdmin ? 'admin' : isModerator ? 'moderator' : (profile?.role || 'user');
+
+      if (!user) {
+        throw new Error('Authentication required.');
+      }
+
+      const idToken = await user.getIdToken();
+
       const response = await fetch('/api/import-ad', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({
-          url: importUrl,
-          userId: user?.uid,
-          userRole
+          url: importUrl
         })
       });
 
@@ -1715,9 +1720,9 @@ const CreateAd = () => {
             fuelType: result.data.fuelType ?? '',
             engineBrand: result.data.engineBrand ?? '',
             horsepower:
-  result.data.horsepower !== undefined && result.data.horsepower !== null
-    ? result.data.horsepower.toString()
-    : '',
+          result.data.horsepower !== undefined && result.data.horsepower !== null
+            ? result.data.horsepower.toString()
+            : '',
             engineHours: result.data.engineHours ?? '',
             cabins: result.data.cabins ?? '',
             berths: result.data.berths ?? '',
