@@ -1,6 +1,83 @@
 import type { Request, Response } from 'express';
+import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 console.log('[import-ad] MODULE_LOAD: Module initialized successfully');
+
+const FIRESTORE_DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
+
+function getFirebaseAdminDb() {
+  if (!getApps().length) {
+    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+    if (!rawServiceAccount) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is missing.');
+    }
+
+    const serviceAccount = JSON.parse(rawServiceAccount);
+
+    if (typeof serviceAccount.private_key === 'string') {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
+  }
+
+  return getFirestore(getApp(), FIRESTORE_DATABASE_ID);
+}
+
+async function verifyImportStaff(req: any) {
+  const authHeader = req.headers?.authorization || '';
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    const error: any = new Error('Authentication required.');
+    error.statusCode = 401;
+    error.code = 'AUTH_TOKEN_MISSING';
+    throw error;
+  }
+
+  let decodedToken: any;
+  try {
+    decodedToken = await getAuth(getApp()).verifyIdToken(match[1]);
+  } catch {
+    const error: any = new Error('Invalid or expired Firebase authentication token.');
+    error.statusCode = 401;
+    error.code = 'AUTH_TOKEN_INVALID';
+    throw error;
+  }
+
+  const email = typeof decodedToken.email === 'string'
+    ? decodedToken.email.trim().toLowerCase()
+    : '';
+
+  const explicitAdminEmails = new Set([
+    'valtailubereats@gmail.com',
+    'valtail@gmail.com',
+    'generalsales2021@gmail.com',
+  ]);
+
+  if (explicitAdminEmails.has(email)) {
+    return { uid: decodedToken.uid, email, role: 'admin' };
+  }
+
+  const db = getFirebaseAdminDb();
+  const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+  const role = userDoc.exists ? userDoc.data()?.role : null;
+
+  if (role !== 'admin' && role !== 'moderator') {
+    const error: any = new Error('Access denied. Only administrators or moderators can import listings from URL.');
+    error.statusCode = 403;
+    error.code = 'STAFF_ACCESS_REQUIRED';
+    throw error;
+  }
+
+  return { uid: decodedToken.uid, email, role };
+}
+
 
 export interface SupportedMarketplace {
   id: string;
@@ -1050,9 +1127,9 @@ async function extractNauticalDetails(title: string, description: string, rawHtm
     const { GoogleGenAI } = await import('@google/genai');
     const apiKey = process.env.GEMINI_API_KEY;
 
-if (!apiKey) {
-  throw new Error('GEMINI_API_KEY is not configured on the server.');
-}
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not configured on the server.');
+    }
     const ai = new GoogleGenAI({
       apiKey,
       httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
@@ -1161,7 +1238,7 @@ Retorne APENAS um objeto JSON válido com essa estrutura.`;
 export default async function handler(req: any, res: any) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -1173,17 +1250,23 @@ export default async function handler(req: any, res: any) {
 
   try {
     console.log('[Import Pipeline] Stage 1: Request received');
-    const { url, userRole } = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    const { url } = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
 
-    // Permission check
-    if (userRole !== 'admin' && userRole !== 'moderator') {
-      console.warn('[Import Pipeline Failure] Permission denied for role:', userRole);
-      return res.status(403).json({ 
-        success: false, 
+    // Security: never trust userRole sent by the browser.
+    // Validate the Firebase ID Token and resolve the real staff role on the server.
+    let staffUser: any;
+    try {
+      staffUser = await verifyImportStaff(req);
+    } catch (authError: any) {
+      console.warn('[Import Pipeline Failure] Permission validation failed:', authError?.message || authError);
+      return res.status(authError?.statusCode || 403).json({
+        success: false,
         stage: 'Permission Validation',
-        error: 'Access denied. Only administrators or moderators can import listings from URL.' 
+        error: authError?.message || 'Access denied.'
       });
     }
+
+    console.log(`[Import Pipeline] Authenticated staff: ${staffUser.uid} (${staffUser.role})`);
 
     if (!url) {
       return res.status(400).json({ success: false, stage: 'URL Validation', error: "Please provide a listing URL." });
