@@ -1,10 +1,95 @@
 import { GoogleGenAI } from "@google/genai";
+import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+
+const FIREBASE_PROJECT_ID = "navlink-489413";
+const FIRESTORE_DATABASE_ID = "ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382";
+
+function getFirebaseAdminApp() {
+  if (!getApps().length) {
+    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+    if (!rawServiceAccount) {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is missing.");
+    }
+
+    let serviceAccount: any;
+    try {
+      serviceAccount = JSON.parse(rawServiceAccount);
+    } catch {
+      serviceAccount = JSON.parse(
+        Buffer.from(rawServiceAccount, "base64").toString("utf-8")
+      );
+    }
+
+    if (typeof serviceAccount.private_key === "string") {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+    }
+
+    initializeApp({
+      credential: cert(serviceAccount),
+      projectId: FIREBASE_PROJECT_ID,
+    });
+  }
+
+  return getApp();
+}
+
+async function verifyAdminRequest(req: any) {
+  const authHeader = req.headers?.authorization || "";
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    const error: any = new Error("Authentication required.");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const app = getFirebaseAdminApp();
+
+  let decoded: any;
+  try {
+    decoded = await getAuth(app).verifyIdToken(match[1]);
+  } catch {
+    const error: any = new Error("Invalid or expired Firebase authentication token.");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const email = typeof decoded.email === "string"
+    ? decoded.email.trim().toLowerCase()
+    : "";
+
+  const explicitAdminEmails = new Set([
+    "valtailubereats@gmail.com",
+    "valtail@gmail.com",
+    "generalsales2021@gmail.com",
+  ]);
+
+  if (explicitAdminEmails.has(email)) {
+    return decoded;
+  }
+
+  const db = getFirestore(app, FIRESTORE_DATABASE_ID);
+  const userDoc = await db.collection("users").doc(decoded.uid).get();
+  const role = userDoc.exists ? userDoc.data()?.role : null;
+
+  if (role !== "admin") {
+    const error: any = new Error("Administrator access required.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return decoded;
+}
+
 
 export default async function handler(req: any, res: any) {
   // Configuração rápida de CORS para segurança e compatibilidade
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -12,6 +97,15 @@ export default async function handler(req: any, res: any) {
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  try {
+    await verifyAdminRequest(req);
+  } catch (authError: any) {
+    return res.status(authError?.statusCode || 401).json({
+      success: false,
+      error: authError?.message || "Authentication failed.",
+    });
   }
 
   try {
