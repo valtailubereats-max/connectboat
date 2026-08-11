@@ -171,15 +171,20 @@ const AdminBulkImport: React.FC = () => {
       setItems(prev => prev.map(item => item.id === currentItem.id ? { ...item, status: 'processing' } : item));
 
       try {
-        const userRole = isAdmin ? 'admin' : isModerator ? 'moderator' : (profile?.role || 'user');
+        if (!user) {
+          throw new Error('Authentication required.');
+        }
+
+        const idToken = await user.getIdToken();
 
         const resp = await fetch('/api/import-ad', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          },
           body: JSON.stringify({
-            url: currentItem.url,
-            userId: user?.uid,
-            userRole
+            url: currentItem.url
           })
         });
 
