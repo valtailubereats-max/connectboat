@@ -317,7 +317,35 @@ service cloud.firestore {
           isValidAd(request.resource.data) &&
           isValidAdImagesAndPlan(request.resource.data) &&
           request.resource.data.status == 'pending' &&
-          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isClaimableBusiness', 'claimStatus', 'claimedBy', 'claimedAt', 'sellerEmail', 'invitationStatus', 'invitationSentAt', 'invitationLastMessage', 'invitationCount']))
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'sellerId',
+            'adStatus',
+            'plan',
+            'isFeatured',
+            'featuredLevel',
+            'featuredReason',
+            'featuredActivatedAt',
+            'featuredUntil',
+            'isPermanentFeatured',
+            'expirationDate',
+            'paymentStatus',
+            'paidAt',
+            'paymentCompletedAt',
+            'stripeCheckoutSessionId',
+            'stripePaymentIntentId',
+            'videoPaid',
+            'mediaBoostEnabled',
+            'mediaBoostPrice',
+            'isClaimableBusiness',
+            'claimStatus',
+            'claimedBy',
+            'claimedAt',
+            'sellerEmail',
+            'invitationStatus',
+            'invitationSentAt',
+            'invitationLastMessage',
+            'invitationCount'
+          ])
         ) ||
 
         (resource.data.status == 'approved' && isValidAdCounterUpdate()) ||
@@ -345,29 +373,6 @@ service cloud.firestore {
           request.resource.data.soldOutsidePlatform == true &&
           request.resource.data.soldAt is timestamp &&
           request.resource.data.updatedAt is timestamp
-        ) ||
-
-        (
-          isAuthenticated() &&
-          resource.data.sellerId == request.auth.uid &&
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'adStatus', 'updatedAt']) &&
-          request.resource.data.status == 'approved' &&
-          request.resource.data.adStatus == 'active'
-        ) ||
-
-        (
-          isAuthenticated() &&
-          resource.data.sellerId == request.auth.uid &&
-          resource.data.status == 'approved' &&
-          (!('adStatus' in resource.data) || resource.data.adStatus == 'active') &&
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['isFeatured', 'featuredReason', 'featuredActivatedAt', 'featuredUntil', 'updatedAt']) &&
-          request.resource.data.isFeatured == true &&
-          request.resource.data.featuredUntil is timestamp &&
-          (!('featuredActivatedAt' in request.resource.data) || request.resource.data.featuredActivatedAt is timestamp) &&
-          (!('featuredReason' in request.resource.data) || request.resource.data.featuredReason is string) &&
-          (!('updatedAt' in request.resource.data) || request.resource.data.updatedAt is timestamp)
         ) ||
 
         (
@@ -461,13 +466,10 @@ service cloud.firestore {
     }
 
     match /showcaseStats/{sellerId} {
-      allow get: if true;
-      allow create, update: if true;
+      allow read, write: if false;
 
       match /dailyStats/{dateStr} {
-        allow get: if true;
-        allow read: if isOwner(sellerId) || isAdmin();
-        allow create, update: if true;
+        allow read, write: if false;
       }
     }
 
@@ -512,7 +514,8 @@ service cloud.firestore {
     }
 
     match /system_health_events/{eventId} {
-      allow read, write, create: if true;
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin() || isModerator();
     }
 
     match /businessClaimRequests/{requestId} {
