@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType, getDocWithCacheFallback } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType, getDocWithCacheFallback } from '../firebase';
 import { MarketplaceSettings, CATEGORIES } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -76,10 +76,19 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
       }
 
       // Envia uma requisição real de teste para o backend de email
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        throw new Error('Authentication required.');
+      }
+
+      const idToken = await currentUser.getIdToken();
+
       const response = await fetch('/api/email/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           template: testTemplate,
