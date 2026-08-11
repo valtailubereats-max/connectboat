@@ -594,6 +594,62 @@ export function discoverBoatsAndOutboardsListings(textOrHtml: string, pageUrl: s
   return results;
 }
 
+
+/**
+ * When discovery had to fall back to Gemini URL Context, the listing URLs can
+ * be recovered reliably but image CDN URLs may not be exposed by URL Context.
+ * For those missing images, fetch only the public OpenGraph image metadata
+ * from each individual listing through Microlink. Failure is non-fatal.
+ */
+async function enrichMissingListingImages(listings: DiscoveredListing[]): Promise<DiscoveredListing[]> {
+  const missing = listings.filter(item => !item.image && item.sourceUrl).slice(0, 20);
+  if (missing.length === 0) return listings;
+
+  const imageByUrl = new Map<string, string>();
+  const concurrency = 5;
+
+  for (let offset = 0; offset < missing.length; offset += concurrency) {
+    const batch = missing.slice(offset, offset + concurrency);
+
+    const results = await Promise.allSettled(batch.map(async (item) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 6500);
+
+      try {
+        const endpoint = `https://api.microlink.io/?url=${encodeURIComponent(item.sourceUrl)}&prerender=true`;
+        const response = await fetch(endpoint, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal
+        });
+
+        if (!response.ok) return null;
+        const payload = await response.json();
+        const imageUrl = payload?.data?.image?.url;
+
+        if (typeof imageUrl === 'string' && /^https?:\/\//i.test(imageUrl)) {
+          return { sourceUrl: item.sourceUrl, imageUrl };
+        }
+
+        return null;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }));
+
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        imageByUrl.set(result.value.sourceUrl, result.value.imageUrl);
+      }
+    }
+  }
+
+  return listings.map(item => ({
+    ...item,
+    image: item.image || imageByUrl.get(item.sourceUrl)
+  }));
+}
+
 export type FetchResult = {
   htmlOrText: string;
   fetchSource: 'direct' | 'jina' | 'gemini-url-context';
@@ -660,7 +716,7 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
   try {
     const jinaUrl = `https://r.jina.ai/${jinaTargetUrl}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+    const timeout = setTimeout(() => controller.abort(), 12000);
 
     const jinaResp = await fetch(jinaUrl, {
       method: 'GET',
@@ -678,19 +734,9 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
       }
     }
   } catch (jinaErr: any) {
-    console.error('[discover-listings] Jina fallback failed:', jinaErr?.message || jinaErr);
-    let errorCode: FetchResult['errorCode'] = 'FALLBACK_FAILED';
-    if (jinaErr.name === 'AbortError') errorCode = 'FETCH_TIMEOUT';
-    else if (jinaErr.code === 'ENOTFOUND') errorCode = 'DNS_ERROR';
-
-    return {
-      htmlOrText: directHtml,
-      fetchSource: 'direct',
-      status: directStatus || 500,
-      errorCode,
-      errorDetails: jinaErr?.message || 'Tempo limite excedido ao ler a página.',
-      fallbackAttempted: true
-    };
+    // IMPORTANT: do not return here. A Jina timeout/failure must continue to
+    // Gemini URL Context instead of terminating discovery with HTTP 500.
+    console.warn('[discover-listings] Jina fallback failed; continuing to Gemini:', jinaErr?.message || jinaErr);
   }
 
   // 3. Gemini URL Context fallback.
@@ -712,18 +758,11 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
     const prompt = `Access ONLY this public marine marketplace search-results page:
 ${pageUrl}
 
-Return the individual boat/listing results visible on that page as Markdown, one result per listing.
-
-Use EXACTLY this two-line shape whenever an image is genuinely present on the source page:
-![Listing image](Exact public image URL)
+Return the individual boat/listing results visible on that page as Markdown, one result per line, using EXACTLY this shape whenever the information exists:
 [Exact listing title](Exact public listing URL) — Price | Location
-
-If no real image URL is available for a listing, omit only the image line and still return the listing line.
 
 Requirements:
 - Preserve the exact individual listing URL from the source page.
-- Preserve the exact public image URL shown for that listing whenever it is available.
-- Do not invent, fabricate, proxy, rewrite or guess image URLs.
 - Include only individual listings actually present on the supplied page.
 - Do not invent listings, URLs, prices or locations.
 - Do not return category/navigation/filter links.
@@ -1042,6 +1081,17 @@ export default async function discoverListingsHandler(req: any, res: any) {
     if (validListings.length > 30) {
       validListings = validListings.slice(0, 30);
       warnings.push('A página contém mais de 30 anúncios. Apenas os primeiros 30 anúncios foram listados.');
+    }
+
+    // Preserve the old Jina/direct image extraction. Only when Gemini had to
+    // discover the URLs do we enrich missing thumbnails from each listing's
+    // public OpenGraph metadata. This is best-effort and never blocks results.
+    if (fetchRes.fetchSource === 'gemini-url-context' && validListings.some(item => !item.image)) {
+      try {
+        validListings = await enrichMissingListingImages(validListings);
+      } catch (imageEnrichmentError: any) {
+        console.warn('[discover-listings] Image enrichment failed non-fatally:', imageEnrichmentError?.message || imageEnrichmentError);
+      }
     }
 
     // If Health-Check Mode (diagnosticsOnly) is requested:
