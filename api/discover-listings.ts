@@ -527,7 +527,8 @@ export function discoverBoatsAndOutboardsListings(textOrHtml: string, pageUrl: s
 
     // Extract image URL from snippet
     let image: string | undefined = undefined;
-    const imgMatch = snippet.match(/(https?:\/\/images\.boatsgroup\.com\/resize\/[^\)\s"']+)/i) ||
+    const imgMatch = snippet.match(/!\[[^\]]*\]\((https?:\/\/[^\)\s"']+)\)/i) ||
+                     snippet.match(/(https?:\/\/images\.boatsgroup\.com\/resize\/[^\)\s"']+)/i) ||
                      snippet.match(/src=["'](https?:\/\/[^"']+)["']/i);
     if (imgMatch) {
       image = imgMatch[1];
@@ -711,11 +712,18 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
     const prompt = `Access ONLY this public marine marketplace search-results page:
 ${pageUrl}
 
-Return the individual boat/listing results visible on that page as Markdown, one result per line, using EXACTLY this shape whenever the information exists:
+Return the individual boat/listing results visible on that page as Markdown, one result per listing.
+
+Use EXACTLY this two-line shape whenever an image is genuinely present on the source page:
+![Listing image](Exact public image URL)
 [Exact listing title](Exact public listing URL) — Price | Location
+
+If no real image URL is available for a listing, omit only the image line and still return the listing line.
 
 Requirements:
 - Preserve the exact individual listing URL from the source page.
+- Preserve the exact public image URL shown for that listing whenever it is available.
+- Do not invent, fabricate, proxy, rewrite or guess image URLs.
 - Include only individual listings actually present on the supplied page.
 - Do not invent listings, URLs, prices or locations.
 - Do not return category/navigation/filter links.
