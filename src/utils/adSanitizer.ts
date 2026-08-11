@@ -1,4 +1,40 @@
-import { decodeHtmlEntities } from '../../api/import-ad';
+/**
+ * Decodifica as entidades HTML usadas nas URLs e textos importados.
+ *
+ * IMPORTANTE:
+ * Esta função fica no frontend para que este utilitário NÃO importe
+ * api/import-ad.ts. O endpoint de importação usa dependências exclusivas
+ * do servidor (Firebase Admin), que não podem entrar no bundle do navegador.
+ */
+const decodeHtmlEntities = (str: string): string => {
+  if (!str) return '';
+
+  let temp = str
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&pound;/g, '£')
+    .replace(/&euro;/g, '€')
+    .replace(/&#36;/g, '$')
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+
+  try {
+    temp = temp.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16))
+    );
+  } catch {
+    // Mantém o texto original caso a conversão Unicode falhe.
+  }
+
+  return temp;
+};
+
 
 /**
  * Normaliza uma URL de imagem (trata URLs relativas ao protocolo, decodifica entidades HTML, trim)
