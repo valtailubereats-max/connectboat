@@ -1,65 +1,99 @@
 import { GoogleGenAI } from "@google/genai";
-import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import * as admin from "firebase-admin";
 
 const FIREBASE_PROJECT_ID = "navlink-489413";
 const FIRESTORE_DATABASE_ID = "ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382";
 
-function getFirebaseAdminApp() {
-  if (!getApps().length) {
-    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+let adminDbInstance: any = null;
 
-    if (!rawServiceAccount) {
-      throw new Error("FIREBASE_SERVICE_ACCOUNT environment variable is missing.");
+function getAdminDb() {
+  const firebaseAdmin = (admin as any).default || admin;
+
+  if (!adminDbInstance) {
+    const apps = firebaseAdmin.apps || [];
+
+    if (!apps.length) {
+      const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+      if (rawServiceAccount) {
+        try {
+          let serviceAccount: any;
+
+          try {
+            serviceAccount = JSON.parse(rawServiceAccount);
+          } catch {
+            serviceAccount = JSON.parse(
+              Buffer.from(rawServiceAccount, "base64").toString("utf-8")
+            );
+          }
+
+          if (typeof serviceAccount.private_key === "string") {
+            serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+          }
+
+          firebaseAdmin.initializeApp({
+            credential: firebaseAdmin.credential.cert(serviceAccount),
+            projectId: FIREBASE_PROJECT_ID,
+          });
+        } catch (e: any) {
+          console.error(
+            `[Gemini Analyze getAdminDb] Service Account init failed: ${e?.message || e}. Falling back to project init.`
+          );
+          firebaseAdmin.initializeApp({ projectId: FIREBASE_PROJECT_ID });
+        }
+      } else {
+        firebaseAdmin.initializeApp({ projectId: FIREBASE_PROJECT_ID });
+      }
     }
 
-    let serviceAccount: any;
-    try {
-      serviceAccount = JSON.parse(rawServiceAccount);
-    } catch {
-      serviceAccount = JSON.parse(
-        Buffer.from(rawServiceAccount, "base64").toString("utf-8")
-      );
-    }
+    adminDbInstance = firebaseAdmin.firestore();
 
-    if (typeof serviceAccount.private_key === "string") {
-      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
+    if (FIRESTORE_DATABASE_ID) {
+      try {
+        adminDbInstance.settings({ databaseId: FIRESTORE_DATABASE_ID });
+      } catch {
+        // Firestore settings may already have been applied.
+      }
     }
-
-    initializeApp({
-      credential: cert(serviceAccount),
-      projectId: FIREBASE_PROJECT_ID,
-    });
   }
 
-  return getApp();
+  return adminDbInstance;
 }
 
 async function verifyAdminRequest(req: any) {
+  const firebaseAdmin = (admin as any).default || admin;
   const authHeader = req.headers?.authorization || "";
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
 
   if (!match) {
     const error: any = new Error("Authentication required.");
     error.statusCode = 401;
+    error.code = "AUTH_TOKEN_MISSING";
     throw error;
   }
 
-  const app = getFirebaseAdminApp();
+  // Initialize Admin first, exactly as the working protected endpoints do.
+  const db = getAdminDb();
 
   let decoded: any;
   try {
-    decoded = await getAuth(app).verifyIdToken(match[1]);
-  } catch {
+    decoded = await firebaseAdmin.auth().verifyIdToken(match[1]);
+  } catch (verifyError: any) {
+    console.error(
+      "[Gemini Analyze AUTH] Firebase token verification failed:",
+      verifyError?.code || verifyError?.message || verifyError
+    );
+
     const error: any = new Error("Invalid or expired Firebase authentication token.");
     error.statusCode = 401;
+    error.code = "AUTH_TOKEN_INVALID";
     throw error;
   }
 
-  const email = typeof decoded.email === "string"
-    ? decoded.email.trim().toLowerCase()
-    : "";
+  const email =
+    typeof decoded.email === "string"
+      ? decoded.email.trim().toLowerCase()
+      : "";
 
   const explicitAdminEmails = new Set([
     "valtailubereats@gmail.com",
@@ -71,19 +105,18 @@ async function verifyAdminRequest(req: any) {
     return decoded;
   }
 
-  const db = getFirestore(app, FIRESTORE_DATABASE_ID);
   const userDoc = await db.collection("users").doc(decoded.uid).get();
   const role = userDoc.exists ? userDoc.data()?.role : null;
 
   if (role !== "admin") {
     const error: any = new Error("Administrator access required.");
     error.statusCode = 403;
+    error.code = "ADMIN_REQUIRED";
     throw error;
   }
 
   return decoded;
 }
-
 
 export default async function handler(req: any, res: any) {
   // Configuração rápida de CORS para segurança e compatibilidade
