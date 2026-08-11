@@ -50,6 +50,68 @@ function getAdminDb() {
   return dbInstance;
 }
 
+
+async function verifyStaffRequest(req: Request, db: any) {
+  const firebaseAdmin = (admin as any).default || admin;
+  const authHeader = req.headers.authorization || '';
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    const error: any = new Error('Authentication required.');
+    error.statusCode = 401;
+    error.code = 'AUTH_TOKEN_MISSING';
+    throw error;
+  }
+
+  let decodedToken: any;
+  try {
+    decodedToken = await firebaseAdmin.auth().verifyIdToken(match[1]);
+  } catch (err) {
+    const error: any = new Error('Invalid or expired Firebase authentication token.');
+    error.statusCode = 401;
+    error.code = 'AUTH_TOKEN_INVALID';
+    throw error;
+  }
+
+  const email = typeof decodedToken.email === 'string'
+    ? decodedToken.email.trim().toLowerCase()
+    : '';
+
+  // Preserve the same explicit admin accounts already recognised by
+  // the ConnectBoat Firestore rules.
+  const explicitAdminEmails = new Set([
+    'valtailubereats@gmail.com',
+    'valtail@gmail.com',
+    'generalsales2021@gmail.com',
+  ]);
+
+  if (explicitAdminEmails.has(email)) {
+    return {
+      uid: decodedToken.uid,
+      email,
+      role: 'admin',
+    };
+  }
+
+  // AdminAds is available to both administrators and moderators,
+  // therefore this endpoint mirrors that legitimate staff access.
+  const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+  const role = userDoc.exists ? userDoc.data()?.role : null;
+
+  if (role !== 'admin' && role !== 'moderator') {
+    const error: any = new Error('Administrator or moderator access required.');
+    error.statusCode = 403;
+    error.code = 'STAFF_ACCESS_REQUIRED';
+    throw error;
+  }
+
+  return {
+    uid: decodedToken.uid,
+    email,
+    role,
+  };
+}
+
 // Local private email dispatch function via direct Resend HTTP API fetch call
 async function sendPaymentEmailDirect(recipientEmail: string, data: any) {
   const apiKey = process.env.RESEND_API_KEY;
@@ -257,6 +319,10 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
     const db = getAdminDb();
     console.log('[4] Firestore initialized');
 
+    currentStep = '[4.1] Verifying authenticated staff user';
+    const staffUser = await verifyStaffRequest(req, db);
+    console.log(`[4.1] Staff authenticated: ${staffUser.uid} (${staffUser.role})`);
+
     currentStep = '[5] Querying Firestore for listing';
     const adDoc = await db.collection('ads').doc(adId).get();
 
@@ -425,7 +491,22 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
     const errorMsg = error instanceof Error ? error.message : String(error);
     console.error(`[Admin Resend Payment Email ERROR at step "${currentStep}"]:`, error);
 
-    // Attempt to log failure in Firestore without throwing
+    const authStatusCode =
+      error?.statusCode === 401 || error?.statusCode === 403
+        ? error.statusCode
+        : null;
+
+    // Authentication/authorization failures must not modify the listing.
+    if (authStatusCode) {
+      return res.status(authStatusCode).json({
+        success: false,
+        stepFailed: currentStep,
+        error: error?.code || 'AUTHORIZATION_FAILED',
+        errorMessage: errorMsg,
+      });
+    }
+
+    // Attempt to log operational failure in Firestore without throwing.
     try {
       const db = getAdminDb();
       const firebaseAdmin = (admin as any).default || admin;
