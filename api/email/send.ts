@@ -1,11 +1,13 @@
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 // Serverless Email Service for ConnectBoat
 
 const EMAIL_FLAG_ACTIVE = process.env.EMAIL_ACTIVE !== 'false';
 
 const FIREBASE_PROJECT_ID = 'navlink-489413';
+const FIRESTORE_DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
 
 function getFirebaseAdminApp() {
   if (!getApps().length) {
@@ -49,6 +51,181 @@ async function verifyRequestUser(req: any) {
 
   const idToken = match[1];
   return getAuth(getFirebaseAdminApp()).verifyIdToken(idToken);
+}
+
+
+function normalizeRecipients(to: string | string[]): string[] {
+  const list = Array.isArray(to) ? to : [to];
+  return list
+    .filter((value) => typeof value === 'string')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+async function getUserRole(uid: string): Promise<string> {
+  const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
+  const snap = await db.collection('users').doc(uid).get();
+  return snap.exists ? (snap.data()?.role || 'user') : 'user';
+}
+
+async function isStaffEmail(email: string): Promise<boolean> {
+  const normalized = email.trim().toLowerCase();
+  const explicitAdminEmails = new Set([
+    'valtailubereats@gmail.com',
+    'valtail@gmail.com',
+    'generalsales2021@gmail.com',
+  ]);
+
+  if (explicitAdminEmails.has(normalized)) return true;
+
+  const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
+  const snap = await db.collection('users').where('email', '==', email).limit(1).get();
+  if (snap.empty) return false;
+
+  const role = snap.docs[0].data()?.role;
+  return role === 'admin' || role === 'moderator';
+}
+
+async function getAdSellerEmails(adId: string): Promise<string[]> {
+  if (!adId) return [];
+
+  const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
+  const adSnap = await db.collection('ads').doc(adId).get();
+
+  if (!adSnap.exists) return [];
+
+  const ad = adSnap.data() || {};
+  const emails = new Set<string>();
+
+  for (const field of ['sellerEmail', 'userEmail', 'ownerEmail', 'contactEmail', 'email']) {
+    const value = ad[field];
+    if (typeof value === 'string' && value.trim()) {
+      emails.add(value.trim().toLowerCase());
+    }
+  }
+
+  const sellerUid =
+    ad.sellerId ||
+    ad.userId ||
+    ad.ownerId ||
+    ad.createdBy;
+
+  if (typeof sellerUid === 'string' && sellerUid.trim()) {
+    const userSnap = await db.collection('users').doc(sellerUid.trim()).get();
+    if (userSnap.exists) {
+      const email = userSnap.data()?.email;
+      if (typeof email === 'string' && email.trim()) {
+        emails.add(email.trim().toLowerCase());
+      }
+    }
+
+    try {
+      const authUser = await getAuth(getFirebaseAdminApp()).getUser(sellerUid.trim());
+      if (authUser.email) {
+        emails.add(authUser.email.trim().toLowerCase());
+      }
+    } catch {
+      // Firestore/listing email may already be sufficient.
+    }
+  }
+
+  return Array.from(emails);
+}
+
+async function authorizeEmailRequest(
+  decodedUser: any,
+  template: string,
+  to: string | string[],
+  data: any
+) {
+  const recipients = normalizeRecipients(to);
+
+  if (recipients.length === 0) {
+    const error: any = new Error('A valid recipient is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const callerEmail =
+    typeof decodedUser?.email === 'string'
+      ? decodedUser.email.trim().toLowerCase()
+      : '';
+
+  const callerRole = await getUserRole(decodedUser.uid);
+  const callerIsStaff =
+    callerRole === 'admin' ||
+    callerRole === 'moderator' ||
+    [
+      'valtailubereats@gmail.com',
+      'valtail@gmail.com',
+      'generalsales2021@gmail.com',
+    ].includes(callerEmail);
+
+  const ownEmailTemplates = new Set([
+    'boas_vindas',
+    'anuncio_submetido',
+    'compra_concluida',
+  ]);
+
+  if (ownEmailTemplates.has(template)) {
+    if (!callerEmail || recipients.some((recipient) => recipient !== callerEmail)) {
+      const error: any = new Error('This email template may only be sent to the authenticated user.');
+      error.statusCode = 403;
+      throw error;
+    }
+    return;
+  }
+
+  const staffOnlyTemplates = new Set([
+    'anuncio_aprovado',
+    'anuncio_rejeitado',
+    'alerta_saude_sistema',
+  ]);
+
+  if (staffOnlyTemplates.has(template)) {
+    if (!callerIsStaff) {
+      const error: any = new Error('Staff access required for this email template.');
+      error.statusCode = 403;
+      throw error;
+    }
+    return;
+  }
+
+  if (template === 'anuncio_pendente_staff') {
+    const checks = await Promise.all(recipients.map((recipient) => isStaffEmail(recipient)));
+    if (checks.some((allowed) => !allowed)) {
+      const error: any = new Error('Pending-listing notifications may only be sent to staff recipients.');
+      error.statusCode = 403;
+      throw error;
+    }
+    return;
+  }
+
+  if (template === 'interesse_contacto' || template === 'review_recebida') {
+    const adId = typeof data?.adId === 'string' ? data.adId : '';
+    const sellerEmails = await getAdSellerEmails(adId);
+
+    if (
+      sellerEmails.length === 0 ||
+      recipients.some((recipient) => !sellerEmails.includes(recipient))
+    ) {
+      const error: any = new Error('Recipient does not match the seller of this listing.');
+      error.statusCode = 403;
+      throw error;
+    }
+    return;
+  }
+
+  // Payment confirmations are dispatched server-to-server by the Stripe flow.
+  if (template === 'pagamento_confirmado') {
+    const error: any = new Error('Payment confirmation emails are server-only.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const error: any = new Error('Email template is not allowed on the public endpoint.');
+  error.statusCode = 403;
+  throw error;
 }
 
 
@@ -493,8 +670,10 @@ export default async function handler(req: any, res: any) {
   // Security: this public endpoint may only be called by an authenticated
   // ConnectBoat user. Server-to-server flows (for example Stripe webhooks)
   // use sendEmailDirect() and are not affected by this check.
+  let decodedUser: any;
+
   try {
-    await verifyRequestUser(req);
+    decodedUser = await verifyRequestUser(req);
   } catch (authError: any) {
     if (authError?.message === 'AUTH_TOKEN_MISSING') {
       return res.status(401).json({
@@ -520,6 +699,15 @@ export default async function handler(req: any, res: any) {
 
     if (!to || !template) {
       return res.status(400).json({ error: "Required parameters 'to' and 'template' are missing." });
+    }
+
+    try {
+      await authorizeEmailRequest(decodedUser, template, to, data);
+    } catch (authorizationError: any) {
+      return res.status(authorizationError?.statusCode || 403).json({
+        success: false,
+        error: authorizationError?.message || 'Email request is not authorized.',
+      });
     }
 
     const { subject, html } = renderEmail(template, data);
@@ -581,4 +769,3 @@ export default async function handler(req: any, res: any) {
     return res.status(500).json({ success: false, error: err?.message || String(err) });
   }
 }
-
