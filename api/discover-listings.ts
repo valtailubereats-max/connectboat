@@ -595,7 +595,7 @@ export function discoverBoatsAndOutboardsListings(textOrHtml: string, pageUrl: s
 
 export type FetchResult = {
   htmlOrText: string;
-  fetchSource: 'direct' | 'jina';
+  fetchSource: 'direct' | 'jina' | 'gemini-url-context';
   status: number;
   errorCode?: 'FETCH_TIMEOUT' | 'DNS_ERROR' | 'TLS_ERROR' | 'PAGE_ACCESS_DENIED' | 'FALLBACK_FAILED' | 'EMPTY_RESPONSE';
   errorDetails?: string;
@@ -692,6 +692,65 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
     };
   }
 
+  // 3. Gemini URL Context fallback.
+  // Useful when the origin blocks Vercel/Jina but the public search page remains web-accessible.
+  try {
+    console.log('[discover-listings] Attempting Gemini URL Context fallback for:', pageUrl);
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not configured on the server.');
+    }
+
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: { headers: { 'User-Agent': 'connectboat-discovery' } }
+    });
+
+    const prompt = `Access ONLY this public marine marketplace search-results page:
+${pageUrl}
+
+Return the individual boat/listing results visible on that page as Markdown, one result per line, using EXACTLY this shape whenever the information exists:
+[Exact listing title](Exact public listing URL) — Price | Location
+
+Requirements:
+- Preserve the exact individual listing URL from the source page.
+- Include only individual listings actually present on the supplied page.
+- Do not invent listings, URLs, prices or locations.
+- Do not return category/navigation/filter links.
+- Prefer boatsandoutboards.co.uk/boat/... URLs for Boats and Outboards.
+- Return as many visible listing results as the page provides, up to 40.
+- No commentary before or after the list.`;
+
+    const gRes = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [prompt],
+      config: {
+        tools: [
+          { urlContext: {} },
+          { googleSearch: {} }
+        ]
+      }
+    });
+
+    const gText = typeof gRes.text === 'string' ? gRes.text.trim() : '';
+    const urlMeta = gRes.candidates?.[0]?.urlContextMetadata;
+    console.log('[discover-listings] Gemini URL Context metadata:', JSON.stringify(urlMeta || {}));
+
+    if (gText && gText.length > 150) {
+      console.log('[discover-listings] Gemini URL Context fallback succeeded. Length:', gText.length);
+      return {
+        htmlOrText: gText,
+        fetchSource: 'gemini-url-context',
+        status: 200,
+        fallbackAttempted: true
+      };
+    }
+  } catch (geminiErr: any) {
+    console.warn('[discover-listings] Gemini URL Context fallback failed:', geminiErr?.message || geminiErr);
+  }
+
   const finalErrorCode = directStatus === 403 ? 'PAGE_ACCESS_DENIED' : (!directHtml ? 'EMPTY_RESPONSE' : 'FALLBACK_FAILED');
 
   return {
@@ -699,7 +758,7 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
     fetchSource: 'direct',
     status: directStatus || 500,
     errorCode: finalErrorCode,
-    errorDetails: 'Não foi possível aceder à página diretamente nem via serviço de leitura.',
+    errorDetails: 'Não foi possível aceder à página diretamente, via serviço de leitura ou via Gemini URL Context.',
     fallbackAttempted: true
   };
 }
@@ -906,7 +965,7 @@ export default async function discoverListingsHandler(req: any, res: any) {
     fallbackAttempted = fetchRes.fallbackAttempted;
     htmlLength = fetchRes.htmlOrText ? fetchRes.htmlOrText.length : 0;
 
-    if (fetchRes.fetchSource === 'jina') {
+    if (fetchRes.fetchSource === 'jina' || fetchRes.fetchSource === 'gemini-url-context') {
       lastCompletedStage = 'FALLBACK_FETCH_STARTED';
     } else {
       lastCompletedStage = 'DIRECT_FETCH_COMPLETED';
@@ -929,7 +988,7 @@ export default async function discoverListingsHandler(req: any, res: any) {
         requestId,
         {
           directStatus: fetchRes.status,
-          fallbackUsed: fetchRes.fetchSource === 'jina',
+          fallbackUsed: fetchRes.fetchSource !== 'direct',
           fetchSource: fetchRes.fetchSource,
           htmlLength
         }
@@ -988,7 +1047,7 @@ export default async function discoverListingsHandler(req: any, res: any) {
           validation: "ok",
           marketplace: marketplaceName,
           directFetchStatus: fetchRes.status,
-          fallbackUsed: fetchRes.fetchSource === 'jina',
+          fallbackUsed: fetchRes.fetchSource !== 'direct',
           htmlLength,
           candidateLinks: totalCandidates,
           validLinks: validListings.length,
@@ -1019,7 +1078,7 @@ export default async function discoverListingsHandler(req: any, res: any) {
       warnings,
       _diagnostics: {
         directStatus: fetchRes.status,
-        fallbackUsed: fetchRes.fetchSource === 'jina',
+        fallbackUsed: fetchRes.fetchSource !== 'direct',
         fetchSource: fetchRes.fetchSource,
         htmlLength,
         candidateLinkCount: totalCandidates,
