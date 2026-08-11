@@ -1048,7 +1048,11 @@ async function extractNauticalDetails(title: string, description: string, rawHtm
   try {
     console.log('[Import Pipeline] Calling Gemini AI (gemini-2.5-flash)...');
     const { GoogleGenAI } = await import('@google/genai');
-    const apiKey = process.env.GEMINI_API_KEY || "AIzaSyBewRCSZ-nNqXiaVCRzgpfI1ieWf5QEyq4";
+    const apiKey = process.env.GEMINI_API_KEY;
+
+if (!apiKey) {
+  throw new Error('GEMINI_API_KEY is not configured on the server.');
+}
     const ai = new GoogleGenAI({
       apiKey,
       httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
