@@ -48,7 +48,7 @@ const AdminImport = () => {
         throw new Error('Authentication required.');
       }
 
-      const idToken = await user.getIdToken();
+      const idToken = await user.getIdToken(true);
 
       const response = await fetch('/api/gemini/analyze', {
         method: 'POST',
