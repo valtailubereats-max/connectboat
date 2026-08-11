@@ -1102,6 +1102,94 @@ async function fetchAdHtml(url: string): Promise<{ html: string; source: string;
     console.warn('[Import Pipeline] Microlink fallback error:', mErr.message);
   }
 
+  // Tentativa 4: Gemini URL Context.
+  // Este fallback é útil quando o site bloqueia requests vindos da Vercel,
+  // mas continua publicamente indexável/acessível na web.
+  try {
+    console.log('[Import Pipeline] Trying Gemini URL Context fallback...');
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not configured on the server.');
+    }
+
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: { headers: { 'User-Agent': 'connectboat-importer' } }
+    });
+
+    const prompt = `Access ONLY the public listing at this exact URL:
+${url}
+
+Return a faithful extraction of the listing content as plain text.
+Do not guess, infer or invent anything.
+
+Include, when explicitly present on the page:
+- exact listing title
+- asking price and currency
+- location
+- full description
+- manufacturer / make
+- model
+- year
+- condition
+- boat type / class
+- length / LOA
+- beam
+- draft
+- hull material
+- engine make/model
+- horsepower / total power
+- engine hours
+- fuel type
+- cabins
+- berths
+- heads / bathrooms
+- VAT status
+- CE status
+- seller/dealer name
+- any image URLs that are explicitly available from the page
+
+If a field is not present, simply omit it.
+Do not summarize aggressively: preserve as much factual listing content as possible.`;
+
+    const gRes = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [prompt],
+      config: {
+        tools: [
+          { urlContext: {} },
+          { googleSearch: {} }
+        ]
+      }
+    });
+
+    const gText = typeof gRes.text === 'string' ? gRes.text.trim() : '';
+
+    const urlMeta = gRes.candidates?.[0]?.urlContextMetadata;
+    console.log('[Import Pipeline] Gemini URL Context metadata:', JSON.stringify(urlMeta || {}));
+
+    if (gText && gText.length > 250) {
+      console.log('[Import Pipeline] Gemini URL Context fallback succeeded! Length:', gText.length);
+
+      // Downstream extraction already accepts raw text in addition to HTML.
+      // Wrap in minimal HTML so existing title/description text extraction remains compatible.
+      const escaped = gText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      return {
+        html: `<!DOCTYPE html><html><body><pre>${escaped}</pre></body></html>`,
+        source: 'gemini-url-context',
+        status: 200
+      };
+    }
+  } catch (gErr: any) {
+    console.warn('[Import Pipeline] Gemini URL Context fallback error:', gErr?.message || gErr);
+  }
+
   throw new Error('Não foi possível transferir o conteúdo da página do anúncio. O fornecedor bloqueou a ligação.');
 }
 
