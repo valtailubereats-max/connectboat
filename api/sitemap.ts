@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
   console.log(`[DYNAMIC SITEMAP] Responding to sitemap.xml request.`);
 
   const projectId = 'navlink-489413';
-  const firestoreDatabaseId = 'ai-studio-68f2b08f-f2a5-4a0e-9c12-0146a4e48db1';
+  const firestoreDatabaseId = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
   
   interface SitemapItem {
     loc: string;
