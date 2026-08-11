@@ -49,10 +49,17 @@ async function verifyImportStaff(req: any) {
     throw error;
   }
 
+  // Initialize Firebase Admin BEFORE validating the token.
+  // Without this, getApp() throws because the default Admin app does not yet exist,
+  // which was being incorrectly reported as an invalid/expired token.
+  const db = getFirebaseAdminDb();
+
   let decodedToken: any;
   try {
     decodedToken = await getAuth(getApp()).verifyIdToken(match[1]);
-  } catch {
+  } catch (verifyError) {
+    console.error('[Import Pipeline] Firebase token verification failed:', verifyError);
+
     const error: any = new Error('Invalid or expired Firebase authentication token.');
     error.statusCode = 401;
     error.code = 'AUTH_TOKEN_INVALID';
@@ -73,7 +80,6 @@ async function verifyImportStaff(req: any) {
     return { uid: decodedToken.uid, email, role: 'admin' };
   }
 
-  const db = getFirebaseAdminDb();
   const userDoc = await db.collection('users').doc(decodedToken.uid).get();
   const role = userDoc.exists ? userDoc.data()?.role : null;
 
