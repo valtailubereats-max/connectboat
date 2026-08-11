@@ -1,9 +1,9 @@
 import { doc, getDoc, query, collection, where, getDocs, addDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 
 /**
  * Centralized Email Service for ConnectBoat
- * 
+ *
  * Triggers automated email notifications via backend endpoint (/api/email/send).
  * Handles failures silently to ensure zero disruptions to primary app workflows.
  */
@@ -61,7 +61,7 @@ export interface EmailData {
     previousLevel?: string;
     currentLevel: string;
     healthPercentage: number;
-    alertDetailsString: string; // HTML or text listing alerts
+    alertDetailsString: string;
     actionRequired: string;
   };
 }
@@ -71,56 +71,93 @@ export interface EmailData {
  */
 export async function isUserStaff(emailOrUid: string): Promise<boolean> {
   if (!emailOrUid) return false;
+
   try {
     if (!emailOrUid.includes('@')) {
       const userDoc = await getDoc(doc(db, 'users', emailOrUid));
+
       if (userDoc.exists()) {
         const role = userDoc.data()?.role;
         return role === 'admin' || role === 'moderator';
       }
     } else {
-      const q = query(collection(db, 'users'), where('email', '==', emailOrUid));
+      const q = query(
+        collection(db, 'users'),
+        where('email', '==', emailOrUid)
+      );
+
       const querySnapshot = await getDocs(q);
+
       if (!querySnapshot.empty) {
         const role = querySnapshot.docs[0].data()?.role;
         return role === 'admin' || role === 'moderator';
       }
     }
   } catch (err) {
-    console.warn('[EmailService] Erro ao verificar se usuário é staff:', err);
+    console.warn(
+      '[EmailService] Erro ao verificar se usuário é staff:',
+      err
+    );
   }
+
   return false;
 }
 
 /**
- * Determina se o envio do e-mail automático deve ser bloqueado para anúncios criados por admin/moderador.
+ * Determina se o envio do e-mail automático deve ser bloqueado
+ * para anúncios criados por admin/moderador.
  */
-async function shouldBlockEmail(template: string, to: string | string[], data: any): Promise<boolean> {
+async function shouldBlockEmail(
+  template: string,
+  to: string | string[],
+  data: any
+): Promise<boolean> {
   if (data && data.adId) {
     try {
       const adDocSnap = await getDoc(doc(db, 'ads', data.adId));
+
       if (adDocSnap.exists()) {
         const adInfo = adDocSnap.data();
+
         if (adInfo && adInfo.sellerId) {
           const sellerIsStaff = await isUserStaff(adInfo.sellerId);
+
           if (sellerIsStaff) {
-            console.log(`[EmailService] Bloqueando email silenciosamente para o template ${template} pois o criador do anúncio é admin/moderador.`);
+            console.log(
+              `[EmailService] Bloqueando email silenciosamente para o template ${template} pois o criador do anúncio é admin/moderador.`
+            );
+
             return true;
           }
         }
       }
     } catch (err) {
-      console.warn('[EmailService] Erro ao buscar anúncio para verificar bloqueio:', err);
+      console.warn(
+        '[EmailService] Erro ao buscar anúncio para verificar bloqueio:',
+        err
+      );
     }
   }
 
-  const adRelatedTemplates = ['anuncio_aprovado', 'anuncio_rejeitado', 'interesse_contacto', 'review_recebida', 'compra_concluida'];
+  const adRelatedTemplates = [
+    'anuncio_aprovado',
+    'anuncio_rejeitado',
+    'interesse_contacto',
+    'review_recebida',
+    'compra_concluida',
+  ];
+
   if (adRelatedTemplates.includes(template)) {
     const recipients = Array.isArray(to) ? to : [to];
+
     for (const recipient of recipients) {
       const isStaff = await isUserStaff(recipient);
+
       if (isStaff) {
-        console.log(`[EmailService] Bloqueando email silenciosamente para ${recipient} pois pertence a admin/moderador.`);
+        console.log(
+          `[EmailService] Bloqueando email silenciosamente para ${recipient} pois pertence a admin/moderador.`
+        );
+
         return true;
       }
     }
@@ -131,6 +168,9 @@ async function shouldBlockEmail(template: string, to: string | string[], data: a
 
 /**
  * Envia uma requisição de email para o endpoint backend.
+ *
+ * O Firebase ID Token do usuário autenticado é enviado ao backend
+ * para que /api/email/send possa validar a identidade do solicitante.
  */
 export async function sendEmailGeneric<T extends keyof EmailData>(
   template: T,
@@ -138,22 +178,41 @@ export async function sendEmailGeneric<T extends keyof EmailData>(
   data: EmailData[T]
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const isEnabled = localStorage.getItem('emails_enabled') !== 'false';
+    const isEnabled =
+      localStorage.getItem('emails_enabled') !== 'false';
+
     if (!isEnabled) {
-      console.log(`[EmailService] Envio de e-mails desativado via configuração local para o template: ${template}`);
+      console.log(
+        `[EmailService] Envio de e-mails desativado via configuração local para o template: ${template}`
+      );
+
       return { success: true };
     }
 
-    // Verificar se o email deve ser bloqueado sob as regras de admin/moderador (Objetivo 2)
+    // Verificar se o email deve ser bloqueado sob as regras de admin/moderador
     const blocked = await shouldBlockEmail(template, to, data);
+
     if (blocked) {
       return { success: true };
     }
+
+    // Usuário precisa estar autenticado.
+    const currentUser = auth.currentUser;
+
+    if (!currentUser) {
+      throw new Error(
+        'User must be authenticated to send email.'
+      );
+    }
+
+    // Token Firebase enviado ao backend para validação.
+    const idToken = await currentUser.getIdToken();
 
     const response = await fetch('/api/email/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
       },
       body: JSON.stringify({
         template,
@@ -163,38 +222,64 @@ export async function sendEmailGeneric<T extends keyof EmailData>(
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status} ao enviar email`);
+      throw new Error(
+        `HTTP ${response.status} ao enviar email`
+      );
     }
 
     const resJson = await response.json();
+
     return resJson;
   } catch (err: any) {
-    console.warn(`[EmailService] Falha não impeditiva ao disparar email (${template}):`, err?.message || err);
-    // Log asynchronously to avoid blocking the caller
+    console.warn(
+      `[EmailService] Falha não impeditiva ao disparar email (${template}):`,
+      err?.message || err
+    );
+
+    // Log asynchronously to avoid blocking the caller.
     addDoc(collection(db, 'system_health_events'), {
       type: 'email_failure',
       error: err?.message || String(err),
       timestamp: new Date(),
-      template
-    }).catch(logErr => console.warn('[EmailService] Failed to write failure event log:', logErr));
-    
-    return { success: false, error: err?.message || String(err) };
+      template,
+    }).catch((logErr) =>
+      console.warn(
+        '[EmailService] Failed to write failure event log:',
+        logErr
+      )
+    );
+
+    return {
+      success: false,
+      error: err?.message || String(err),
+    };
   }
 }
 
 /**
- * Helper para obter o email de um vendedor a partir do sellerId
+ * Helper para obter o email de um vendedor a partir do sellerId.
  */
-export async function getSellerEmail(sellerId: string): Promise<string | null> {
+export async function getSellerEmail(
+  sellerId: string
+): Promise<string | null> {
   if (!sellerId) return null;
+
   try {
-    const userDocSnap = await getDoc(doc(db, 'users', sellerId));
+    const userDocSnap = await getDoc(
+      doc(db, 'users', sellerId)
+    );
+
     if (userDocSnap.exists()) {
       const userData = userDocSnap.data();
+
       return userData?.email || null;
     }
   } catch (err) {
-    console.warn(`[EmailService] Não foi possível consultar o email do vendedor ${sellerId}:`, err);
+    console.warn(
+      `[EmailService] Não foi possível consultar o email do vendedor ${sellerId}:`,
+      err
+    );
   }
+
   return null;
 }
