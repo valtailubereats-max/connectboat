@@ -42,6 +42,7 @@ export interface EmailData {
     rating: number;
     comment: string;
     adTitle: string;
+    adId: string;
   };
   compra_concluida: {
     sellerName: string;
