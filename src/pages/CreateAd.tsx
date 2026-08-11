@@ -1714,7 +1714,10 @@ const CreateAd = () => {
             draft: result.data.draft ?? '',
             fuelType: result.data.fuelType ?? '',
             engineBrand: result.data.engineBrand ?? '',
-            horsepower: result.data.horsepower ?? '',
+            horsepower:
+  result.data.horsepower !== undefined && result.data.horsepower !== null
+    ? result.data.horsepower.toString()
+    : '',
             engineHours: result.data.engineHours ?? '',
             cabins: result.data.cabins ?? '',
             berths: result.data.berths ?? '',
