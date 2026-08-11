@@ -5,6 +5,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 console.log('[import-ad] MODULE_LOAD: Module initialized successfully');
 
+const FIREBASE_PROJECT_ID = 'navlink-489413';
 const FIRESTORE_DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
 
 function getFirebaseAdminDb() {
@@ -15,7 +16,14 @@ function getFirebaseAdminDb() {
       throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is missing.');
     }
 
-    const serviceAccount = JSON.parse(rawServiceAccount);
+    let serviceAccount: any;
+
+    try {
+      serviceAccount = JSON.parse(rawServiceAccount);
+    } catch {
+      const decoded = Buffer.from(rawServiceAccount, 'base64').toString('utf-8');
+      serviceAccount = JSON.parse(decoded);
+    }
 
     if (typeof serviceAccount.private_key === 'string') {
       serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
@@ -23,6 +31,7 @@ function getFirebaseAdminDb() {
 
     initializeApp({
       credential: cert(serviceAccount),
+      projectId: FIREBASE_PROJECT_ID,
     });
   }
 
