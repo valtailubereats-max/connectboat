@@ -1,6 +1,132 @@
 import type { Request, Response } from 'express';
+import * as admin from 'firebase-admin';
 
 console.log('[discover-listings] MODULE_LOAD: Module initialized successfully');
+
+const PROJECT_ID = 'navlink-489413';
+const DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
+
+let adminDbInstance: any = null;
+
+function getAdminDb() {
+  const firebaseAdmin = (admin as any).default || admin;
+
+  if (!adminDbInstance) {
+    const apps = firebaseAdmin.apps || [];
+
+    if (!apps.length) {
+      const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+      if (serviceAccountJson) {
+        try {
+          let serviceAccount: any;
+
+          try {
+            serviceAccount = JSON.parse(serviceAccountJson);
+          } catch {
+            const decoded = Buffer.from(serviceAccountJson, 'base64').toString('utf-8');
+            serviceAccount = JSON.parse(decoded);
+          }
+
+          if (typeof serviceAccount.private_key === 'string') {
+            serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+          }
+
+          firebaseAdmin.initializeApp({
+            credential: firebaseAdmin.credential.cert(serviceAccount),
+            projectId: PROJECT_ID,
+          });
+        } catch (e: any) {
+          console.error(
+            `[discover-listings getAdminDb] Service Account init failed: ${e?.message || e}. Falling back to default app init.`
+          );
+          firebaseAdmin.initializeApp({ projectId: PROJECT_ID });
+        }
+      } else {
+        firebaseAdmin.initializeApp({ projectId: PROJECT_ID });
+      }
+    }
+
+    adminDbInstance = firebaseAdmin.firestore();
+
+    if (DATABASE_ID) {
+      try {
+        adminDbInstance.settings({ databaseId: DATABASE_ID });
+      } catch {
+        // Firestore settings may already have been applied.
+      }
+    }
+  }
+
+  return adminDbInstance;
+}
+
+async function verifyDiscoveryStaff(req: any) {
+  const firebaseAdmin = (admin as any).default || admin;
+  const authHeader = req.headers?.authorization || req.headers?.Authorization || '';
+  const match = typeof authHeader === 'string'
+    ? authHeader.match(/^Bearer\s+(.+)$/i)
+    : null;
+
+  if (!match) {
+    const error: any = new Error('Autenticação necessária. Faça login como administrador ou moderador.');
+    error.statusCode = 401;
+    error.code = 'UNAUTHENTICATED';
+    throw error;
+  }
+
+  // Initialize Firebase Admin before verifyIdToken().
+  const db = getAdminDb();
+
+  let decodedToken: any;
+  try {
+    decodedToken = await firebaseAdmin.auth().verifyIdToken(match[1]);
+  } catch (verifyError) {
+    console.error('[discover-listings] Firebase token verification failed:', verifyError);
+
+    const error: any = new Error('Token de autenticação Firebase inválido ou expirado.');
+    error.statusCode = 401;
+    error.code = 'INVALID_AUTH_TOKEN';
+    throw error;
+  }
+
+  const email = typeof decodedToken.email === 'string'
+    ? decodedToken.email.trim().toLowerCase()
+    : '';
+
+  const explicitAdminEmails = new Set([
+    'valtailubereats@gmail.com',
+    'valtail@gmail.com',
+    'generalsales2021@gmail.com',
+  ]);
+
+  if (explicitAdminEmails.has(email)) {
+    return {
+      uid: decodedToken.uid,
+      email,
+      role: 'admin',
+    };
+  }
+
+  const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+  const role = userDoc.exists ? userDoc.data()?.role : null;
+
+  if (role !== 'admin' && role !== 'moderator') {
+    const error: any = new Error(
+      'Acesso negado. Apenas administradores ou moderadores podem realizar a descoberta de anúncios.'
+    );
+    error.statusCode = 403;
+    error.code = 'FORBIDDEN';
+    throw error;
+  }
+
+  return {
+    uid: decodedToken.uid,
+    email,
+    role,
+  };
+}
+
 
 // ==========================================
 // INLINED HELPER UTILITIES (Self-contained for Vercel Serverless Runtime)
@@ -698,10 +824,9 @@ export default async function discoverListingsHandler(req: any, res: any) {
     lastCompletedStage = 'BODY_PARSED';
 
     const rawPageUrl = body.pageUrl || body.url || body.searchUrl;
-    const userRole = body.userRole;
     const diagnosticsOnly = body.diagnosticsOnly === true;
 
-    console.log('[discover-listings] BODY_RECEIVED', { requestId, pageUrl: rawPageUrl, userRole, diagnosticsOnly });
+    console.log('[discover-listings] BODY_RECEIVED', { requestId, pageUrl: rawPageUrl, diagnosticsOnly });
 
     if (!rawPageUrl || typeof rawPageUrl !== 'string' || !rawPageUrl.trim()) {
       return sendJsonError(
@@ -722,37 +847,32 @@ export default async function discoverListingsHandler(req: any, res: any) {
     const authHeader = req.headers?.authorization || req.headers?.Authorization;
     console.log('[discover-listings] AUTH_START', { requestId, hasAuthHeader: Boolean(authHeader) });
 
-    if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-      authUid = 'authenticated_token_user';
-    }
+    let staffUser: any;
+    try {
+      staffUser = await verifyDiscoveryStaff(req);
+      authUid = staffUser.uid;
+    } catch (authError: any) {
+      const statusCode = authError?.statusCode === 403 ? 403 : 401;
+      const errorCode = authError?.code || (statusCode === 403 ? 'FORBIDDEN' : 'UNAUTHENTICATED');
 
-    // Role check: Admin or Moderator required
-    if (userRole !== 'admin' && userRole !== 'moderator') {
-      if (!authHeader) {
-        return sendJsonError(
-          res,
-          401,
-          'UNAUTHENTICATED',
-          'Autenticação necessária. Faça login como administrador ou moderador.',
-          'AUTH_CHECK',
-          'Cabeçalho de autorização em falta.',
-          requestId
-        );
-      }
       return sendJsonError(
         res,
-        403,
-        'FORBIDDEN',
-        'Acesso negado. Apenas administradores ou moderadores podem realizar a descoberta de anúncios.',
-        'PERMISSIONS_CHECK',
-        'Papel de utilizador insuficiente.',
+        statusCode,
+        errorCode,
+        authError?.message || 'Falha na validação de acesso.',
+        statusCode === 403 ? 'PERMISSIONS_CHECK' : 'AUTH_CHECK',
+        authError?.message,
         requestId
       );
     }
 
     // Stage 4: AUTH_SUCCESS
     lastCompletedStage = 'AUTH_SUCCESS';
-    console.log('[discover-listings] AUTH_SUCCESS', { requestId, authUid, userRole });
+    console.log('[discover-listings] AUTH_SUCCESS', {
+      requestId,
+      authUid,
+      verifiedRole: staffUser.role
+    });
 
     // Stage 5: URL_VALIDATED
     const validation: SearchPageValidationResult = validateSearchPageUrl(targetPageUrl);
