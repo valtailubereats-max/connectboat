@@ -168,8 +168,7 @@ export const AdminSearchPageDiscovery: React.FC<AdminSearchPageDiscoveryProps> =
         method: 'POST',
         headers,
         body: JSON.stringify({
-          pageUrl: trimmedUrl,
-          userRole: userRole === 'guest' ? 'admin' : userRole
+          pageUrl: trimmedUrl
         })
       });
 
