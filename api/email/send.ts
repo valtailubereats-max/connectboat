@@ -1,6 +1,56 @@
+import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+
 // Serverless Email Service for ConnectBoat
 
 const EMAIL_FLAG_ACTIVE = process.env.EMAIL_ACTIVE !== 'false';
+
+const FIREBASE_PROJECT_ID = 'navlink-489413';
+
+function getFirebaseAdminApp() {
+  if (!getApps().length) {
+    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+    if (rawServiceAccount) {
+      let serviceAccount: any;
+
+      try {
+        serviceAccount = JSON.parse(rawServiceAccount);
+      } catch {
+        const decoded = Buffer.from(rawServiceAccount, 'base64').toString('utf-8');
+        serviceAccount = JSON.parse(decoded);
+      }
+
+      if (typeof serviceAccount.private_key === 'string') {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+      }
+
+      initializeApp({
+        credential: cert(serviceAccount),
+        projectId: FIREBASE_PROJECT_ID,
+      });
+    } else {
+      initializeApp({
+        projectId: FIREBASE_PROJECT_ID,
+      });
+    }
+  }
+
+  return getApp();
+}
+
+async function verifyRequestUser(req: any) {
+  const authHeader = req.headers?.authorization || '';
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    throw new Error('AUTH_TOKEN_MISSING');
+  }
+
+  const idToken = match[1];
+  return getAuth(getFirebaseAdminApp()).verifyIdToken(idToken);
+}
+
 
 // Helper to generate unified HTML email templates
 function generateConnectBoatTemplate(title: string, bodyContent: string, ctaLink?: string, ctaText?: string): string {
@@ -430,7 +480,7 @@ export default async function handler(req: any, res: any) {
   // CORS setup
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -438,6 +488,26 @@ export default async function handler(req: any, res: any) {
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  // Security: this public endpoint may only be called by an authenticated
+  // ConnectBoat user. Server-to-server flows (for example Stripe webhooks)
+  // use sendEmailDirect() and are not affected by this check.
+  try {
+    await verifyRequestUser(req);
+  } catch (authError: any) {
+    if (authError?.message === 'AUTH_TOKEN_MISSING') {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required.',
+      });
+    }
+
+    console.warn('[API Email AUTH] Invalid Firebase ID token:', authError?.message || authError);
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid or expired authentication token.',
+    });
   }
 
   if (!EMAIL_FLAG_ACTIVE) {
