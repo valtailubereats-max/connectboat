@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, orderBy, limit, updateDoc, doc, getDocs, getDoc, setDoc, where } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, parseFirestoreDate } from '../firebase';
 import { UserProfile, UK_REGIONS, getRegionForCity } from '../types';
@@ -28,6 +28,7 @@ import {
 import { format, formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
 import { manualAddCredits, manualAddPoints } from '../utils/rewards';
+import { useSearchParams } from 'react-router-dom';
 
 const ALL_COLUMNS = [
   { id: 'nome', label: 'Nome', mandatory: true },
@@ -44,10 +45,14 @@ const ALL_COLUMNS = [
 ];
 
 const AdminUsers = () => {
+  const [searchParams] = useSearchParams();
+  const sellerFromListing = searchParams.get('seller') || '';
+  const sellerQueryHandledRef = useRef<string | null>(null);
+
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(sellerFromListing);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [limitAmount, setLimitAmount] = useState(100);
   const [hasMore, setHasMore] = useState(false);
@@ -265,6 +270,26 @@ const AdminUsers = () => {
   useEffect(() => {
     fetchUsers(limitAmount);
   }, [limitAmount]);
+
+  // When coming from Admin > Manage Listings, focus the exact seller account
+  // and open the existing user edit/profile modal automatically once.
+  useEffect(() => {
+    if (!sellerFromListing || users.length === 0) return;
+
+    setSearchTerm(sellerFromListing);
+
+    if (sellerQueryHandledRef.current === sellerFromListing) return;
+
+    const targetUser = users.find((u) =>
+      (u.uid || '').trim() === sellerFromListing.trim() ||
+      (u.id || '').trim() === sellerFromListing.trim()
+    );
+
+    if (targetUser) {
+      sellerQueryHandledRef.current = sellerFromListing;
+      handleOpenEditModal(targetUser);
+    }
+  }, [sellerFromListing, users]);
 
   // Fetch real ad counts for each user in memory
   useEffect(() => {
