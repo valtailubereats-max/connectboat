@@ -16,23 +16,28 @@ export default async function handler(req: any, res: any) {
 
   try {
     const { image, categories } = req.body;
+
     if (!image) {
       return res.status(400).json({ error: "Falta a imagem do print." });
     }
 
-    // Usar process.env.GEMINI_API_KEY no servidor
-    const apiKey = process.env.GEMINI_API_KEY || "AIzaSyBewRCSZ-nNqXiaVCRzgpfI1ieWf5QEyq4";
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY não está configurada no servidor.");
+    }
+
     const ai = new GoogleGenAI({
-      apiKey: apiKey,
+      apiKey,
       httpOptions: {
         headers: {
-          'User-Agent': 'aistudio-build',
-        }
-      }
+          "User-Agent": "aistudio-build",
+        },
+      },
     });
 
     const base64Data = image.includes(",") ? image.split(",")[1] : image;
-    
+
     const prompt = `Você é um motor profissional de extração de dados náuticos de altíssima precisão.
 Sua função é analisar o print de anúncio fornecido (título, tabelas, especificações e texto) e extrair informações exatas da embarcação em JSON estrito.
 
@@ -48,7 +53,7 @@ Campos a extrair:
 - price: Preço (apenas número)
 - description: Descrição detalhada do anúncio
 - city: Cidade ou localidade legível
-- category: Escolha a mais próxima de: ${categories ? categories.join(', ') : 'Carros, motos e barcos'}
+- category: Escolha a mais próxima de: ${categories ? categories.join(", ") : "Carros, motos e barcos"}
 - boatType: Tipo de barco ("Sailboat", "Motorboat", "RIB", "Jet Ski", "Fishing Boat", "Catamaran", "Canal Boat", "Narrowboat", "Yacht", "Houseboat", "Commercial Boat", "Other" ou "")
 - manufacturer: Marca/Fabricante/Construtor do barco (ex: "Atlanta Marine Ltd", "Beneteau", "Jeanneau", "Bavaria", "Princess", "Quicksilver")
 - model: Modelo exato (ex: "Catch 22", "Antares 8", "Cap Camarat 6.5")
@@ -100,42 +105,54 @@ Estrutura JSON esperada:
     const imagePart = {
       inlineData: {
         mimeType: "image/jpeg",
-        data: base64Data
-      }
+        data: base64Data,
+      },
     };
 
     const textPart = {
-      text: prompt
+      text: prompt,
     };
 
     let response;
+
     try {
       response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: { parts: [imagePart, textPart] },
         config: {
-          responseMimeType: "application/json"
-        }
+          responseMimeType: "application/json",
+        },
       });
-} catch (err: any) {
-  console.warn("Gemini falhou:", err.message);
-  throw err;
-}
+    } catch (err: any) {
+      console.warn("Gemini falhou:", err.message);
+      throw err;
+    }
 
     const text = response.text;
+
     if (!text) {
       throw new Error("A IA retornou uma resposta sem texto.");
     }
 
-    const cleanJson = text.replace(/```json/gi, '').replace(/```/gi, '').trim();
+    const cleanJson = text
+      .replace(/```json/gi, "")
+      .replace(/```/gi, "")
+      .trim();
+
     const extractedData = JSON.parse(cleanJson);
 
-    return res.status(200).json({ success: true, data: extractedData });
+    return res.status(200).json({
+      success: true,
+      data: extractedData,
+    });
   } catch (err: any) {
     console.error("Erro na análise do Gemini na Vercel Function:", err);
-    return res.status(200).json({ 
-      success: false, 
-      error: `Falha na IA no servidor: ${err.message || 'Verifique a chave de API'}` 
+
+    return res.status(200).json({
+      success: false,
+      error: `Falha na IA no servidor: ${
+        err.message || "Verifique a chave de API"
+      }`,
     });
   }
 }
