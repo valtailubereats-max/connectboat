@@ -15,7 +15,9 @@ export const ConnectBoatLogo: React.FC<ConnectBoatLogoProps> = ({
   textClassName = "text-xl font-black text-white tracking-tight",
   boatClassName = "text-current"
 }) => {
-  const style = size ? { width: `${size}px`, height: `${(size * 0.6)}px` } : undefined;
+  const style = size
+    ? { width: `${size}px`, height: `${size * 0.6}px` }
+    : undefined;
 
   return (
     <div className="inline-flex items-center gap-2.5 select-none">
@@ -25,22 +27,18 @@ export const ConnectBoatLogo: React.FC<ConnectBoatLogoProps> = ({
         className={className}
         style={style}
         aria-label="ConnectBoat Logo"
+        role="img"
       >
         <g id="connectboat-official-uk-symbol">
 
-          {/* 1. Left White Sail */}
+          {/* Left sail */}
           <path
             fill="currentColor"
             className={boatClassName}
-            d="
-              M 286 42
-              C 238 82, 196 139, 158 220
-              C 199 205, 239 199, 280 201
-              Z
-            "
+            d="M286 42 C238 82 196 139 158 220 C199 205 239 199 280 201 Z"
           />
 
-          {/* 2. Mast */}
+          {/* Mast */}
           <rect
             x="289"
             y="31"
@@ -51,164 +49,90 @@ export const ConnectBoatLogo: React.FC<ConnectBoatLogoProps> = ({
             className={boatClassName}
           />
 
-          {/* 3. Right Sail - Union Jack Blue Base */}
+          {/* Union Jack sail base */}
           <path
-            d="
-              M 307 58
-              C 354 88, 397 139, 432 216
-              C 392 204, 354 199, 313 201
-              Z
-            "
+            d="M307 58 C354 88 397 139 432 216 C392 204 354 199 313 201 Z"
             fill="#173A78"
           />
 
-          {/* 4. Union Jack White Diagonals */}
+          {/* Union Jack diagonals */}
           <path
-            d="
-              M 311 66
-              L 324 78
-              L 421 202
-              L 406 198
-              L 315 88
-              Z
-            "
+            d="M311 66 L324 78 L421 202 L406 198 L315 88 Z"
             fill="#FFFFFF"
           />
-
           <path
-            d="
-              M 426 205
-              L 411 210
-              L 316 105
-              L 314 84
-              Z
-            "
+            d="M426 205 L411 210 L316 105 L314 84 Z"
             fill="#FFFFFF"
           />
-
-          {/* 5. Union Jack Red Diagonals */}
           <path
-            d="
-              M 313 69
-              L 322 77
-              L 415 199
-              L 406 197
-              L 318 91
-              Z
-            "
+            d="M313 69 L322 77 L415 199 L406 197 L318 91 Z"
+            fill="#E31E24"
+          />
+          <path
+            d="M424 204 L416 207 L320 102 L317 90 Z"
             fill="#E31E24"
           />
 
+          {/* Union Jack cross */}
           <path
-            d="
-              M 424 204
-              L 416 207
-              L 320 102
-              L 317 90
-              Z
-            "
-            fill="#E31E24"
-          />
-
-          {/* 6. Union Jack White Cross */}
-          <path
-            d="
-              M 310 128
-              L 352 136
-              L 420 160
-              L 428 178
-              L 351 151
-              L 311 144
-              Z
-            "
+            d="M310 128 L352 136 L420 160 L428 178 L351 151 L311 144 Z"
             fill="#FFFFFF"
           />
-
           <path
-            d="
-              M 362 94
-              L 378 108
-              L 371 203
-              L 353 201
-              Z
-            "
+            d="M362 94 L378 108 L371 203 L353 201 Z"
             fill="#FFFFFF"
           />
-
-          {/* 7. Union Jack Red Cross */}
           <path
-            d="
-              M 311 134
-              L 351 141
-              L 424 167
-              L 428 178
-              L 351 151
-              L 311 144
-              Z
-            "
+            d="M311 134 L351 141 L424 167 L428 178 L351 151 L311 144 Z"
+            fill="#E31E24"
+          />
+          <path
+            d="M367 99 L376 108 L369 203 L358 202 Z"
             fill="#E31E24"
           />
 
-          <path
-            d="
-              M 367 99
-              L 376 108
-              L 369 203
-              L 358 202
-              Z
-            "
-            fill="#E31E24"
-          />
-
-          {/* 8. Yacht Cabin */}
+          {/* Cabin */}
           <path
             fill="currentColor"
             className={boatClassName}
-            d="
-              M 155 248
-              C 178 224, 203 214, 235 214
-              L 303 214
-              C 322 215, 339 223, 352 237
-              L 326 248
-              L 199 248
-              Z
-            "
+            d="M155 248 C178 224 203 214 235 214 L303 214 C322 215 339 223 352 237 L326 248 L199 248 Z"
           />
 
-          {/* 9. Cabin Window */}
+          {/* Cabin window */}
           <path
-            d="
-              M 197 240
-              C 210 228, 226 224, 244 224
-              L 299 224
-              C 310 224, 321 229, 329 237
-              L 313 243
-              L 190 243
-              Z
-            "
+            d="M197 240 C210 228 226 224 244 224 L299 224 C310 224 321 229 329 237 L313 243 L190 243 Z"
             fill="#102B59"
           />
 
-          {/* 10. Main Yacht Hull */}
+          {/* Hull */}
           <path
             fill="currentColor"
             className={boatClassName}
-            d="
-              M 120 248
-              C 180 242, 246 240, 311 243
-              C 378 245, 438 240, 493 226
-              C 505 223, 516 225, 522 231
-              C 486 268, 445 292, 400 307
-              C 331 299, 259 298, 190 306
-              C 155 310, 126 307, 107 298
-              C 95 292, 94 282, 100 270
-              C 105 260, 112 252, 120 248
-              Z
-            "
+            d="M120 248 C180 242 246 240 311 243 C378 245 438 240 493 226 C505 223 516 225 522 231 C486 268 445 292 400 307 C331 299 259 298 190 306 C155 310 126 307 107 298 C95 292 94 282 100 270 C105 260 112 252 120 248 Z"
           />
 
-          {/* 11. Hull Accent */}
+          {/* Hull accent */}
           <path
-            d="
-              M 106 295
-              C 188 276, 270 264, 355
+            d="M106 295 C188 276 270 264 355 257 C405 253 454 245 504 231 C461 253 414 270 355 281 C270 292 185 298 106 295 Z"
+            fill="#102B59"
+          />
+
+          {/* Wave */}
+          <path
+            d="M92 318 C163 330 221 319 276 314 C336 309 390 325 450 321 C483 320 510 313 532 304 C497 329 457 339 413 335 C356 330 308 321 257 327 C197 334 139 337 92 318 Z"
+            fill="#38A8F0"
+          />
+
+        </g>
+      </svg>
+
+      {showText && (
+        <span className={textClassName}>
+          ConnectBoat
+        </span>
+      )}
+    </div>
+  );
+};
+
+export default ConnectBoatLogo;
