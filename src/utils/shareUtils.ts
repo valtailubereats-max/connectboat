@@ -21,10 +21,12 @@ export function generateShareText(options: ShareOptions): { text: string; url: s
 
   switch (options.type) {
     case 'home':
-      title = 'ConnectBoat';
-      formattedText = `⛵ Discover ConnectBoat\n\nThe UK's premier boat and marine marketplace to buy, sell, hire, and browse nautical services.`;
-      shareUrl = officialHomeUrl;
-      break;
+  title = 'ConnectBoat';
+  formattedText = `⛵ Discover ConnectBoat
+
+The UK's boat and marine marketplace to buy, sell, hire, and browse nautical services.`;
+  shareUrl = officialHomeUrl;
+  break;
 
     case 'anuncio':
       const priceText = (options.price !== undefined && options.price !== null)
