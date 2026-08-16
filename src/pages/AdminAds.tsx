@@ -458,7 +458,7 @@ const AdminAds = () => {
               console.warn('[AdminAds] Failed to create approval notification:', notifErr);
             }
 
-            // Send approval email (async)
+            // Normal flow: resolve the seller account e-mail from sellerId.
             getSellerEmail(adToUpdate.sellerId.trim()).then((email) => {
               if (email) {
                 sendEmailGeneric('anuncio_aprovado', email, {
@@ -469,7 +469,31 @@ const AdminAds = () => {
               }
             }).catch(err => console.warn('[AdminAds] Failed to get seller email:', err));
           } else {
-            console.log('[AdminAds] Skipping approval email & notification for self-owned ad');
+            const isAdminAssisted = (adToUpdate as any).paymentFlow === 'admin_assisted';
+            const adminEmail = String(user?.email || (profile as any)?.email || '').trim().toLowerCase();
+            const customerEmailCandidates = [
+              (adToUpdate as any).contactEmail,
+              (adToUpdate as any).sellerEmail,
+              (adToUpdate as any).userEmail,
+            ]
+              .map(value => String(value || '').trim())
+              .filter(value => value.includes('@'));
+
+            const assistedCustomerEmail = customerEmailCandidates.find(
+              email => email.toLowerCase() !== adminEmail
+            );
+
+            if (isAdminAssisted && assistedCustomerEmail) {
+              sendEmailGeneric('anuncio_aprovado', assistedCustomerEmail, {
+                sellerName: adToUpdate.sellerName || 'Advertiser',
+                adTitle: adToUpdate.title,
+                adId: adId
+              })
+                .then(() => console.log(`[AdminAds] Assisted approval email sent to customer ${assistedCustomerEmail}`))
+                .catch(err => console.warn('[AdminAds] Failed to send assisted customer approval email:', err));
+            } else {
+              console.log('[AdminAds] Skipping approval email & notification for self-owned ad without a different customer email');
+            }
           }
 
         } else if (status === 'rejected') {
