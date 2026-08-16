@@ -13,6 +13,13 @@ const PROJECT_ID = 'navlink-489413';
 const DATABASE_ID =
   'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
 
+const ADMIN_EMAILS = new Set([
+  'valtailubereats@gmail.com',
+  'valtail@gmail.com',
+  'generalsales2021@gmail.com',
+  'contato@connectboat.co.uk',
+]);
+
 let stripeClient: Stripe | null = null;
 
 function getStripe(): Stripe | null {
@@ -118,6 +125,34 @@ async function sendPaymentEmail(
       );
     }
   }
+}
+
+function normalizeEmail(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  return value.trim().toLowerCase();
+}
+
+function getAssistedCustomerEmail(adData: any): string {
+  const candidates = [
+    adData?.contactEmail,
+    adData?.sellerEmail,
+    adData?.userEmail,
+    adData?.email,
+  ];
+
+  for (const candidate of candidates) {
+    const email = normalizeEmail(candidate);
+
+    if (
+      email &&
+      email.includes('@') &&
+      !ADMIN_EMAILS.has(email)
+    ) {
+      return email;
+    }
+  }
+
+  return '';
 }
 
 let dbInstance: admin.firestore.Firestore | null = null;
@@ -973,6 +1008,145 @@ export default async function stripeWebhookHandler(
                   adminEmailErr
                 );
               }
+            }
+
+            const assistedCustomerEmail =
+              getAssistedCustomerEmail(adData);
+
+            if (
+              assistedCustomerEmail &&
+              !adData.assistedPaymentCustomerEmailSent
+            ) {
+              try {
+                const resendApiKey =
+                  process.env.RESEND_API_KEY;
+
+                const emailFrom =
+                  process.env.EMAIL_FROM ||
+                  'ConnectBoat <no-reply@connectboat.co.uk>';
+
+                const emailReplyTo =
+                  process.env.EMAIL_REPLY_TO ||
+                  'contato@connectboat.co.uk';
+
+                const amountPaid =
+                  session.amount_total != null
+                    ? `£${(
+                        session.amount_total /
+                        100
+                      ).toFixed(2)}`
+                    : 'Paid';
+
+                const planLabel =
+                  activePlan === 'premium'
+                    ? 'Premium Featured'
+                    : activePlan === 'featured'
+                    ? 'Featured Listing'
+                    : 'Standard Listing';
+
+                if (resendApiKey) {
+                  const response =
+                    await fetch(
+                      'https://api.resend.com/emails',
+                      {
+                        method: 'POST',
+
+                        headers: {
+                          'Content-Type':
+                            'application/json',
+                          Authorization:
+                            `Bearer ${resendApiKey}`,
+                        },
+
+                        body: JSON.stringify({
+                          from: emailFrom,
+                          to: [assistedCustomerEmail],
+                          reply_to: emailReplyTo,
+
+                          subject:
+                            `Payment received — ${adData.title || 'your ConnectBoat listing'}`,
+
+                          html: `
+                            <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#334155;">
+                              <div style="background:#0f172a;padding:24px;text-align:center;border-radius:12px 12px 0 0;">
+                                <h2 style="margin:0;color:#ffffff;">⛵ ConnectBoat</h2>
+                              </div>
+
+                              <div style="border:1px solid #e2e8f0;border-top:0;padding:28px;border-radius:0 0 12px 12px;">
+                                <p>
+                                  Hello ${adData.sellerName || 'Advertiser'},
+                                </p>
+
+                                <p>
+                                  We have received the payment for your listing:
+                                </p>
+
+                                <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:16px;margin:18px 0;">
+                                  <p><strong>Listing:</strong> ${adData.title || 'Untitled listing'}</p>
+                                  <p><strong>Plan:</strong> ${planLabel}</p>
+                                  <p><strong>Amount paid:</strong> ${amountPaid}</p>
+                                  <p><strong>Status:</strong> Paid / Awaiting Admin Approval</p>
+                                </div>
+
+                                <p>
+                                  Your payment was completed successfully.
+                                  The listing is now awaiting final review and activation by the ConnectBoat administrator.
+                                </p>
+
+                                <p>
+                                  You will receive another email when the listing is approved and published.
+                                </p>
+
+                                <p style="font-size:12px;color:#64748b;margin-top:28px;">
+                                  Questions? Contact us at
+                                  <a href="mailto:contato@connectboat.co.uk">contato@connectboat.co.uk</a>.
+                                </p>
+                              </div>
+                            </div>
+                          `,
+                        }),
+                      }
+                    );
+
+                  if (!response.ok) {
+                    const responseText =
+                      await response.text();
+
+                    throw new Error(
+                      `Resend error ${response.status}: ${responseText}`
+                    );
+                  }
+
+                  await db
+                    .collection('ads')
+                    .doc(adId)
+                    .update({
+                      assistedPaymentCustomerEmailSent:
+                        true,
+
+                      assistedPaymentCustomerEmail:
+                        assistedCustomerEmail,
+
+                      assistedPaymentCustomerEmailSentAt:
+                        firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+                    });
+
+                  console.log(
+                    `[Stripe Webhook] Assisted payment customer notification sent to ${assistedCustomerEmail}`
+                  );
+                }
+              } catch (
+                customerEmailErr
+              ) {
+                console.error(
+                  '[Stripe Webhook] Failed to send assisted payment customer notification:',
+                  customerEmailErr
+                );
+              }
+            } else if (!assistedCustomerEmail) {
+              console.log(
+                `[Stripe Webhook] Assisted payment for ad ${adId}: no customer email different from admin email was found.`
+              );
             }
           } else {
             console.log(
