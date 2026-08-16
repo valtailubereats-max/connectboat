@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { collection, query, orderBy, limit, updateDoc, doc, serverTimestamp, setDoc, deleteDoc, getDoc, getDocs, where } from 'firebase/firestore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db, handleFirestoreError, OperationType, getDocsWithCacheFallback } from '../firebase';
@@ -33,7 +34,9 @@ import {
   Mail,
   Phone,
   UserRound,
-  ExternalLink
+  ExternalLink,
+  Copy,
+  MessageCircle
 } from 'lucide-react';
 import { format, formatDistanceToNow, addDays } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -159,6 +162,83 @@ const AdminAds = () => {
   const [savedPositionSuccess, setSavedPositionSuccess] = useState(false);
   const [claimActionLoading, setClaimActionLoading] = useState(false);
   const [resendingEmailId, setResendingEmailId] = useState<string | null>(null);
+  const [assistedPaymentAd, setAssistedPaymentAd] = useState<Ad | null>(null);
+  const [assistedPaymentPlan, setAssistedPaymentPlan] = useState<'standard' | 'featured' | 'premium'>('standard');
+  const [assistedPaymentLoading, setAssistedPaymentLoading] = useState(false);
+  const [assistedPaymentUrl, setAssistedPaymentUrl] = useState('');
+  const [assistedPaymentError, setAssistedPaymentError] = useState<string | null>(null);
+
+  const openAssistedPayment = (ad: Ad) => {
+    setAssistedPaymentAd(ad);
+    setAssistedPaymentPlan('standard');
+    setAssistedPaymentUrl('');
+    setAssistedPaymentError(null);
+  };
+
+  const closeAssistedPayment = () => {
+    setAssistedPaymentAd(null);
+    setAssistedPaymentUrl('');
+    setAssistedPaymentError(null);
+    setAssistedPaymentLoading(false);
+  };
+
+  const handleGenerateAssistedPayment = async () => {
+    if (!assistedPaymentAd || !user) return;
+
+    setAssistedPaymentLoading(true);
+    setAssistedPaymentError(null);
+    setAssistedPaymentUrl('');
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/create-assisted-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          adId: assistedPaymentAd.id,
+          plan: assistedPaymentPlan,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.errorMessage || data?.error || 'Could not create the assisted payment link.');
+      }
+
+      setAssistedPaymentUrl(data.url);
+    } catch (err: any) {
+      console.error('[AdminAds] Assisted payment error:', err);
+      setAssistedPaymentError(err?.message || 'Could not create the assisted payment link.');
+    } finally {
+      setAssistedPaymentLoading(false);
+    }
+  };
+
+  const copyAssistedPaymentLink = async () => {
+    if (!assistedPaymentUrl) return;
+    try {
+      await navigator.clipboard.writeText(assistedPaymentUrl);
+      alert('Payment link copied!');
+    } catch (err) {
+      console.error('[AdminAds] Failed to copy payment link:', err);
+      alert('Could not copy the payment link.');
+    }
+  };
+
+  const shareAssistedPaymentWhatsApp = () => {
+    if (!assistedPaymentUrl || !assistedPaymentAd) return;
+    const planLabels = {
+      standard: 'Standard Listing (£2.99)',
+      featured: 'Featured Listing (£4.99)',
+      premium: 'Premium Featured (£9.99)',
+    };
+    const message = `ConnectBoat payment for "${assistedPaymentAd.title}" - ${planLabels[assistedPaymentPlan]}: ${assistedPaymentUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  };
 
   const formatSellerDate = (value: any): string => {
     if (!value) return 'Not available';
@@ -319,10 +399,35 @@ const AdminAds = () => {
     try {
       const adToUpdate = ads.find(a => a.id === adId) || (selectedAd?.id === adId ? selectedAd : null);
 
-      await updateDoc(doc(db, 'ads', adId), { 
+      const updatePayload: Record<string, any> = {
         status,
         updatedAt: serverTimestamp()
-      });
+      };
+
+      const isPaidAssistedAwaitingActivation = Boolean(
+        status === 'approved' &&
+        adToUpdate &&
+        isPaidAd(adToUpdate) &&
+        (adToUpdate as any).paymentFlow === 'admin_assisted' &&
+        (adToUpdate as any).awaitingAdminActivation === true
+      );
+
+      if (isPaidAssistedAwaitingActivation && adToUpdate) {
+        const plan = (adToUpdate.plan || 'standard').toLowerCase();
+        const isFeatured = plan === 'featured' || plan === 'premium';
+        const featuredLevel = plan === 'premium' ? 'premium' : plan === 'featured' ? 'featured' : 'standard';
+        const expiresAt = addDays(new Date(), 30);
+
+        updatePayload.awaitingAdminActivation = false;
+        updatePayload.activatedAt = serverTimestamp();
+        updatePayload.expirationDate = expiresAt;
+        updatePayload.featuredUntil = expiresAt;
+        updatePayload.featuredActivatedAt = serverTimestamp();
+        updatePayload.isFeatured = isFeatured;
+        updatePayload.featuredLevel = featuredLevel;
+      }
+
+      await updateDoc(doc(db, 'ads', adId), updatePayload);
       clearHomeCache();
 
       if (adToUpdate && adToUpdate.sellerId) {
@@ -401,8 +506,28 @@ const AdminAds = () => {
         }
       }
 
-      setAds(prevAds => prevAds.map(ad => ad.id === adId ? { ...ad, status } as Ad : ad));
-      setSelectedAd(prev => prev && prev.id === adId ? { ...prev, status: status as any } : prev);
+      setAds(prevAds => prevAds.map(ad => ad.id === adId ? {
+        ...ad,
+        status,
+        ...(isPaidAssistedAwaitingActivation ? {
+          awaitingAdminActivation: false,
+          activatedAt: new Date(),
+          expirationDate: addDays(new Date(), 30),
+          featuredUntil: addDays(new Date(), 30),
+          isFeatured: (ad.plan || '').toLowerCase() === 'featured' || (ad.plan || '').toLowerCase() === 'premium',
+          featuredLevel: (ad.plan || '').toLowerCase() === 'premium' ? 'premium' : (ad.plan || '').toLowerCase() === 'featured' ? 'featured' : 'standard'
+        } : {})
+      } as Ad : ad));
+      setSelectedAd(prev => prev && prev.id === adId ? {
+        ...prev,
+        status: status as any,
+        ...(isPaidAssistedAwaitingActivation ? {
+          awaitingAdminActivation: false,
+          activatedAt: new Date(),
+          expirationDate: addDays(new Date(), 30),
+          featuredUntil: addDays(new Date(), 30)
+        } : {})
+      } as Ad : prev);
       return true;
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
@@ -1113,6 +1238,12 @@ const AdminAds = () => {
                       );
                     })()}
 
+                    {(ad as any).paymentFlow === 'admin_assisted' && (ad as any).awaitingAdminActivation === true && isPaidAd(ad) && (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-cyan-50 text-cyan-700 border border-cyan-200">
+                        Paid / Awaiting Admin Activation
+                      </span>
+                    )}
+
                     <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider border ${getAdPlanLabel(ad).color}`}>
                       Plan: {getAdPlanLabel(ad).label}
                     </span>
@@ -1260,6 +1391,17 @@ const AdminAds = () => {
                     </button>
                   )}
                 </div>
+
+                {!isPaidAd(ad) && ad.status === 'pending' && (
+                  <button
+                    onClick={() => openAssistedPayment(ad)}
+                    className="h-9 px-3.5 flex items-center gap-1.5 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-xl transition-all font-bold text-[11px]"
+                    title="Generate assisted Stripe payment link and QR code"
+                  >
+                    <CreditCard size={14} />
+                    <span>Payment QR</span>
+                  </button>
+                )}
 
                 {/* Moderation / State Controls */}
                 <div className="flex gap-1.5 items-center ml-auto">
@@ -1655,6 +1797,17 @@ const AdminAds = () => {
                               >
                                 <ShieldCheck size={12} />
                                 <span>Make Claimable</span>
+                              </button>
+                            )}
+
+                            {!isPaidAd(ad) && ad.status === 'pending' && (
+                              <button
+                                onClick={() => openAssistedPayment(ad)}
+                                className="p-1 px-2 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-lg transition-all text-[10px] font-bold flex items-center gap-1"
+                                title="Generate Payment QR"
+                              >
+                                <CreditCard size={12} />
+                                <span>Payment QR</span>
                               </button>
                             )}
 
@@ -2123,6 +2276,11 @@ const AdminAds = () => {
                         </span>
                       );
                     })()}
+                    {(selectedAd as any).paymentFlow === 'admin_assisted' && (selectedAd as any).awaitingAdminActivation === true && isPaidAd(selectedAd) && (
+                      <span className="px-2 py-0.5 bg-cyan-50 text-cyan-700 text-[10px] font-black uppercase rounded-md border border-cyan-200">
+                        Awaiting Admin Activation
+                      </span>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
                     <div>
@@ -2317,6 +2475,16 @@ const AdminAds = () => {
                     <Edit size={16} />
                     <span>Edit</span>
                   </button>
+                  {!isPaidAd(selectedAd) && selectedAd.status === 'pending' && (
+                    <button
+                      onClick={() => openAssistedPayment(selectedAd)}
+                      className="h-10 px-4 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border border-cyan-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2"
+                      title="Generate assisted Stripe payment link and QR code"
+                    >
+                      <CreditCard size={16} />
+                      <span>Payment QR</span>
+                    </button>
+                  )}
                   {selectedAd.status === 'pending' && (
                     <>
                       <button
@@ -2408,6 +2576,123 @@ const AdminAds = () => {
                 </div>
               </div>
             </motion.div>
+          </div>
+        )}
+        {assistedPaymentAd && (
+          <div className="fixed inset-0 z-[100] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+              <div className="p-5 border-b border-slate-100 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Generate Payment QR</h3>
+                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">{assistedPaymentAd.title}</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-1">{assistedPaymentAd.id}</p>
+                </div>
+                <button
+                  onClick={closeAssistedPayment}
+                  className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center"
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {!assistedPaymentUrl ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">Choose plan</label>
+                      <div className="grid grid-cols-1 gap-2">
+                        {([
+                          ['standard', 'Standard Listing', '£2.99'],
+                          ['featured', 'Featured Listing', '£4.99'],
+                          ['premium', 'Premium Featured', '£9.99'],
+                        ] as const).map(([value, label, price]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setAssistedPaymentPlan(value)}
+                            className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
+                              assistedPaymentPlan === value
+                                ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
+                                : 'border-slate-200 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className="font-bold text-sm text-slate-800">{label}</span>
+                            <span className="font-black text-sm text-slate-900">{price}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {assistedPaymentError && (
+                      <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                        {assistedPaymentError}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleGenerateAssistedPayment}
+                      disabled={assistedPaymentLoading}
+                      className="w-full h-11 rounded-xl bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2"
+                    >
+                      {assistedPaymentLoading ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <CreditCard size={17} />
+                      )}
+                      <span>{assistedPaymentLoading ? 'Generating...' : 'Generate Stripe Payment'}</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-center py-2">
+                      <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                        <QRCodeSVG value={assistedPaymentUrl} size={210} level="M" includeMargin />
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl break-all text-[11px] text-slate-600 font-mono select-all">
+                      {assistedPaymentUrl}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        onClick={copyAssistedPaymentLink}
+                        className="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-2"
+                      >
+                        <Copy size={15} />
+                        Copy Payment Link
+                      </button>
+                      <button
+                        onClick={() => window.open(assistedPaymentUrl, '_blank', 'noopener,noreferrer')}
+                        className="h-10 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center gap-2"
+                      >
+                        <ExternalLink size={15} />
+                        Open Checkout
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={shareAssistedPaymentWhatsApp}
+                      className="w-full h-11 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle size={17} />
+                      Share via WhatsApp
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setAssistedPaymentUrl('');
+                        setAssistedPaymentError(null);
+                      }}
+                      className="w-full h-9 rounded-xl text-slate-500 hover:bg-slate-50 font-bold text-xs"
+                    >
+                      Generate another link
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </AnimatePresence>
