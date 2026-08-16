@@ -1317,7 +1317,11 @@ const CreateAd = () => {
           : false,
         createdAt: id && originalAd ? originalAd.createdAt : serverTimestamp(),
         updatedAt: serverTimestamp(),
-        contactEmail: (formData.category === 'Imigração' || isJob) ? (formData.contactEmail || '') : (originalAd?.contactEmail || ''),
+        contactEmail: isStaff
+          ? (formData.contactEmail || '').trim()
+          : ((formData.category === 'Imigração' || isJob)
+              ? (formData.contactEmail || '')
+              : (originalAd?.contactEmail || '')),
         externalUrl: (formData.category === 'Imigração' || isJob) ? (formData.externalUrl || '') : (originalAd?.externalUrl || ''),
         sourceUrl: validSourceUrl || (originalAd?.sourceUrl || null),
         imagePositionX: imagePositionX,
@@ -2493,6 +2497,26 @@ const CreateAd = () => {
                   />
                 </div>
               </div>
+
+              {/* Admin/Moderator-only assisted customer email */}
+              {(isAdmin || isModerator) && (
+                <div className="space-y-2 p-5 bg-cyan-50/60 border-2 border-cyan-100 rounded-2xl">
+                  <label className="text-sm font-bold text-slate-800 uppercase tracking-wider">
+                    Customer Email <span className="text-slate-400 normal-case">(Admin / Moderator only · optional)</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.contactEmail}
+                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                    className="w-full px-4 py-3 bg-white border border-cyan-200 rounded-xl focus:border-cyan-600 focus:outline-none text-sm"
+                    placeholder="customer@example.com"
+                    autoComplete="off"
+                  />
+                  <p className="text-xs text-slate-500">
+                    Leave blank when this is your own listing. When creating a listing for a customer, enter their email here so they can receive assisted-payment and approval notifications.
+                  </p>
+                </div>
+              )}
 
               {/* 8. Contact Phone */}
               <div className="space-y-3 p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl">
