@@ -23,10 +23,19 @@ function getStripe(): Stripe | null {
   return stripeClient;
 }
 
-async function sendPaymentEmail(toEmail: string, userName: string, planName: string, amountFormatted?: string) {
+async function sendPaymentEmail(
+  toEmail: string,
+  userName: string,
+  planName: string,
+  amountFormatted?: string
+) {
   const resendApiKey = process.env.RESEND_API_KEY;
-  const emailFrom = process.env.EMAIL_FROM || 'ConnectBoat <no-reply@connectboat.co.uk>';
-  const emailReplyTo = process.env.EMAIL_REPLY_TO || 'contato@connectboat.co.uk';
+  const emailFrom =
+    process.env.EMAIL_FROM ||
+    'ConnectBoat <no-reply@connectboat.co.uk>';
+  const emailReplyTo =
+    process.env.EMAIL_REPLY_TO ||
+    'contato@connectboat.co.uk';
 
   if (!toEmail || !toEmail.includes('@')) return;
 
@@ -36,7 +45,7 @@ async function sendPaymentEmail(toEmail: string, userName: string, planName: str
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${resendApiKey}`
+          Authorization: `Bearer ${resendApiKey}`,
         },
         body: JSON.stringify({
           from: emailFrom,
@@ -50,20 +59,32 @@ async function sendPaymentEmail(toEmail: string, userName: string, planName: str
                 <p style="margin: 4px 0 0 0; color: #38bdf8; font-size: 12px; font-weight: 600; text-transform: uppercase;">UK Boat & Marine Marketplace</p>
               </div>
               <div style="padding: 30px; color: #334155;">
-                <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${userName || 'Valued Member'},</p>
+                <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${
+                  userName || 'Valued Member'
+                },</p>
                 <p>We have received your payment for <strong>${planName}</strong>.</p>
-                ${amountFormatted ? `<p style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; color: #166534; font-weight: bold;">Amount Paid: ${amountFormatted}</p>` : ''}
+                ${
+                  amountFormatted
+                    ? `<p style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 6px; color: #166534; font-weight: bold;">Amount Paid: ${amountFormatted}</p>`
+                    : ''
+                }
                 <p>Your subscription features are now fully active on ConnectBoat.</p>
                 <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 25px 0;">
                 <p style="font-size: 12px; color: #64748b; margin: 0;">If you have any questions, please write to us at <a href="mailto:contato@connectboat.co.uk" style="color: #0284c7;">contato@connectboat.co.uk</a>.</p>
               </div>
             </div>
-          `
-        })
+          `,
+        }),
       });
-      console.log(`[Stripe Webhook Email] Sent payment confirmation email to ${toEmail}`);
+
+      console.log(
+        `[Stripe Webhook Email] Sent payment confirmation email to ${toEmail}`
+      );
     } catch (err) {
-      console.warn(`[Stripe Webhook Email Error] Failed to send receipt:`, err);
+      console.warn(
+        `[Stripe Webhook Email Error] Failed to send receipt:`,
+        err
+      );
     }
   }
 }
@@ -75,54 +96,91 @@ function getAdminDb(): admin.firestore.Firestore {
 
   if (!dbInstance) {
     const apps = firebaseAdmin.apps || [];
+
     if (!apps.length) {
-      const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+      const serviceAccountJson =
+        process.env.FIREBASE_SERVICE_ACCOUNT;
+
       if (serviceAccountJson) {
         try {
           let serviceAccount;
+
           try {
             serviceAccount = JSON.parse(serviceAccountJson);
           } catch (e) {
-            const decoded = Buffer.from(serviceAccountJson, 'base64').toString('utf-8');
+            const decoded = Buffer.from(
+              serviceAccountJson,
+              'base64'
+            ).toString('utf-8');
+
             serviceAccount = JSON.parse(decoded);
           }
+
           firebaseAdmin.initializeApp({
-            credential: firebaseAdmin.credential.cert(serviceAccount),
+            credential:
+              firebaseAdmin.credential.cert(serviceAccount),
             projectId: PROJECT_ID,
           });
         } catch (e: any) {
-          console.error(`[Stripe Webhook getAdminDb] Service Account init failed: ${e.message}. Falling back to default app init.`);
-          firebaseAdmin.initializeApp({ projectId: PROJECT_ID });
+          console.error(
+            `[Stripe Webhook getAdminDb] Service Account init failed: ${e.message}. Falling back to default app init.`
+          );
+
+          firebaseAdmin.initializeApp({
+            projectId: PROJECT_ID,
+          });
         }
       } else {
-        firebaseAdmin.initializeApp({ projectId: PROJECT_ID });
+        firebaseAdmin.initializeApp({
+          projectId: PROJECT_ID,
+        });
       }
     }
 
     dbInstance = firebaseAdmin.firestore();
+
     if (DATABASE_ID) {
       try {
-        dbInstance.settings({ databaseId: DATABASE_ID });
+        dbInstance.settings({
+          databaseId: DATABASE_ID,
+        });
       } catch (e) {
         // Settings already applied
       }
     }
   }
+
   return dbInstance!;
 }
 
 function getAdminBucket() {
   const firebaseAdmin = (admin as any).default || admin;
+
   getAdminDb();
-  const bucketName = process.env.FIREBASE_STORAGE_BUCKET || 'navlink-489413.firebasestorage.app';
+
+  const bucketName =
+    process.env.FIREBASE_STORAGE_BUCKET ||
+    'navlink-489413.firebasestorage.app';
+
   return firebaseAdmin.storage().bucket(bucketName);
 }
 
-async function finalizeTempVideoStorage(adId: string, adData: any) {
-  const tempPath = adData?.tempVideoPath || (adData?.videoStoragePath?.startsWith('temporary-listing-videos/') ? adData.videoStoragePath : null);
+async function finalizeTempVideoStorage(
+  adId: string,
+  adData: any
+) {
+  const tempPath =
+    adData?.tempVideoPath ||
+    (adData?.videoStoragePath?.startsWith(
+      'temporary-listing-videos/'
+    )
+      ? adData.videoStoragePath
+      : null);
 
   if (!tempPath) {
-    console.log(`[Stripe Webhook Media Boost] No temporary video path found for ad ${adId}`);
+    console.log(
+      `[Stripe Webhook Media Boost] No temporary video path found for ad ${adId}`
+    );
     return null;
   }
 
@@ -132,42 +190,73 @@ async function finalizeTempVideoStorage(adId: string, adData: any) {
     const [exists] = await tempFile.exists();
 
     if (!exists) {
-      console.warn(`[Stripe Webhook Media Boost] Temp file ${tempPath} does not exist in bucket`);
+      console.warn(
+        `[Stripe Webhook Media Boost] Temp file ${tempPath} does not exist in bucket`
+      );
       return null;
     }
 
-    const fileName = tempPath.split('/').pop() || `video_${Date.now()}.mp4`;
-    const userId = adData.sellerId || adData.userId || 'user';
-    const permPath = `listing-videos/${userId}/${adId}/${fileName}`;
+    const fileName =
+      tempPath.split('/').pop() ||
+      `video_${Date.now()}.mp4`;
+
+    const userId =
+      adData.sellerId || adData.userId || 'user';
+
+    const permPath =
+      `listing-videos/${userId}/${adId}/${fileName}`;
+
     const permFile = bucket.file(permPath);
 
-    console.log(`[Stripe Webhook Media Boost] Copying temp video ${tempPath} -> permanent ${permPath}`);
+    console.log(
+      `[Stripe Webhook Media Boost] Copying temp video ${tempPath} -> permanent ${permPath}`
+    );
+
     await tempFile.copy(permFile);
 
     try {
       await permFile.makePublic();
     } catch (e) {
-      console.warn(`[Stripe Webhook Media Boost] makePublic note:`, e);
+      console.warn(
+        `[Stripe Webhook Media Boost] makePublic note:`,
+        e
+      );
     }
 
-    await tempFile.delete({ ignoreNotFound: true }).catch(e => console.warn(`[Stripe Webhook Media Boost] Could not delete temp file:`, e));
+    await tempFile
+      .delete({ ignoreNotFound: true })
+      .catch((e) =>
+        console.warn(
+          `[Stripe Webhook Media Boost] Could not delete temp file:`,
+          e
+        )
+      );
 
     const encodedPath = encodeURIComponent(permPath);
-    const permUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodedPath}?alt=media`;
 
-    const firebaseAdmin = (admin as any).default || admin;
+    const permUrl =
+      `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodedPath}?alt=media`;
+
+    const firebaseAdmin =
+      (admin as any).default || admin;
 
     return {
       videoUrl: permUrl,
       videoStoragePath: permPath,
       videoPaid: true,
       mediaBoostEnabled: true,
-      mediaBoostPrice: 2.00,
-      tempVideoPath: firebaseAdmin.firestore.FieldValue.delete(),
-      tempVideoUrl: firebaseAdmin.firestore.FieldValue.delete(),
+      mediaBoostPrice: 2.0,
+      tempVideoPath:
+        firebaseAdmin.firestore.FieldValue.delete(),
+      tempVideoUrl:
+        firebaseAdmin.firestore.FieldValue.delete(),
     };
   } catch (err) {
-    console.error(`[Stripe Webhook Media Boost Error] Failed to finalize video storage for ad ${adId}:`, err);
+    console.error(
+      `[Stripe Webhook Media Boost Error] Failed to finalize video storage for ad ${adId}:`,
+      err
+    );
+
     return null;
   }
 }
@@ -175,49 +264,97 @@ async function finalizeTempVideoStorage(adId: string, adData: any) {
 async function cleanupTempVideoForAd(adId: string) {
   try {
     const db = getAdminDb();
-    const adDoc = await db.collection('ads').doc(adId).get();
+
+    const adDoc = await db
+      .collection('ads')
+      .doc(adId)
+      .get();
+
     if (!adDoc.exists) return;
+
     const adData = adDoc.data() || {};
 
     if (adData.videoPaid) {
-      console.log(`[Stripe Webhook Cleanup] Ad ${adId} video is already paid. Skipping cleanup.`);
+      console.log(
+        `[Stripe Webhook Cleanup] Ad ${adId} video is already paid. Skipping cleanup.`
+      );
       return;
     }
 
-    const tempPath = adData.tempVideoPath || (adData.videoStoragePath?.startsWith('temporary-listing-videos/') ? adData.videoStoragePath : null);
+    const tempPath =
+      adData.tempVideoPath ||
+      (adData.videoStoragePath?.startsWith(
+        'temporary-listing-videos/'
+      )
+        ? adData.videoStoragePath
+        : null);
+
     if (tempPath) {
       const bucket = getAdminBucket();
-      await bucket.file(tempPath).delete({ ignoreNotFound: true }).catch(() => {});
-      console.log(`[Stripe Webhook Cleanup] Deleted temporary video ${tempPath} for unpaid/cancelled ad ${adId}`);
 
-      const firebaseAdmin = (admin as any).default || admin;
-      await db.collection('ads').doc(adId).update({
-        mediaBoostEnabled: false,
-        videoUrl: firebaseAdmin.firestore.FieldValue.delete(),
-        videoStoragePath: firebaseAdmin.firestore.FieldValue.delete(),
-        tempVideoPath: firebaseAdmin.firestore.FieldValue.delete(),
-        tempVideoUrl: firebaseAdmin.firestore.FieldValue.delete(),
-      }).catch(() => {});
+      await bucket
+        .file(tempPath)
+        .delete({ ignoreNotFound: true })
+        .catch(() => {});
+
+      console.log(
+        `[Stripe Webhook Cleanup] Deleted temporary video ${tempPath} for unpaid/cancelled ad ${adId}`
+      );
+
+      const firebaseAdmin =
+        (admin as any).default || admin;
+
+      await db
+        .collection('ads')
+        .doc(adId)
+        .update({
+          mediaBoostEnabled: false,
+          videoUrl:
+            firebaseAdmin.firestore.FieldValue.delete(),
+          videoStoragePath:
+            firebaseAdmin.firestore.FieldValue.delete(),
+          tempVideoPath:
+            firebaseAdmin.firestore.FieldValue.delete(),
+          tempVideoUrl:
+            firebaseAdmin.firestore.FieldValue.delete(),
+        })
+        .catch(() => {});
     }
   } catch (err) {
-    console.error(`[Stripe Webhook Cleanup Error] for ad ${adId}:`, err);
+    console.error(
+      `[Stripe Webhook Cleanup Error] for ad ${adId}:`,
+      err
+    );
   }
 }
 
 async function cleanupAbandonedTempVideos() {
   try {
     const bucket = getAdminBucket();
-    const [files] = await bucket.getFiles({ prefix: 'temporary-listing-videos/' });
+
+    const [files] = await bucket.getFiles({
+      prefix: 'temporary-listing-videos/',
+    });
+
     const now = Date.now();
     const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
     for (const file of files) {
       try {
         const [metadata] = await file.getMetadata();
-        const createdTime = new Date(metadata.timeCreated).getTime();
+
+        const createdTime = new Date(
+          metadata.timeCreated
+        ).getTime();
+
         if (now - createdTime > TWO_HOURS_MS) {
-          console.log(`[Temp Video Sweeper] Deleting abandoned temporary video: ${file.name} (created ${metadata.timeCreated})`);
-          await file.delete({ ignoreNotFound: true }).catch(() => {});
+          console.log(
+            `[Temp Video Sweeper] Deleting abandoned temporary video: ${file.name} (created ${metadata.timeCreated})`
+          );
+
+          await file
+            .delete({ ignoreNotFound: true })
+            .catch(() => {});
         }
       } catch (e) {
         // file check warning ignored
@@ -228,263 +365,683 @@ async function cleanupAbandonedTempVideos() {
   }
 }
 
-async function getRawBody(req: Request): Promise<Buffer> {
-  if ((req as any).rawBody && Buffer.isBuffer((req as any).rawBody)) {
+async function getRawBody(
+  req: Request
+): Promise<Buffer> {
+  if (
+    (req as any).rawBody &&
+    Buffer.isBuffer((req as any).rawBody)
+  ) {
     return (req as any).rawBody;
   }
+
   if (Buffer.isBuffer(req.body)) {
     return req.body;
   }
+
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
+
     req.on('data', (chunk: Buffer) => {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      chunks.push(
+        Buffer.isBuffer(chunk)
+          ? chunk
+          : Buffer.from(chunk)
+      );
     });
+
     req.on('end', () => {
       resolve(Buffer.concat(chunks));
     });
+
     req.on('error', (err) => {
       reject(err);
     });
   });
 }
 
-export default async function stripeWebhookHandler(req: Request & { rawBody?: Buffer }, res: Response) {
+export default async function stripeWebhookHandler(
+  req: Request & { rawBody?: Buffer },
+  res: Response
+) {
   if (req.method !== 'POST') {
     return res.status(405).send('Method Not Allowed');
   }
 
   const stripe = getStripe();
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  const webhookSecret =
+    process.env.STRIPE_WEBHOOK_SECRET;
+
   const sig = req.headers['stripe-signature'];
 
   if (!stripe) {
-    return res.status(500).send('Stripe is not configured');
+    return res
+      .status(500)
+      .send('Stripe is not configured');
   }
 
   if (!webhookSecret) {
-    return res.status(500).send('Webhook secret is not configured');
+    return res
+      .status(500)
+      .send('Webhook secret is not configured');
   }
 
   if (!sig) {
-    return res.status(400).send('Missing stripe-signature header');
+    return res
+      .status(400)
+      .send('Missing stripe-signature header');
   }
 
   let rawBody: Buffer;
+
   try {
     rawBody = await getRawBody(req);
   } catch (err: any) {
-    console.error(`[Stripe Webhook Read Error]: ${err.message}`);
-    return res.status(400).send(`Error reading request body: ${err.message}`);
+    console.error(
+      `[Stripe Webhook Read Error]: ${err.message}`
+    );
+
+    return res
+      .status(400)
+      .send(
+        `Error reading request body: ${err.message}`
+      );
   }
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+    event = stripe.webhooks.constructEvent(
+      rawBody,
+      sig,
+      webhookSecret
+    );
   } catch (err: any) {
-    console.error(`[Stripe Webhook Verification Error]: ${err.message}`);
-    return res.status(400).send(`Webhook Signature Verification Error: ${err.message}`);
+    console.error(
+      `[Stripe Webhook Verification Error]: ${err.message}`
+    );
+
+    return res
+      .status(400)
+      .send(
+        `Webhook Signature Verification Error: ${err.message}`
+      );
   }
 
-  // Handle successful checkout payments
-  if (event && event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session;
+  if (
+    event &&
+    event.type === 'checkout.session.completed'
+  ) {
+    const session =
+      event.data.object as Stripe.Checkout.Session;
+
     const metadata = session.metadata || {};
-    const { itemType, adId, userId, plan, showcaseDataJson } = metadata;
+
+    const {
+      itemType,
+      adId,
+      userId,
+      plan,
+      showcaseDataJson,
+      paymentFlow,
+    } = metadata;
 
     try {
       const db = getAdminDb();
 
-      if (itemType === 'featured_ad' || itemType === 'ad_listing' || itemType === 'ad_promotion') {
+      if (
+        itemType === 'featured_ad' ||
+        itemType === 'ad_listing' ||
+        itemType === 'ad_promotion'
+      ) {
         if (!adId) {
-          console.error(`[Stripe Webhook Error] itemType is '${itemType}' but adId is missing from metadata!`);
+          console.error(
+            `[Stripe Webhook Error] itemType is '${itemType}' but adId is missing from metadata!`
+          );
         } else {
-          const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-          const activePlan = (plan || 'standard').toLowerCase();
-          
+          const thirtyDaysFromNow = new Date(
+            Date.now() +
+              30 * 24 * 60 * 60 * 1000
+          );
+
+          const activePlan = (
+            plan || 'standard'
+          ).toLowerCase();
+
           let level = 'standard';
           let isFeatured = false;
-          let humanPlanTitle = 'Standard Listing';
 
           if (activePlan === 'premium') {
             level = 'premium';
             isFeatured = true;
-            humanPlanTitle = 'Premium Featured Listing (£9.99)';
-          } else if (activePlan === 'featured' || activePlan === 'national' || activePlan === 'local') {
-            level = activePlan === 'national' ? 'national' : 'featured';
+          } else if (
+            activePlan === 'featured' ||
+            activePlan === 'national' ||
+            activePlan === 'local'
+          ) {
+            level =
+              activePlan === 'national'
+                ? 'national'
+                : 'featured';
+
             isFeatured = true;
-            humanPlanTitle = 'Featured Listing (£4.99)';
           } else {
             level = 'standard';
             isFeatured = false;
-            humanPlanTitle = 'Standard Listing (£2.99)';
           }
 
-          const firebaseAdmin = (admin as any).default || admin;
-          const isMediaBoostPaid = metadata.mediaBoostEnabled === 'true' || metadata.mediaBoostEnabled === '1';
+          const firebaseAdmin =
+            (admin as any).default || admin;
 
-          const updatePayload: Record<string, any> = {
-            plan: activePlan,
-            status: 'approved',
-            isFeatured: isFeatured,
-            featuredLevel: level,
-            expirationDate: firebaseAdmin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
-            featuredUntil: firebaseAdmin.firestore.Timestamp.fromDate(thirtyDaysFromNow),
-            featuredActivatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
-            paidAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
-          };
+          const isMediaBoostPaid =
+            metadata.mediaBoostEnabled === 'true' ||
+            metadata.mediaBoostEnabled === '1';
 
-          const adDoc = await db.collection('ads').doc(adId).get();
+          const adDoc = await db
+            .collection('ads')
+            .doc(adId)
+            .get();
+
           const adData = adDoc.data() || {};
 
-          if (isMediaBoostPaid || adData.mediaBoostEnabled || adData.tempVideoPath) {
-            const videoUpdates = await finalizeTempVideoStorage(adId, adData);
+          const isAdminAssisted =
+            paymentFlow === 'admin_assisted';
+
+          const updatePayload: Record<
+            string,
+            any
+          > = isAdminAssisted
+            ? {
+                plan: activePlan,
+                paymentStatus: 'paid',
+                paymentFlow: 'admin_assisted',
+                paymentSource: 'admin_assisted',
+                awaitingAdminActivation: true,
+
+                paidAt:
+                  firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+
+                stripeCheckoutSessionId:
+                  session.id,
+
+                stripePaymentIntentId:
+                  typeof session.payment_intent ===
+                  'string'
+                    ? session.payment_intent
+                    : session.payment_intent?.id ||
+                      null,
+              }
+            : {
+                plan: activePlan,
+                status: 'approved',
+                isFeatured,
+                featuredLevel: level,
+
+                expirationDate:
+                  firebaseAdmin.firestore.Timestamp.fromDate(
+                    thirtyDaysFromNow
+                  ),
+
+                featuredUntil:
+                  firebaseAdmin.firestore.Timestamp.fromDate(
+                    thirtyDaysFromNow
+                  ),
+
+                featuredActivatedAt:
+                  firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+
+                paidAt:
+                  firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+              };
+
+          if (
+            !isAdminAssisted &&
+            (isMediaBoostPaid ||
+              adData.mediaBoostEnabled ||
+              adData.tempVideoPath)
+          ) {
+            const videoUpdates =
+              await finalizeTempVideoStorage(
+                adId,
+                adData
+              );
+
             if (videoUpdates) {
-              Object.assign(updatePayload, videoUpdates);
+              Object.assign(
+                updatePayload,
+                videoUpdates
+              );
             } else {
-              updatePayload.mediaBoostEnabled = true;
+              updatePayload.mediaBoostEnabled =
+                true;
+
               updatePayload.videoPaid = true;
-              updatePayload.mediaBoostPrice = 2.00;
+              updatePayload.mediaBoostPrice =
+                2.0;
             }
           }
 
-          await db.collection('ads').doc(adId).set(
-            updatePayload,
-            { merge: true }
-          );
+          await db
+            .collection('ads')
+            .doc(adId)
+            .set(updatePayload, {
+              merge: true,
+            });
 
-          console.log(`[Stripe Webhook] Successfully updated ad ${adId} to plan ${activePlan} (featuredLevel: ${level}, mediaBoostPaid: ${isMediaBoostPaid})`);
-
-          // Dispatch confirmation email with idempotency protection
-          const customerEmail = session.customer_details?.email || session.customer_email || adData.sellerEmail || adData.email;
-          const isAlreadySent = adData.paymentConfirmationEmailSent === true && adData.stripeCheckoutSessionId === session.id;
-
-          if (isAlreadySent) {
-            console.log(`[Stripe Webhook Email] Email already sent for session ${session.id} (Ad ${adId}). Skipping duplicate dispatch.`);
-          } else if (customerEmail) {
-            const isHire = adData.category === 'aluguel' || adData.listingType === 'hire' || adData.type === 'hire';
-            const currencySymbol = session.currency?.toUpperCase() === 'EUR' ? '€' : '£';
-
-            let planTitle = 'Standard Listing';
-            let planPrice = `${currencySymbol}2.99`;
-            if (activePlan === 'premium') {
-              planTitle = 'Premium Featured Listing';
-              planPrice = `${currencySymbol}9.99`;
-            } else if (activePlan === 'featured' || activePlan === 'national' || activePlan === 'local') {
-              planTitle = 'Featured Listing';
-              planPrice = `${currencySymbol}4.99`;
-            }
-
-            const hasMediaBoost = isMediaBoostPaid || !!adData.mediaBoostEnabled;
-            const totalAmountFormatted = session.amount_total 
-              ? `${currencySymbol}${(session.amount_total / 100).toFixed(2)}`
-              : planPrice;
-
-            let baseUrl = process.env.PUBLIC_SITE_URL || process.env.SITE_URL || 'https://www.connectboat.co.uk';
-            baseUrl = baseUrl.replace(/\/$/, '');
-
-            const emailPayload = {
-              userName: session.customer_details?.name || adData.sellerName || 'Valued Advertiser',
-              adTitle: adData.title || 'Boat Listing',
-              adId: adId,
-              listingType: isHire ? 'Boat for Hire' : 'Boat for Sale',
-              planTitle: planTitle,
-              planPrice: planPrice,
-              hasMediaBoost: hasMediaBoost,
-              mediaBoostPrice: `${currencySymbol}2.00`,
-              totalAmount: totalAmountFormatted,
-              paymentDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-              expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-              paymentRef: session.id || session.payment_intent || adId,
-              adUrl: `${baseUrl}/anuncio/${adId}`,
-              manageUrl: `${baseUrl}/profile`,
-            };
-
-            try {
-              await sendEmailDirect(customerEmail, 'recibo_pagamento_anuncio', emailPayload);
-              console.log(`[Stripe Webhook Email] Sent itemized receipt email to ${customerEmail} for ad ${adId}`);
-              
-              await db.collection('ads').doc(adId).update({
-                stripeCheckoutSessionId: session.id,
-                paymentConfirmationEmailSent: true,
-                paymentConfirmationEmailStatus: 'sent',
-                paymentConfirmationEmailSentAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
-                paymentConfirmationEmailError: null,
-              }).catch(e => console.warn(`[Stripe Webhook Email] Note on updating email sent status in Firestore:`, e));
-            } catch (emailErr: any) {
-              console.error(`[Stripe Webhook Email ERROR] Failed sending receipt to ${customerEmail} for ad ${adId}:`, emailErr);
-              await db.collection('ads').doc(adId).update({
-                stripeCheckoutSessionId: session.id,
-                paymentConfirmationEmailStatus: 'failed',
-                paymentConfirmationEmailError: emailErr?.message || String(emailErr),
-                paymentConfirmationEmailLastAttemptAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
-              }).catch(e => console.warn(`[Stripe Webhook Email] Note on recording email failure in Firestore:`, e));
-            }
+          if (isAdminAssisted) {
+            console.log(
+              `[Stripe Webhook] Assisted payment confirmed for ad ${adId}. Listing remains pending and awaits admin activation.`
+            );
           } else {
-            console.warn(`[Stripe Webhook Email Warning] No customer email available for session ${session.id} (Ad ${adId}). Record email status as not_sent.`);
-            await db.collection('ads').doc(adId).update({
-              stripeCheckoutSessionId: session.id,
-              paymentConfirmationEmailStatus: 'no_email_provided',
-            }).catch(() => {});
+            console.log(
+              `[Stripe Webhook] Successfully updated ad ${adId} to plan ${activePlan} (featuredLevel: ${level}, mediaBoostPaid: ${isMediaBoostPaid})`
+            );
+          }
+
+          /*
+           * IMPORTANT:
+           *
+           * The existing payment confirmation e-mail
+           * says that the listing is already active
+           * and includes a 30-day expiry date.
+           *
+           * For admin-assisted payments the listing
+           * must remain pending, so that e-mail must
+           * not be sent here.
+           */
+
+          if (isAdminAssisted) {
+            console.log(
+              `[Stripe Webhook Email] Assisted payment for ad ${adId}: skipping normal activation receipt until admin approval.`
+            );
+          } else {
+            const customerEmail =
+              session.customer_details?.email ||
+              session.customer_email ||
+              adData.sellerEmail ||
+              adData.email;
+
+            const isAlreadySent =
+              adData.paymentConfirmationEmailSent ===
+                true &&
+              adData.stripeCheckoutSessionId ===
+                session.id;
+
+            if (isAlreadySent) {
+              console.log(
+                `[Stripe Webhook Email] Email already sent for session ${session.id} (Ad ${adId}). Skipping duplicate dispatch.`
+              );
+            } else if (customerEmail) {
+              const isHire =
+                adData.category === 'aluguel' ||
+                adData.listingType === 'hire' ||
+                adData.type === 'hire';
+
+              const currencySymbol =
+                session.currency?.toUpperCase() ===
+                'EUR'
+                  ? '€'
+                  : '£';
+
+              let planTitle =
+                'Standard Listing';
+
+              let planPrice =
+                `${currencySymbol}2.99`;
+
+              if (activePlan === 'premium') {
+                planTitle =
+                  'Premium Featured Listing';
+
+                planPrice =
+                  `${currencySymbol}9.99`;
+              } else if (
+                activePlan === 'featured' ||
+                activePlan === 'national' ||
+                activePlan === 'local'
+              ) {
+                planTitle =
+                  'Featured Listing';
+
+                planPrice =
+                  `${currencySymbol}4.99`;
+              }
+
+              const hasMediaBoost =
+                isMediaBoostPaid ||
+                !!adData.mediaBoostEnabled;
+
+              const totalAmountFormatted =
+                session.amount_total
+                  ? `${currencySymbol}${(
+                      session.amount_total / 100
+                    ).toFixed(2)}`
+                  : planPrice;
+
+              let baseUrl =
+                process.env.PUBLIC_SITE_URL ||
+                process.env.SITE_URL ||
+                'https://www.connectboat.co.uk';
+
+              baseUrl = baseUrl.replace(
+                /\/$/,
+                ''
+              );
+
+              const emailPayload = {
+                userName:
+                  session.customer_details
+                    ?.name ||
+                  adData.sellerName ||
+                  'Valued Advertiser',
+
+                adTitle:
+                  adData.title ||
+                  'Boat Listing',
+
+                adId,
+
+                listingType: isHire
+                  ? 'Boat for Hire'
+                  : 'Boat for Sale',
+
+                planTitle,
+                planPrice,
+                hasMediaBoost,
+
+                mediaBoostPrice:
+                  `${currencySymbol}2.00`,
+
+                totalAmount:
+                  totalAmountFormatted,
+
+                paymentDate:
+                  new Date().toLocaleDateString(
+                    'en-GB',
+                    {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    }
+                  ),
+
+                expiryDate:
+                  new Date(
+                    Date.now() +
+                      30 *
+                        24 *
+                        60 *
+                        60 *
+                        1000
+                  ).toLocaleDateString(
+                    'en-GB',
+                    {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    }
+                  ),
+
+                paymentRef:
+                  session.id ||
+                  session.payment_intent ||
+                  adId,
+
+                adUrl:
+                  `${baseUrl}/anuncio/${adId}`,
+
+                manageUrl:
+                  `${baseUrl}/profile`,
+              };
+
+              try {
+                await sendEmailDirect(
+                  customerEmail,
+                  'recibo_pagamento_anuncio',
+                  emailPayload
+                );
+
+                console.log(
+                  `[Stripe Webhook Email] Sent itemized receipt email to ${customerEmail} for ad ${adId}`
+                );
+
+                await db
+                  .collection('ads')
+                  .doc(adId)
+                  .update({
+                    stripeCheckoutSessionId:
+                      session.id,
+
+                    paymentConfirmationEmailSent:
+                      true,
+
+                    paymentConfirmationEmailStatus:
+                      'sent',
+
+                    paymentConfirmationEmailSentAt:
+                      firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+
+                    paymentConfirmationEmailError:
+                      null,
+                  })
+                  .catch((e) =>
+                    console.warn(
+                      `[Stripe Webhook Email] Note on updating email sent status in Firestore:`,
+                      e
+                    )
+                  );
+              } catch (emailErr: any) {
+                console.error(
+                  `[Stripe Webhook Email ERROR] Failed sending receipt to ${customerEmail} for ad ${adId}:`,
+                  emailErr
+                );
+
+                await db
+                  .collection('ads')
+                  .doc(adId)
+                  .update({
+                    stripeCheckoutSessionId:
+                      session.id,
+
+                    paymentConfirmationEmailStatus:
+                      'failed',
+
+                    paymentConfirmationEmailError:
+                      emailErr?.message ||
+                      String(emailErr),
+
+                    paymentConfirmationEmailLastAttemptAt:
+                      firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+                  })
+                  .catch((e) =>
+                    console.warn(
+                      `[Stripe Webhook Email] Note on recording email failure in Firestore:`,
+                      e
+                    )
+                  );
+              }
+            } else {
+              console.warn(
+                `[Stripe Webhook Email Warning] No customer email available for session ${session.id} (Ad ${adId}). Record email status as not_sent.`
+              );
+
+              await db
+                .collection('ads')
+                .doc(adId)
+                .update({
+                  stripeCheckoutSessionId:
+                    session.id,
+
+                  paymentConfirmationEmailStatus:
+                    'no_email_provided',
+                })
+                .catch(() => {});
+            }
           }
         }
-      } else if (itemType === 'digital_showcase' && userId) {
+      } else if (
+        itemType === 'digital_showcase' &&
+        userId
+      ) {
         let showcaseData: any = {};
+
         if (showcaseDataJson) {
           try {
-            showcaseData = JSON.parse(showcaseDataJson);
+            showcaseData =
+              JSON.parse(showcaseDataJson);
           } catch (e) {
-            console.warn('[Stripe Webhook] Failed to parse showcaseDataJson metadata', e);
+            console.warn(
+              '[Stripe Webhook] Failed to parse showcaseDataJson metadata',
+              e
+            );
           }
         }
 
-        const userFields: Record<string, any> = {
+        const userFields: Record<
+          string,
+          any
+        > = {
           showcasePaid: true,
           showcasePlan: 'premium',
           showcaseActive: true,
         };
 
-        if (showcaseData.showcaseName) userFields.showcaseName = showcaseData.showcaseName;
-        if (showcaseData.showcaseSlug) userFields.showcaseSlug = showcaseData.showcaseSlug;
-        if (showcaseData.country) userFields.country = showcaseData.country;
-        if (showcaseData.city) userFields.city = showcaseData.city;
+        if (showcaseData.showcaseName) {
+          userFields.showcaseName =
+            showcaseData.showcaseName;
+        }
 
-        await db.collection('users').doc(userId).set(userFields, { merge: true });
-        console.log(`[Stripe Webhook] Successfully updated user ${userId} for digital showcase`);
+        if (showcaseData.showcaseSlug) {
+          userFields.showcaseSlug =
+            showcaseData.showcaseSlug;
+        }
 
-        const sellerProfileFields: Record<string, any> = {
+        if (showcaseData.country) {
+          userFields.country =
+            showcaseData.country;
+        }
+
+        if (showcaseData.city) {
+          userFields.city =
+            showcaseData.city;
+        }
+
+        await db
+          .collection('users')
+          .doc(userId)
+          .set(userFields, {
+            merge: true,
+          });
+
+        console.log(
+          `[Stripe Webhook] Successfully updated user ${userId} for digital showcase`
+        );
+
+        const sellerProfileFields: Record<
+          string,
+          any
+        > = {
           ...userFields,
           showcaseApproved: true,
         };
 
-        if (showcaseData.showcaseCategory) sellerProfileFields.showcaseCategory = showcaseData.showcaseCategory;
-        if (showcaseData.showcaseLogo) sellerProfileFields.showcaseLogo = showcaseData.showcaseLogo;
-        if (showcaseData.showcaseCover) sellerProfileFields.showcaseCover = showcaseData.showcaseCover;
-        if (showcaseData.showcaseDescription) sellerProfileFields.showcaseDescription = showcaseData.showcaseDescription;
-        if (showcaseData.showcaseWhatsapp) sellerProfileFields.showcaseWhatsapp = showcaseData.showcaseWhatsapp;
-        if (showcaseData.showcaseFacebook) sellerProfileFields.showcaseFacebook = showcaseData.showcaseFacebook;
-        if (showcaseData.showcaseInstagram) sellerProfileFields.showcaseInstagram = showcaseData.showcaseInstagram;
+        if (
+          showcaseData.showcaseCategory
+        ) {
+          sellerProfileFields.showcaseCategory =
+            showcaseData.showcaseCategory;
+        }
 
-        await db.collection('sellerPublicProfiles').doc(userId).set(sellerProfileFields, { merge: true });
-        console.log(`[Stripe Webhook] Successfully updated sellerPublicProfile ${userId} for digital showcase`);
+        if (showcaseData.showcaseLogo) {
+          sellerProfileFields.showcaseLogo =
+            showcaseData.showcaseLogo;
+        }
+
+        if (showcaseData.showcaseCover) {
+          sellerProfileFields.showcaseCover =
+            showcaseData.showcaseCover;
+        }
+
+        if (
+          showcaseData.showcaseDescription
+        ) {
+          sellerProfileFields.showcaseDescription =
+            showcaseData.showcaseDescription;
+        }
+
+        if (
+          showcaseData.showcaseWhatsapp
+        ) {
+          sellerProfileFields.showcaseWhatsapp =
+            showcaseData.showcaseWhatsapp;
+        }
+
+        if (
+          showcaseData.showcaseFacebook
+        ) {
+          sellerProfileFields.showcaseFacebook =
+            showcaseData.showcaseFacebook;
+        }
+
+        if (
+          showcaseData.showcaseInstagram
+        ) {
+          sellerProfileFields.showcaseInstagram =
+            showcaseData.showcaseInstagram;
+        }
+
+        await db
+          .collection('sellerPublicProfiles')
+          .doc(userId)
+          .set(sellerProfileFields, {
+            merge: true,
+          });
+
+        console.log(
+          `[Stripe Webhook] Successfully updated sellerPublicProfile ${userId} for digital showcase`
+        );
       }
     } catch (err: any) {
-      console.error(`[Stripe Webhook Fulfillment Error]: ${err.message}`, err);
-      return res.status(500).send(`Firestore update failed: ${err.message}`);
+      console.error(
+        `[Stripe Webhook Fulfillment Error]: ${err.message}`,
+        err
+      );
+
+      return res
+        .status(500)
+        .send(
+          `Firestore update failed: ${err.message}`
+        );
     }
-  } else if (event && (event.type === 'checkout.session.expired' || event.type === 'payment_intent.payment_failed')) {
+  } else if (
+    event &&
+    (event.type ===
+      'checkout.session.expired' ||
+      event.type ===
+        'payment_intent.payment_failed')
+  ) {
     const session = event.data.object as any;
-    const adId = session?.metadata?.adId;
+
+    const adId =
+      session?.metadata?.adId;
+
     if (adId) {
-      console.log(`[Stripe Webhook] Session expired or payment failed for ad ${adId}. Cleaning up temporary video...`);
+      console.log(
+        `[Stripe Webhook] Session expired or payment failed for ad ${adId}. Cleaning up temporary video...`
+      );
+
       await cleanupTempVideoForAd(adId);
     }
   }
 
-  // Trigger non-blocking background cleanup sweep of abandoned temp videos
-  cleanupAbandonedTempVideos().catch(() => {});
+  cleanupAbandonedTempVideos().catch(
+    () => {}
+  );
 
-  return res.status(200).json({ received: true });
+  return res.status(200).json({
+    received: true,
+  });
 }
-
