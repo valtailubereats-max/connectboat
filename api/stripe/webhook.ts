@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import Stripe from 'stripe';
 import * as admin from 'firebase-admin';
-import { sendEmailDirect } from '../email/send';
+import { sendEmailDirect } from '../email/send.js';
 
 export const config = {
   api: {
