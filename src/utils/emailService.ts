@@ -122,13 +122,21 @@ async function shouldBlockEmail(
 
         if (adInfo && adInfo.sellerId) {
           const sellerIsStaff = await isUserStaff(adInfo.sellerId);
+          const isAdminAssisted =
+            adInfo.paymentFlow === 'admin_assisted';
 
-          if (sellerIsStaff) {
+          if (sellerIsStaff && !isAdminAssisted) {
             console.log(
               `[EmailService] Bloqueando email silenciosamente para o template ${template} pois o criador do anúncio é admin/moderador.`
             );
 
             return true;
+          }
+
+          if (sellerIsStaff && isAdminAssisted) {
+            console.log(
+              `[EmailService] Fluxo admin_assisted: permitindo verificar o destinatário mesmo que o criador do anúncio seja admin/moderador.`
+            );
           }
         }
       }
