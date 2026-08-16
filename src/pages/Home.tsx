@@ -143,25 +143,25 @@ const Home = () => {
   const navigate = useNavigate();
   const [assistedPaymentMessage, setAssistedPaymentMessage] = useState(false);
 
-useEffect(() => {
-  const paymentResult = searchParams.get('assisted_payment');
+  useEffect(() => {
+    const paymentResult = searchParams.get('assisted_payment');
 
-  if (paymentResult === 'success') {
-    setAssistedPaymentMessage(true);
+    if (paymentResult === 'success') {
+      setAssistedPaymentMessage(true);
 
-    const params = new URLSearchParams(searchParams);
-    params.delete('assisted_payment');
-    params.delete('session_id');
+      const params = new URLSearchParams(searchParams);
+      params.delete('assisted_payment');
+      params.delete('session_id');
 
-    setSearchParams(params, { replace: true });
+      setSearchParams(params, { replace: true });
 
-    const timer = setTimeout(() => {
-      setAssistedPaymentMessage(false);
-    }, 10000);
+      const timer = setTimeout(() => {
+        setAssistedPaymentMessage(false);
+      }, 10000);
 
-    return () => clearTimeout(timer);
-  }
-}, []);
+      return () => clearTimeout(timer);
+    }
+  }, []);
   const [ads, setAds] = useState<Ad[]>([]);
   const [featuredAds, setFeaturedAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1205,37 +1205,35 @@ useEffect(() => {
   ];
 
   return (
-  <div className="w-full">
+    <div className="w-full">
+      {assistedPaymentMessage && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-xl">
+          <div className="bg-emerald-600 text-white rounded-2xl shadow-2xl px-5 py-4 flex items-start gap-3 border border-emerald-400">
+            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold">
+              ✓
+            </div>
 
-    {assistedPaymentMessage && (
-      <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-xl">
-        <div className="bg-emerald-600 text-white rounded-2xl shadow-2xl px-5 py-4 flex items-start gap-3 border border-emerald-400">
-          <div className="flex-shrink-0 w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold">
-            ✓
+            <div>
+              <p className="font-bold text-base">
+                Payment completed successfully
+              </p>
+
+              <p className="text-sm text-emerald-50 mt-1">
+                Your listing payment has been received. The listing is now awaiting admin approval.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setAssistedPaymentMessage(false)}
+              className="ml-auto text-white/80 hover:text-white font-bold text-lg"
+              aria-label="Close"
+            >
+              ×
+            </button>
           </div>
-
-          <div>
-            <p className="font-bold text-base">
-              Payment completed successfully
-            </p>
-
-            <p className="text-sm text-emerald-50 mt-1">
-              Your listing payment has been received. The listing is now awaiting admin approval.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setAssistedPaymentMessage(false)}
-            className="ml-auto text-white/80 hover:text-white font-bold text-lg"
-            aria-label="Close"
-          >
-            ×
-          </button>
         </div>
-      </div>
-    )}
+      )}
 
-    <Helmet>
       <Helmet>
         <title>ConnectBoat - Buy, Sell & Hire Boats Across the UK</title>
         <meta name="description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, hire, and advertise boats, yachts, outboard engines, gear, and marine services." />
