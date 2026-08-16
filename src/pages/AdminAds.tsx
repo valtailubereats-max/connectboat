@@ -127,6 +127,7 @@ const AdminAds = () => {
     return (localStorage.getItem('admin_ads_view_mode') as 'cards' | 'table') || 'cards';
   });
   const [countryFilter, setCountryFilter] = useState<'all' | 'Portugal' | 'Reino Unido'>('all');
+  const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'hire'>('all');
   const [periodFilter, setPeriodFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [fetchLimit, setFetchLimit] = useState(100);
@@ -846,7 +847,23 @@ const AdminAds = () => {
       ? true
       : adCountry.toLowerCase() === countryFilter.toLowerCase();
 
-    // 3. Period Filter
+    // 3. Listing Type Filter
+    const isHireListing =
+      (ad as any).listingIntent === 'hire' ||
+      ad.category === 'Boats for Hire' ||
+      ad.category === 'Aluguer de Barcos' ||
+      ad.category === 'Boat Hire & Charters' ||
+      (ad as any).listingType === 'hire' ||
+      (ad as any).listingType === 'rent';
+
+    const matchesListingType =
+      listingTypeFilter === 'all'
+        ? true
+        : listingTypeFilter === 'hire'
+          ? isHireListing
+          : !isHireListing;
+
+    // 4. Period Filter
     let matchesPeriod = true;
     if (periodFilter !== 'all') {
       const createDate = ad.createdAt?.toDate ? ad.createdAt.toDate() : (ad.createdAt ? new Date(ad.createdAt) : null);
@@ -862,7 +879,7 @@ const AdminAds = () => {
       }
     }
 
-    // 4. Global Search Term matching: title, description, seller, city, country, or ad ID
+    // 5. Global Search Term matching: title, description, seller, city, country, or ad ID
     let matchesSearch = true;
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
@@ -881,7 +898,7 @@ const AdminAds = () => {
                       id.includes(term);
     }
 
-    return matchesFilter && matchesCountry && matchesPeriod && matchesSearch;
+    return matchesFilter && matchesCountry && matchesListingType && matchesPeriod && matchesSearch;
   });
 
   const totalPages = Math.ceil(filteredAds.length / pageSize) || 1;
@@ -985,8 +1002,8 @@ const AdminAds = () => {
 
         {/* Filters Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-2 border-t border-slate-100">
-          {/* Status Segmented Filter - 6 columns */}
-          <div className="md:col-span-6 flex flex-col gap-1.5">
+          {/* Status Segmented Filter - 5 columns */}
+          <div className="md:col-span-5 flex flex-col gap-1.5">
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Filter by Status</label>
             <div className="flex gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
               {[
@@ -1019,8 +1036,8 @@ const AdminAds = () => {
             </div>
           </div>
 
-          {/* Country Select Filter - 3 columns */}
-          <div className="md:col-span-3 flex flex-col gap-1.5">
+          {/* Country Select Filter - 2 columns */}
+          <div className="md:col-span-2 flex flex-col gap-1.5">
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Country</label>
             <select
               value={countryFilter}
@@ -1036,8 +1053,25 @@ const AdminAds = () => {
             </select>
           </div>
 
-          {/* Period Select Filter - 3 columns */}
+          {/* Listing Type Select Filter - 3 columns */}
           <div className="md:col-span-3 flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Listing Type</label>
+            <select
+              value={listingTypeFilter}
+              onChange={(e) => {
+                setListingTypeFilter(e.target.value as 'all' | 'sale' | 'hire');
+                setCurrentPage(1);
+              }}
+              className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-705 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
+            >
+              <option value="all">⛵ All Listings</option>
+              <option value="sale">🏷️ Boats for Sale</option>
+              <option value="hire">🛥️ Boats for Hire</option>
+            </select>
+          </div>
+
+          {/* Period Select Filter - 2 columns */}
+          <div className="md:col-span-2 flex flex-col gap-1.5">
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Creation Date</label>
             <select
               value={periodFilter}
