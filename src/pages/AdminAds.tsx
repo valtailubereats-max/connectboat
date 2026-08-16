@@ -808,7 +808,13 @@ const AdminAds = () => {
           ? ad.isDuplicate === true 
           : adFilter === 'paid'
             ? isPaidAd(ad)
-            : (ad.status === adFilter || ad.adStatus === adFilter);
+            : adFilter === 'awaiting_activation'
+              ? (
+                  isPaidAd(ad) &&
+                  (ad as any).paymentFlow === 'admin_assisted' &&
+                  (ad as any).awaitingAdminActivation === true
+                )
+              : (ad.status === adFilter || ad.adStatus === adFilter);
 
     // 2. Country Filter
     const adCountry = ad.country || 'Portugal';
@@ -862,6 +868,12 @@ const AdminAds = () => {
     pending: ads.filter(a => a.status === 'pending').length,
     approved: ads.filter(a => a.status === 'approved' || a.adStatus === 'active').length,
     paid: ads.filter(a => isPaidAd(a)).length,
+    awaitingActivation: ads.filter(
+      a =>
+        isPaidAd(a) &&
+        (a as any).paymentFlow === 'admin_assisted' &&
+        (a as any).awaitingAdminActivation === true
+    ).length,
     expired: ads.filter(a => a.status === 'expired' || a.adStatus === 'expired').length,
   };
 
@@ -873,12 +885,19 @@ const AdminAds = () => {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
           { label: 'Total', value: stats.total, color: 'bg-slate-100 text-slate-600' },
           { label: 'Pending', value: stats.pending, color: stats.pending > 0 ? 'animate-pending-highlight text-amber-950 border-amber-300' : 'bg-amber-50 text-amber-600' },
           { label: 'Approved', value: stats.approved, color: 'bg-emerald-50 text-emerald-600' },
           { label: 'Paid', value: stats.paid, color: 'bg-emerald-100 text-emerald-800 border border-emerald-200' },
+          {
+            label: 'Awaiting Activation',
+            value: stats.awaitingActivation,
+            color: stats.awaitingActivation > 0
+              ? 'bg-cyan-100 text-cyan-900 border border-cyan-300'
+              : 'bg-cyan-50 text-cyan-600'
+          },
           { label: 'Expired', value: stats.expired, color: 'bg-red-50 text-red-600' },
         ].map((stat, idx) => (
           <div key={idx} className={`p-4 rounded-2xl border border-slate-100 shadow-sm transition-all ${stat.color}`}>
@@ -953,6 +972,7 @@ const AdminAds = () => {
                 { id: 'approved', label: 'Active' },
                 { id: 'hidden', label: 'Standby / Ocultos 👁️‍🗨️' },
                 { id: 'paid', label: 'Paid listings' },
+                { id: 'awaiting_activation', label: `Awaiting Activation (${stats.awaitingActivation})` },
                 { id: 'expired', label: 'Expired' },
                 { id: 'rejected', label: 'Rejected' },
                 { id: 'archived', label: 'Archived' }
