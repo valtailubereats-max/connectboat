@@ -1,0 +1,337 @@
+import type { Request, Response } from 'express';
+import Stripe from 'stripe';
+import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+
+const FIRESTORE_DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
+
+let stripeClient: Stripe | null = null;
+
+function getStripe(): Stripe {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error('STRIPE_SECRET_KEY environment variable is missing.');
+  }
+
+  if (!stripeClient) {
+    stripeClient = new Stripe(secretKey);
+  }
+
+  return stripeClient;
+}
+
+function getAdminDb() {
+  if (!getApps().length) {
+    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!rawServiceAccount) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is missing.');
+    }
+
+    let serviceAccount: any;
+    try {
+      serviceAccount = JSON.parse(rawServiceAccount);
+    } catch {
+      const decoded = Buffer.from(rawServiceAccount, 'base64').toString('utf-8');
+      serviceAccount = JSON.parse(decoded);
+    }
+
+    if (typeof serviceAccount.private_key === 'string') {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
+  }
+
+  return getFirestore(getApp(), FIRESTORE_DATABASE_ID);
+}
+
+function getValidConfiguredPrice(value: unknown, fallback: number): number {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    return fallback;
+  }
+  return numericValue;
+}
+
+async function verifyAdminRequest(req: Request, db: any) {
+  const authHeader = req.headers.authorization || '';
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    return {
+      ok: false as const,
+      status: 401,
+      code: 'AUTH_TOKEN_MISSING',
+      message: 'Authentication required.'
+    };
+  }
+
+  let decodedToken;
+
+  try {
+    decodedToken = await getAuth(getApp()).verifyIdToken(match[1]);
+  } catch {
+    return {
+      ok: false as const,
+      status: 401,
+      code: 'AUTH_TOKEN_INVALID',
+      message: 'Invalid or expired Firebase authentication token.'
+    };
+  }
+
+  const email =
+    typeof decodedToken.email === 'string'
+      ? decodedToken.email.trim().toLowerCase()
+      : '';
+
+  const explicitAdminEmails = new Set([
+    'valtailubereats@gmail.com',
+    'valtail@gmail.com',
+    'generalsales2021@gmail.com',
+  ]);
+
+  if (explicitAdminEmails.has(email)) {
+    return {
+      ok: true as const,
+      uid: decodedToken.uid,
+      email
+    };
+  }
+
+  const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+  const role = userDoc.exists ? userDoc.data()?.role : null;
+
+  if (role !== 'admin') {
+    return {
+      ok: false as const,
+      status: 403,
+      code: 'ADMIN_ACCESS_REQUIRED',
+      message: 'Administrator access required.'
+    };
+  }
+
+  return {
+    ok: true as const,
+    uid: decodedToken.uid,
+    email
+  };
+}
+
+export default async function createAssistedPaymentHandler(
+  req: Request,
+  res: Response
+) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({
+      success: false,
+      error: 'Method Not Allowed'
+    });
+  }
+
+  try {
+    const { adId, plan, successUrl, cancelUrl } = req.body || {};
+
+    if (!adId || typeof adId !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'MISSING_AD_ID',
+        errorMessage: 'A valid listing ID is required.',
+      });
+    }
+
+    const normalizedPlan =
+      typeof plan === 'string' ? plan.trim().toLowerCase() : '';
+
+    const allowedPlans = new Set([
+      'standard',
+      'featured',
+      'premium'
+    ]);
+
+    if (!allowedPlans.has(normalizedPlan)) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_PLAN',
+        errorMessage: 'Plan must be standard, featured, or premium.',
+      });
+    }
+
+    const db = getAdminDb();
+
+    const adminCheck = await verifyAdminRequest(req, db);
+
+    if (!adminCheck.ok) {
+      return res.status(adminCheck.status).json({
+        success: false,
+        error: adminCheck.code,
+        errorMessage: adminCheck.message,
+      });
+    }
+
+    const adSnapshot = await db.collection('ads').doc(adId).get();
+
+    if (!adSnapshot.exists) {
+      return res.status(404).json({
+        success: false,
+        error: 'AD_NOT_FOUND',
+        errorMessage: 'The listing could not be found.',
+      });
+    }
+
+    const adData = adSnapshot.data() || {};
+
+    const paymentStatus =
+      typeof adData.paymentStatus === 'string'
+        ? adData.paymentStatus.toLowerCase()
+        : '';
+
+    const isAlreadyPaid = Boolean(
+      adData.paidAt ||
+      adData.paymentCompletedAt ||
+      paymentStatus === 'paid' ||
+      paymentStatus === 'completed'
+    );
+
+    if (isAlreadyPaid) {
+      return res.status(409).json({
+        success: false,
+        error: 'AD_ALREADY_PAID',
+        errorMessage: 'This listing is already marked as paid.',
+      });
+    }
+
+    const settingsSnapshot = await db
+      .collection('settings')
+      .doc('global')
+      .get();
+
+    const settingsData = settingsSnapshot.exists
+      ? settingsSnapshot.data()
+      : {};
+
+    const configuredPlanPrices = settingsData?.planPrices || {};
+
+    const planPrices = {
+      standard: getValidConfiguredPrice(
+        configuredPlanPrices.standard,
+        2.99
+      ),
+      featured: getValidConfiguredPrice(
+        configuredPlanPrices.featured,
+        4.99
+      ),
+      premium: getValidConfiguredPrice(
+        configuredPlanPrices.premium,
+        9.99
+      ),
+    };
+
+    const amount =
+      planPrices[normalizedPlan as keyof typeof planPrices];
+
+    const amountCents = Math.round(amount * 100);
+
+    const productNames = {
+      standard: 'ConnectBoat - Standard Listing',
+      featured: 'ConnectBoat - Featured Listing',
+      premium: 'ConnectBoat - Premium Featured Listing',
+    };
+
+    const productDescriptions = {
+      standard:
+        `30-day active listing (£${amount.toFixed(2)}) for listing #${adId}`,
+      featured:
+        `30-day homepage highlight & featured badge (£${amount.toFixed(2)}) for listing #${adId}`,
+      premium:
+        `30-day top priority exposure & premium badge (£${amount.toFixed(2)}) for listing #${adId}`,
+    };
+
+    const origin =
+      req.headers.origin || 'https://connectboat.co.uk';
+
+    const stripe = getStripe();
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+
+      line_items: [
+        {
+          price_data: {
+            currency: 'gbp',
+
+            product_data: {
+              name:
+                productNames[
+                  normalizedPlan as keyof typeof productNames
+                ],
+
+              description:
+                productDescriptions[
+                  normalizedPlan as keyof typeof productDescriptions
+                ],
+            },
+
+            unit_amount: amountCents,
+          },
+
+          quantity: 1,
+        },
+      ],
+
+      managed_payments: {
+        enabled: false,
+      } as any,
+
+      metadata: {
+        itemType: 'ad_listing',
+        adId,
+        plan: normalizedPlan,
+        paymentFlow: 'admin_assisted',
+        createdByAdminUid: adminCheck.uid,
+      },
+
+      success_url:
+        typeof successUrl === 'string' && successUrl
+          ? successUrl
+          : `${origin}/?assisted_payment=success&session_id={CHECKOUT_SESSION_ID}`,
+
+      cancel_url:
+        typeof cancelUrl === 'string' && cancelUrl
+          ? cancelUrl
+          : `${origin}/?assisted_payment=cancelled`,
+    });
+
+    if (!session.url) {
+      throw new Error(
+        'Stripe did not return a Checkout URL.'
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      url: session.url,
+      sessionId: session.id,
+      adId,
+      plan: normalizedPlan,
+      amount,
+      currency: 'gbp',
+    });
+
+  } catch (err: any) {
+    console.error(
+      '[Admin Assisted Payment Error]:',
+      err
+    );
+
+    return res.status(500).json({
+      success: false,
+      error: 'ASSISTED_PAYMENT_ERROR',
+      errorMessage:
+        err?.message ||
+        'Error creating assisted Stripe Checkout.',
+    });
+  }
+}
