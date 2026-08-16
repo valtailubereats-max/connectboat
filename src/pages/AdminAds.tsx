@@ -1244,7 +1244,7 @@ const AdminAds = () => {
                     }`}>
                       {ad.status}
                     </span>
-                    {ad.adStatus && ad.adStatus !== ad.status && (
+                    {ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
                       <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider ${
                         ad.adStatus === 'active' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 
                         ad.adStatus === 'expired' ? 'bg-red-50 text-red-600 border border-red-100' : 
@@ -1665,7 +1665,7 @@ const AdminAds = () => {
                             }`}>
                               {ad.status}
                             </span>
-                            {ad.adStatus && ad.adStatus !== ad.status && (
+                            {ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
                               <span className={`inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center ${
                                 ad.adStatus === 'active' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 
                                 ad.adStatus === 'expired' ? 'bg-red-50 text-red-650 border border-red-150' : 
@@ -2236,7 +2236,7 @@ const AdminAds = () => {
                   }`}>
                     Status: {selectedAd.status}
                   </span>
-                  {selectedAd.adStatus && selectedAd.adStatus !== selectedAd.status && (
+                  {selectedAd.adStatus && selectedAd.adStatus !== selectedAd.status && !(selectedAd.status === 'pending' && selectedAd.adStatus === 'active') && (
                     <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-indigo-50 text-indigo-600 font-sans">
                       Cycle: {selectedAd.adStatus}
                     </span>
