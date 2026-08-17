@@ -308,7 +308,7 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-6">
             {!user && (
               <button onClick={handlePublishClick} className="text-slate-300 hover:text-sky-400 font-medium flex items-center gap-1 cursor-pointer transition-colors text-sm">
-                <Plus size={18} /> <span>Post Listing</span>
+                <Plus size={18} /> <span>List Boat / Item</span>
               </button>
             )}
             <button onClick={handleShare} className="text-slate-300 hover:text-sky-400 font-medium flex items-center gap-1 text-sm cursor-pointer transition-colors">
@@ -471,7 +471,7 @@ const Navbar = () => {
                         className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700"
                         id="menu-favoritos"
                       >
-                        Favorites
+                        Favourites
                       </Link>
 
                       <Link
@@ -489,7 +489,7 @@ const Navbar = () => {
                         className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-semibold text-slate-700"
                         id="menu-criar-anuncio"
                       >
-                        Post Listing
+                        List Boat / Item
                       </Link>
 
                       <Link
@@ -603,11 +603,11 @@ const Navbar = () => {
           <div className="md:hidden flex items-center gap-1 xs:gap-2.5 shrink-0">
             <button 
               onClick={handlePublishClick} 
-              title="Post Listing" 
+              title="List Boat / Item"
               className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-1 xs:p-1.5 cursor-pointer hover:bg-slate-800 rounded-xl"
             >
               <Plus size={18} className="xs:w-5 xs:h-5" />
-              <span className="text-[9px] font-bold tracking-tight mt-0.5 leading-none">Post</span>
+              <span className="text-[9px] font-bold tracking-tight mt-0.5 leading-none">List</span>
             </button>
             <button 
               onClick={handleShare} 
@@ -669,13 +669,13 @@ const Navbar = () => {
                     📱 Invite QR Code
                   </button>
                   <Link to="/profile?tab=favorites" onClick={() => setIsOpen(false)} className="text-md font-bold text-slate-200">
-                    Favorites
+                    Favourites
                   </Link>
                   <Link to="/profile?tab=anuncios" onClick={() => setIsOpen(false)} className="text-md font-bold text-slate-200">
                     My Listings
                   </Link>
                   <Link to="/create-ad" onClick={() => setIsOpen(false)} className="text-md font-bold text-slate-200">
-                    Post Listing
+                    List Boat / Item
                   </Link>
                   <Link to="/suggestions" onClick={() => setIsOpen(false)} className="text-md font-bold text-slate-200">
                     Suggestions
