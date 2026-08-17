@@ -96,36 +96,35 @@ export async function runHealthChecks(): Promise<{
   }
 
   // 3. Featured
+  // The absence of Featured listings is a normal commercial state, not a system failure.
+  // Home.tsx only renders eligible Featured listings when they exist, so no incident should
+  // be created merely because there are currently zero paid/permanent highlights.
+  //
+  // Important: the public Home uses status === 'approved' for visible listings. The old
+  // monitor incorrectly checked status === 'active', which could generate false critical alerts.
   try {
     const adsSnap = await getDocs(collection(db, 'ads'));
     const allAds = adsSnap.docs.map(d => d.data() as any);
-    
     const nowTime = now.getTime();
-    
-    const paidFeatured = allAds.filter(ad => 
-      ad.isFeatured === true && 
-      !ad.isPermanentFeatured && 
-      ad.status === 'active' &&
-      ad.featuredUntil && 
+
+    // Keep this lightweight eligibility calculation for diagnostics/logging only.
+    const paidFeatured = allAds.filter(ad =>
+      ad.isFeatured === true &&
+      !ad.isPermanentFeatured &&
+      ad.status === 'approved' &&
+      ad.featuredUntil &&
       (ad.featuredUntil.toDate ? ad.featuredUntil.toDate().getTime() : new Date(ad.featuredUntil).getTime()) > nowTime
     );
 
-    const permanentFeatured = allAds.filter(ad => 
-      ad.isFeatured === true && 
+    const permanentFeatured = allAds.filter(ad =>
       ad.isPermanentFeatured === true &&
-      ad.status === 'active'
+      ad.status === 'approved'
     );
 
-    if (paidFeatured.length === 0 && permanentFeatured.length === 0) {
-      alertsToCreate.push({
-        title: 'No Featured Listings Visible on Homepage',
-        description: 'There are no active paid featured listings or admin permanent featured listings configured on the Home carousel.',
-        severity: 'critical',
-        source: 'destaque',
-        recommendedAction: 'Create at least one listing with permanent featured status or activate paid highlights.',
-        relatedLink: '/create-ad'
-      });
-    }
+    console.log('[HealthCheck] Featured diagnostics:', {
+      paidFeatured: paidFeatured.length,
+      permanentFeatured: permanentFeatured.length
+    });
   } catch (err) {
     console.warn('[HealthCheck] Featured check failed', err);
   }
@@ -219,7 +218,7 @@ export async function runHealthChecks(): Promise<{
   for (const fresh of alertsToCreate) {
     const alreadyExists = storedOpenAlerts.some(st => st.title === fresh.title && st.source === fresh.source);
     if (!alreadyExists) {
-      // Create is in Firestore
+      // Create in Firestore
       const docRef = await addDoc(alertColRef, {
         ...fresh,
         status: 'aberto',
@@ -234,7 +233,35 @@ export async function runHealthChecks(): Promise<{
     }
   }
 
-  // Return final list of open alerts
+  // Automatically close stale auto-generated alerts whose condition is no longer present.
+  // This prevents resolved/obsolete incidents from reappearing forever after every refresh.
+  const freshKeys = new Set(alertsToCreate.map(a => `${a.source}::${a.title}`));
+  const autoSources = new Set(['ads', 'destaque', 'import', 'email', 'firestore']);
+
+  for (const stored of storedOpenAlerts) {
+    const key = `${stored.source}::${stored.title}`;
+    const isLegacyFeaturedAlert =
+      stored.source === 'destaque' &&
+      (stored.title === 'No Featured Listings Visible on Homepage' ||
+       stored.title === 'Nenhum Destaque Visível na Home');
+
+    if (isLegacyFeaturedAlert || (autoSources.has(stored.source) && !freshKeys.has(key))) {
+      try {
+        await updateDoc(doc(db, 'system_health_alerts', stored.id), {
+          status: 'resolvido',
+          resolvedAt: new Date(),
+          resolutionReason: isLegacyFeaturedAlert
+            ? 'Auto-resolved: absence of Featured listings is not a system failure.'
+            : 'Auto-resolved: health condition is no longer present.'
+        });
+        stored.status = 'resolvido';
+      } catch (resolveErr) {
+        console.warn('[HealthCheck] Failed to auto-resolve stale alert', stored.id, resolveErr);
+      }
+    }
+  }
+
+  // Return final list of alerts that remain genuinely open
   const finalOpenAlerts = storedOpenAlerts.filter(a => a.status === 'aberto');
 
   // Calculate Health score percentage:
