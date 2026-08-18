@@ -65,13 +65,13 @@ async function sendPaymentEmail(
         body: JSON.stringify({
           from: emailFrom,
           to: [toEmail],
-          subject: `💳 Payment Confirmed: ${planName}`,
+          subject: `ðŸ’³ Payment Confirmed: ${planName}`,
           reply_to: emailReplyTo,
 
           html: `
             <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
               <div style="background-color:#0f172a;padding:24px;text-align:center;">
-                <h1 style="margin:0;color:#ffffff;font-size:22px;">⛵ ConnectBoat</h1>
+                <h1 style="margin:0;color:#ffffff;font-size:22px;">â›µ ConnectBoat</h1>
                 <p style="margin:4px 0 0 0;color:#38bdf8;font-size:12px;font-weight:600;text-transform:uppercase;">
                   UK Boat & Marine Marketplace
                 </p>
@@ -765,29 +765,39 @@ export default async function stripeWebhookHandler(
                 plan:
                   activePlan,
 
+                // Normal customer checkout: payment confirms the listing, but
+                // moderation is still required before it becomes public.
                 status:
-                  'approved',
+                  adData.status === 'approved' ? 'approved' : 'pending',
 
-                isFeatured,
+                adStatus:
+                  adData.status === 'approved' ? (adData.adStatus || 'active') : 'pending',
 
-                featuredLevel:
-                  level,
+                paymentStatus:
+                  'paid',
 
-                expirationDate:
-                  firebaseAdmin.firestore.Timestamp.fromDate(
-                    thirtyDaysFromNow
-                  ),
+                paymentFlow:
+                  'standard_checkout',
 
-                featuredUntil:
-                  firebaseAdmin.firestore.Timestamp.fromDate(
-                    thirtyDaysFromNow
-                  ),
+                paymentSource:
+                  'stripe_checkout',
 
-                featuredActivatedAt:
-                  firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+                awaitingAdminApproval:
+                  adData.status === 'approved' ? false : true,
 
                 paidAt:
-                  firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+                  adData.paidAt || firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+
+                stripeCheckoutSessionId:
+                  session.id,
+
+                stripePaymentIntentId:
+                  typeof session.payment_intent ===
+                  'string'
+                    ? session.payment_intent
+                    : session
+                        .payment_intent
+                        ?.id || null,
               };
 
           if (
@@ -858,7 +868,7 @@ export default async function stripeWebhookHandler(
                 const amountPaid =
                   session.amount_total !=
                   null
-                    ? `£${(
+                    ? `Â£${(
                         session.amount_total /
                         100
                       ).toFixed(2)}`
@@ -902,7 +912,7 @@ export default async function stripeWebhookHandler(
                               emailReplyTo,
 
                             subject:
-                              `💳 Assisted Payment Received — ${
+                              `ðŸ’³ Assisted Payment Received â€” ${
                                 adData.title ||
                                 adId
                               }`,
@@ -1031,7 +1041,7 @@ export default async function stripeWebhookHandler(
 
                 const amountPaid =
                   session.amount_total != null
-                    ? `£${(
+                    ? `Â£${(
                         session.amount_total /
                         100
                       ).toFixed(2)}`
@@ -1064,12 +1074,12 @@ export default async function stripeWebhookHandler(
                           reply_to: emailReplyTo,
 
                           subject:
-                            `Payment received — ${adData.title || 'your ConnectBoat listing'}`,
+                            `Payment received â€” ${adData.title || 'your ConnectBoat listing'}`,
 
                           html: `
                             <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#334155;">
                               <div style="background:#0f172a;padding:24px;text-align:center;border-radius:12px 12px 0 0;">
-                                <h2 style="margin:0;color:#ffffff;">⛵ ConnectBoat</h2>
+                                <h2 style="margin:0;color:#ffffff;">â›µ ConnectBoat</h2>
                               </div>
 
                               <div style="border:1px solid #e2e8f0;border-top:0;padding:28px;border-radius:0 0 12px 12px;">
@@ -1150,7 +1160,7 @@ export default async function stripeWebhookHandler(
             }
           } else {
             console.log(
-              `[Stripe Webhook] Successfully updated ad ${adId} to plan ${activePlan} (featuredLevel: ${level}, mediaBoostPaid: ${isMediaBoostPaid})`
+              `[Stripe Webhook] Payment confirmed for ad ${adId} on plan ${activePlan}. Listing remains pending until admin/moderator approval.`
             );
           }
 
@@ -1190,8 +1200,8 @@ export default async function stripeWebhookHandler(
               const currencySymbol =
                 session.currency?.toUpperCase() ===
                 'EUR'
-                  ? '€'
-                  : '£';
+                  ? 'â‚¬'
+                  : 'Â£';
 
               let planTitle =
                 'Standard Listing';
@@ -1290,22 +1300,20 @@ export default async function stripeWebhookHandler(
                     }
                   ),
 
+                awaitingApproval:
+                  adData.status !== 'approved',
+
                 expiryDate:
-                  new Date(
-                    Date.now() +
-                      30 *
-                        24 *
-                        60 *
-                        60 *
-                        1000
-                  ).toLocaleDateString(
-                    'en-GB',
-                    {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric',
-                    }
-                  ),
+                  adData.status === 'approved' && adData.expirationDate?.toDate
+                    ? adData.expirationDate.toDate().toLocaleDateString(
+                        'en-GB',
+                        {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        }
+                      )
+                    : 'Starts 30 days from approval',
 
                 paymentRef:
                   session.id ||
