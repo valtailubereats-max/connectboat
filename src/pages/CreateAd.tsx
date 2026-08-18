@@ -2257,7 +2257,7 @@ const CreateAd = () => {
                             style={index === 0 && formData.listingType !== 'informativo' ? getAdImageStyle(imagePositionX, imagePositionY, imageZoom) : undefined} 
                           />
 
-                          {/* Delete Button */}
+                          {/* Compact Delete Button */}
                           {!(isEditLocked && !isAdmin) && (
                             <button
                               type="button"
@@ -2265,64 +2265,65 @@ const CreateAd = () => {
                                 e.stopPropagation();
                                 removeImage(index);
                               }}
-                              className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all active:scale-95 shadow-lg z-20 cursor-pointer"
+                              className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md z-20 cursor-pointer active:scale-90 transition-transform"
                               title="Remove photo"
                               aria-label="Remove photo"
                             >
-                              <X size={14} />
+                              <X size={12} strokeWidth={3} />
                             </button>
                           )}
 
-                          {/* Main Photo Badge vs Secondary Controls */}
+                          {/* Compact Main Badge / Secondary Photo Controls */}
                           {index === 0 ? (
-                            <div className="absolute bottom-0 left-0 right-0 bg-indigo-600 text-white text-[10px] font-bold py-1.5 text-center uppercase tracking-wider z-10 shadow-md">
-                              ★ Main Photo
+                            <div className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 bg-indigo-600/95 text-white text-[8px] sm:text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-wide z-10 shadow-md backdrop-blur-sm">
+                              <span>★</span>
+                              <span>Main</span>
                             </div>
                           ) : (
                             !(isEditLocked && !isAdmin) && (
-                              <div className="absolute bottom-2 left-1.5 right-1.5 flex items-center justify-between gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10 bg-slate-900/80 p-1 rounded-xl backdrop-blur-sm">
-                                <div className="flex items-center gap-0.5">
-                                  {index > 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        moveImage(index, 'left');
-                                      }}
-                                      className="p-1 hover:bg-white/20 text-white rounded-lg transition-colors cursor-pointer"
-                                      title="Move left"
-                                      aria-label="Move photo left"
-                                    >
-                                      <ChevronLeft size={14} />
-                                    </button>
-                                  )}
-                                  {index < formData.images.length - 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        moveImage(index, 'right');
-                                      }}
-                                      className="p-1 hover:bg-white/20 text-white rounded-lg transition-colors cursor-pointer"
-                                      title="Move right"
-                                      aria-label="Move photo right"
-                                    >
-                                      <ChevronRight size={14} />
-                                    </button>
-                                  )}
-                                </div>
+                              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10">
+                                {index > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      moveImage(index, 'left');
+                                    }}
+                                    className="w-6 h-6 bg-slate-900/75 hover:bg-slate-900 text-white rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm cursor-pointer active:scale-90 transition-transform"
+                                    title="Move left"
+                                    aria-label="Move photo left"
+                                  >
+                                    <ChevronLeft size={13} strokeWidth={2.5} />
+                                  </button>
+                                )}
+
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setAsMainImage(index);
                                   }}
-                                  className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-extrabold uppercase tracking-tight transition-colors cursor-pointer ml-auto"
+                                  className="w-7 h-7 bg-indigo-600/95 hover:bg-indigo-500 text-white rounded-full flex items-center justify-center shadow-md backdrop-blur-sm cursor-pointer active:scale-90 transition-transform"
                                   title="Set as Main Photo"
                                   aria-label="Set as Main Photo"
                                 >
-                                  Set as Main
+                                  <span className="text-[15px] leading-none">☆</span>
                                 </button>
+
+                                {index < formData.images.length - 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      moveImage(index, 'right');
+                                    }}
+                                    className="w-6 h-6 bg-slate-900/75 hover:bg-slate-900 text-white rounded-full flex items-center justify-center shadow-sm backdrop-blur-sm cursor-pointer active:scale-90 transition-transform"
+                                    title="Move right"
+                                    aria-label="Move photo right"
+                                  >
+                                    <ChevronRight size={13} strokeWidth={2.5} />
+                                  </button>
+                                )}
                               </div>
                             )
                           )}
@@ -2371,20 +2372,20 @@ const CreateAd = () => {
                 </p>
 
                 {formData.images.length > 0 && (
-                  <div className="mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-200/60 flex items-center justify-between text-xs">
+                  <div className="mt-3 px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200/60 flex items-center justify-between gap-2 text-[11px]">
                     <span className="font-bold text-slate-700">Main Photo Framing Adjustment</span>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => { setImagePositionX(50); setImagePositionY(50); }}
-                        className="px-3 py-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-100"
+                        className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-100"
                       >
                         Center
                       </button>
                       <button
                         type="button"
                         onClick={() => { setImagePositionX(50); setImagePositionY(50); setImageZoom(1); }}
-                        className="px-3 py-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-100"
+                        className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-100"
                       >
                         Reset
                       </button>
