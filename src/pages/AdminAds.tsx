@@ -405,21 +405,24 @@ const AdminAds = () => {
         updatedAt: serverTimestamp()
       };
 
-      const isPaidAssistedAwaitingActivation = Boolean(
+      const isPaidPendingApproval = Boolean(
         status === 'approved' &&
         adToUpdate &&
         isPaidAd(adToUpdate) &&
-        (adToUpdate as any).paymentFlow === 'admin_assisted' &&
-        (adToUpdate as any).awaitingAdminActivation === true
+        adToUpdate.status === 'pending'
       );
 
-      if (isPaidAssistedAwaitingActivation && adToUpdate) {
+      if (isPaidPendingApproval && adToUpdate) {
         const plan = (adToUpdate.plan || 'standard').toLowerCase();
         const isFeatured = plan === 'featured' || plan === 'premium';
         const featuredLevel = plan === 'premium' ? 'premium' : plan === 'featured' ? 'featured' : 'standard';
         const expiresAt = addDays(new Date(), 30);
 
+        // Both normal customer payments and admin-assisted payments start
+        // their 30-day listing period only after moderation approval.
         updatePayload.awaitingAdminActivation = false;
+        updatePayload.awaitingAdminApproval = false;
+        updatePayload.adStatus = 'active';
         updatePayload.activatedAt = serverTimestamp();
         updatePayload.expirationDate = expiresAt;
         updatePayload.featuredUntil = expiresAt;
