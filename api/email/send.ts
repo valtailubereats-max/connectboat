@@ -318,11 +318,14 @@ export function renderEmail(template: string, data: any): { subject: string; htm
 
   switch (template) {
     case 'recibo_pagamento_anuncio':
+      const awaitingApproval = data.awaitingApproval === true;
       subject = `Your ConnectBoat listing payment is confirmed`;
       bodyContent = `
         <p style="font-size: 16px; font-weight: bold; margin-top: 0; color: #0f172a;">Hello ${data.userName || 'Valued Member'},</p>
         <p style="color: #475569; margin-bottom: 20px;">
-          Thank you for advertising on ConnectBoat! Your payment has been confirmed and your listing is now <strong>active</strong>.
+          ${awaitingApproval
+            ? 'Thank you for advertising on ConnectBoat! Your payment has been confirmed. Your listing is now awaiting admin or moderator approval before publication.'
+            : 'Thank you for advertising on ConnectBoat! Your payment has been confirmed and your listing is now <strong>active</strong>.'}
         </p>
 
         <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px; margin-bottom: 24px;">
@@ -330,7 +333,7 @@ export function renderEmail(template: string, data: any): { subject: string; htm
             <tr>
               <td>
                 <span style="font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #166534; display: block;">Payment Status</span>
-                <span style="font-size: 18px; font-weight: 800; color: #15803d;">CONFIRMED & ACTIVE</span>
+                <span style="font-size: 18px; font-weight: 800; color: #15803d;">${awaitingApproval ? 'CONFIRMED / AWAITING APPROVAL' : 'CONFIRMED & ACTIVE'}</span>
               </td>
               <td align="right" style="font-size: 20px; font-weight: 800; color: #166534;">
                 ${data.totalAmount || 'Paid'}
@@ -380,14 +383,14 @@ export function renderEmail(template: string, data: any): { subject: string; htm
             </tr>
             <tr>
               <td style="padding: 5px 0; color: #64748b;">Status:</td>
-              <td style="padding: 5px 0;"><span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;">Active</span></td>
+              <td style="padding: 5px 0;"><span style="background: ${awaitingApproval ? '#fef3c7' : '#dcfce7'}; color: ${awaitingApproval ? '#b45309' : '#15803d'}; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;">${awaitingApproval ? 'Awaiting Approval' : 'Active'}</span></td>
             </tr>
             <tr>
               <td style="padding: 5px 0; color: #64748b;">Payment Date:</td>
               <td style="padding: 5px 0; color: #0f172a;">${data.paymentDate}</td>
             </tr>
             <tr>
-              <td style="padding: 5px 0; color: #64748b;">Expiry Date:</td>
+              <td style="padding: 5px 0; color: #64748b;">${awaitingApproval ? 'Listing Period:' : 'Expiry Date:'}</td>
               <td style="padding: 5px 0; color: #0f172a; font-weight: bold;">${data.expiryDate}</td>
             </tr>
             ${data.paymentRef ? `
@@ -400,9 +403,10 @@ export function renderEmail(template: string, data: any): { subject: string; htm
         </div>
 
         <div style="text-align: center; margin: 25px 0;">
+          ${awaitingApproval ? '' : `
           <a href="${data.adUrl || `${baseUrl}/anuncio/${data.adId}`}" target="_blank" style="background-color: #0284c7; color: #ffffff; padding: 12px 22px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 14px; margin-right: 8px; margin-bottom: 8px;">
             Open Listing
-          </a>
+          </a>`}
           <a href="${data.manageUrl || `${baseUrl}/profile`}" target="_blank" style="background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 12px 22px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 14px; margin-bottom: 8px;">
             My Listings
           </a>
