@@ -864,20 +864,57 @@ const CreateAd = () => {
     }
   };
 
+  const normalizeListingPlan = (planKey?: string): 'standard' | 'featured' | 'premium' => {
+    const normalized = (planKey || 'standard').toLowerCase();
+    if (['premium', 'national'].includes(normalized)) return 'premium';
+    if (['featured', 'highlight', 'local'].includes(normalized)) return 'featured';
+    return 'standard';
+  };
+
+  const handlePlanChange = (nextPlan: 'standard' | 'featured' | 'premium') => {
+    if (!isAdmin && isEditLocked) return;
+
+    const currentPlan = normalizeListingPlan(formData.plan);
+    if (currentPlan === nextPlan) return;
+
+    const nextLimit = getMaxPhotosForPlan(nextPlan);
+    const currentPhotoCount = formData.images.length;
+
+    if (currentPhotoCount > nextLimit) {
+      const photosToRemove = currentPhotoCount - nextLimit;
+      const confirmed = window.confirm(
+        `Your new plan allows up to ${nextLimit} photos.\n\n` +
+        `You currently have ${currentPhotoCount} photos. If you continue, ${photosToRemove} photo${photosToRemove === 1 ? '' : 's'} will be removed from the end of your gallery.\n\n` +
+        `Continue with the downgrade?`
+      );
+
+      if (!confirmed) return;
+
+      setFormData(prev => ({
+        ...prev,
+        plan: nextPlan,
+        images: prev.images.slice(0, nextLimit)
+      }));
+      return;
+    }
+
+    setFormData(prev => ({ ...prev, plan: nextPlan }));
+  };
+
   const maxAllowed = React.useMemo(() => {
     return getMaxPhotosForPlan(formData.plan);
   }, [formData.plan, settings]);
 
-  // Corta imagens para 2 se o utilizador trocar de Destaque para Grátis
+  // Compatibility guard for legacy plan values loaded from older listings.
   useEffect(() => {
-    if (formData.plan === 'free' && formData.images.length > 2) {
-      alert('The standard free listing allows up to 2 photos. Extra photos have been removed.');
+    const allowed = getMaxPhotosForPlan(formData.plan);
+    if (formData.images.length > allowed) {
       setFormData(prev => ({
         ...prev,
-        images: prev.images.slice(0, 2)
+        images: prev.images.slice(0, allowed)
       }));
     }
-  }, [formData.plan]);
+  }, [formData.plan, settings]);
 
   const processFiles = async (files: File[]) => {
     if (uploadRef.current) return;
@@ -886,7 +923,28 @@ const CreateAd = () => {
     const remainingSlots = maxAllowed - currentImagesCount;
 
     if (remainingSlots <= 0) {
-      alert(`Limite de ${maxAllowed} imagens atingido para este plano.`);
+      const currentPlan = normalizeListingPlan(formData.plan);
+      const nextPlan =
+        currentPlan === 'standard' ? 'featured' :
+        currentPlan === 'featured' ? 'premium' :
+        null;
+
+      if (nextPlan) {
+        const nextLimit = getMaxPhotosForPlan(nextPlan);
+        const upgrade = window.confirm(
+          `Photo limit reached.\n\n` +
+          `${currentPlan === 'standard' ? 'Standard Listing' : 'Featured Listing'} allows up to ${maxAllowed} photos. ` +
+          `${nextPlan === 'featured' ? 'Featured Listing' : 'Premium Featured'} allows up to ${nextLimit} photos.\n\n` +
+          `Upgrade now to add more photos?`
+        );
+
+        if (upgrade) {
+          handlePlanChange(nextPlan);
+        }
+      } else {
+        alert(`Photo limit reached. Premium Featured allows up to ${maxAllowed} photos.`);
+      }
+
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
       return;
@@ -1317,11 +1375,7 @@ const CreateAd = () => {
           : false,
         createdAt: id && originalAd ? originalAd.createdAt : serverTimestamp(),
         updatedAt: serverTimestamp(),
-        contactEmail: isStaff
-          ? (formData.contactEmail || '').trim()
-          : ((formData.category === 'Imigração' || isJob)
-              ? (formData.contactEmail || '')
-              : (originalAd?.contactEmail || '')),
+        contactEmail: (formData.category === 'Imigração' || isJob) ? (formData.contactEmail || '') : (originalAd?.contactEmail || ''),
         externalUrl: (formData.category === 'Imigração' || isJob) ? (formData.externalUrl || '') : (originalAd?.externalUrl || ''),
         sourceUrl: validSourceUrl || (originalAd?.sourceUrl || null),
         imagePositionX: imagePositionX,
@@ -1999,14 +2053,14 @@ const CreateAd = () => {
               key="step-1"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="space-y-6"
+              className="space-y-4"
             >
               {/* Listing Intent Toggle */}
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 sm:p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-700/80 space-y-3">
+              <div className="bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border-2 border-slate-100 dark:border-slate-700/80 space-y-3">
                 <label className="block text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
                   Listing Purpose <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({
@@ -2014,7 +2068,7 @@ const CreateAd = () => {
                       listingIntent: 'sale',
                       category: prev.category === 'Boats for Hire' ? 'Motorboats & Powerboats' : prev.category
                     }))}
-                    className={`p-3.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
+                    className={`p-2.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
                       formData.listingIntent === 'sale'
                         ? 'bg-sky-600 text-white border-sky-600 shadow-md'
                         : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400'
@@ -2031,7 +2085,7 @@ const CreateAd = () => {
                       listingIntent: 'hire',
                       category: 'Boats for Hire'
                     }))}
-                    className={`p-3.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
+                    className={`p-2.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
                       formData.listingIntent === 'hire'
                         ? 'bg-sky-600 text-white border-sky-600 shadow-md'
                         : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400'
@@ -2042,8 +2096,121 @@ const CreateAd = () => {
                   </button>
                 </div>
               </div>
-              {/* 1. Photos (FIRST item) */}
-              <div className="space-y-4">
+              {/* Compact Plan Selector - plan chosen here is the same plan used in Step 3 and Stripe Checkout */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                    Choose Listing Plan
+                  </label>
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    You can change it before payment
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    disabled={!isAdmin && isEditLocked}
+                    onClick={() => handlePlanChange('standard')}
+                    className={`relative min-h-[92px] p-2.5 rounded-xl border-2 text-left transition-all ${
+                      normalizeListingPlan(formData.plan) === 'standard'
+                        ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
+                        : 'border-slate-200 bg-white hover:border-emerald-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-base">🛥️</span>
+                      {normalizeListingPlan(formData.plan) === 'standard' && (
+                        <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center">✓</span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Standard</p>
+                      <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
+                        {getMaxPhotosForPlan('standard')} photos
+                      </p>
+                    </div>
+                    <p className="font-black text-emerald-700 text-xs sm:text-sm mt-1">
+                      £{getPlanPrice('standard').toFixed(2)}
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!isAdmin && isEditLocked}
+                    onClick={() => handlePlanChange('featured')}
+                    className={`relative min-h-[92px] p-2.5 rounded-xl border-2 text-left transition-all ${
+                      normalizeListingPlan(formData.plan) === 'featured'
+                        ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100'
+                        : 'border-slate-200 bg-white hover:border-amber-300'
+                    }`}
+                  >
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[7px] sm:text-[8px] font-black px-2 py-0.5 rounded-full uppercase whitespace-nowrap">
+                      Featured
+                    </div>
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-base">⭐</span>
+                      {normalizeListingPlan(formData.plan) === 'featured' && (
+                        <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center">✓</span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Featured</p>
+                      <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
+                        {getMaxPhotosForPlan('featured')} photos
+                      </p>
+                    </div>
+                    <p className="font-black text-amber-600 text-xs sm:text-sm mt-1">
+                      £{getPlanPrice('featured').toFixed(2)}
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!isAdmin && isEditLocked}
+                    onClick={() => handlePlanChange('premium')}
+                    className={`relative min-h-[92px] p-2.5 rounded-xl border-2 text-left transition-all ${
+                      normalizeListingPlan(formData.plan) === 'premium'
+                        ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100'
+                        : 'border-slate-200 bg-white hover:border-indigo-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-base">👑</span>
+                      {normalizeListingPlan(formData.plan) === 'premium' && (
+                        <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center">✓</span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Premium</p>
+                      <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
+                        {getMaxPhotosForPlan('premium')} photos
+                      </p>
+                    </div>
+                    <p className="font-black text-indigo-600 text-xs sm:text-sm mt-1">
+                      £{getPlanPrice('premium').toFixed(2)}
+                    </p>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 px-1">
+                  <span className="text-[10px] text-slate-500">
+                    Selected: <strong className="text-slate-700">
+                      {normalizeListingPlan(formData.plan) === 'premium'
+                        ? 'Premium Featured'
+                        : normalizeListingPlan(formData.plan) === 'featured'
+                          ? 'Featured Listing'
+                          : 'Standard Listing'}
+                    </strong>
+                  </span>
+                  <span className="text-[10px] font-bold text-indigo-600">
+                    Photo limit: {maxAllowed}
+                  </span>
+                </div>
+              </div>
+
+              {/* 1. Photos */}
+              <div className="space-y-3">
                 <div className="flex justify-between items-end">
                   <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
                     Photos *
@@ -2053,7 +2220,7 @@ const CreateAd = () => {
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -2322,7 +2489,7 @@ const CreateAd = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label className="block border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-white hover:bg-indigo-50/40 rounded-2xl p-6 text-center cursor-pointer transition-all">
                           <input
                             type="file"
@@ -2363,7 +2530,7 @@ const CreateAd = () => {
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Listing Title *</label>
                 <div className="relative">
-                  <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                   <input
                     id="txt-ad-title"
                     type="text"
@@ -2371,7 +2538,7 @@ const CreateAd = () => {
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     required
                     disabled={!isAdmin && isEditLocked}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     placeholder="Ex: Princess V48 Yacht (2021)"
                   />
                 </div>
@@ -2381,21 +2548,22 @@ const CreateAd = () => {
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Description *</label>
                 <div className="relative">
-                  <FileText className="absolute left-4 top-6 text-slate-400" size={20} />
+                  <FileText className="absolute left-3 top-3 text-slate-400" size={17} />
                   <textarea
                     id="txt-description"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     required
-                    rows={5}
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all resize-none"
+                    rows={3}
+                    className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all resize-none"
                     placeholder="Describe item condition, history, included accessories, etc."
                   />
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* 4. Category */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Category *</label>
                 <select
                   value={formData.category}
@@ -2409,7 +2577,7 @@ const CreateAd = () => {
                     }
                     setFormData(updatedData);
                   }}
-                  className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-medium"
+                  className="w-full px-3 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-medium"
                 >
                   <option value="">Select a category...</option>
                   {categories
@@ -2426,19 +2594,19 @@ const CreateAd = () => {
 
               {/* 5. Price */}
               {formData.category === '💚 Doações & Solidariedade' ? (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Price</label>
-                  <div className="w-full px-4 py-4 bg-emerald-50 border-2 border-emerald-150 text-emerald-800 rounded-2xl font-extrabold flex items-center gap-2 select-none">
+                  <div className="w-full px-3 py-2.5 bg-emerald-50 border-2 border-emerald-150 text-emerald-800 rounded-xl font-extrabold flex items-center gap-2 select-none">
                     <span>💚 Free (Community Donation)</span>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
                     Price ({formData.country === 'Reino Unido' ? '£' : '€'})
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xl select-none leading-none z-10">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xl select-none leading-none z-10">
                       {formData.country === 'Reino Unido' ? '£' : '€'}
                     </span>
                     <input
@@ -2446,15 +2614,18 @@ const CreateAd = () => {
                       inputMode="decimal"
                       value={formData.price}
                       onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                      className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-bold text-slate-800"
+                      className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-bold text-slate-800"
                       placeholder="Ex: 799,950"
                     />
                   </div>
                 </div>
               )}
 
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Region */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Region *</label>
                 <div className="relative">
                   <select
@@ -2469,7 +2640,7 @@ const CreateAd = () => {
                         city: regionCities.includes(prev.city) ? prev.city : (regionCities[0] || 'Southampton')
                       }));
                     }}
-                    className="w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-bold text-slate-800 outline-none cursor-pointer appearance-none shadow-sm hover:border-slate-200 transition-all font-sans disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-800 outline-none cursor-pointer appearance-none shadow-sm hover:border-slate-200 transition-all font-sans disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {UK_REGIONS.map(reg => (
                       <option key={reg} value={reg} className="font-bold text-slate-900 bg-white">
@@ -2484,7 +2655,7 @@ const CreateAd = () => {
               </div>
 
               {/* City / Town */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">City / Town *</label>
                 <div className="relative">
                   <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 z-10" size={20} />
@@ -2498,28 +2669,10 @@ const CreateAd = () => {
                 </div>
               </div>
 
-              {/* Admin/Moderator-only assisted customer email */}
-              {(isAdmin || isModerator) && (
-                <div className="space-y-2 p-5 bg-cyan-50/60 border-2 border-cyan-100 rounded-2xl">
-                  <label className="text-sm font-bold text-slate-800 uppercase tracking-wider">
-                    Customer Email <span className="text-slate-400 normal-case">(Admin / Moderator only · optional)</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.contactEmail}
-                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border border-cyan-200 rounded-xl focus:border-cyan-600 focus:outline-none text-sm"
-                    placeholder="customer@example.com"
-                    autoComplete="off"
-                  />
-                  <p className="text-xs text-slate-500">
-                    Leave blank when this is your own listing. When creating a listing for a customer, enter their email here so they can receive assisted-payment and approval notifications.
-                  </p>
-                </div>
-              )}
+              </div>
 
               {/* 8. Contact Phone */}
-              <div className="space-y-3 p-5 bg-slate-50 border-2 border-slate-100 rounded-2xl">
+              <div className="space-y-2 p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl">
                 <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Contact Phone</h4>
                 <label className="flex items-center gap-3 cursor-pointer select-none py-1">
                   <input
@@ -2545,11 +2698,11 @@ const CreateAd = () => {
               </div>
 
               {/* Step 1 Actions */}
-              <div className="flex items-center justify-between pt-6 border-t border-slate-200 mt-8">
+              <div className="flex items-center justify-between pt-4 border-t border-slate-200 mt-5">
                 <button
                   type="button"
                   onClick={() => navigate(-1)}
-                  className="px-6 py-3.5 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   ← Cancel
                 </button>
@@ -2557,7 +2710,7 @@ const CreateAd = () => {
                 <button
                   type="button"
                   onClick={validateStep1AndProceed}
-                  className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-indigo-100 flex items-center gap-2 cursor-pointer"
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-100 flex items-center gap-2 cursor-pointer"
                 >
                   Continue →
                 </button>
@@ -3101,7 +3254,7 @@ const CreateAd = () => {
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
-                    onClick={() => setFormData({ ...formData, plan: 'standard' })}
+                    onClick={() => handlePlanChange('standard')}
                     className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
                       formData.plan === 'standard' || (!formData.plan || formData.plan === 'free')
                         ? 'border-emerald-600 bg-emerald-50/40 ring-4 ring-emerald-100'
@@ -3132,7 +3285,7 @@ const CreateAd = () => {
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
-                    onClick={() => setFormData({ ...formData, plan: 'featured' })}
+                    onClick={() => handlePlanChange('featured')}
                     className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
                       formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'highlight'
                         ? 'border-amber-500 bg-amber-50/40 ring-4 ring-amber-100'
@@ -3164,7 +3317,7 @@ const CreateAd = () => {
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
-                    onClick={() => setFormData({ ...formData, plan: 'premium' })}
+                    onClick={() => handlePlanChange('premium')}
                     className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
                       formData.plan === 'premium' || formData.plan === 'national'
                         ? 'border-indigo-600 bg-indigo-50/40 ring-4 ring-indigo-100'
