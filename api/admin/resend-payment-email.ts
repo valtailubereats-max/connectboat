@@ -126,6 +126,7 @@ async function sendPaymentEmailDirect(recipientEmail: string, data: any) {
   baseUrl = baseUrl.replace(/\/$/, '');
 
   const subject = `Your ConnectBoat listing payment is confirmed`;
+  const awaitingApproval = data.awaitingApproval === true;
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -150,14 +151,16 @@ async function sendPaymentEmailDirect(recipientEmail: string, data: any) {
                 <td style="padding: 40px 30px; color: #334155; font-size: 15px; line-height: 1.6;">
                   <p style="font-size: 16px; font-weight: bold; margin-top: 0; color: #0f172a;">Hello ${data.userName || 'Valued Member'},</p>
                   <p style="color: #475569; margin-bottom: 20px;">
-                    Thank you for advertising on ConnectBoat! Your payment has been confirmed and your listing is now <strong>active</strong>.
+                    ${awaitingApproval
+                      ? 'Thank you for advertising on ConnectBoat! Your payment has been confirmed. Your listing is now awaiting admin or moderator approval before publication.'
+                      : 'Thank you for advertising on ConnectBoat! Your payment has been confirmed and your listing is now <strong>active</strong>.'}
                   </p>
                   <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px; margin-bottom: 24px;">
                     <table border="0" cellpadding="0" cellspacing="0" width="100%">
                       <tr>
                         <td>
                           <span style="font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #166534; display: block;">Payment Status</span>
-                          <span style="font-size: 18px; font-weight: 800; color: #15803d;">CONFIRMED & ACTIVE</span>
+                          <span style="font-size: 18px; font-weight: 800; color: #15803d;">${awaitingApproval ? 'CONFIRMED / AWAITING APPROVAL' : 'CONFIRMED & ACTIVE'}</span>
                         </td>
                         <td align="right" style="font-size: 20px; font-weight: 800; color: #166534;">${data.totalAmount || 'Paid'}</td>
                       </tr>
@@ -199,14 +202,14 @@ async function sendPaymentEmailDirect(recipientEmail: string, data: any) {
                       </tr>
                       <tr>
                         <td style="padding: 5px 0; color: #64748b;">Status:</td>
-                        <td style="padding: 5px 0;"><span style="background: #dcfce7; color: #15803d; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;">Active</span></td>
+                        <td style="padding: 5px 0;"><span style="background: ${awaitingApproval ? '#fef3c7' : '#dcfce7'}; color: ${awaitingApproval ? '#b45309' : '#15803d'}; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;">${awaitingApproval ? 'Awaiting Approval' : 'Active'}</span></td>
                       </tr>
                       <tr>
                         <td style="padding: 5px 0; color: #64748b;">Payment Date:</td>
                         <td style="padding: 5px 0; color: #0f172a;">${data.paymentDate}</td>
                       </tr>
                       <tr>
-                        <td style="padding: 5px 0; color: #64748b;">Expiry Date:</td>
+                        <td style="padding: 5px 0; color: #64748b;">${awaitingApproval ? 'Listing Period:' : 'Expiry Date:'}</td>
                         <td style="padding: 5px 0; color: #0f172a; font-weight: bold;">${data.expiryDate}</td>
                       </tr>
                       ${data.paymentRef ? `
@@ -218,7 +221,7 @@ async function sendPaymentEmailDirect(recipientEmail: string, data: any) {
                     </table>
                   </div>
                   <div style="text-align: center; margin: 25px 0;">
-                    <a href="${data.adUrl || `${baseUrl}/anuncio/${data.adId}`}" target="_blank" style="background-color: #0284c7; color: #ffffff; padding: 12px 22px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 14px; margin-right: 8px; margin-bottom: 8px;">Open Listing</a>
+                    ${awaitingApproval ? '' : `<a href="${data.adUrl || `${baseUrl}/anuncio/${data.adId}`}" target="_blank" style="background-color: #0284c7; color: #ffffff; padding: 12px 22px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 14px; margin-right: 8px; margin-bottom: 8px;">Open Listing</a>`}
                     <a href="${data.manageUrl || `${baseUrl}/profile`}" target="_blank" style="background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 12px 22px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block; font-size: 14px; margin-bottom: 8px;">My Listings</a>
                   </div>
                   <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;">
@@ -456,7 +459,10 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
       mediaBoostPrice: '£2.00',
       totalAmount: `£${totalNumeric.toFixed(2)}`,
       paymentDate: adData.paidAt?.toDate ? adData.paidAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      expiryDate: adData.expirationDate?.toDate ? adData.expirationDate.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      awaitingApproval: adData.status !== 'approved',
+      expiryDate: adData.status === 'approved' && adData.expirationDate?.toDate
+        ? adData.expirationDate.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+        : 'Starts 30 days from approval',
       paymentRef: adData.stripeCheckoutSessionId || adId,
       adUrl: `${baseUrl}/anuncio/${adId}`,
       manageUrl: `${baseUrl}/profile`,
