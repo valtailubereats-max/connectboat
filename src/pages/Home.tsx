@@ -2479,7 +2479,7 @@ const Home = () => {
                 {/* Section 6: Length (Meters) */}
                 <div className="space-y-2.5">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Length (Meters)
+                    Length (Metres)
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
