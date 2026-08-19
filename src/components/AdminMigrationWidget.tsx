@@ -179,7 +179,7 @@ export const AdminMigrationWidget = () => {
       {missingCountryCount !== null && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
           <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-            <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Total Listings Analyzed</p>
+            <p className="text-[10px] uppercase font-black text-slate-400 tracking-wider">Total Listings Analysed</p>
             <p className="text-2xl font-black text-slate-800">{totalAds}</p>
           </div>
           <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl relative overflow-hidden">
