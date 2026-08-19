@@ -369,7 +369,7 @@ export const BOAT_CONDITIONS = [
 
 export const BOAT_FUEL_TYPES = [
   'Diesel',
-  'Petrol / Gasoline',
+  'Petrol',
   'Electric',
   'Hybrid',
   'Solar',
