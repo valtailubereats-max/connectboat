@@ -2380,7 +2380,7 @@ const CreateAd = () => {
                         onClick={() => { setImagePositionX(50); setImagePositionY(50); }}
                         className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-100"
                       >
-                        Center
+                        Centre
                       </button>
                       <button
                         type="button"
