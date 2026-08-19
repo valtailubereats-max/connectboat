@@ -2231,7 +2231,7 @@ const AdminAds = () => {
                           }}
                           className="flex-1 py-1.5 px-2 bg-indigo-50 border border-indigo-100/70 hover:bg-indigo-100/60 text-[10px] font-bold text-indigo-600 rounded-lg transition-colors cursor-pointer text-center"
                         >
-                          Center
+                          Centre
                         </button>
                         <button
                           type="button"
