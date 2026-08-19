@@ -81,7 +81,7 @@ const Cookies = () => {
                   Preference Cookies:
                 </p>
                 <p className="text-slate-600 text-sm leading-relaxed">
-                  Allow the site to remember user choices (such as active search filters, view preferences, or visual theme) to offer a customized experience on future visits.
+                  Allow the site to remember user choices (such as active search filters, view preferences, or visual theme) to offer a customised experience on future visits.
                 </p>
               </div>
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
@@ -106,7 +106,7 @@ const Cookies = () => {
             </p>
             <ul className="list-disc pl-5 text-slate-600 text-sm space-y-1.5 mt-2">
               <li><strong>Firebase Authentication & Database:</strong> Generate vital technical cookies to keep your session logged in without requiring frequent re-authentication.</li>
-              <li><strong>Analytics Service:</strong> Collects anonymous data on clicks, views, and traffic to help us audit and prevent abuse or fraudulent behavior.</li>
+              <li><strong>Analytics Service:</strong> Collects anonymous data on clicks, views, and traffic to help us audit and prevent abuse or fraudulent behaviour.</li>
             </ul>
           </section>
 
