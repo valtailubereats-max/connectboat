@@ -157,7 +157,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     engineBrand: 'Suzuki DF200 APX',
     horsepower: '200 HP',
     engineHours: '78 hrs',
-    fuelType: 'Gasoline',
+    fuelType: 'Petrol',
     selected: true,
   },
   {
@@ -186,7 +186,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     length: '5.03 m (16.5 ft)',
     engineBrand: 'Mariner F75 FourStroke',
     horsepower: '75 HP',
-    fuelType: 'Gasoline',
+    fuelType: 'Petrol',
     selected: true,
   },
   {
@@ -223,7 +223,7 @@ const INITIAL_PRESETS: PresetItem[] = [
   {
     id: 'preset-demo-6',
     title: 'Sea-Doo GTX Limited 300 Jet Ski (2023)',
-    description: 'This is an example listing created for demonstration purposes and is not available for purchase.\n\n2023 Sea-Doo GTX Limited 300 in Metallic Blue. Premium Bluetooth audio system, color display, iBR intelligent brake and reverse, waterproof phone compartment, and aluminum trailer.',
+    description: 'This is an example listing created for demonstration purposes and is not available for purchase.\n\n2023 Sea-Doo GTX Limited 300 in Metallic Blue. Premium Bluetooth audio system, colour display, iBR intelligent brake and reverse, waterproof phone compartment, and aluminium trailer.',
     price: 19200,
     imageUrl: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1200&q=80',
     images: ['https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1200&q=80'],
@@ -240,7 +240,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     model: 'GTX Limited 300',
     year: 2023,
     horsepower: '300 HP',
-    fuelType: 'Gasoline',
+    fuelType: 'Petrol',
     selected: true,
   },
   {
@@ -261,7 +261,7 @@ const INITIAL_PRESETS: PresetItem[] = [
     manufacturer: 'Yamaha',
     model: 'F115 LB',
     horsepower: '115 HP',
-    fuelType: 'Gasoline',
+    fuelType: 'Petrol',
     selected: true,
   },
   {
