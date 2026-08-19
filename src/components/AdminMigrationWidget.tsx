@@ -160,7 +160,7 @@ export const AdminMigrationWidget = () => {
           ) : (
             <RefreshCw size={16} />
           )}
-          {analyzing ? 'Analyzing...' : 'Analyze Listings Without Country'}
+          {analyzing ? 'Analysing...' : 'Analyse Listings Without Country'}
         </button>
 
         {missingCountryCount !== null && missingCountryCount > 0 && (
