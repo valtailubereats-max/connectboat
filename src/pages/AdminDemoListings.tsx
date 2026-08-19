@@ -267,7 +267,7 @@ const INITIAL_PRESETS: PresetItem[] = [
   {
     id: 'preset-demo-8',
     title: 'De Graaff 2600kg Twin Axle Roller Boat Trailer',
-    description: 'This is an example listing created for demonstration purposes and is not available for purchase.\n\nHeavy duty twin axle roller boat trailer for boats up to 6.8 meters or 2000kg load. Fully galvanized steel chassis, waterproof LED lights, 2-speed winch, and flush kit.',
+    description: 'This is an example listing created for demonstration purposes and is not available for purchase.\n\nHeavy duty twin axle roller boat trailer for boats up to 6.8 metres or 2000kg load. Fully galvanized steel chassis, waterproof LED lights, 2-speed winch, and flush kit.',
     price: 3450,
     imageUrl: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
     images: ['https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80'],
