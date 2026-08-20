@@ -821,7 +821,17 @@ const Home = () => {
       }
 
       // City / Regional limits
-      const isNational = ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel;
+      // Current paid plans (Featured/Premium) are marketplace-wide highlights.
+      // Legacy local/national plans are still supported for older listings.
+      const isPremiumPlan = ad.featuredLevel === 'premium' || ad.plan === 'premium';
+      const isFeaturedPlan = ad.featuredLevel === 'featured' || ad.plan === 'featured';
+      const isNational =
+        isPremiumPlan ||
+        isFeaturedPlan ||
+        ad.featuredLevel === 'national' ||
+        ad.plan === 'national' ||
+        !ad.featuredLevel;
+
       if (city !== 'Todas') {
         const isLocal = ad.featuredLevel === 'local' || ad.plan === 'local' || ad.plan === 'highlight' || ad.plan === 'intermediate';
         if (isLocal) {
@@ -830,7 +840,7 @@ const Home = () => {
           return false;
         }
       } else {
-        // city === 'Todas': show National (or all permanent if national or without city constraints)
+        // With no city selected, show current Featured/Premium plans and legacy national highlights.
         if (!isNational) return false;
       }
 
@@ -850,11 +860,19 @@ const Home = () => {
 
     const filteredActivePermanent = result.filter(ad => ad.isPermanentFeatured);
 
-    // Priorities:
-    // 1. Destaques Nacionais ativos
-    // 2. Destaques Locais ativos
-    // 3. Destaques Permanentes
-    const paidNational = filteredActivePaid.filter(ad => ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel);
+    // Featured Marine Listings priority:
+    // 1. Premium paid listings
+    // 2. Featured paid listings
+    // 3. Legacy national highlights
+    // 4. Legacy local highlights
+    // 5. Permanent highlights
+    const paidPremium = filteredActivePaid.filter(ad => ad.featuredLevel === 'premium' || ad.plan === 'premium');
+    const paidFeatured = filteredActivePaid.filter(ad => ad.featuredLevel === 'featured' || ad.plan === 'featured');
+    const paidNational = filteredActivePaid.filter(ad =>
+      (ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel) &&
+      ad.featuredLevel !== 'premium' && ad.plan !== 'premium' &&
+      ad.featuredLevel !== 'featured' && ad.plan !== 'featured'
+    );
     const paidLocal = filteredActivePaid.filter(ad => ad.featuredLevel === 'local' || ad.plan === 'local' || ad.plan === 'highlight' || ad.plan === 'intermediate');
 
     const sortByFeaturedUntilDesc = (a: Ad, b: Ad) => {
@@ -863,6 +881,8 @@ const Home = () => {
       return (timeB || 0) - (timeA || 0);
     };
 
+    paidPremium.sort(sortByFeaturedUntilDesc);
+    paidFeatured.sort(sortByFeaturedUntilDesc);
     paidNational.sort(sortByFeaturedUntilDesc);
     paidLocal.sort(sortByFeaturedUntilDesc);
 
@@ -873,8 +893,14 @@ const Home = () => {
       return (timeB || 0) - (timeA || 0);
     });
 
-    // Combine them in priority order: Paid National, Paid Local, Permanent Featured
-    let finalResult = [...paidNational, ...paidLocal, ...filteredActivePermanent];
+    // Combine in commercial plan priority order.
+    let finalResult = [
+      ...paidPremium,
+      ...paidFeatured,
+      ...paidNational,
+      ...paidLocal,
+      ...filteredActivePermanent
+    ];
 
     return finalResult.slice(0, 50);
   }, [featuredAds, searchTerm, category, city, country, filterRegion, filterNational, filterOnline]);
@@ -1110,6 +1136,11 @@ const Home = () => {
         );
 
         if (isFeatured) {
+          // Current ConnectBoat paid-plan hierarchy.
+          if (ad.featuredLevel === 'premium' || ad.plan === 'premium') return 5;
+          if (ad.featuredLevel === 'featured' || ad.plan === 'featured') return 4;
+
+          // Keep compatibility with older national/local featured records.
           const isNational = ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel;
           if (isNational) return 4;
           const isDonation = ad.category === '💚 Doações & Solidariedade' || ad.donationBoost === true || ad.featuredReason === 'donation';
