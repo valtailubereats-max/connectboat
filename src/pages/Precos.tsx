@@ -120,7 +120,7 @@ export default function Precos() {
             ConnectBoat Pricing Plans
           </h1>
           <p className="mt-3 text-slate-600 font-medium text-lg">
-            Choose the best plan to showcase your boat or marine business.
+            Choose the best plan to showcase your boat, marine product or service.
           </p>
         </div>
 
@@ -322,7 +322,7 @@ export default function Precos() {
               <li>👑 <strong>Includes Featured benefits</strong></li>
               <li>📷 <strong>Up to {getMaxPhotosForPlan('premium')} Photos</strong></li>
               <li>🚀 <strong>Highest Listing Priority</strong></li>
-              <li>👑 Top positions among Featured listings</li>
+              <li>👑 Top positions in Featured sections</li>
               <li>🏷️ Premium Badge</li>
             </ul>
 
