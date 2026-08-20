@@ -56,9 +56,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               showcase: data.planPrices?.showcase || 8.99
             },
             maxImages: {
-              standard: data.maxImages?.standard || 6,
-              featured: data.maxImages?.featured || 10,
-              premium: data.maxImages?.premium || 15,
+              standard: data.maxImages?.standard || 8,
+              featured: data.maxImages?.featured || 15,
+              premium: data.maxImages?.premium || 25,
               free: data.maxImages?.free || 2,
               local: data.maxImages?.local || 4,
               national: data.maxImages?.national || 6,
@@ -77,7 +77,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             id: 'global',
             planDurations: { standard: 30, featured: 30, premium: 30 },
             planPrices: { standard: 2.99, featured: 4.99, premium: 9.99 },
-            maxImages: { standard: 6, featured: 10, premium: 15 },
+            maxImages: { standard: 8, featured: 15, premium: 25 },
             maxShowcaseProducts: 6,
             expirationAction: 'archive',
             warningDays: 3,
