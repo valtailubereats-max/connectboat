@@ -77,7 +77,8 @@ const AdCard: React.FC<AdCardProps> = ({
       : new Date(ad.featuredUntil) > new Date()
   );
 
-  const isNationalHighlight = isAdFeatured && (ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel);
+  const isPremiumHighlight = isAdFeatured && (ad.featuredLevel === 'premium' || ad.plan === 'premium');
+  const isNationalHighlight = isAdFeatured && !isPremiumHighlight && (ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel);
 
   const isCompactActive = settings?.compactCardMode === true;
   const isFeaturedVariant = variant === 'featured';
@@ -576,15 +577,17 @@ const AdCard: React.FC<AdCardProps> = ({
             <div className={`absolute z-20 bg-gradient-to-r ${
               (ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation')
                 ? 'from-emerald-600 to-emerald-500 text-white font-sans'
-                : isNationalHighlight
-                  ? 'from-indigo-600 to-indigo-500 text-white font-sans'
-                  : 'from-amber-500 to-yellow-400 text-white font-sans'
+                : isPremiumHighlight
+                  ? 'from-violet-700 to-indigo-600 text-white font-sans'
+                  : isNationalHighlight
+                    ? 'from-indigo-600 to-indigo-500 text-white font-sans'
+                    : 'from-amber-500 to-yellow-400 text-white font-sans'
             } font-black rounded-full shadow-md flex items-center justify-center ${
               isFeaturedVariant 
                 ? 'top-1 left-1 text-[8px] w-4.5 h-4.5' 
                 : 'top-1.5 left-1.5 text-[9px] w-5 h-5'
             }`}>
-              <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? '💚' : isNationalHighlight ? '👑' : '⭐'}</span>
+              <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? '💚' : (isPremiumHighlight || isNationalHighlight) ? '👑' : '⭐'}</span>
             </div>
           )}
           {/* Removed top overlay tags per user request */}
@@ -879,12 +882,14 @@ const AdCard: React.FC<AdCardProps> = ({
                       <span className={`${
                         (ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation')
                           ? 'bg-emerald-600 text-white'
-                          : isNationalHighlight
-                            ? 'bg-indigo-600 text-white'
-                            : 'bg-amber-500 text-white'
+                          : isPremiumHighlight
+                            ? 'bg-gradient-to-r from-violet-700 to-indigo-600 text-white'
+                            : isNationalHighlight
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-amber-500 text-white'
                       } text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider shadow-sm flex items-center gap-1 animate-pulse`}>
-                        <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? '💚' : isNationalHighlight ? '👑' : '⭐'}</span>
-                        <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? 'Donation' : isNationalHighlight ? 'National Featured' : 'Local Featured'}</span>
+                        <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? '💚' : (isPremiumHighlight || isNationalHighlight) ? '👑' : '⭐'}</span>
+                        <span>{(ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation') ? 'Donation' : isPremiumHighlight ? 'Premium' : isNationalHighlight ? 'National Featured' : 'Featured'}</span>
                       </span>
                     )}
                     <span className="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider border border-indigo-100">
