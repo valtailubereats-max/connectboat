@@ -41,6 +41,16 @@ export default function Precos() {
     return price === null ? '—' : price.toFixed(2);
   };
 
+  const getPlanDuration = (plan: 'standard' | 'featured' | 'premium'): number => {
+    const value = Number(settings?.planDurations?.[plan]);
+    return Number.isFinite(value) && value > 0 ? value : 30;
+  };
+
+  const formatDurationLabel = (plan: 'standard' | 'featured' | 'premium'): string => {
+    const days = getPlanDuration(plan);
+    return `${days} ${days === 1 ? 'Day' : 'Days'}`;
+  };
+
   const getMaxPhotosForPlan = (planKey: string): number => {
     if (settings?.maxImages) {
       const val = settings.maxImages[planKey as keyof typeof settings.maxImages];
@@ -55,9 +65,9 @@ export default function Precos() {
         return settings.maxImages.standard;
       }
     }
-    if (planKey === 'premium' || planKey === 'national') return 8;
-    if (planKey === 'featured' || planKey === 'local' || planKey === 'highlight') return 6;
-    return 4;
+    if (planKey === 'premium' || planKey === 'national') return 25;
+    if (planKey === 'featured' || planKey === 'local' || planKey === 'highlight') return 15;
+    return 8;
   };
 
   const handlePublishClick = () => {
@@ -137,10 +147,10 @@ export default function Precos() {
                   <span className="text-slate-500 text-[10px] font-black uppercase tracking-wider">Includes:</span>
                   <div className="flex flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
-                      ⭐ Local Featured
+                      ⭐ Featured Listing
                     </span>
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-white px-2.5 py-1 rounded-xl border border-slate-200">
-                      👑 National Featured
+                      👑 Premium Featured
                     </span>
                   </div>
                 </div>
@@ -235,7 +245,7 @@ export default function Precos() {
               Standard
             </div>
             <p className="font-black text-slate-900 text-base">Standard Listing</p>
-            <p className="text-xs text-slate-500 mt-0.5">30 days active listing in marketplace search</p>
+            <p className="text-xs text-slate-500 mt-0.5">{formatDurationLabel('standard')} active listing in marketplace search</p>
 
             <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium flex-1">
               <li>📷 <strong>Up to {getMaxPhotosForPlan('standard')} Photos</strong></li>
@@ -244,7 +254,7 @@ export default function Precos() {
             </ul>
 
             <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-              <span className="font-bold text-slate-500">Duration: 30 Days</span>
+              <span className="font-bold text-slate-500">Duration: {formatDurationLabel('standard')}</span>
               <span className="font-black text-emerald-700 text-base">
                 {isUK ? `£${formatPlanPrice('standard')}` : `€${formatPlanPrice('standard')}`}
               </span>
@@ -270,17 +280,17 @@ export default function Precos() {
               Featured ⭐
             </div>
             <p className="font-black text-slate-900 text-base">Featured Listing</p>
-            <p className="text-xs text-slate-500 mt-0.5">Homepage highlight & priority placement</p>
+            <p className="text-xs text-slate-500 mt-0.5">Featured placement & priority above Standard listings</p>
 
             <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium flex-1">
               <li>🌟 <strong>Includes Standard benefits</strong></li>
               <li>📷 <strong>Up to {getMaxPhotosForPlan('featured')} Photos</strong></li>
-              <li>🌟 <strong>Homepage Highlight</strong></li>
-              <li>🌟 Priority in Search Results</li>
+              <li>🌟 <strong>Featured placement in the relevant marketplace section</strong></li>
+              <li>🌟 Priority above Standard listings</li>
             </ul>
 
             <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-              <span className="font-bold text-slate-500">Duration: 30 Days</span>
+              <span className="font-bold text-slate-500">Duration: {formatDurationLabel('featured')}</span>
               <span className="font-black text-amber-600 text-base">
                 {isUK ? `£${formatPlanPrice('featured')}` : `€${formatPlanPrice('featured')}`}
               </span>
@@ -306,17 +316,18 @@ export default function Precos() {
               Premium 👑
             </div>
             <p className="font-black text-slate-900 text-base">Premium Featured</p>
-            <p className="text-xs text-slate-500 mt-0.5">Top positions inside featured section & max reach</p>
+            <p className="text-xs text-slate-500 mt-0.5">Highest listing priority across ConnectBoat</p>
 
             <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium flex-1">
               <li>👑 <strong>Includes Featured benefits</strong></li>
               <li>📷 <strong>Up to {getMaxPhotosForPlan('premium')} Photos</strong></li>
-              <li>🚀 <strong>Top Spot Priority</strong></li>
-              <li>💥 Maximum Exposure</li>
+              <li>🚀 <strong>Highest Listing Priority</strong></li>
+              <li>👑 Top positions among Featured listings</li>
+              <li>🏷️ Premium Badge</li>
             </ul>
 
             <div className="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-              <span className="font-bold text-slate-500">Duration: 30 Days</span>
+              <span className="font-bold text-slate-500">Duration: {formatDurationLabel('premium')}</span>
               <span className="font-black text-indigo-600 text-base">
                 {isUK ? `£${formatPlanPrice('premium')}` : `€${formatPlanPrice('premium')}`}
               </span>
