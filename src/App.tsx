@@ -50,6 +50,7 @@ import BoatsForHire from './pages/BoatsForHire';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ShareModal } from './components/ShareModal';
 import { AnalyticsTracker } from './components/AnalyticsTracker';
+import CookieConsent from './components/CookieConsent';
 import { triggerShare } from './utils/shareUtils';
 
 import { Ad } from './types';
@@ -897,6 +898,7 @@ export default function App() {
         <AuthProvider>
           <Router>
             <AnalyticsTracker />
+            <CookieConsent />
             <ScrollToTop />
             <div className="min-h-screen font-sans text-slate-900 selection:bg-pt-green/10 max-w-full overflow-x-hidden">
             <Navbar />
