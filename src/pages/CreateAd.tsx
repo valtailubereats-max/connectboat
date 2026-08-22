@@ -396,14 +396,14 @@ const CreateAd = () => {
     const normalizedPlan = (planKey || 'standard').toLowerCase();
 
     if (normalizedPlan === 'premium') {
-      return Number(prices?.premium ?? 9.99);
+      return Number(prices?.premium ?? 12.99);
     }
 
     if (['featured', 'local', 'national', 'highlight'].includes(normalizedPlan)) {
-      return Number(prices?.featured ?? 4.99);
+      return Number(prices?.featured ?? 7.99);
     }
 
-    return Number(prices?.standard ?? 2.99);
+    return Number(prices?.standard ?? 4.99);
   };
 
   const getCheckoutTotalAmountFormatted = () => {
