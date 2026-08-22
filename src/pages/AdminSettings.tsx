@@ -176,7 +176,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
         const defaultSettings: MarketplaceSettings = {
           id: 'global',
           planDurations: { standard: 30, featured: 30, premium: 30, free: 30, local: 30, national: 30, showcase: 30, intermediate: 180 },
-          planPrices: { standard: 2.99, featured: 4.99, premium: 9.99, local: 4.99, national: 7.99, showcase: 8.99 },
+          planPrices: { standard: 4.99, featured: 7.99, premium: 12.99, local: 4.99, national: 7.99, showcase: 8.99 },
           maxImages: { standard: 6, featured: 10, premium: 15, free: 2, local: 4, national: 6, showcase: 6, intermediate: 3 },
           maxShowcaseProducts: 6,
           expirationAction: 'archive',
@@ -324,7 +324,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <input
                     type="number"
                     step="0.01"
-                    value={settings.planPrices?.standard ?? 2.99}
+                    value={settings.planPrices?.standard ?? 4.99}
                     onChange={(e) => setSettings({
                       ...settings,
                       planPrices: { ...settings.planPrices, standard: parseFloat(e.target.value) || 0 }
@@ -370,7 +370,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <input
                     type="number"
                     step="0.01"
-                    value={settings.planPrices?.featured ?? 4.99}
+                    value={settings.planPrices?.featured ?? 7.99}
                     onChange={(e) => setSettings({
                       ...settings,
                       planPrices: { ...settings.planPrices, featured: parseFloat(e.target.value) || 0 }
@@ -416,7 +416,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <input
                     type="number"
                     step="0.01"
-                    value={settings.planPrices?.premium ?? 9.99}
+                    value={settings.planPrices?.premium ?? 12.99}
                     onChange={(e) => setSettings({
                       ...settings,
                       planPrices: { ...settings.planPrices, premium: parseFloat(e.target.value) || 0 }
