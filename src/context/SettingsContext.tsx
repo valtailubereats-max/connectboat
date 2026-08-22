@@ -48,9 +48,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               showcase: data.planDurations?.showcase || 30,
             },
             planPrices: {
-              standard: data.planPrices?.standard || 2.99,
-              featured: data.planPrices?.featured || 4.99,
-              premium: data.planPrices?.premium || 9.99,
+              standard: data.planPrices?.standard || 4.99,
+              featured: data.planPrices?.featured || 7.99,
+              premium: data.planPrices?.premium || 12.99,
               local: data.planPrices?.local || 4.99,
               national: data.planPrices?.national || 7.99,
               showcase: data.planPrices?.showcase || 8.99
@@ -76,7 +76,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const defaultSettings: MarketplaceSettings = {
             id: 'global',
             planDurations: { standard: 30, featured: 30, premium: 30 },
-            planPrices: { standard: 2.99, featured: 4.99, premium: 9.99 },
+            planPrices: { standard: 4.99, featured: 7.99, premium: 12.99 },
             maxImages: { standard: 8, featured: 15, premium: 25 },
             maxShowcaseProducts: 6,
             expirationAction: 'archive',
