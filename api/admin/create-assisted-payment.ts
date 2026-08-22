@@ -217,15 +217,15 @@ export default async function createAssistedPaymentHandler(
     const planPrices = {
       standard: getValidConfiguredPrice(
         configuredPlanPrices.standard,
-        2.99
+        4.99
       ),
       featured: getValidConfiguredPrice(
         configuredPlanPrices.featured,
-        4.99
+        7.99
       ),
       premium: getValidConfiguredPrice(
         configuredPlanPrices.premium,
-        9.99
+        12.99
       ),
     };
 
