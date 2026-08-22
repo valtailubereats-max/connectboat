@@ -350,7 +350,7 @@ export function renderEmail(template: string, data: any): { subject: string; htm
           </tr>
           <tr>
             <td style="padding: 10px 0; color: #475569;">${data.planTitle || 'Listing Fee'}</td>
-            <td align="right" style="padding: 10px 0; font-weight: bold; color: #0f172a;">${data.planPrice || '£2.99'}</td>
+            <td align="right" style="padding: 10px 0; font-weight: bold; color: #0f172a;">${data.planPrice || 'Paid'}</td>
           </tr>
           ${data.hasMediaBoost ? `
           <tr>
@@ -360,7 +360,7 @@ export function renderEmail(template: string, data: any): { subject: string; htm
           ` : ''}
           <tr>
             <td style="padding-top: 12px; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0f172a; font-size: 15px;">Total Paid</td>
-            <td align="right" style="padding-top: 12px; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0284c7; font-size: 16px;">${data.totalAmount || '£2.99'}</td>
+            <td align="right" style="padding-top: 12px; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0284c7; font-size: 16px;">${data.totalAmount || 'Paid'}</td>
           </tr>
         </table>
 
