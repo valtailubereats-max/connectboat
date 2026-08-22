@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, Link } from 'react-router-dom';
 import { HelpCircle, ChevronDown, ChevronUp, Search, MessageCircle, Mail, ArrowLeft, Home } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
 
 interface FAQItem {
   question: string;
@@ -11,12 +12,21 @@ interface FAQItem {
 
 const FAQ = () => {
   const navigate = useNavigate();
+  const { settings } = useSettings();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
+
+  const standardPrice = Number(settings?.planPrices?.standard) || 4.99;
+  const featuredPrice = Number(settings?.planPrices?.featured) || 7.99;
+  const premiumPrice = Number(settings?.planPrices?.premium) || 12.99;
+
+  const standardDuration = Number(settings?.planDurations?.standard) || 30;
+  const featuredDuration = Number(settings?.planDurations?.featured) || 30;
+  const premiumDuration = Number(settings?.planDurations?.premium) || 30;
 
   const faqData: FAQItem[] = [
     {
@@ -29,7 +39,7 @@ const FAQ = () => {
     },
     {
       question: 'How much does it cost to post a listing on ConnectBoat?',
-      answer: 'Standard 30-day listings on ConnectBoat are available for £2.99. You can also boost your post with Featured (£4.99) or Premium (£9.99) plans for homepage highlight and maximum nationwide exposure.'
+      answer: `Current listing plans are Standard (£${standardPrice.toFixed(2)} for ${standardDuration} days), Featured (£${featuredPrice.toFixed(2)} for ${featuredDuration} days) and Premium (£${premiumPrice.toFixed(2)} for ${premiumDuration} days). Featured receives priority placement, while Premium receives the highest listing priority and top positions in Featured sections. Prices and plan details shown on the Pricing page are the current applicable rates.`
     },
     {
       question: 'How do I contact a seller?',
