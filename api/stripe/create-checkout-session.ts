@@ -156,9 +156,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const settingsData = settingsSnapshot.exists ? settingsSnapshot.data() : {};
     const configuredPlanPrices = settingsData?.planPrices || {};
 
-    const standardPrice = getValidConfiguredPrice(configuredPlanPrices.standard, 2.99);
-    const featuredPrice = getValidConfiguredPrice(configuredPlanPrices.featured, 4.99);
-    const premiumPrice = getValidConfiguredPrice(configuredPlanPrices.premium, 9.99);
+    const standardPrice = getValidConfiguredPrice(configuredPlanPrices.standard, 4.99);
+    const featuredPrice = getValidConfiguredPrice(configuredPlanPrices.featured, 7.99);
+    const premiumPrice = getValidConfiguredPrice(configuredPlanPrices.premium, 12.99);
 
     let productName = '';
     let productDescription = '';
