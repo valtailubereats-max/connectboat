@@ -172,7 +172,7 @@ async function sendPaymentEmailDirect(recipientEmail: string, data: any) {
                     </tr>
                     <tr>
                       <td style="padding: 10px 0; color: #475569;">${data.planTitle || 'Listing Fee'}</td>
-                      <td align="right" style="padding: 10px 0; font-weight: bold; color: #0f172a;">${data.planPrice || '£2.99'}</td>
+                      <td align="right" style="padding: 10px 0; font-weight: bold; color: #0f172a;">${data.planPrice || 'Paid'}</td>
                     </tr>
                     ${data.hasMediaBoost ? `
                     <tr>
@@ -182,7 +182,7 @@ async function sendPaymentEmailDirect(recipientEmail: string, data: any) {
                     ` : ''}
                     <tr>
                       <td style="padding-top: 12px; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0f172a; font-size: 15px;">Total Paid</td>
-                      <td align="right" style="padding-top: 12px; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0284c7; font-size: 16px;">${data.totalAmount || '£2.99'}</td>
+                      <td align="right" style="padding-top: 12px; border-top: 2px solid #cbd5e1; font-weight: 800; color: #0284c7; font-size: 16px;">${data.totalAmount || 'Paid'}</td>
                     </tr>
                   </table>
                   <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
@@ -429,21 +429,96 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
     const isHire = adData.category === 'aluguel' || adData.listingType === 'hire' || adData.type === 'hire';
     const activePlan = (adData.plan || 'standard').toLowerCase();
 
-    let planTitle = 'Standard Listing';
-    let planPrice = '£2.99';
-    if (activePlan === 'premium') {
-      planTitle = 'Premium Featured Listing';
-      planPrice = '£9.99';
-    } else if (activePlan === 'featured' || activePlan === 'national' || activePlan === 'local') {
-      planTitle = 'Featured Listing';
-      planPrice = '£4.99';
+    const settingsSnapshot = await db.collection('settings').doc('global').get();
+    const settingsData = settingsSnapshot.exists ? (settingsSnapshot.data() || {}) : {};
+    const configuredPlanPrices = settingsData.planPrices || {};
+
+    const getValidConfiguredPrice = (value: unknown, fallback: number): number => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+    };
+
+    const currentPlanPrices = {
+      standard: getValidConfiguredPrice(configuredPlanPrices.standard, 4.99),
+      featured: getValidConfiguredPrice(configuredPlanPrices.featured, 7.99),
+      premium: getValidConfiguredPrice(configuredPlanPrices.premium, 12.99),
+    };
+
+    const normalizedPlan =
+      activePlan === 'premium'
+        ? 'premium'
+        : (activePlan === 'featured' || activePlan === 'national' || activePlan === 'local')
+          ? 'featured'
+          : 'standard';
+
+    const planTitles = {
+      standard: 'Standard Listing',
+      featured: 'Featured Listing',
+      premium: 'Premium Featured Listing',
+    };
+
+    const planTitle = planTitles[normalizedPlan];
+    const hasMediaBoost = !!adData.mediaBoostEnabled || !!adData.videoPaid;
+    const mediaBoostNumeric = hasMediaBoost ? 2.00 : 0;
+
+    // Prefer the amount that Stripe actually charged when the original
+    // Checkout Session is available. This keeps a resent receipt historically
+    // accurate even if plan prices are changed later in Admin Settings.
+    let totalNumeric: number | null = null;
+    let currencySymbol = '£';
+
+    const stripeSessionId =
+      typeof adData.stripeCheckoutSessionId === 'string'
+        ? adData.stripeCheckoutSessionId.trim()
+        : '';
+
+    const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+    if (stripeSessionId && stripeSecretKey) {
+      try {
+        const stripeResponse = await fetch(
+          `https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(stripeSessionId)}`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${stripeSecretKey}`,
+            },
+          }
+        );
+
+        if (stripeResponse.ok) {
+          const stripeSession: any = await stripeResponse.json();
+
+          if (
+            typeof stripeSession.amount_total === 'number' &&
+            Number.isFinite(stripeSession.amount_total)
+          ) {
+            totalNumeric = stripeSession.amount_total / 100;
+          }
+
+          if (typeof stripeSession.currency === 'string') {
+            currencySymbol =
+              stripeSession.currency.toLowerCase() === 'eur' ? '€' : '£';
+          }
+        } else {
+          console.warn(
+            `[7] Stripe Checkout Session lookup failed (${stripeResponse.status}) for ${stripeSessionId}. Falling back to configured plan prices.`
+          );
+        }
+      } catch (stripeLookupError: any) {
+        console.warn(
+          `[7] Stripe Checkout Session lookup error for ${stripeSessionId}:`,
+          stripeLookupError?.message || stripeLookupError
+        );
+      }
     }
 
-    const hasMediaBoost = !!adData.mediaBoostEnabled || !!adData.videoPaid;
-    let totalNumeric = activePlan === 'premium' ? 9.99 : (activePlan === 'featured' || activePlan === 'national' || activePlan === 'local' ? 4.99 : 2.99);
-    if (hasMediaBoost) {
-      totalNumeric += 2.00;
+    if (totalNumeric === null) {
+      totalNumeric = currentPlanPrices[normalizedPlan] + mediaBoostNumeric;
     }
+
+    const planNumeric = Math.max(0, totalNumeric - mediaBoostNumeric);
+    const planPrice = `${currencySymbol}${planNumeric.toFixed(2)}`;
 
     let baseUrl = process.env.PUBLIC_SITE_URL || process.env.SITE_URL || 'https://www.connectboat.co.uk';
     baseUrl = baseUrl.replace(/\/$/, '');
@@ -456,8 +531,8 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
       planTitle: planTitle,
       planPrice: planPrice,
       hasMediaBoost: hasMediaBoost,
-      mediaBoostPrice: '£2.00',
-      totalAmount: `£${totalNumeric.toFixed(2)}`,
+      mediaBoostPrice: `${currencySymbol}2.00`,
+      totalAmount: `${currencySymbol}${totalNumeric.toFixed(2)}`,
       paymentDate: adData.paidAt?.toDate ? adData.paidAt.toDate().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       awaitingApproval: adData.status !== 'approved',
       expiryDate: adData.status === 'approved' && adData.expirationDate?.toDate
