@@ -1203,11 +1203,14 @@ export default async function stripeWebhookHandler(
                   ? 'â‚¬'
                   : 'Â£';
 
+              const hasMediaBoost =
+                isMediaBoostPaid ||
+                !!adData.mediaBoostEnabled;
+
               let planTitle =
                 'Standard Listing';
 
-              let planPrice =
-                `${currencySymbol}2.99`;
+              let fallbackPlanPrice = 4.99;
 
               if (
                 activePlan ===
@@ -1216,8 +1219,7 @@ export default async function stripeWebhookHandler(
                 planTitle =
                   'Premium Featured Listing';
 
-                planPrice =
-                  `${currencySymbol}9.99`;
+                fallbackPlanPrice = 12.99;
               } else if (
                 activePlan ===
                   'featured' ||
@@ -1229,21 +1231,33 @@ export default async function stripeWebhookHandler(
                 planTitle =
                   'Featured Listing';
 
-                planPrice =
-                  `${currencySymbol}4.99`;
+                fallbackPlanPrice = 7.99;
               }
 
-              const hasMediaBoost =
-                isMediaBoostPaid ||
-                !!adData.mediaBoostEnabled;
+              const actualTotalNumeric =
+                typeof session.amount_total === 'number'
+                  ? session.amount_total / 100
+                  : null;
+
+              const actualPlanNumeric =
+                actualTotalNumeric !== null
+                  ? Math.max(
+                      0,
+                      actualTotalNumeric -
+                        (hasMediaBoost ? 2.0 : 0)
+                    )
+                  : fallbackPlanPrice;
+
+              const planPrice =
+                `${currencySymbol}${actualPlanNumeric.toFixed(2)}`;
 
               const totalAmountFormatted =
-                session.amount_total
-                  ? `${currencySymbol}${(
-                      session.amount_total /
-                      100
-                    ).toFixed(2)}`
-                  : planPrice;
+                actualTotalNumeric !== null
+                  ? `${currencySymbol}${actualTotalNumeric.toFixed(2)}`
+                  : `${currencySymbol}${(
+                      fallbackPlanPrice +
+                      (hasMediaBoost ? 2.0 : 0)
+                    ).toFixed(2)}`;
 
               let baseUrl =
                 process.env.PUBLIC_SITE_URL ||
