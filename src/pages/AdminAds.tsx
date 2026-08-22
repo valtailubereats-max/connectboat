@@ -43,6 +43,7 @@ import { pt } from 'date-fns/locale';
 import { formatPrice } from '../utils';
 import { sendEmailGeneric, getSellerEmail } from '../utils/emailService';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
 import { 
   isPaidAd, 
   getAdPlanLabel, 
@@ -85,6 +86,12 @@ const AdminAds = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { settings } = useSettings();
+  const assistedPlanPrices = {
+    standard: Number(settings?.planPrices?.standard ?? 4.99),
+    featured: Number(settings?.planPrices?.featured ?? 7.99),
+    premium: Number(settings?.planPrices?.premium ?? 12.99),
+  };
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [adFilter, setAdFilter] = useState<string>(searchParams.get('status') || 'all');
@@ -233,9 +240,9 @@ const AdminAds = () => {
   const shareAssistedPaymentWhatsApp = () => {
     if (!assistedPaymentUrl || !assistedPaymentAd) return;
     const planLabels = {
-      standard: 'Standard Listing (£2.99)',
-      featured: 'Featured Listing (£4.99)',
-      premium: 'Premium Featured (£9.99)',
+      standard: `Standard Listing (£${assistedPlanPrices.standard.toFixed(2)})`,
+      featured: `Featured Listing (£${assistedPlanPrices.featured.toFixed(2)})`,
+      premium: `Premium Featured (£${assistedPlanPrices.premium.toFixed(2)})`,
     };
     const message = `ConnectBoat payment for "${assistedPaymentAd.title}" - ${planLabels[assistedPaymentPlan]}: ${assistedPaymentUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
@@ -2684,9 +2691,9 @@ const AdminAds = () => {
                       <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">Choose plan</label>
                       <div className="grid grid-cols-1 gap-2">
                         {([
-                          ['standard', 'Standard Listing', '£2.99'],
-                          ['featured', 'Featured Listing', '£4.99'],
-                          ['premium', 'Premium Featured', '£9.99'],
+                          ['standard', 'Standard Listing', `£${assistedPlanPrices.standard.toFixed(2)}`],
+                          ['featured', 'Featured Listing', `£${assistedPlanPrices.featured.toFixed(2)}`],
+                          ['premium', 'Premium Featured', `£${assistedPlanPrices.premium.toFixed(2)}`],
                         ] as const).map(([value, label, price]) => (
                           <button
                             key={value}
