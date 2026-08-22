@@ -611,3 +611,4 @@ export default async function resendPaymentEmailHandler(req: Request, res: Respo
     });
   }
 }
+
