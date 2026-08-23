@@ -88,7 +88,7 @@ const AdminInvitations = () => {
   });
 
   const getQRLink = () => {
-    return `https://www.mercado-luso.com/convite?campanha=${selectedCampaign}`;
+ return `https://connectboat.co.uk/?campaign=${selectedCampaign}`;
   };
 
   const handleCopyLink = (textToCopy: string) => {
