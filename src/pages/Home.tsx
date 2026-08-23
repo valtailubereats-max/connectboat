@@ -1435,7 +1435,7 @@ const Home = () => {
           </div>
 
           {/* Campo de Pesquisa Textual na Segunda Linha */}
-          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 focus-within:border-sky-500 transition-all">
+          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white rounded-2xl border border-slate-200 focus-within:border-sky-500 transition-all">
             <input
               type="text"
               value={searchTerm}
@@ -1446,7 +1446,7 @@ const Home = () => {
               }}
               onBlur={() => setIsSearchFocused(false)}
               placeholder="Search boats, engines, parts, services..."
-              className="w-full bg-transparent text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
+              className="w-full bg-transparent text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
             />
             {searchTerm && (
               <button
