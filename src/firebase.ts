@@ -45,13 +45,13 @@ if (typeof window !== 'undefined') {
 }
 
 // Enable long polling only in sandboxed environments (such as localhost or Google Cloud Run dev URL)
-// to bypass sandboxed iframe restrictions. In production (mercado-luso.com), use the default transport
+// to bypass sandboxed iframe restrictions. In production (connectboat.co.uk), use the default transport
 // (WebSockets / streaming) to prevent reverse proxies/CDNs from buffering long-polling chunks and timing out.
 const isSandboxEnv = typeof window !== 'undefined' && (
   window.location.hostname.includes('localhost') ||
   window.location.hostname.includes('127.0.0.1') ||
   window.location.hostname.includes('run.app') ||
-  !window.location.hostname.endsWith('mercado-luso.com')
+  !window.location.hostname.endsWith('connectboat.co.uk')
 );
 
 console.log('[Firebase] Initializing client-side app. Hostname:', typeof window !== 'undefined' ? window.location.hostname : 'Server-side', '| Sandbox Env (Auto-Detect Long-Polling):', isSandboxEnv);
