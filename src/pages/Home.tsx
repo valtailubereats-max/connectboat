@@ -719,7 +719,7 @@ const Home = () => {
         // Garantir ordenação por data de criação de forma estrita em memória para evitar variações não-determinísticas
         adsData.sort((a, b) => {
           const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-          const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1050 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+         const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
           return (timeB || 0) - (timeA || 0);
         });
 
