@@ -430,7 +430,7 @@ const AdDetails = () => {
   const getWhatsappUrl = () => {
     if (!ad) return '';
     const phone = cleanPhone(getAdPhone());
-    return `https://wa.me/${phone}?text=${encodeURIComponent(`Olá, vi o seu anúncio "${ad.title}" no Mercado Luso e tenho grande interesse. Está disponível?`)}`;
+    return `https://wa.me/${phone}?text=${encodeURIComponent(`Hello, I saw your listing "${ad.title}" on ConnectBoat and I'm interested. Is it still available?`)}`;
   };
 
   const hasSourceUrl = !!(ad && ad.sourceUrl && /^https?:\/\//i.test(ad.sourceUrl));
@@ -509,7 +509,7 @@ const AdDetails = () => {
 
     const docId = `${ad.id}_${user.uid}`;
     const rawName = (profile?.name || user.displayName || user.email || '').trim();
-    const sanitizedName = rawName.length > 0 ? rawName : 'Utilizador do Mercado Luso';
+    const sanitizedName = rawName.length > 0 ? rawName : 'ConnectBoat User';
     const truncatedName = sanitizedName.substring(0, 95); // Ensure it's under 100 character limit of rules
     
     const interestData = {
