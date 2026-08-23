@@ -47,6 +47,7 @@ import OptimizedImage from './components/OptimizedImage';
 import { motion, AnimatePresence } from 'motion/react';
 import Links from './pages/Links';
 import BoatsForHire from './pages/BoatsForHire';
+import NotFound from './pages/NotFound';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ShareModal } from './components/ShareModal';
 import { AnalyticsTracker } from './components/AnalyticsTracker';
@@ -948,6 +949,7 @@ export default function App() {
                 <Route path="/admin/invitations" element={<AdminLayout><AdminInvitations /></AdminLayout>} />
                 <Route path="/admin/suggestions" element={<AdminLayout><AdminSuggestions /></AdminLayout>} />
                 <Route path="/admin/manual-tecnico" element={<AdminLayout><AdminManualTecnico /></AdminLayout>} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
             <footer className="bg-slate-50 border-t border-slate-200 pt-16 pb-12 mt-20 font-sans">
