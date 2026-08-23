@@ -49,6 +49,7 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
     { loc: 'https://connectboat.co.uk/', lastmod: currentDateStr, changefreq: 'daily', priority: '1.0' },
     { loc: 'https://connectboat.co.uk/faq', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.8' },
     { loc: 'https://connectboat.co.uk/pricing', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.8' },
+    { loc: 'https://connectboat.co.uk/boats-for-hire', lastmod: currentDateStr, changefreq: 'daily', priority: '0.9' },
     { loc: 'https://connectboat.co.uk/suggestions', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.6' },
     { loc: 'https://connectboat.co.uk/terms', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.5' },
     { loc: 'https://connectboat.co.uk/privacy', lastmod: currentDateStr, changefreq: 'monthly', priority: '0.5' },
