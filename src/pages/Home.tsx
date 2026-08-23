@@ -1446,7 +1446,7 @@ const Home = () => {
               }}
               onBlur={() => setIsSearchFocused(false)}
               placeholder="Search boats, engines, parts, services..."
-              className="w-full bg-transparent text-slate-900 font-medium placeholder:text-slate-400 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
+              className="w-full bg-transparent text-slate-800 font-medium placeholder:text-slate-800 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
             />
             {searchTerm && (
               <button
