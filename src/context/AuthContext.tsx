@@ -179,7 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const toggleFavoriteGlobal = async (adId: string) => {
     if (!user) {
       // Guardar local no localStorage
-      const localRaw = localStorage.getItem('mercado_luso_favorites');
+const localRaw = localStorage.getItem('connectboat_favorites') || localStorage.getItem('mercado_luso_favorites');
       let localFavs: string[] = [];
       try {
         localFavs = localRaw ? JSON.parse(localRaw) : [];
@@ -194,7 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         updated = [...localFavs, adId];
       }
-      localStorage.setItem('mercado_luso_favorites', JSON.stringify(updated));
+      localStorage.setItem('connectboat_favorites', JSON.stringify(updated));
       setFavorites(updated);
     } else {
       // Sincronizado com o Firestore
@@ -277,7 +277,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setProfile(null);
         // Restaura favoritos do LocalStorage offline
-        const localRaw = localStorage.getItem('mercado_luso_favorites');
+        const localRaw = localStorage.getItem('connectboat_favorites') || localStorage.getItem('mercado_luso_favorites');
         try {
           const localFavs = localRaw ? JSON.parse(localRaw) : [];
           setFavorites(Array.isArray(localFavs) ? localFavs : []);
