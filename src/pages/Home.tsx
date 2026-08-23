@@ -1388,7 +1388,7 @@ const Home = () => {
                   setFilterNational(false);
                   setFilterOnline(false);
                 }}
-                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center"
+                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
               >
                 <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
                 {categories.map((c, i) => (
