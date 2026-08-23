@@ -121,7 +121,7 @@ export default function AdminFotos() {
         </div>
         <h1 className="text-2xl font-brand font-black text-slate-900 mb-2">Acesso Restrito</h1>
         <p className="text-slate-500 text-sm leading-relaxed mb-6">
-          Apenas administradores do Mercado Luso possuem permissão para aceder e moderar a loja de fotos. Moderadores ou utilizadores comuns não possuem acesso.
+          Only ConnectBoat administrators have permission to access and moderate the photo library. Moderators and regular users do not have access.
         </p>
         <button 
           onClick={() => window.location.href = '/'}
@@ -531,7 +531,7 @@ export default function AdminFotos() {
         <div className="bg-white rounded-3xl border border-slate-200/80 p-6 md:p-8 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <Camera size={20} className="text-indigo-600" />
-            <h3 className="text-lg font-brand font-black text-slate-900">Ficheiro de Fotografias do Mercado Luso</h3>
+            <h3 className="text-lg font-brand font-black text-slate-900">ConnectBoat Photo Library</h3>
             <span className="ml-2 bg-slate-100 text-slate-600 text-xs font-extrabold px-2 py-0.5 rounded-full leading-none">
               {items.length}
             </span>
