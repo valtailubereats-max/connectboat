@@ -60,6 +60,96 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
 
   let ads: { id: string; title: string; lastmod: string }[] = [];
 
+  // --- AUTOMATIC LISTING EXPIRY ---
+  // Reuses this existing Serverless Function so the Hobby plan stays within
+  // the 12-function deployment limit. No listing is deleted: expired listings
+  // are retained for history and future renewal.
+  try {
+    console.log('[LISTING EXPIRY] Checking for expired approved listings...');
+
+    if (!admin.apps.length) {
+      const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+      if (serviceAccountJson) {
+        try {
+          const serviceAccount = JSON.parse(serviceAccountJson);
+
+          if (typeof serviceAccount.private_key === 'string') {
+            serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+          }
+
+          admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            projectId: projectId,
+          });
+        } catch (e) {
+          console.warn('[LISTING EXPIRY] Could not parse FIREBASE_SERVICE_ACCOUNT as JSON. Falling back to project credentials.');
+          admin.initializeApp({ projectId: projectId });
+        }
+      } else {
+        admin.initializeApp({ projectId: projectId });
+      }
+    }
+
+    const expiryDb = admin.firestore();
+
+    if (firestoreDatabaseId) {
+      try {
+        expiryDb.settings({ databaseId: firestoreDatabaseId });
+      } catch (settingsError) {
+        console.warn('[LISTING EXPIRY] Firestore database settings already initialised or unavailable:', settingsError);
+      }
+    }
+
+    const now = admin.firestore.Timestamp.now();
+
+    // Query only by expirationDate to avoid requiring a new composite index.
+    // Status is filtered safely in memory before any write.
+    const expiredCandidates = await expiryDb
+      .collection('ads')
+      .where('expirationDate', '<=', now)
+      .limit(500)
+      .get();
+
+    const eligibleExpiredDocs = expiredCandidates.docs.filter((docSnap) => {
+      const data = docSnap.data();
+
+      return (
+        data.status === 'approved' &&
+        data.adStatus !== 'expired' &&
+        data.adStatus !== 'archived' &&
+        data.adStatus !== 'sold'
+      );
+    });
+
+    if (eligibleExpiredDocs.length > 0) {
+      const batch = expiryDb.batch();
+
+      for (const docSnap of eligibleExpiredDocs) {
+        batch.update(docSnap.ref, {
+          status: 'expired',
+          adStatus: 'expired',
+          isFeatured: false,
+          awaitingAdminActivation: false,
+          awaitingAdminApproval: false,
+          expiredAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+
+      console.log(
+        `[LISTING EXPIRY] Expired ${eligibleExpiredDocs.length} listing(s).`
+      );
+    } else {
+      console.log('[LISTING EXPIRY] No listings needed to be expired.');
+    }
+  } catch (expiryError) {
+    // Sitemap must still be served even if the expiry maintenance task fails.
+    console.error('[LISTING EXPIRY] Expiry check failed:', expiryError);
+  }
+
   // --- METHOD 1: Fetch via public Firestore runQuery REST API (POST) ---
   try {
     const firestoreRestUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${firestoreDatabaseId}/documents:runQuery`;
@@ -141,6 +231,11 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
         if (serviceAccountJson) {
           try {
             const serviceAccount = JSON.parse(serviceAccountJson);
+
+            if (typeof serviceAccount.private_key === 'string') {
+              serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+            }
+
             admin.initializeApp({
               credential: admin.credential.cert(serviceAccount),
               projectId: projectId,
@@ -155,7 +250,11 @@ export default async function handler(req: VercelRequest, res: ServerResponse) {
 
       const db = admin.firestore();
       if (firestoreDatabaseId) {
-        db.settings({ databaseId: firestoreDatabaseId });
+        try {
+          db.settings({ databaseId: firestoreDatabaseId });
+        } catch (settingsError) {
+          console.warn('[DYNAMIC SITEMAP] Firestore database settings already initialised:', settingsError);
+        }
       }
 
       const adsSnap = await db.collection('ads').where('status', '==', 'approved').get();
