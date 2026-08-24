@@ -70,18 +70,35 @@ const AdminDashboard = () => {
     setFinanceError('');
     try {
       const token = await currentUser.getIdToken();
-      const response = await fetch('/api/admin/verify-finance-access', {
+      const response = await fetch('/api/admin/create-assisted-payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ password: financePassword }),
+        body: JSON.stringify({ action: 'verifyFinanceAccess', password: financePassword }),
       });
 
-      const data = await response.json().catch(() => ({}));
+      const rawBody = await response.text();
+      let data: any = {};
+      try {
+        data = rawBody ? JSON.parse(rawBody) : {};
+      } catch {
+        data = {};
+      }
+
       if (!response.ok || data?.success !== true) {
-        throw new Error(data?.errorMessage || 'Unable to unlock the financial area.');
+        const serverMessage = data?.errorMessage || data?.error;
+        const bodyPreview = rawBody && !serverMessage
+          ? rawBody.replace(/\s+/g, ' ').trim().slice(0, 180)
+          : '';
+        throw new Error(
+          serverMessage
+            ? `HTTP ${response.status}: ${serverMessage}`
+            : bodyPreview
+              ? `HTTP ${response.status}: ${bodyPreview}`
+              : `HTTP ${response.status}: Finance verification failed.`
+        );
       }
 
       setFinanceUnlocked(true);
