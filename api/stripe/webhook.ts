@@ -738,6 +738,60 @@ export default async function stripeWebhookHandler(
           const confirmedCurrency =
             (session.currency || 'gbp').toUpperCase();
 
+          // Capture the real Stripe processing fee from the Balance Transaction.
+          // This keeps Finance accurate even when card type/country changes the fee.
+          let confirmedStripeFee = 0;
+          let confirmedStripeNetReceived =
+            confirmedAmountPaid;
+
+          try {
+            const paymentIntentId =
+              typeof session.payment_intent === 'string'
+                ? session.payment_intent
+                : session.payment_intent?.id || null;
+
+            if (paymentIntentId) {
+              const paymentIntent =
+                await stripe.paymentIntents.retrieve(
+                  paymentIntentId,
+                  {
+                    expand: [
+                      'latest_charge.balance_transaction',
+                    ],
+                  }
+                );
+
+              const latestCharge =
+                paymentIntent.latest_charge &&
+                typeof paymentIntent.latest_charge !== 'string'
+                  ? paymentIntent.latest_charge
+                  : null;
+
+              const balanceTransaction =
+                latestCharge?.balance_transaction &&
+                typeof latestCharge.balance_transaction !== 'string'
+                  ? latestCharge.balance_transaction
+                  : null;
+
+              if (balanceTransaction) {
+                confirmedStripeFee =
+                  balanceTransaction.fee / 100;
+
+                confirmedStripeNetReceived =
+                  balanceTransaction.net / 100;
+              } else {
+                console.warn(
+                  `[Stripe Webhook Finance] Balance transaction not expanded for session ${session.id}. Stripe fee will remain 0 for this record.`
+                );
+              }
+            }
+          } catch (feeError) {
+            console.error(
+              `[Stripe Webhook Finance] Could not retrieve Stripe fee for session ${session.id}:`,
+              feeError
+            );
+          }
+
           const updatePayload: Record<
             string,
             any
@@ -753,6 +807,12 @@ export default async function stripeWebhookHandler(
 
                 amountRefunded:
                   0,
+
+                stripeFee:
+                  confirmedStripeFee,
+
+                stripeNetReceived:
+                  confirmedStripeNetReceived,
 
                 paymentStatus:
                   'paid',
@@ -792,6 +852,12 @@ export default async function stripeWebhookHandler(
 
                 amountRefunded:
                   0,
+
+                stripeFee:
+                  confirmedStripeFee,
+
+                stripeNetReceived:
+                  confirmedStripeNetReceived,
 
                 // Normal customer checkout: payment confirms the listing, but
                 // moderation is still required before it becomes public.
