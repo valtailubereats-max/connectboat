@@ -323,8 +323,13 @@ const AdminDashboard = () => {
         );
       }
 
+      const refundAmount = formatGBP(Number(data.amountRefunded || remaining));
+      const emailSuffix = data.refundEmailSent
+        ? ` Confirmation email sent to ${data.refundEmailRecipient || 'customer'}.`
+        : ` Refund completed, but confirmation email was not sent${data.refundEmailError ? `: ${data.refundEmailError}` : '.'}`;
+
       setFinanceActionMessage(
-        `Refund completed: ${formatGBP(Number(data.amountRefunded || remaining))}.`
+        `Refund completed: ${refundAmount}.${emailSuffix}`
       );
       await loadFinanceData();
     } catch (error: any) {
@@ -1656,6 +1661,20 @@ const AdminDashboard = () => {
                                   <p className="text-[10px] text-slate-400 mt-1 truncate">
                                     {getFinanceCustomerName(record)} · {getFinanceCustomerEmail(record)}
                                   </p>
+                                  {Number(record.amountRefunded || 0) > 0 && (
+                                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-bold">
+                                      {record.stripeRefundId && (
+                                        <span className="text-slate-500">
+                                          Refund ID: <span className="font-mono">{record.stripeRefundId}</span>
+                                        </span>
+                                      )}
+                                      <span className={record.refundEmailSent ? 'text-emerald-300' : 'text-amber-300'}>
+                                        {record.refundEmailSent
+                                          ? `Email sent${record.refundEmailRecipient ? ` · ${record.refundEmailRecipient}` : ''}`
+                                          : 'Refund email not sent'}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                                 <span className={`shrink-0 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${refunded >= paid && paid > 0 ? 'bg-rose-500/10 text-rose-300 border border-rose-400/20' : refunded > 0 ? 'bg-amber-500/10 text-amber-300 border border-amber-400/20' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-400/20'}`}>
                                   {refunded >= paid && paid > 0 ? 'Refunded' : refunded > 0 ? 'Partial' : 'Paid'}
