@@ -23,6 +23,15 @@ service cloud.firestore {
         );
     }
 
+    function isFinanceOwner() {
+      return isAuthenticated() &&
+        (
+          request.auth.token.email == "valtailubereats@gmail.com" ||
+          request.auth.token.email == "valtail@gmail.com" ||
+          request.auth.token.email == "generalsales2021@gmail.com"
+        );
+    }
+
     function isModerator() {
       return isAuthenticated() &&
         (
@@ -44,6 +53,7 @@ service cloud.firestore {
              (!('name' in data) || (data.name is string && data.name.size() > 0 && data.name.size() < 100)) &&
              (!('email' in data) || data.email is string) &&
              (!('role' in data) || data.role in ['user', 'admin', 'moderator', 'content_creator']) &&
+             (!('financeAccess' in data) || data.financeAccess is bool) &&
              (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
              (!('acceptedTerms' in data) || data.acceptedTerms is bool) &&
              (!('acceptedTermsAt' in data) || data.acceptedTermsAt is timestamp || data.acceptedTermsAt is string) &&
@@ -242,17 +252,35 @@ service cloud.firestore {
       allow create: if
         isOwner(userId) &&
         isValidUser(request.resource.data, userId) &&
-        (!('role' in request.resource.data) || request.resource.data.role == 'user');
+        (!('role' in request.resource.data) || request.resource.data.role == 'user') &&
+        (!('financeAccess' in request.resource.data) || request.resource.data.financeAccess == false);
       allow update: if
         (
           isOwner(userId) && 
           isValidUser(request.resource.data, userId) && 
-          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'financeAccess'])) &&
           (!('showcaseApproved' in request.resource.data) || request.resource.data.showcaseApproved == resource.data.get('showcaseApproved', false))
         ) ||
         (isAuthenticated() && isValidRatingUpdate()) ||
-        isAdmin() ||
-        isModerator();
+        (
+          isAdmin() &&
+          isValidUser(request.resource.data, userId) &&
+          (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['financeAccess']) ||
+            (isFinanceOwner() && request.resource.data.get('role', 'user') == 'admin')
+          ) &&
+          (
+            !(request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) &&
+              request.resource.data.get('role', 'user') == 'admin' &&
+              request.resource.data.get('financeAccess', false) == true) ||
+            isFinanceOwner()
+          )
+        ) ||
+        (
+          isModerator() &&
+          isValidUser(request.resource.data, userId) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['financeAccess'])
+        );
     }
 
     match /sellerPublicProfiles/{userId} {
