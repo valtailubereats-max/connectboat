@@ -62,6 +62,8 @@ const AdminDashboard = () => {
   const [financeActionMessage, setFinanceActionMessage] = useState('');
   const [financeSearch, setFinanceSearch] = useState('');
   const [financeRefundTarget, setFinanceRefundTarget] = useState<any | null>(null);
+  const [financeDateFrom, setFinanceDateFrom] = useState('');
+  const [financeDateTo, setFinanceDateTo] = useState('');
 
   const financeOwnerEmails = new Set([
     'valtailubereats@gmail.com',
@@ -647,22 +649,32 @@ const AdminDashboard = () => {
   };
 
   const now = new Date();
-  const financeRangeStart = financeRange === 'thisMonth'
-    ? new Date(now.getFullYear(), now.getMonth(), 1)
-    : financeRange === 'lastMonth'
-      ? new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      : null;
-  const financeRangeEnd = financeRange === 'thisMonth'
-    ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
-    : financeRange === 'lastMonth'
+
+  const hasCustomFinanceRange = Boolean(financeDateFrom || financeDateTo);
+
+  const financeRangeStart = hasCustomFinanceRange
+    ? (financeDateFrom ? new Date(`${financeDateFrom}T00:00:00`) : null)
+    : financeRange === 'thisMonth'
       ? new Date(now.getFullYear(), now.getMonth(), 1)
-      : null;
+      : financeRange === 'lastMonth'
+        ? new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        : null;
+
+  const financeRangeEnd = hasCustomFinanceRange
+    ? (financeDateTo ? new Date(`${financeDateTo}T23:59:59.999`) : null)
+    : financeRange === 'thisMonth'
+      ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+      : financeRange === 'lastMonth'
+        ? new Date(now.getFullYear(), now.getMonth(), 1)
+        : null;
 
   const filteredFinanceRecords = financeRecords
     .filter((record) => {
-      if (!financeRangeStart) return true;
       const paidDate = financeDate(record.paidAt);
-      return !!paidDate && paidDate >= financeRangeStart && (!financeRangeEnd || paidDate < financeRangeEnd);
+      if (!paidDate) return false;
+      if (financeRangeStart && paidDate < financeRangeStart) return false;
+      if (financeRangeEnd && paidDate > financeRangeEnd) return false;
+      return true;
     })
     .sort((a, b) => (financeDate(b.paidAt)?.getTime() || 0) - (financeDate(a.paidAt)?.getTime() || 0));
 
@@ -701,6 +713,120 @@ const AdminDashboard = () => {
     (record) => typeof record.stripeFee !== 'number' || !Number.isFinite(record.stripeFee)
   ).length;
   const formatGBP = (value: number) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
+
+  const csvEscape = (value: any) => {
+    const stringValue = String(value ?? '');
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  };
+
+  const handleDownloadFinanceCsv = () => {
+    if (visibleFinanceRecords.length === 0) return;
+
+    const header = [
+      'Payment Date',
+      'Listing',
+      'Customer',
+      'Email',
+      'Plan',
+      'Status',
+      'Received GBP',
+      'Refunded GBP',
+      'Stripe Fee GBP',
+      'Real Net GBP',
+      'Currency',
+      'Stripe Payment ID',
+      'Stripe Checkout Session ID',
+      'Stripe Refund ID',
+      'Listing ID',
+    ];
+
+    const rows = visibleFinanceRecords.map((record) => {
+      const paid = Number(record.amountPaid || 0);
+      const refunded = Number(record.amountRefunded || 0);
+      const stripeFee =
+        typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee)
+          ? Number(record.stripeFee)
+          : 0;
+      const realNet = paid - refunded - stripeFee;
+      const paidDate = financeDate(record.paidAt);
+      const status =
+        refunded >= paid && paid > 0
+          ? 'Refunded'
+          : refunded > 0
+            ? 'Partial refund'
+            : 'Paid';
+
+      return [
+        paidDate ? format(paidDate, 'yyyy-MM-dd HH:mm:ss') : '',
+        record.title || '',
+        getFinanceCustomerName(record),
+        getFinanceCustomerEmail(record),
+        record.plan || '',
+        status,
+        paid.toFixed(2),
+        refunded.toFixed(2),
+        stripeFee.toFixed(2),
+        realNet.toFixed(2),
+        record.currency || 'GBP',
+        record.stripePaymentIntentId || '',
+        record.stripeCheckoutSessionId || '',
+        record.stripeRefundId || '',
+        record.id || '',
+      ];
+    });
+
+    const totalReceived = visibleFinanceRecords.reduce(
+      (sum, record) => sum + Number(record.amountPaid || 0),
+      0
+    );
+    const totalRefunded = visibleFinanceRecords.reduce(
+      (sum, record) => sum + Number(record.amountRefunded || 0),
+      0
+    );
+    const totalStripeFees = visibleFinanceRecords.reduce(
+      (sum, record) =>
+        sum +
+        (typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee)
+          ? Number(record.stripeFee)
+          : 0),
+      0
+    );
+    const totalRealNet = totalReceived - totalRefunded - totalStripeFees;
+
+    const summaryRows = [
+      [],
+      ['SUMMARY'],
+      ['Total Received GBP', totalReceived.toFixed(2)],
+      ['Total Refunded GBP', totalRefunded.toFixed(2)],
+      ['Total Stripe Fees GBP', totalStripeFees.toFixed(2)],
+      ['Real Net GBP', totalRealNet.toFixed(2)],
+      ['Transactions', visibleFinanceRecords.length],
+    ];
+
+    const csv = [
+      header.map(csvEscape).join(','),
+      ...rows.map((row) => row.map(csvEscape).join(',')),
+      ...summaryRows.map((row) => row.map(csvEscape).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([`\uFEFF${csv}`], {
+      type: 'text/csv;charset=utf-8;',
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    const fromLabel = financeDateFrom || 'start';
+    const toLabel = financeDateTo || 'today';
+
+    link.href = url;
+    link.download = `ConnectBoat_Finance_${fromLabel}_to_${toLabel}.csv`;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-8 pb-20">
@@ -1143,13 +1269,73 @@ const AdminDashboard = () => {
                     <button
                       key={value}
                       type="button"
-                      onClick={() => setFinanceRange(value)}
-                      className={`px-2.5 py-2 rounded-xl text-[11px] font-black border transition-colors ${financeRange === value ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'}`}
+                      onClick={() => {
+                        setFinanceRange(value);
+                        setFinanceDateFrom('');
+                        setFinanceDateTo('');
+                      }}
+                      className={`px-2.5 py-2 rounded-xl text-[11px] font-black border transition-colors ${!hasCustomFinanceRange && financeRange === value ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'}`}
                     >
                       {label}
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/55 p-3">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-2.5 items-end">
+                  <div>
+                    <label htmlFor="finance-date-from" className="block text-[9px] uppercase tracking-wider font-black text-slate-500 mb-1.5">
+                      From
+                    </label>
+                    <input
+                      id="finance-date-from"
+                      type="date"
+                      value={financeDateFrom}
+                      onChange={(event) => setFinanceDateFrom(event.target.value)}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="finance-date-to" className="block text-[9px] uppercase tracking-wider font-black text-slate-500 mb-1.5">
+                      To
+                    </label>
+                    <input
+                      id="finance-date-to"
+                      type="date"
+                      value={financeDateTo}
+                      onChange={(event) => setFinanceDateTo(event.target.value)}
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none focus:border-slate-500"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFinanceDateFrom('');
+                      setFinanceDateTo('');
+                      setFinanceRange('all');
+                    }}
+                    className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-[11px] font-black text-slate-300 hover:border-slate-500"
+                  >
+                    Clear dates
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadFinanceCsv}
+                    disabled={visibleFinanceRecords.length === 0}
+                    className="rounded-xl bg-emerald-500 px-4 py-2.5 text-[11px] font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <Download size={14} />
+                    Download CSV
+                  </button>
+                </div>
+
+                <p className="text-[9px] sm:text-[10px] text-slate-500 mt-2">
+                  Choose any date range. The CSV exports the transactions currently shown, including Received, Refunded, Stripe Fees and Real Net totals.
+                </p>
               </div>
 
               {financeDataLoading ? (
