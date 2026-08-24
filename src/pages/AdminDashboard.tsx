@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { 
   Users, Tag, MousePointer2, Bell, TrendingUp, MapPin, Calendar, Clock, Download,
-  ShieldCheck, Briefcase, Store, Megaphone, CheckCircle2, ShieldAlert, Star, Crown, Lock, KeyRound, X, Search
+  ShieldCheck, Briefcase, Store, Megaphone, CheckCircle2, ShieldAlert, Star, Crown, Lock, KeyRound, X, Search, Plus, Trash2
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -64,6 +64,15 @@ const AdminDashboard = () => {
   const [financeRefundTarget, setFinanceRefundTarget] = useState<any | null>(null);
   const [financeDateFrom, setFinanceDateFrom] = useState('');
   const [financeDateTo, setFinanceDateTo] = useState('');
+  const [financeExpenses, setFinanceExpenses] = useState<any[]>([]);
+  const [financeExpensesLoading, setFinanceExpensesLoading] = useState(false);
+  const [financeExpenseModalOpen, setFinanceExpenseModalOpen] = useState(false);
+  const [financeExpenseSaving, setFinanceExpenseSaving] = useState(false);
+  const [financeExpenseDeletingId, setFinanceExpenseDeletingId] = useState('');
+  const [financeExpenseDate, setFinanceExpenseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [financeExpenseCategory, setFinanceExpenseCategory] = useState('Domain');
+  const [financeExpenseDescription, setFinanceExpenseDescription] = useState('');
+  const [financeExpenseAmount, setFinanceExpenseAmount] = useState('');
 
   const financeOwnerEmails = new Set([
     'valtailubereats@gmail.com',
@@ -89,6 +98,130 @@ const AdminDashboard = () => {
       setFinanceDataError('Unable to load financial records.');
     } finally {
       setFinanceDataLoading(false);
+    }
+  };
+
+  const callFinanceApi = async (body: Record<string, any>, passwordOverride?: string) => {
+    if (!currentUser) {
+      throw new Error('Authentication required.');
+    }
+
+    const token = await currentUser.getIdToken();
+    const response = await fetch('/api/admin/create-assisted-payment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        ...body,
+        password: passwordOverride || financeSessionPassword,
+      }),
+    });
+
+    const rawBody = await response.text();
+    let data: any = {};
+    try {
+      data = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      data = {};
+    }
+
+    if (!response.ok || data?.success !== true) {
+      throw new Error(
+        data?.errorMessage ||
+        data?.error ||
+        `Finance request failed (HTTP ${response.status}).`
+      );
+    }
+
+    return data;
+  };
+
+  const loadFinanceExpenses = async (passwordOverride?: string) => {
+    setFinanceExpensesLoading(true);
+    try {
+      const data = await callFinanceApi(
+        { action: 'listFinanceExpenses' },
+        passwordOverride
+      );
+      setFinanceExpenses(Array.isArray(data.expenses) ? data.expenses : []);
+    } catch (error: any) {
+      console.error('[Finance] Unable to load operating expenses:', error);
+      setFinanceDataError(error?.message || 'Unable to load operating expenses.');
+    } finally {
+      setFinanceExpensesLoading(false);
+    }
+  };
+
+  const handleAddFinanceExpense = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (financeExpenseSaving) return;
+
+    const amount = Number(financeExpenseAmount);
+
+    if (
+      !financeExpenseDate ||
+      !financeExpenseCategory.trim() ||
+      !financeExpenseDescription.trim() ||
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      setFinanceDataError('Enter a valid date, category, description and amount.');
+      return;
+    }
+
+    setFinanceExpenseSaving(true);
+    setFinanceDataError('');
+    setFinanceActionMessage('');
+
+    try {
+      await callFinanceApi({
+        action: 'addFinanceExpense',
+        expenseDate: financeExpenseDate,
+        category: financeExpenseCategory.trim(),
+        description: financeExpenseDescription.trim(),
+        amount,
+      });
+
+      setFinanceExpenseModalOpen(false);
+      setFinanceExpenseDate(format(new Date(), 'yyyy-MM-dd'));
+      setFinanceExpenseCategory('Domain');
+      setFinanceExpenseDescription('');
+      setFinanceExpenseAmount('');
+      setFinanceActionMessage(`Expense added: ${formatGBP(amount)}.`);
+      await loadFinanceExpenses();
+    } catch (error: any) {
+      setFinanceDataError(error?.message || 'Unable to add operating expense.');
+    } finally {
+      setFinanceExpenseSaving(false);
+    }
+  };
+
+  const handleDeleteFinanceExpense = async (expense: any) => {
+    if (!expense?.id || financeExpenseDeletingId) return;
+
+    const confirmed = window.confirm(
+      `Delete expense "${expense.description || expense.category}" for ${formatGBP(Number(expense.amount || 0))}?`
+    );
+    if (!confirmed) return;
+
+    setFinanceExpenseDeletingId(expense.id);
+    setFinanceDataError('');
+    setFinanceActionMessage('');
+
+    try {
+      await callFinanceApi({
+        action: 'deleteFinanceExpense',
+        expenseId: expense.id,
+      });
+
+      setFinanceActionMessage('Expense removed.');
+      await loadFinanceExpenses();
+    } catch (error: any) {
+      setFinanceDataError(error?.message || 'Unable to delete operating expense.');
+    } finally {
+      setFinanceExpenseDeletingId('');
     }
   };
 
@@ -133,7 +266,10 @@ const AdminDashboard = () => {
 
       setFinanceUnlocked(true);
       setFinanceSessionPassword(financePassword);
-      await loadFinanceData();
+      await Promise.all([
+        loadFinanceData(),
+        loadFinanceExpenses(financePassword),
+      ]);
       setFinancePassword('');
       setFinanceModalOpen(false);
     } catch (error: any) {
@@ -700,13 +836,48 @@ const AdminDashboard = () => {
     return searchableValues.some((value) => String(value || '').toLowerCase().includes(normalizedFinanceSearch));
   });
 
+  const filteredFinanceExpenses = financeExpenses
+    .filter((expense) => {
+      const expenseDate =
+        typeof expense.expenseDate === 'string'
+          ? new Date(`${expense.expenseDate}T12:00:00`)
+          : null;
+
+      if (!expenseDate || Number.isNaN(expenseDate.getTime())) return false;
+      if (financeRangeStart && expenseDate < financeRangeStart) return false;
+      if (financeRangeEnd && expenseDate > financeRangeEnd) return false;
+      return true;
+    })
+    .sort((a, b) => String(b.expenseDate || '').localeCompare(String(a.expenseDate || '')));
+
+  const visibleFinanceExpenses = filteredFinanceExpenses.filter((expense) => {
+    if (!normalizedFinanceSearch) return true;
+
+    return [
+      expense.description,
+      expense.category,
+      expense.id,
+      expense.createdByEmail,
+    ].some((value) =>
+      String(value || '').toLowerCase().includes(normalizedFinanceSearch)
+    );
+  });
+
   const financeGrossRevenue = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountPaid || 0), 0);
   const financeRefunds = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountRefunded || 0), 0);
   const financeStripeFees = filteredFinanceRecords.reduce(
     (sum, record) => sum + (typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee) ? record.stripeFee : 0),
     0
   );
-  const financeRealNet = financeGrossRevenue - financeRefunds - financeStripeFees;
+  const financeOperatingExpenses = filteredFinanceExpenses.reduce(
+    (sum, expense) => sum + Number(expense.amount || 0),
+    0
+  );
+  const financeRealNet =
+    financeGrossRevenue -
+    financeRefunds -
+    financeStripeFees -
+    financeOperatingExpenses;
   const financePaidListings = filteredFinanceRecords.length;
   const financeRefundedListings = filteredFinanceRecords.filter((record) => Number(record.amountRefunded || 0) > 0).length;
   const financeMissingFeeCount = filteredFinanceRecords.filter(
@@ -720,27 +891,29 @@ const AdminDashboard = () => {
   };
 
   const handleDownloadFinanceCsv = () => {
-    if (visibleFinanceRecords.length === 0) return;
+    if (visibleFinanceRecords.length === 0 && visibleFinanceExpenses.length === 0) return;
 
     const header = [
-      'Payment Date',
-      'Listing',
+      'Record Type',
+      'Date',
+      'Description / Listing',
       'Customer',
       'Email',
-      'Plan',
+      'Category / Plan',
       'Status',
       'Received GBP',
       'Refunded GBP',
       'Stripe Fee GBP',
-      'Real Net GBP',
+      'Operating Expense GBP',
+      'Net Impact GBP',
       'Currency',
       'Stripe Payment ID',
       'Stripe Checkout Session ID',
       'Stripe Refund ID',
-      'Listing ID',
+      'Record ID',
     ];
 
-    const rows = visibleFinanceRecords.map((record) => {
+    const transactionRows = visibleFinanceRecords.map((record) => {
       const paid = Number(record.amountPaid || 0);
       const refunded = Number(record.amountRefunded || 0);
       const stripeFee =
@@ -757,6 +930,7 @@ const AdminDashboard = () => {
             : 'Paid';
 
       return [
+        'Transaction',
         paidDate ? format(paidDate, 'yyyy-MM-dd HH:mm:ss') : '',
         record.title || '',
         getFinanceCustomerName(record),
@@ -766,12 +940,37 @@ const AdminDashboard = () => {
         paid.toFixed(2),
         refunded.toFixed(2),
         stripeFee.toFixed(2),
+        '0.00',
         realNet.toFixed(2),
         record.currency || 'GBP',
         record.stripePaymentIntentId || '',
         record.stripeCheckoutSessionId || '',
         record.stripeRefundId || '',
         record.id || '',
+      ];
+    });
+
+    const expenseRows = visibleFinanceExpenses.map((expense) => {
+      const amount = Number(expense.amount || 0);
+
+      return [
+        'Operating Expense',
+        expense.expenseDate || '',
+        expense.description || '',
+        '',
+        expense.createdByEmail || '',
+        expense.category || '',
+        'Expense',
+        '0.00',
+        '0.00',
+        '0.00',
+        amount.toFixed(2),
+        (-amount).toFixed(2),
+        expense.currency || 'GBP',
+        '',
+        '',
+        '',
+        expense.id || '',
       ];
     });
 
@@ -791,7 +990,15 @@ const AdminDashboard = () => {
           : 0),
       0
     );
-    const totalRealNet = totalReceived - totalRefunded - totalStripeFees;
+    const totalOperatingExpenses = visibleFinanceExpenses.reduce(
+      (sum, expense) => sum + Number(expense.amount || 0),
+      0
+    );
+    const totalFinalNet =
+      totalReceived -
+      totalRefunded -
+      totalStripeFees -
+      totalOperatingExpenses;
 
     const summaryRows = [
       [],
@@ -799,13 +1006,19 @@ const AdminDashboard = () => {
       ['Total Received GBP', totalReceived.toFixed(2)],
       ['Total Refunded GBP', totalRefunded.toFixed(2)],
       ['Total Stripe Fees GBP', totalStripeFees.toFixed(2)],
-      ['Real Net GBP', totalRealNet.toFixed(2)],
+      ['Operating Expenses GBP', totalOperatingExpenses.toFixed(2)],
+      ['Final Net GBP', totalFinalNet.toFixed(2)],
       ['Transactions', visibleFinanceRecords.length],
+      ['Operating Expenses', visibleFinanceExpenses.length],
     ];
+
+    const combinedRows = [...transactionRows, ...expenseRows].sort((a, b) =>
+      String(b[1] || '').localeCompare(String(a[1] || ''))
+    );
 
     const csv = [
       header.map(csvEscape).join(','),
-      ...rows.map((row) => row.map(csvEscape).join(',')),
+      ...combinedRows.map((row) => row.map(csvEscape).join(',')),
       ...summaryRows.map((row) => row.map(csvEscape).join(',')),
     ].join('\n');
 
@@ -1283,7 +1496,7 @@ const AdminDashboard = () => {
               </div>
 
               <div className="rounded-2xl border border-slate-800 bg-slate-900/55 p-3">
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-2.5 items-end">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto_auto] gap-2.5 items-end">
                   <div>
                     <label htmlFor="finance-date-from" className="block text-[9px] uppercase tracking-wider font-black text-slate-500 mb-1.5">
                       From
@@ -1325,16 +1538,28 @@ const AdminDashboard = () => {
                   <button
                     type="button"
                     onClick={handleDownloadFinanceCsv}
-                    disabled={visibleFinanceRecords.length === 0}
+                    disabled={visibleFinanceRecords.length === 0 && visibleFinanceExpenses.length === 0}
                     className="rounded-xl bg-emerald-500 px-4 py-2.5 text-[11px] font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <Download size={14} />
                     Download CSV
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFinanceDataError('');
+                      setFinanceExpenseModalOpen(true);
+                    }}
+                    className="rounded-xl bg-indigo-500 px-4 py-2.5 text-[11px] font-black text-white hover:bg-indigo-400 flex items-center justify-center gap-2"
+                  >
+                    <Plus size={14} />
+                    Add Expense
+                  </button>
                 </div>
 
                 <p className="text-[9px] sm:text-[10px] text-slate-500 mt-2">
-                  Choose any date range. The CSV exports the transactions currently shown, including Received, Refunded, Stripe Fees and Real Net totals.
+                  Choose any date range. The CSV exports transactions and operating expenses currently shown, including Received, Refunded, Stripe Fees, Expenses and Final Net totals.
                 </p>
               </div>
 
@@ -1351,7 +1576,7 @@ const AdminDashboard = () => {
                   )}
 
                   <div className="rounded-2xl border border-slate-800 bg-slate-900/65 overflow-hidden">
-                    <div className="grid grid-cols-4 divide-x divide-slate-800">
+                    <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-y md:divide-y-0 divide-slate-800">
                       <div className="p-2.5 sm:p-3 min-w-0">
                         <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Received</p>
                         <p className="text-sm sm:text-xl font-black text-white mt-0.5 truncate">{formatGBP(financeGrossRevenue)}</p>
@@ -1365,13 +1590,17 @@ const AdminDashboard = () => {
                         <p className="text-sm sm:text-xl font-black text-amber-300 mt-0.5 truncate">{formatGBP(financeStripeFees)}</p>
                       </div>
                       <div className="p-2.5 sm:p-3 min-w-0">
-                        <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Real Net</p>
+                        <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Expenses</p>
+                        <p className="text-sm sm:text-xl font-black text-orange-300 mt-0.5 truncate">{formatGBP(financeOperatingExpenses)}</p>
+                      </div>
+                      <div className="p-2.5 sm:p-3 min-w-0 col-span-2 md:col-span-1">
+                        <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Final Net</p>
                         <p className={`text-sm sm:text-xl font-black mt-0.5 truncate ${financeRealNet < 0 ? 'text-rose-300' : 'text-emerald-300'}`}>{formatGBP(financeRealNet)}</p>
                       </div>
                     </div>
                     <div className="border-t border-slate-800 px-3 py-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] sm:text-[11px]">
                       <span className="text-slate-400">
-                        {formatGBP(financeGrossRevenue)} − {formatGBP(financeRefunds)} − {formatGBP(financeStripeFees)} = <strong className={financeRealNet < 0 ? 'text-rose-300' : 'text-emerald-300'}>{formatGBP(financeRealNet)}</strong>
+                        {formatGBP(financeGrossRevenue)} − {formatGBP(financeRefunds)} − {formatGBP(financeStripeFees)} − {formatGBP(financeOperatingExpenses)} = <strong className={financeRealNet < 0 ? 'text-rose-300' : 'text-emerald-300'}>{formatGBP(financeRealNet)}</strong>
                       </span>
                       <span className="text-slate-500 whitespace-nowrap">Paid {financePaidListings} · Refunded {financeRefundedListings}</span>
                     </div>
@@ -1470,12 +1699,148 @@ const AdminDashboard = () => {
                       </div>
                     )}
                   </div>
+
+                  <div className="rounded-2xl border border-slate-800 overflow-hidden">
+                    <div className="px-3 py-2.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-black text-white">Operating Expenses</p>
+                        <p className="text-[10px] text-slate-500">Domain, email, internet, hosting, marketing and other business costs.</p>
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-500">
+                        {visibleFinanceExpenses.length} records
+                      </p>
+                    </div>
+
+                    {financeExpensesLoading ? (
+                      <div className="p-4 text-sm text-slate-400 bg-slate-900/40">Loading expenses...</div>
+                    ) : visibleFinanceExpenses.length === 0 ? (
+                      <div className="p-4 text-sm text-slate-400 bg-slate-900/40">No operating expenses in this period.</div>
+                    ) : (
+                      <div className="divide-y divide-slate-800 bg-slate-950/20">
+                        {visibleFinanceExpenses.map((expense) => (
+                          <div key={expense.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-black text-white text-sm truncate">{expense.description || 'Expense'}</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                {expense.expenseDate || 'No date'} · {expense.category || 'Other'}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <span className="rounded-xl bg-orange-500/10 border border-orange-400/20 px-3 py-2 text-xs font-black text-orange-200">
+                                {formatGBP(Number(expense.amount || 0))}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteFinanceExpense(expense)}
+                                disabled={financeExpenseDeletingId === expense.id}
+                                className="w-10 h-10 rounded-xl border border-rose-400/20 bg-rose-500/10 text-rose-300 flex items-center justify-center hover:bg-rose-500/15 disabled:opacity-50"
+                                aria-label="Delete expense"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>
           )}
         </div>
       </section>
+
+      {financeExpenseModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-500">Operating expense</p>
+                <h3 className="text-xl font-black text-slate-900 mt-1">Add expense</h3>
+                <p className="text-xs text-slate-500 mt-1">This amount will reduce Final Net and will be included in CSV exports.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFinanceExpenseModalOpen(false)}
+                className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200"
+                aria-label="Close expense form"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddFinanceExpense} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-black text-slate-600 mb-2">Date</label>
+                  <input
+                    type="date"
+                    value={financeExpenseDate}
+                    onChange={(event) => setFinanceExpenseDate(event.target.value)}
+                    className="w-full px-3 py-3 rounded-xl border border-slate-300 text-base text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-600 mb-2">Amount (£)</label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={financeExpenseAmount}
+                    onChange={(event) => setFinanceExpenseAmount(event.target.value)}
+                    placeholder="10.00"
+                    className="w-full px-3 py-3 rounded-xl border border-slate-300 text-base text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-600 mb-2">Category</label>
+                <select
+                  value={financeExpenseCategory}
+                  onChange={(event) => setFinanceExpenseCategory(event.target.value)}
+                  className="w-full px-3 py-3 rounded-xl border border-slate-300 text-base text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                >
+                  <option>Domain</option>
+                  <option>Professional Email</option>
+                  <option>Internet / Phone</option>
+                  <option>Hosting / Vercel</option>
+                  <option>Resend / Email Service</option>
+                  <option>Marketing</option>
+                  <option>Software / Subscription</option>
+                  <option>Accounting</option>
+                  <option>Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black text-slate-600 mb-2">Description</label>
+                <input
+                  type="text"
+                  value={financeExpenseDescription}
+                  onChange={(event) => setFinanceExpenseDescription(event.target.value)}
+                  placeholder="Example: ConnectBoat domain renewal"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={financeExpenseSaving}
+                className="w-full px-5 py-3 rounded-xl bg-slate-950 text-white font-black disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {financeExpenseSaving ? 'Saving...' : 'Save Expense'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {financeRefundTarget && (
         <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
