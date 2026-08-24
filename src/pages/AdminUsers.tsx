@@ -37,6 +37,7 @@ const ALL_COLUMNS = [
   { id: 'pais', label: 'País/Nacionalidade', mandatory: false },
   { id: 'cidade', label: 'Cidade', mandatory: false },
   { id: 'role', label: 'Cargo/Role', mandatory: false },
+  { id: 'finance', label: 'Finance', mandatory: false },
   { id: 'criacao', label: 'Data de Criação', mandatory: false },
   { id: 'ultimoAcesso', label: 'Último Acesso', mandatory: false },
   { id: 'totalAnuncios', label: 'Total de Anúncios', mandatory: false },
@@ -78,7 +79,7 @@ const AdminUsers = () => {
         // Fallback
       }
     }
-    return ['nome', 'email', 'telefone', 'pais', 'cidade', 'role', 'criacao', 'ultimoAcesso', 'totalAnuncios', 'vitrineAtiva', 'acoes'];
+    return ['nome', 'email', 'telefone', 'pais', 'cidade', 'role', 'finance', 'criacao', 'ultimoAcesso', 'totalAnuncios', 'vitrineAtiva', 'acoes'];
   });
 
   const isColVisible = (id: string) => visibleColumns.includes(id);
@@ -98,6 +99,12 @@ const AdminUsers = () => {
   const [debugLoading, setDebugLoading] = useState(false);
   
   const { user: currentAuthUser, isAdmin, refreshProfile } = useAuth();
+  const financeOwnerEmails = new Set([
+    'valtailubereats@gmail.com',
+    'valtail@gmail.com',
+    'generalsales2021@gmail.com',
+  ]);
+  const isFinanceOwner = financeOwnerEmails.has((currentAuthUser?.email || '').trim().toLowerCase());
 
   // User Profile Editing States
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
@@ -380,6 +387,27 @@ const AdminUsers = () => {
       setUsers(users.map(u => (u.uid === userId || u.id === userId) ? { ...u, role: newRole } : u));
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `users/${userId}`);
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
+  const handleToggleFinanceAccess = async (targetUser: UserProfile) => {
+    if (!isFinanceOwner || targetUser.role !== 'admin') return;
+
+    const targetUserId = targetUser.uid || targetUser.id;
+    if (!targetUserId) return;
+
+    const nextValue = targetUser.financeAccess !== true;
+    const actionLabel = nextValue ? 'liberar' : 'remover';
+    if (!window.confirm(`Tem a certeza que deseja ${actionLabel} o acesso financeiro para ${targetUser.name || targetUser.email || 'este administrador'}?`)) return;
+
+    setUpdatingUserId(targetUserId);
+    try {
+      await updateDoc(doc(db, 'users', targetUserId), { financeAccess: nextValue });
+      setUsers(prev => prev.map(u => (u.uid === targetUserId || u.id === targetUserId) ? { ...u, financeAccess: nextValue } : u));
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `users/${targetUserId}`);
     } finally {
       setUpdatingUserId(null);
     }
@@ -805,6 +833,9 @@ const AdminUsers = () => {
                       {isColVisible('role') && (
                         <th className="px-3.5 py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center">Cargo/Role</th>
                       )}
+                      {isColVisible('finance') && (
+                        <th className="px-3.5 py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-wider text-center">Finance</th>
+                      )}
                       {isColVisible('criacao') && (
                         <th className="px-3.5 py-2.5 text-[10px] font-black text-slate-400 uppercase tracking-wider">Data Criação</th>
                       )}
@@ -874,6 +905,29 @@ const AdminUsers = () => {
                               }`}>
                                 {user.role || 'user'}
                               </span>
+                            </td>
+                          )}
+
+                          {isColVisible('finance') && (
+                            <td className="px-3.5 py-2 text-center">
+                              {user.role === 'admin' ? (
+                                isFinanceOwner ? (
+                                  <button
+                                    onClick={() => handleToggleFinanceAccess(user)}
+                                    disabled={updatingUserId === uid}
+                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-colors ${user.financeAccess === true ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
+                                    title={user.financeAccess === true ? 'Remover acesso financeiro' : 'Liberar acesso financeiro'}
+                                  >
+                                    {user.financeAccess === true ? 'ON' : 'OFF'}
+                                  </button>
+                                ) : (
+                                  <span className={`text-[9px] font-black ${user.financeAccess === true ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                    {user.financeAccess === true ? 'ON' : 'OFF'}
+                                  </span>
+                                )
+                              ) : (
+                                <span className="text-slate-300">—</span>
+                              )}
                             </td>
                           )}
 
@@ -1054,6 +1108,26 @@ const AdminUsers = () => {
                         </div>
                       </div>
                     </div>
+
+                    {user.role === 'admin' && (
+                      <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                        <div>
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Financial Access</p>
+                          <p className={`text-xs font-black ${user.financeAccess === true ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            {user.financeAccess === true ? 'LIBERADO' : 'BLOQUEADO'}
+                          </p>
+                        </div>
+                        {isFinanceOwner && (
+                          <button
+                            onClick={() => handleToggleFinanceAccess(user)}
+                            disabled={updatingUserId === uid}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black border ${user.financeAccess === true ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
+                          >
+                            {user.financeAccess === true ? 'ON' : 'OFF'}
+                          </button>
+                        )}
+                      </div>
+                    )}
 
                     {/* Action buttons */}
                     <div className="pt-2 flex flex-wrap gap-1 items-center justify-end">
