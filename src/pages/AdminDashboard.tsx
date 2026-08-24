@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { 
   Users, Tag, MousePointer2, Bell, TrendingUp, MapPin, Calendar, Clock, Download,
-  ShieldCheck, Briefcase, Store, Megaphone, CheckCircle2, ShieldAlert, Star, Crown, Lock, KeyRound, X
+  ShieldCheck, Briefcase, Store, Megaphone, CheckCircle2, ShieldAlert, Star, Crown, Lock, KeyRound, X, Search
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -60,6 +60,8 @@ const AdminDashboard = () => {
   const [financeSessionPassword, setFinanceSessionPassword] = useState('');
   const [financeRefundingId, setFinanceRefundingId] = useState('');
   const [financeActionMessage, setFinanceActionMessage] = useState('');
+  const [financeSearch, setFinanceSearch] = useState('');
+  const [financeRefundTarget, setFinanceRefundTarget] = useState<any | null>(null);
 
   const financeOwnerEmails = new Set([
     'valtailubereats@gmail.com',
@@ -147,11 +149,7 @@ const AdminDashboard = () => {
 
     if (remaining <= 0.0001) return;
 
-    const confirmed = window.confirm(
-      `Refund ${formatGBP(remaining)} for “${record.title || record.id}”?\n\nThis sends a real Stripe refund and cannot be undone from ConnectBoat.`
-    );
-    if (!confirmed) return;
-
+    setFinanceRefundTarget(null);
     setFinanceRefundingId(record.id);
     setFinanceActionMessage('');
     setFinanceDataError('');
@@ -668,6 +666,28 @@ const AdminDashboard = () => {
     })
     .sort((a, b) => (financeDate(b.paidAt)?.getTime() || 0) - (financeDate(a.paidAt)?.getTime() || 0));
 
+  const getFinanceCustomerName = (record: any) =>
+    record.sellerName || record.companyName || record.contactName || record.ownerName || record.userName || 'Customer not identified';
+
+  const getFinanceCustomerEmail = (record: any) =>
+    record.contactEmail || record.sellerEmail || record.userEmail || record.ownerEmail || record.email || 'Email not available';
+
+  const normalizedFinanceSearch = financeSearch.trim().toLowerCase();
+  const visibleFinanceRecords = filteredFinanceRecords.filter((record) => {
+    if (!normalizedFinanceSearch) return true;
+    const searchableValues = [
+      record.title,
+      record.id,
+      record.plan,
+      getFinanceCustomerName(record),
+      getFinanceCustomerEmail(record),
+      record.stripeCheckoutSessionId,
+      record.stripePaymentIntentId,
+      record.stripeRefundId,
+    ];
+    return searchableValues.some((value) => String(value || '').toLowerCase().includes(normalizedFinanceSearch));
+  });
+
   const financeGrossRevenue = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountPaid || 0), 0);
   const financeRefunds = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountRefunded || 0), 0);
   const financeStripeFees = filteredFinanceRecords.reduce(
@@ -1177,16 +1197,30 @@ const AdminDashboard = () => {
                   </div>
 
                   <div className="rounded-2xl border border-slate-800 overflow-hidden">
-                    <div className="px-3 py-2.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between gap-3">
-                      <p className="text-sm font-black text-white">Transactions</p>
-                      <p className="text-[10px] font-bold text-slate-500">{filteredFinanceRecords.length} records</p>
+                    <div className="px-3 py-3 bg-slate-900/80 border-b border-slate-800 space-y-2.5">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-black text-white">Transactions</p>
+                        <p className="text-[10px] font-bold text-slate-500">{visibleFinanceRecords.length} of {filteredFinanceRecords.length}</p>
+                      </div>
+                      <div className="relative">
+                        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                        <input
+                          type="search"
+                          value={financeSearch}
+                          onChange={(event) => setFinanceSearch(event.target.value)}
+                          placeholder="Search listing, customer, email or payment ID"
+                          className="w-full rounded-xl border border-slate-700 bg-slate-950/70 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-600 outline-none focus:border-slate-500"
+                        />
+                      </div>
                     </div>
 
-                    {filteredFinanceRecords.length === 0 ? (
-                      <div className="p-4 text-sm text-slate-400 bg-slate-900/40">No captured financial transactions in this period.</div>
+                    {visibleFinanceRecords.length === 0 ? (
+                      <div className="p-4 text-sm text-slate-400 bg-slate-900/40">
+                        {filteredFinanceRecords.length === 0 ? 'No captured financial transactions in this period.' : 'No transactions match your search.'}
+                      </div>
                     ) : (
                       <div className="divide-y divide-slate-800 bg-slate-950/20">
-                        {filteredFinanceRecords.map((record) => {
+                        {visibleFinanceRecords.map((record) => {
                           const paid = Number(record.amountPaid || 0);
                           const refunded = Number(record.amountRefunded || 0);
                           const hasStripeFee = typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee);
@@ -1203,6 +1237,9 @@ const AdminDashboard = () => {
                                   <p className="font-black text-white text-sm truncate">{record.title || record.id}</p>
                                   <p className="text-[10px] text-slate-500 mt-0.5">
                                     {paidDate ? format(paidDate, 'dd/MM/yyyy HH:mm') : 'No date'} · <span className="capitalize">{record.plan || 'No plan'}</span>
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 mt-1 truncate">
+                                    {getFinanceCustomerName(record)} · {getFinanceCustomerEmail(record)}
                                   </p>
                                 </div>
                                 <span className={`shrink-0 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${refunded >= paid && paid > 0 ? 'bg-rose-500/10 text-rose-300 border border-rose-400/20' : refunded > 0 ? 'bg-amber-500/10 text-amber-300 border border-amber-400/20' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-400/20'}`}>
@@ -1234,7 +1271,7 @@ const AdminDashboard = () => {
                               {canRefund && (
                                 <button
                                   type="button"
-                                  onClick={() => handleFinanceRefund(record)}
+                                  onClick={() => setFinanceRefundTarget(record)}
                                   disabled={financeRefundingId === record.id}
                                   className="w-full rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-[11px] font-black text-rose-200 hover:bg-rose-500/15 disabled:opacity-60 disabled:cursor-not-allowed"
                                 >
@@ -1253,6 +1290,72 @@ const AdminDashboard = () => {
           )}
         </div>
       </section>
+
+      {financeRefundTarget && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-6 shadow-2xl">
+            {(() => {
+              const record = financeRefundTarget;
+              const paid = Number(record.amountPaid || 0);
+              const refunded = Number(record.amountRefunded || 0);
+              const remaining = Math.max(0, paid - refunded);
+              const paymentId = record.stripePaymentIntentId || 'Unavailable';
+              return (
+                <>
+                  <div className="flex items-start justify-between gap-4 mb-5">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.2em] font-black text-rose-500">Real Stripe refund</p>
+                      <h3 className="text-xl font-black text-slate-900 mt-1">Confirm refund</h3>
+                      <p className="text-xs text-slate-500 mt-1">Check the customer and payment before sending the money back.</p>
+                    </div>
+                    <button type="button" onClick={() => setFinanceRefundTarget(null)} className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200" aria-label="Close refund confirmation">
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
+                    <div>
+                      <p className="text-[10px] uppercase font-black tracking-wider text-slate-400">Listing</p>
+                      <p className="font-black text-slate-900 break-words">{record.title || record.id}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[10px] uppercase font-black tracking-wider text-slate-400">Customer</p>
+                        <p className="font-bold text-slate-800 break-words">{getFinanceCustomerName(record)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-black tracking-wider text-slate-400">Refund</p>
+                        <p className="font-black text-rose-600">{formatGBP(remaining)}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-black tracking-wider text-slate-400">Email</p>
+                      <p className="font-bold text-slate-800 break-all">{getFinanceCustomerEmail(record)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-black tracking-wider text-slate-400">Stripe Payment ID</p>
+                      <p className="font-mono text-[11px] text-slate-600 break-all">{paymentId}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">
+                    This sends a real Stripe refund. Confirm only after checking the listing, customer and payment ID.
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => setFinanceRefundTarget(null)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 hover:bg-slate-50">
+                      Cancel
+                    </button>
+                    <button type="button" onClick={() => handleFinanceRefund(record)} disabled={financeRefundingId === record.id} className="rounded-xl bg-rose-600 px-4 py-3 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed">
+                      {financeRefundingId === record.id ? 'Processing...' : `Confirm ${formatGBP(remaining)} refund`}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {financeModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
