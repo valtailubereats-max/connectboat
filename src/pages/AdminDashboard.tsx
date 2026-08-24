@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { 
   Users, Tag, MousePointer2, Bell, TrendingUp, MapPin, Calendar, Clock, Download,
-  ShieldCheck, Briefcase, Store, Megaphone, CheckCircle2, ShieldAlert, Star, Crown
+  ShieldCheck, Briefcase, Store, Megaphone, CheckCircle2, ShieldAlert, Star, Crown, Lock, KeyRound, X
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -41,13 +41,58 @@ const convertTimestamps = (obj: any): any => {
 };
 
 const AdminDashboard = () => {
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { isAdmin, loading: authLoading, profile, user: currentUser } = useAuth();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<DailyMetric[]>([]);
   const [pendingAds, setPendingAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
   const [backupLoading, setBackupLoading] = useState(false);
+  const [financeModalOpen, setFinanceModalOpen] = useState(false);
+  const [financePassword, setFinancePassword] = useState('');
+  const [financeError, setFinanceError] = useState('');
+  const [financeLoading, setFinanceLoading] = useState(false);
+  const [financeUnlocked, setFinanceUnlocked] = useState(false);
+
+  const financeOwnerEmails = new Set([
+    'valtailubereats@gmail.com',
+    'valtail@gmail.com',
+    'generalsales2021@gmail.com',
+  ]);
+  const isFinanceOwner = financeOwnerEmails.has((currentUser?.email || '').trim().toLowerCase());
+  const canRequestFinanceAccess = isFinanceOwner || (profile?.role === 'admin' && profile?.financeAccess === true);
+
+  const handleFinanceUnlock = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!currentUser || !financePassword.trim()) return;
+
+    setFinanceLoading(true);
+    setFinanceError('');
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch('/api/admin/verify-finance-access', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: financePassword }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data?.success !== true) {
+        throw new Error(data?.errorMessage || 'Unable to unlock the financial area.');
+      }
+
+      setFinanceUnlocked(true);
+      setFinancePassword('');
+      setFinanceModalOpen(false);
+    } catch (error: any) {
+      setFinanceError(error?.message || 'Unable to unlock the financial area.');
+    } finally {
+      setFinanceLoading(false);
+    }
+  };
   const [realtimeStats, setRealtimeStats] = useState({
     totalAds: 0,
     pendingAds: 0,
@@ -875,6 +920,106 @@ const AdminDashboard = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* Restricted Financial Management */}
+      <section className="mt-10 border-t border-slate-200 pt-8">
+        <div className="bg-slate-950 rounded-[2rem] p-6 md:p-8 text-white shadow-xl border border-slate-800">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
+                <Lock size={22} />
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.22em] font-black text-slate-400 mb-1">Restricted area</p>
+                <h2 className="text-xl md:text-2xl font-black">Financial Management</h2>
+                <p className="text-sm text-slate-400 mt-1 max-w-xl">Revenue, refunds and financial performance are protected by owner approval and a separate financial password.</p>
+              </div>
+            </div>
+
+            {!financeUnlocked ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!canRequestFinanceAccess) return;
+                  setFinanceError('');
+                  setFinancePassword('');
+                  setFinanceModalOpen(true);
+                }}
+                disabled={!canRequestFinanceAccess}
+                className={`px-5 py-3 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-colors ${canRequestFinanceAccess ? 'bg-white text-slate-950 hover:bg-slate-100' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}
+              >
+                <KeyRound size={17} />
+                {canRequestFinanceAccess ? 'Enter Finance' : 'Access not granted'}
+              </button>
+            ) : (
+              <div className="px-4 py-3 rounded-2xl bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 flex items-center gap-2 font-black text-sm">
+                <CheckCircle2 size={17} />
+                Finance unlocked
+              </div>
+            )}
+          </div>
+
+          {financeUnlocked && (
+            <div className="mt-6 pt-6 border-t border-slate-800">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+                <p className="font-black text-white">Financial access layer is active.</p>
+                <p className="text-sm text-slate-400 mt-1">Revenue and refund metrics will be connected in the next implementation stage.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {financeModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl border border-slate-200 p-6 md:p-7">
+            <div className="flex items-start justify-between gap-4 mb-5">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400">Financial security</p>
+                <h3 className="text-xl font-black text-slate-900 mt-1">Enter financial password</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setFinanceModalOpen(false); setFinancePassword(''); setFinanceError(''); }}
+                className="w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleFinanceUnlock} className="space-y-4">
+              <div>
+                <label htmlFor="finance-password" className="block text-xs font-black text-slate-600 mb-2">Financial password</label>
+                <input
+                  id="finance-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={financePassword}
+                  onChange={(event) => setFinancePassword(event.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 text-base text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="••••••••"
+                  autoFocus
+                />
+              </div>
+
+              {financeError && (
+                <div className="text-sm font-bold text-rose-700 bg-rose-50 border border-rose-100 rounded-xl p-3">
+                  {financeError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={financeLoading || !financePassword.trim()}
+                className="w-full px-5 py-3 rounded-xl bg-slate-950 text-white font-black disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {financeLoading ? 'Verifying...' : 'Unlock Finance'}
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
