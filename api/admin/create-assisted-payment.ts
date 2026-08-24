@@ -128,6 +128,240 @@ function passwordsMatch(received: string, expected: string) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+function escapeHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+async function resolveRefundRecipientEmail(db: any, adData: any) {
+  const directCandidates = [
+    adData.contactEmail,
+    adData.sellerEmail,
+    adData.userEmail,
+    adData.ownerEmail,
+    adData.email,
+  ];
+
+  for (const candidate of directCandidates) {
+    if (
+      typeof candidate === 'string' &&
+      candidate.trim() &&
+      candidate.includes('@')
+    ) {
+      return candidate.trim().toLowerCase();
+    }
+  }
+
+  const ownerUidCandidates = [
+    adData.sellerId,
+    adData.userId,
+    adData.ownerId,
+    adData.createdBy,
+  ];
+
+  for (const uidCandidate of ownerUidCandidates) {
+    if (typeof uidCandidate !== 'string' || !uidCandidate.trim()) continue;
+
+    const uid = uidCandidate.trim();
+
+    for (const collectionName of ['users', 'profiles']) {
+      try {
+        const snapshot = await db.collection(collectionName).doc(uid).get();
+        if (!snapshot.exists) continue;
+
+        const data = snapshot.data() || {};
+        for (const emailField of ['email', 'userEmail', 'contactEmail']) {
+          const value = data[emailField];
+          if (
+            typeof value === 'string' &&
+            value.trim() &&
+            value.includes('@')
+          ) {
+            return value.trim().toLowerCase();
+          }
+        }
+      } catch (error) {
+        console.warn(
+          `[Finance Refund Email] Could not read ${collectionName}/${uid}:`,
+          error
+        );
+      }
+    }
+
+    try {
+      const authUser = await getAuth(getApp()).getUser(uid);
+      if (
+        typeof authUser.email === 'string' &&
+        authUser.email.trim() &&
+        authUser.email.includes('@')
+      ) {
+        return authUser.email.trim().toLowerCase();
+      }
+    } catch (error) {
+      console.warn(
+        `[Finance Refund Email] Could not resolve Firebase Auth email for ${uid}:`,
+        error
+      );
+    }
+  }
+
+  return '';
+}
+
+async function sendRefundEmailDirect(
+  recipientEmail: string,
+  data: {
+    customerName?: string;
+    listingTitle?: string;
+    amountRefunded: number;
+    currency?: string;
+    refundId: string;
+    paymentIntentId: string;
+    refundDate: Date;
+  }
+) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      'RESEND_API_KEY environment variable is not configured on the server.'
+    );
+  }
+
+  const fromEmail =
+    process.env.EMAIL_FROM ||
+    'ConnectBoat <no-reply@connectboat.co.uk>';
+
+  const replyTo =
+    process.env.EMAIL_REPLY_TO ||
+    'contato@connectboat.co.uk';
+
+  const currency = (data.currency || 'GBP').toUpperCase();
+  const amountFormatted = new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency,
+  }).format(data.amountRefunded);
+
+  const refundDateFormatted = new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Europe/London',
+  }).format(data.refundDate);
+
+  const safeName = escapeHtml(data.customerName || 'ConnectBoat member');
+  const safeListing = escapeHtml(data.listingTitle || 'ConnectBoat listing');
+  const safeRefundId = escapeHtml(data.refundId);
+  const safePaymentIntentId = escapeHtml(data.paymentIntentId);
+
+  const subject = `ConnectBoat refund confirmed — ${amountFormatted}`;
+
+  const html = `
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>${escapeHtml(subject)}</title>
+      </head>
+      <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#0f172a;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fafc;padding:24px 12px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
+                <tr>
+                  <td style="background:#020617;padding:26px 30px;">
+                    <div style="font-size:24px;font-weight:900;color:#ffffff;">⛵ ConnectBoat</div>
+                    <div style="margin-top:4px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#38bdf8;">UK Boat & Marine Marketplace</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:32px 30px;">
+                    <p style="margin:0 0 14px;font-size:17px;font-weight:800;">Hello ${safeName},</p>
+                    <p style="margin:0 0 22px;color:#475569;line-height:1.65;">
+                      Your ConnectBoat refund has been successfully submitted through Stripe.
+                    </p>
+
+                    <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:12px;padding:18px;margin-bottom:22px;">
+                      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#9f1239;">Refund confirmed</div>
+                      <div style="margin-top:6px;font-size:30px;font-weight:900;color:#be123c;">${amountFormatted}</div>
+                    </div>
+
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+                      <tr>
+                        <td style="padding:13px 16px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;font-weight:700;">Listing</td>
+                        <td align="right" style="padding:13px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:800;">${safeListing}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:13px 16px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;font-weight:700;">Refund date</td>
+                        <td align="right" style="padding:13px 16px;border-bottom:1px solid #e2e8f0;font-size:13px;font-weight:800;">${escapeHtml(refundDateFormatted)}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:13px 16px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px;font-weight:700;">Stripe refund ID</td>
+                        <td align="right" style="padding:13px 16px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:11px;">${safeRefundId}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:13px 16px;color:#64748b;font-size:12px;font-weight:700;">Payment ID</td>
+                        <td align="right" style="padding:13px 16px;font-family:monospace;font-size:11px;">${safePaymentIntentId}</td>
+                      </tr>
+                    </table>
+
+                    <p style="margin:22px 0 0;color:#64748b;font-size:13px;line-height:1.6;">
+                      Your bank or card issuer controls when the refund becomes visible in your account. Processing time can vary by bank.
+                    </p>
+
+                    <p style="margin:24px 0 0;color:#475569;font-size:13px;">
+                      Questions? Reply to this email or contact <strong>${escapeHtml(replyTo)}</strong>.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: fromEmail,
+      to: [recipientEmail],
+      reply_to: replyTo,
+      subject,
+      html,
+    }),
+  });
+
+  const responseText = await response.text();
+  let responseData: any = {};
+
+  try {
+    responseData = responseText ? JSON.parse(responseText) : {};
+  } catch {
+    responseData = {};
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      responseData?.message ||
+      responseData?.error ||
+      `Resend error ${response.status}: ${responseText.slice(0, 300)}`
+    );
+  }
+
+  return {
+    id: responseData?.id || '',
+  };
+}
+
 export default async function createAssistedPaymentHandler(
   req: Request,
   res: Response
@@ -329,20 +563,91 @@ export default async function createAssistedPaymentHandler(
       );
       const fullyRefunded = newRefundedTotal >= amountPaid - 0.0001;
 
+      const refundDate = new Date();
+
       await adRef.update({
         amountRefunded: newRefundedTotal,
         refundStatus: fullyRefunded ? 'refunded' : 'partially_refunded',
-        refundedAt: new Date(),
+        refundedAt: refundDate,
         stripeRefundId: refund.id,
+        stripeRefundStatus: refund.status || 'unknown',
         paymentStatus: fullyRefunded ? 'refunded' : 'partially_refunded',
+        refundEmailSent: false,
+        refundEmailRecipient: '',
+        refundEmailResendId: '',
+        refundEmailError: '',
       });
+
+      let refundEmailSent = false;
+      let refundEmailRecipient = '';
+      let refundEmailResendId = '';
+      let refundEmailError = '';
+
+      try {
+        refundEmailRecipient = await resolveRefundRecipientEmail(db, adData);
+
+        if (!refundEmailRecipient) {
+          throw new Error(
+            'Customer email could not be resolved from the listing or user account.'
+          );
+        }
+
+        const emailResult = await sendRefundEmailDirect(
+          refundEmailRecipient,
+          {
+            customerName:
+              adData.sellerName ||
+              adData.userName ||
+              adData.ownerName ||
+              adData.contactName ||
+              '',
+            listingTitle: adData.title || adId,
+            amountRefunded: actualRefundAmount,
+            currency: adData.currency || 'GBP',
+            refundId: refund.id,
+            paymentIntentId,
+            refundDate,
+          }
+        );
+
+        refundEmailSent = true;
+        refundEmailResendId = emailResult.id || '';
+
+        await adRef.update({
+          refundEmailSent: true,
+          refundEmailSentAt: new Date(),
+          refundEmailRecipient,
+          refundEmailResendId,
+          refundEmailError: '',
+        });
+      } catch (emailError: any) {
+        refundEmailError =
+          emailError?.message ||
+          'Refund completed, but the confirmation email could not be sent.';
+
+        console.error(
+          `[Finance Refund Email] Refund ${refund.id} completed but email failed:`,
+          emailError
+        );
+
+        await adRef.update({
+          refundEmailSent: false,
+          refundEmailRecipient,
+          refundEmailError: refundEmailError.slice(0, 1000),
+        });
+      }
 
       return res.status(200).json({
         success: true,
         refundId: refund.id,
+        stripeRefundStatus: refund.status || 'unknown',
         amountRefunded: actualRefundAmount,
         totalRefunded: newRefundedTotal,
         fullyRefunded,
+        refundEmailSent,
+        refundEmailRecipient,
+        refundEmailResendId,
+        refundEmailError,
       });
     }
 
