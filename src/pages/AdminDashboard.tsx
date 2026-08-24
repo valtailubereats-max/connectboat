@@ -670,9 +670,16 @@ const AdminDashboard = () => {
 
   const financeGrossRevenue = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountPaid || 0), 0);
   const financeRefunds = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountRefunded || 0), 0);
-  const financeNetRevenue = financeGrossRevenue - financeRefunds;
+  const financeStripeFees = filteredFinanceRecords.reduce(
+    (sum, record) => sum + (typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee) ? record.stripeFee : 0),
+    0
+  );
+  const financeRealNet = financeGrossRevenue - financeRefunds - financeStripeFees;
   const financePaidListings = filteredFinanceRecords.length;
   const financeRefundedListings = filteredFinanceRecords.filter((record) => Number(record.amountRefunded || 0) > 0).length;
+  const financeMissingFeeCount = filteredFinanceRecords.filter(
+    (record) => typeof record.stripeFee !== 'number' || !Number.isFinite(record.stripeFee)
+  ).length;
   const formatGBP = (value: number) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
 
   return (
@@ -1138,24 +1145,35 @@ const AdminDashboard = () => {
                   )}
 
                   <div className="rounded-2xl border border-slate-800 bg-slate-900/65 overflow-hidden">
-                    <div className="grid grid-cols-3 divide-x divide-slate-800">
-                      <div className="p-3 min-w-0">
-                        <p className="text-[9px] uppercase tracking-wider font-black text-slate-500">Received</p>
-                        <p className="text-lg sm:text-xl font-black text-white mt-0.5 truncate">{formatGBP(financeGrossRevenue)}</p>
+                    <div className="grid grid-cols-4 divide-x divide-slate-800">
+                      <div className="p-2.5 sm:p-3 min-w-0">
+                        <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Received</p>
+                        <p className="text-sm sm:text-xl font-black text-white mt-0.5 truncate">{formatGBP(financeGrossRevenue)}</p>
                       </div>
-                      <div className="p-3 min-w-0">
-                        <p className="text-[9px] uppercase tracking-wider font-black text-slate-500">Refunded</p>
-                        <p className="text-lg sm:text-xl font-black text-rose-300 mt-0.5 truncate">{formatGBP(financeRefunds)}</p>
+                      <div className="p-2.5 sm:p-3 min-w-0">
+                        <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Refunded</p>
+                        <p className="text-sm sm:text-xl font-black text-rose-300 mt-0.5 truncate">{formatGBP(financeRefunds)}</p>
                       </div>
-                      <div className="p-3 min-w-0">
-                        <p className="text-[9px] uppercase tracking-wider font-black text-slate-500">Net</p>
-                        <p className="text-lg sm:text-xl font-black text-emerald-300 mt-0.5 truncate">{formatGBP(financeNetRevenue)}</p>
+                      <div className="p-2.5 sm:p-3 min-w-0">
+                        <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Stripe Fees</p>
+                        <p className="text-sm sm:text-xl font-black text-amber-300 mt-0.5 truncate">{formatGBP(financeStripeFees)}</p>
+                      </div>
+                      <div className="p-2.5 sm:p-3 min-w-0">
+                        <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Real Net</p>
+                        <p className={`text-sm sm:text-xl font-black mt-0.5 truncate ${financeRealNet < 0 ? 'text-rose-300' : 'text-emerald-300'}`}>{formatGBP(financeRealNet)}</p>
                       </div>
                     </div>
-                    <div className="border-t border-slate-800 px-3 py-2 flex items-center justify-between gap-3 text-[11px]">
-                      <span className="text-slate-400">{formatGBP(financeGrossRevenue)} − {formatGBP(financeRefunds)} = <strong className="text-emerald-300">{formatGBP(financeNetRevenue)}</strong></span>
+                    <div className="border-t border-slate-800 px-3 py-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] sm:text-[11px]">
+                      <span className="text-slate-400">
+                        {formatGBP(financeGrossRevenue)} − {formatGBP(financeRefunds)} − {formatGBP(financeStripeFees)} = <strong className={financeRealNet < 0 ? 'text-rose-300' : 'text-emerald-300'}>{formatGBP(financeRealNet)}</strong>
+                      </span>
                       <span className="text-slate-500 whitespace-nowrap">Paid {financePaidListings} · Refunded {financeRefundedListings}</span>
                     </div>
+                    {financeMissingFeeCount > 0 && (
+                      <div className="border-t border-amber-400/10 bg-amber-500/5 px-3 py-1.5 text-[9px] sm:text-[10px] font-bold text-amber-200/80">
+                        Stripe fee not captured for {financeMissingFeeCount} older transaction{financeMissingFeeCount === 1 ? '' : 's'}; Real Net is complete for transactions recorded after fee tracking was enabled.
+                      </div>
+                    )}
                   </div>
 
                   <div className="rounded-2xl border border-slate-800 overflow-hidden">
@@ -1171,8 +1189,10 @@ const AdminDashboard = () => {
                         {filteredFinanceRecords.map((record) => {
                           const paid = Number(record.amountPaid || 0);
                           const refunded = Number(record.amountRefunded || 0);
-                          const net = paid - refunded;
-                          const remaining = Math.max(0, net);
+                          const hasStripeFee = typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee);
+                          const stripeFee = hasStripeFee ? Number(record.stripeFee) : 0;
+                          const realNet = paid - refunded - stripeFee;
+                          const remaining = Math.max(0, paid - refunded);
                           const paidDate = financeDate(record.paidAt);
                           const canRefund = remaining > 0.0001 && typeof record.stripePaymentIntentId === 'string' && record.stripePaymentIntentId.length > 0;
 
@@ -1190,18 +1210,24 @@ const AdminDashboard = () => {
                                 </span>
                               </div>
 
-                              <div className="grid grid-cols-3 gap-1.5 text-center">
-                                <div className="rounded-xl bg-slate-900/70 px-2 py-2">
-                                  <p className="text-[8px] uppercase font-black tracking-wide text-slate-500">Received</p>
-                                  <p className="text-xs font-black text-white mt-0.5">{formatGBP(paid)}</p>
+                              <div className="grid grid-cols-4 gap-1 text-center">
+                                <div className="rounded-xl bg-slate-900/70 px-1.5 py-2 min-w-0">
+                                  <p className="text-[7px] sm:text-[8px] uppercase font-black tracking-wide text-slate-500">Received</p>
+                                  <p className="text-[10px] sm:text-xs font-black text-white mt-0.5 truncate">{formatGBP(paid)}</p>
                                 </div>
-                                <div className="rounded-xl bg-slate-900/70 px-2 py-2">
-                                  <p className="text-[8px] uppercase font-black tracking-wide text-slate-500">Refunded</p>
-                                  <p className="text-xs font-black text-rose-300 mt-0.5">{formatGBP(refunded)}</p>
+                                <div className="rounded-xl bg-slate-900/70 px-1.5 py-2 min-w-0">
+                                  <p className="text-[7px] sm:text-[8px] uppercase font-black tracking-wide text-slate-500">Refunded</p>
+                                  <p className="text-[10px] sm:text-xs font-black text-rose-300 mt-0.5 truncate">{formatGBP(refunded)}</p>
                                 </div>
-                                <div className="rounded-xl bg-slate-900/70 px-2 py-2">
-                                  <p className="text-[8px] uppercase font-black tracking-wide text-slate-500">Net</p>
-                                  <p className="text-xs font-black text-emerald-300 mt-0.5">{formatGBP(net)}</p>
+                                <div className="rounded-xl bg-slate-900/70 px-1.5 py-2 min-w-0">
+                                  <p className="text-[7px] sm:text-[8px] uppercase font-black tracking-wide text-slate-500">Stripe Fee</p>
+                                  <p className="text-[10px] sm:text-xs font-black text-amber-300 mt-0.5 truncate">{hasStripeFee ? formatGBP(stripeFee) : '—'}</p>
+                                </div>
+                                <div className="rounded-xl bg-slate-900/70 px-1.5 py-2 min-w-0">
+                                  <p className="text-[7px] sm:text-[8px] uppercase font-black tracking-wide text-slate-500">Real Net</p>
+                                  <p className={`text-[10px] sm:text-xs font-black mt-0.5 truncate ${realNet < 0 ? 'text-rose-300' : 'text-emerald-300'}`}>
+                                    {hasStripeFee ? formatGBP(realNet) : `${formatGBP(paid - refunded)}*`}
+                                  </p>
                                 </div>
                               </div>
 
