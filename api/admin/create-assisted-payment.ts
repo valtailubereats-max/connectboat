@@ -346,6 +346,183 @@ export default async function createAssistedPaymentHandler(
       });
     }
 
+    if (
+      action === 'listFinanceExpenses' ||
+      action === 'addFinanceExpense' ||
+      action === 'deleteFinanceExpense'
+    ) {
+      const configuredPassword = process.env.FINANCE_ACCESS_PASSWORD;
+
+      if (!configuredPassword) {
+        return res.status(503).json({
+          success: false,
+          error: 'FINANCE_PASSWORD_NOT_CONFIGURED',
+          errorMessage: 'Financial access password is not configured on the server.',
+        });
+      }
+
+      const db = getAdminDb();
+      const adminCheck = await verifyAdminRequest(req, db);
+
+      if (!adminCheck.ok) {
+        return res.status(adminCheck.status).json({
+          success: false,
+          error: adminCheck.code,
+          errorMessage: adminCheck.message,
+        });
+      }
+
+      const ownerEmails = new Set([
+        'valtailubereats@gmail.com',
+        'valtail@gmail.com',
+        'generalsales2021@gmail.com',
+      ]);
+
+      const isOwner = ownerEmails.has(
+        (adminCheck.email || '').trim().toLowerCase()
+      );
+
+      if (!isOwner) {
+        const userDoc = await db.collection('users').doc(adminCheck.uid).get();
+        const userData = userDoc.exists ? (userDoc.data() || {}) : {};
+
+        if (userData.role !== 'admin' || userData.financeAccess !== true) {
+          return res.status(403).json({
+            success: false,
+            error: 'FINANCE_ACCESS_DENIED',
+            errorMessage: 'Financial access has not been granted to this administrator.',
+          });
+        }
+      }
+
+      const password =
+        typeof req.body?.password === 'string' ? req.body.password : '';
+
+      if (!password || !passwordsMatch(password, configuredPassword)) {
+        return res.status(403).json({
+          success: false,
+          error: 'INVALID_FINANCE_PASSWORD',
+          errorMessage: 'Incorrect financial access password.',
+        });
+      }
+
+      const expensesCollection = db.collection('financeExpenses');
+
+      if (action === 'listFinanceExpenses') {
+        const snapshot = await expensesCollection.get();
+        const expenses = snapshot.docs
+          .map((docSnapshot: any) => ({
+            id: docSnapshot.id,
+            ...docSnapshot.data(),
+          }))
+          .sort((a: any, b: any) =>
+            String(b.expenseDate || '').localeCompare(String(a.expenseDate || ''))
+          );
+
+        return res.status(200).json({
+          success: true,
+          expenses,
+        });
+      }
+
+      if (action === 'addFinanceExpense') {
+        const expenseDate =
+          typeof req.body?.expenseDate === 'string'
+            ? req.body.expenseDate.trim()
+            : '';
+        const category =
+          typeof req.body?.category === 'string'
+            ? req.body.category.trim()
+            : '';
+        const description =
+          typeof req.body?.description === 'string'
+            ? req.body.description.trim()
+            : '';
+        const amount = Number(req.body?.amount);
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(expenseDate)) {
+          return res.status(400).json({
+            success: false,
+            error: 'INVALID_EXPENSE_DATE',
+            errorMessage: 'A valid expense date is required.',
+          });
+        }
+
+        if (!category || !description) {
+          return res.status(400).json({
+            success: false,
+            error: 'INVALID_EXPENSE_DETAILS',
+            errorMessage: 'Expense category and description are required.',
+          });
+        }
+
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'INVALID_EXPENSE_AMOUNT',
+            errorMessage: 'Expense amount must be greater than zero.',
+          });
+        }
+
+        const roundedAmount = Math.round(amount * 100) / 100;
+        const expenseRef = expensesCollection.doc();
+
+        await expenseRef.set({
+          expenseDate,
+          category,
+          description,
+          amount: roundedAmount,
+          currency: 'GBP',
+          createdAt: new Date(),
+          createdByUid: adminCheck.uid,
+          createdByEmail: adminCheck.email || '',
+        });
+
+        return res.status(200).json({
+          success: true,
+          expense: {
+            id: expenseRef.id,
+            expenseDate,
+            category,
+            description,
+            amount: roundedAmount,
+            currency: 'GBP',
+          },
+        });
+      }
+
+      const expenseId =
+        typeof req.body?.expenseId === 'string'
+          ? req.body.expenseId.trim()
+          : '';
+
+      if (!expenseId) {
+        return res.status(400).json({
+          success: false,
+          error: 'MISSING_EXPENSE_ID',
+          errorMessage: 'Expense ID is required.',
+        });
+      }
+
+      const expenseRef = expensesCollection.doc(expenseId);
+      const expenseSnapshot = await expenseRef.get();
+
+      if (!expenseSnapshot.exists) {
+        return res.status(404).json({
+          success: false,
+          error: 'EXPENSE_NOT_FOUND',
+          errorMessage: 'The expense could not be found.',
+        });
+      }
+
+      await expenseRef.delete();
+
+      return res.status(200).json({
+        success: true,
+        expenseId,
+      });
+    }
+
     if (!adId || typeof adId !== 'string') {
       return res.status(400).json({
         success: false,
