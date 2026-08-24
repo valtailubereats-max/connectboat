@@ -152,6 +152,7 @@ export interface UserProfile {
   phone: string;
   city?: string;
   role?: 'user' | 'admin' | 'moderator' | 'content_creator';
+  financeAccess?: boolean;
   acceptedTerms: boolean;
   acceptedTermsAt: any; // Firestore Timestamp
   lastLoginAt?: any; // Firestore Timestamp
