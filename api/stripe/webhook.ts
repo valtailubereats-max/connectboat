@@ -728,12 +728,31 @@ export default async function stripeWebhookHandler(
             paymentFlow ===
             'admin_assisted';
 
+          // Persist the exact amount confirmed by Stripe so historical
+          // Finance totals never depend on today's Admin pricing.
+          const confirmedAmountPaid =
+            typeof session.amount_total === 'number'
+              ? session.amount_total / 100
+              : null;
+
+          const confirmedCurrency =
+            (session.currency || 'gbp').toUpperCase();
+
           const updatePayload: Record<
             string,
             any
           > = isAdminAssisted
             ? {
                 plan: activePlan,
+
+                amountPaid:
+                  confirmedAmountPaid,
+
+                currency:
+                  confirmedCurrency,
+
+                amountRefunded:
+                  0,
 
                 paymentStatus:
                   'paid',
@@ -764,6 +783,15 @@ export default async function stripeWebhookHandler(
             : {
                 plan:
                   activePlan,
+
+                amountPaid:
+                  confirmedAmountPaid,
+
+                currency:
+                  confirmedCurrency,
+
+                amountRefunded:
+                  0,
 
                 // Normal customer checkout: payment confirms the listing, but
                 // moderation is still required before it becomes public.
