@@ -53,6 +53,10 @@ const AdminDashboard = () => {
   const [financeError, setFinanceError] = useState('');
   const [financeLoading, setFinanceLoading] = useState(false);
   const [financeUnlocked, setFinanceUnlocked] = useState(false);
+  const [financeDataLoading, setFinanceDataLoading] = useState(false);
+  const [financeDataError, setFinanceDataError] = useState('');
+  const [financeRange, setFinanceRange] = useState<'thisMonth' | 'lastMonth' | 'all'>('thisMonth');
+  const [financeRecords, setFinanceRecords] = useState<any[]>([]);
 
   const financeOwnerEmails = new Set([
     'valtailubereats@gmail.com',
@@ -61,6 +65,25 @@ const AdminDashboard = () => {
   ]);
   const isFinanceOwner = financeOwnerEmails.has((currentUser?.email || '').trim().toLowerCase());
   const canRequestFinanceAccess = isFinanceOwner || (profile?.role === 'admin' && profile?.financeAccess === true);
+
+  const loadFinanceData = async () => {
+    setFinanceDataLoading(true);
+    setFinanceDataError('');
+    try {
+      const adsSnapshot = await getDocs(collection(db, 'ads'));
+      const records = adsSnapshot.docs
+        .map((snapshot) => ({ id: snapshot.id, ...snapshot.data() } as any))
+        // Only transactions with an amount captured from Stripe are financial records.
+        // Legacy paid listings without amountPaid are intentionally excluded.
+        .filter((ad) => typeof ad.amountPaid === 'number' && Number.isFinite(ad.amountPaid));
+      setFinanceRecords(records);
+    } catch (error: any) {
+      console.error('[Finance] Unable to load financial records:', error);
+      setFinanceDataError('Unable to load financial records.');
+    } finally {
+      setFinanceDataLoading(false);
+    }
+  };
 
   const handleFinanceUnlock = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -102,6 +125,7 @@ const AdminDashboard = () => {
       }
 
       setFinanceUnlocked(true);
+      await loadFinanceData();
       setFinancePassword('');
       setFinanceModalOpen(false);
     } catch (error: any) {
@@ -552,6 +576,40 @@ const AdminDashboard = () => {
     ? ((latest.notifications.renewalsAfterWarning / latest.notifications.warningsSent) * 100).toFixed(1)
     : 0;
 
+  const financeDate = (value: any): Date | null => {
+    if (!value) return null;
+    if (typeof value.toDate === 'function') return value.toDate();
+    if (value instanceof Date) return value;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const now = new Date();
+  const financeRangeStart = financeRange === 'thisMonth'
+    ? new Date(now.getFullYear(), now.getMonth(), 1)
+    : financeRange === 'lastMonth'
+      ? new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      : null;
+  const financeRangeEnd = financeRange === 'thisMonth'
+    ? new Date(now.getFullYear(), now.getMonth() + 1, 1)
+    : financeRange === 'lastMonth'
+      ? new Date(now.getFullYear(), now.getMonth(), 1)
+      : null;
+
+  const filteredFinanceRecords = financeRecords
+    .filter((record) => {
+      if (!financeRangeStart) return true;
+      const paidDate = financeDate(record.paidAt);
+      return !!paidDate && paidDate >= financeRangeStart && (!financeRangeEnd || paidDate < financeRangeEnd);
+    })
+    .sort((a, b) => (financeDate(b.paidAt)?.getTime() || 0) - (financeDate(a.paidAt)?.getTime() || 0));
+
+  const financeGrossRevenue = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountPaid || 0), 0);
+  const financeRefunds = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountRefunded || 0), 0);
+  const financeNetRevenue = financeGrossRevenue - financeRefunds;
+  const financePaidListings = filteredFinanceRecords.length;
+  const formatGBP = (value: number) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
+
   return (
     <div className="space-y-8 pb-20">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -978,11 +1036,92 @@ const AdminDashboard = () => {
           </div>
 
           {financeUnlocked && (
-            <div className="mt-6 pt-6 border-t border-slate-800">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-                <p className="font-black text-white">Financial access layer is active.</p>
-                <p className="text-sm text-slate-400 mt-1">Revenue and refund metrics will be connected in the next implementation stage.</p>
+            <div className="mt-6 pt-6 border-t border-slate-800 space-y-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-black text-white">Finance Dashboard</p>
+                  <p className="text-xs text-slate-400 mt-1">Only Stripe-confirmed transactions with a captured historical amount are included.</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ['thisMonth', 'This Month'],
+                    ['lastMonth', 'Last Month'],
+                    ['all', 'All Time'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFinanceRange(value)}
+                      className={`px-3 py-2 rounded-xl text-xs font-black border transition-colors ${financeRange === value ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {financeDataLoading ? (
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">Loading financial records...</div>
+              ) : financeDataError ? (
+                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 text-sm font-bold text-rose-200">{financeDataError}</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {[
+                      ['Gross Revenue', formatGBP(financeGrossRevenue)],
+                      ['Refunds', formatGBP(financeRefunds)],
+                      ['Net Revenue', formatGBP(financeNetRevenue)],
+                      ['Paid Listings', String(financePaidListings)],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                        <p className="text-[10px] uppercase tracking-widest font-black text-slate-500">{label}</p>
+                        <p className="text-xl md:text-2xl font-black text-white mt-1">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-800 overflow-hidden">
+                    <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800">
+                      <p className="text-sm font-black text-white">Transactions</p>
+                    </div>
+                    {filteredFinanceRecords.length === 0 ? (
+                      <div className="p-5 text-sm text-slate-400 bg-slate-900/40">No captured financial transactions in this period.</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[720px] text-sm">
+                          <thead className="bg-slate-900/60 text-slate-500 text-[10px] uppercase tracking-wider">
+                            <tr>
+                              <th className="text-left px-4 py-3">Date</th>
+                              <th className="text-left px-4 py-3">Listing</th>
+                              <th className="text-left px-4 py-3">Plan</th>
+                              <th className="text-right px-4 py-3">Paid</th>
+                              <th className="text-right px-4 py-3">Refunded</th>
+                              <th className="text-right px-4 py-3">Net</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800 bg-slate-950/20">
+                            {filteredFinanceRecords.map((record) => {
+                              const paid = Number(record.amountPaid || 0);
+                              const refunded = Number(record.amountRefunded || 0);
+                              const paidDate = financeDate(record.paidAt);
+                              return (
+                                <tr key={record.id} className="text-slate-300">
+                                  <td className="px-4 py-3 whitespace-nowrap">{paidDate ? format(paidDate, 'dd/MM/yyyy HH:mm') : '—'}</td>
+                                  <td className="px-4 py-3 font-bold text-white max-w-[260px] truncate">{record.title || record.id}</td>
+                                  <td className="px-4 py-3 capitalize">{record.plan || '—'}</td>
+                                  <td className="px-4 py-3 text-right font-bold">{formatGBP(paid)}</td>
+                                  <td className="px-4 py-3 text-right">{formatGBP(refunded)}</td>
+                                  <td className="px-4 py-3 text-right font-black text-emerald-300">{formatGBP(paid - refunded)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
