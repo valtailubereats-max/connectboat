@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import Stripe from 'stripe';
+import { timingSafeEqual } from 'node:crypto';
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -120,6 +121,13 @@ async function verifyAdminRequest(req: Request, db: any) {
   };
 }
 
+
+function passwordsMatch(received: string, expected: string) {
+  const a = Buffer.from(received, 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 export default async function createAssistedPaymentHandler(
   req: Request,
   res: Response
@@ -132,7 +140,70 @@ export default async function createAssistedPaymentHandler(
   }
 
   try {
-    const { adId, plan, successUrl, cancelUrl } = req.body || {};
+    const { action, adId, plan, successUrl, cancelUrl } = req.body || {};
+
+    // Reuse this existing Serverless Function for the Finance password gate so
+    // the Vercel Hobby project stays within its 12-function limit.
+    if (action === 'verifyFinanceAccess') {
+      const configuredPassword = process.env.FINANCE_ACCESS_PASSWORD;
+
+      if (!configuredPassword) {
+        return res.status(503).json({
+          success: false,
+          error: 'FINANCE_PASSWORD_NOT_CONFIGURED',
+          errorMessage: 'Financial access password is not configured on the server.',
+        });
+      }
+
+      const db = getAdminDb();
+      const adminCheck = await verifyAdminRequest(req, db);
+
+      if (!adminCheck.ok) {
+        return res.status(adminCheck.status).json({
+          success: false,
+          error: adminCheck.code,
+          errorMessage: adminCheck.message,
+        });
+      }
+
+      const ownerEmails = new Set([
+        'valtailubereats@gmail.com',
+        'valtail@gmail.com',
+        'generalsales2021@gmail.com',
+      ]);
+
+      const isOwner = ownerEmails.has(
+        (adminCheck.email || '').trim().toLowerCase()
+      );
+
+      if (!isOwner) {
+        const userDoc = await db.collection('users').doc(adminCheck.uid).get();
+        const userData = userDoc.exists ? (userDoc.data() || {}) : {};
+
+        if (userData.role !== 'admin' || userData.financeAccess !== true) {
+          return res.status(403).json({
+            success: false,
+            error: 'FINANCE_ACCESS_DENIED',
+            errorMessage: 'Financial access has not been granted to this administrator.',
+          });
+        }
+      }
+
+      const password =
+        typeof req.body?.password === 'string' ? req.body.password : '';
+
+      if (!password || !passwordsMatch(password, configuredPassword)) {
+        return res.status(403).json({
+          success: false,
+          error: 'INVALID_FINANCE_PASSWORD',
+          errorMessage: 'Incorrect financial access password.',
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+      });
+    }
 
     if (!adId || typeof adId !== 'string') {
       return res.status(400).json({
