@@ -55,8 +55,11 @@ const AdminDashboard = () => {
   const [financeUnlocked, setFinanceUnlocked] = useState(false);
   const [financeDataLoading, setFinanceDataLoading] = useState(false);
   const [financeDataError, setFinanceDataError] = useState('');
-  const [financeRange, setFinanceRange] = useState<'thisMonth' | 'lastMonth' | 'all'>('thisMonth');
+  const [financeRange, setFinanceRange] = useState<'thisMonth' | 'lastMonth' | 'all'>('all');
   const [financeRecords, setFinanceRecords] = useState<any[]>([]);
+  const [financeSessionPassword, setFinanceSessionPassword] = useState('');
+  const [financeRefundingId, setFinanceRefundingId] = useState('');
+  const [financeActionMessage, setFinanceActionMessage] = useState('');
 
   const financeOwnerEmails = new Set([
     'valtailubereats@gmail.com',
@@ -125,6 +128,7 @@ const AdminDashboard = () => {
       }
 
       setFinanceUnlocked(true);
+      setFinanceSessionPassword(financePassword);
       await loadFinanceData();
       setFinancePassword('');
       setFinanceModalOpen(false);
@@ -134,6 +138,66 @@ const AdminDashboard = () => {
       setFinanceLoading(false);
     }
   };
+  const handleFinanceRefund = async (record: any) => {
+    if (!currentUser || !financeSessionPassword || financeRefundingId) return;
+
+    const paid = Number(record.amountPaid || 0);
+    const refunded = Number(record.amountRefunded || 0);
+    const remaining = Math.max(0, paid - refunded);
+
+    if (remaining <= 0.0001) return;
+
+    const confirmed = window.confirm(
+      `Refund ${formatGBP(remaining)} for “${record.title || record.id}”?\n\nThis sends a real Stripe refund and cannot be undone from ConnectBoat.`
+    );
+    if (!confirmed) return;
+
+    setFinanceRefundingId(record.id);
+    setFinanceActionMessage('');
+    setFinanceDataError('');
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch('/api/admin/create-assisted-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: 'refundFinancePayment',
+          adId: record.id,
+          password: financeSessionPassword,
+        }),
+      });
+
+      const rawBody = await response.text();
+      let data: any = {};
+      try {
+        data = rawBody ? JSON.parse(rawBody) : {};
+      } catch {
+        data = {};
+      }
+
+      if (!response.ok || data?.success !== true) {
+        throw new Error(
+          data?.errorMessage ||
+          data?.error ||
+          `Refund failed (HTTP ${response.status}).`
+        );
+      }
+
+      setFinanceActionMessage(
+        `Refund completed: ${formatGBP(Number(data.amountRefunded || remaining))}.`
+      );
+      await loadFinanceData();
+    } catch (error: any) {
+      setFinanceDataError(error?.message || 'Unable to process the refund.');
+    } finally {
+      setFinanceRefundingId('');
+    }
+  };
+
   const [realtimeStats, setRealtimeStats] = useState({
     totalAds: 0,
     pendingAds: 0,
@@ -608,6 +672,7 @@ const AdminDashboard = () => {
   const financeRefunds = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountRefunded || 0), 0);
   const financeNetRevenue = financeGrossRevenue - financeRefunds;
   const financePaidListings = filteredFinanceRecords.length;
+  const financeRefundedListings = filteredFinanceRecords.filter((record) => Number(record.amountRefunded || 0) > 0).length;
   const formatGBP = (value: number) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
 
   return (
@@ -1036,23 +1101,23 @@ const AdminDashboard = () => {
           </div>
 
           {financeUnlocked && (
-            <div className="mt-6 pt-6 border-t border-slate-800 space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="mt-5 pt-5 border-t border-slate-800 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <p className="font-black text-white">Finance Dashboard</p>
-                  <p className="text-xs text-slate-400 mt-1">Only Stripe-confirmed transactions with a captured historical amount are included.</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Stripe-confirmed historical amounts only.</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto">
                   {([
-                    ['thisMonth', 'This Month'],
-                    ['lastMonth', 'Last Month'],
+                    ['thisMonth', 'Month'],
+                    ['lastMonth', 'Last'],
                     ['all', 'All Time'],
                   ] as const).map(([value, label]) => (
                     <button
                       key={value}
                       type="button"
                       onClick={() => setFinanceRange(value)}
-                      className={`px-3 py-2 rounded-xl text-xs font-black border transition-colors ${financeRange === value ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'}`}
+                      className={`px-2.5 py-2 rounded-xl text-[11px] font-black border transition-colors ${financeRange === value ? 'bg-white text-slate-950 border-white' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'}`}
                     >
                       {label}
                     </button>
@@ -1061,62 +1126,98 @@ const AdminDashboard = () => {
               </div>
 
               {financeDataLoading ? (
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 text-sm text-slate-300">Loading financial records...</div>
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300">Loading financial records...</div>
               ) : financeDataError ? (
-                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 text-sm font-bold text-rose-200">{financeDataError}</div>
+                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm font-bold text-rose-200">{financeDataError}</div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    {[
-                      ['Gross Revenue', formatGBP(financeGrossRevenue)],
-                      ['Refunds', formatGBP(financeRefunds)],
-                      ['Net Revenue', formatGBP(financeNetRevenue)],
-                      ['Paid Listings', String(financePaidListings)],
-                    ].map(([label, value]) => (
-                      <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                        <p className="text-[10px] uppercase tracking-widest font-black text-slate-500">{label}</p>
-                        <p className="text-xl md:text-2xl font-black text-white mt-1">{value}</p>
+                  {financeActionMessage && (
+                    <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs font-bold text-emerald-200">
+                      {financeActionMessage}
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900/65 overflow-hidden">
+                    <div className="grid grid-cols-3 divide-x divide-slate-800">
+                      <div className="p-3 min-w-0">
+                        <p className="text-[9px] uppercase tracking-wider font-black text-slate-500">Received</p>
+                        <p className="text-lg sm:text-xl font-black text-white mt-0.5 truncate">{formatGBP(financeGrossRevenue)}</p>
                       </div>
-                    ))}
+                      <div className="p-3 min-w-0">
+                        <p className="text-[9px] uppercase tracking-wider font-black text-slate-500">Refunded</p>
+                        <p className="text-lg sm:text-xl font-black text-rose-300 mt-0.5 truncate">{formatGBP(financeRefunds)}</p>
+                      </div>
+                      <div className="p-3 min-w-0">
+                        <p className="text-[9px] uppercase tracking-wider font-black text-slate-500">Net</p>
+                        <p className="text-lg sm:text-xl font-black text-emerald-300 mt-0.5 truncate">{formatGBP(financeNetRevenue)}</p>
+                      </div>
+                    </div>
+                    <div className="border-t border-slate-800 px-3 py-2 flex items-center justify-between gap-3 text-[11px]">
+                      <span className="text-slate-400">{formatGBP(financeGrossRevenue)} − {formatGBP(financeRefunds)} = <strong className="text-emerald-300">{formatGBP(financeNetRevenue)}</strong></span>
+                      <span className="text-slate-500 whitespace-nowrap">Paid {financePaidListings} · Refunded {financeRefundedListings}</span>
+                    </div>
                   </div>
 
                   <div className="rounded-2xl border border-slate-800 overflow-hidden">
-                    <div className="px-4 py-3 bg-slate-900/80 border-b border-slate-800">
+                    <div className="px-3 py-2.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between gap-3">
                       <p className="text-sm font-black text-white">Transactions</p>
+                      <p className="text-[10px] font-bold text-slate-500">{filteredFinanceRecords.length} records</p>
                     </div>
+
                     {filteredFinanceRecords.length === 0 ? (
-                      <div className="p-5 text-sm text-slate-400 bg-slate-900/40">No captured financial transactions in this period.</div>
+                      <div className="p-4 text-sm text-slate-400 bg-slate-900/40">No captured financial transactions in this period.</div>
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full min-w-[720px] text-sm">
-                          <thead className="bg-slate-900/60 text-slate-500 text-[10px] uppercase tracking-wider">
-                            <tr>
-                              <th className="text-left px-4 py-3">Date</th>
-                              <th className="text-left px-4 py-3">Listing</th>
-                              <th className="text-left px-4 py-3">Plan</th>
-                              <th className="text-right px-4 py-3">Paid</th>
-                              <th className="text-right px-4 py-3">Refunded</th>
-                              <th className="text-right px-4 py-3">Net</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-800 bg-slate-950/20">
-                            {filteredFinanceRecords.map((record) => {
-                              const paid = Number(record.amountPaid || 0);
-                              const refunded = Number(record.amountRefunded || 0);
-                              const paidDate = financeDate(record.paidAt);
-                              return (
-                                <tr key={record.id} className="text-slate-300">
-                                  <td className="px-4 py-3 whitespace-nowrap">{paidDate ? format(paidDate, 'dd/MM/yyyy HH:mm') : '—'}</td>
-                                  <td className="px-4 py-3 font-bold text-white max-w-[260px] truncate">{record.title || record.id}</td>
-                                  <td className="px-4 py-3 capitalize">{record.plan || '—'}</td>
-                                  <td className="px-4 py-3 text-right font-bold">{formatGBP(paid)}</td>
-                                  <td className="px-4 py-3 text-right">{formatGBP(refunded)}</td>
-                                  <td className="px-4 py-3 text-right font-black text-emerald-300">{formatGBP(paid - refunded)}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                      <div className="divide-y divide-slate-800 bg-slate-950/20">
+                        {filteredFinanceRecords.map((record) => {
+                          const paid = Number(record.amountPaid || 0);
+                          const refunded = Number(record.amountRefunded || 0);
+                          const net = paid - refunded;
+                          const remaining = Math.max(0, net);
+                          const paidDate = financeDate(record.paidAt);
+                          const canRefund = remaining > 0.0001 && typeof record.stripePaymentIntentId === 'string' && record.stripePaymentIntentId.length > 0;
+
+                          return (
+                            <div key={record.id} className="p-3 space-y-2.5">
+                              <div className="flex items-start justify-between gap-3 min-w-0">
+                                <div className="min-w-0">
+                                  <p className="font-black text-white text-sm truncate">{record.title || record.id}</p>
+                                  <p className="text-[10px] text-slate-500 mt-0.5">
+                                    {paidDate ? format(paidDate, 'dd/MM/yyyy HH:mm') : 'No date'} · <span className="capitalize">{record.plan || 'No plan'}</span>
+                                  </p>
+                                </div>
+                                <span className={`shrink-0 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${refunded >= paid && paid > 0 ? 'bg-rose-500/10 text-rose-300 border border-rose-400/20' : refunded > 0 ? 'bg-amber-500/10 text-amber-300 border border-amber-400/20' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-400/20'}`}>
+                                  {refunded >= paid && paid > 0 ? 'Refunded' : refunded > 0 ? 'Partial' : 'Paid'}
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-1.5 text-center">
+                                <div className="rounded-xl bg-slate-900/70 px-2 py-2">
+                                  <p className="text-[8px] uppercase font-black tracking-wide text-slate-500">Received</p>
+                                  <p className="text-xs font-black text-white mt-0.5">{formatGBP(paid)}</p>
+                                </div>
+                                <div className="rounded-xl bg-slate-900/70 px-2 py-2">
+                                  <p className="text-[8px] uppercase font-black tracking-wide text-slate-500">Refunded</p>
+                                  <p className="text-xs font-black text-rose-300 mt-0.5">{formatGBP(refunded)}</p>
+                                </div>
+                                <div className="rounded-xl bg-slate-900/70 px-2 py-2">
+                                  <p className="text-[8px] uppercase font-black tracking-wide text-slate-500">Net</p>
+                                  <p className="text-xs font-black text-emerald-300 mt-0.5">{formatGBP(net)}</p>
+                                </div>
+                              </div>
+
+                              {canRefund && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleFinanceRefund(record)}
+                                  disabled={financeRefundingId === record.id}
+                                  className="w-full rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-[11px] font-black text-rose-200 hover:bg-rose-500/15 disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                  {financeRefundingId === record.id ? 'Processing refund...' : `Refund ${formatGBP(remaining)}`}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
