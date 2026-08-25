@@ -165,6 +165,13 @@ export default function AdminBannerEditor() {
       const startDate = start.toISOString().slice(0, 10);
       const endDate = end.toISOString().slice(0, 10);
 
+      const amountPaid = Number(order.amountPaid || 0);
+      const paidDate =
+        order.paidDate ||
+        (order.paidAt?.toDate
+          ? order.paidAt.toDate().toISOString().slice(0, 10)
+          : new Date().toISOString().slice(0, 10));
+
       const campaignRef = await addDoc(collection(db, 'advertisingCampaigns'), {
         enabled: true,
         advertiserName: order.advertiserName || 'Advertiser',
@@ -174,6 +181,23 @@ export default function AdminBannerEditor() {
         displaySeconds: Number(order.displaySeconds || 4),
         startDate,
         endDate,
+
+        // Preserve the confirmed checkout payment on the published campaign.
+        amountPaid: Number.isFinite(amountPaid) ? Math.round(amountPaid * 100) / 100 : 0,
+        currency: order.currency || 'GBP',
+        paymentStatus: 'paid',
+        paidDate,
+        stripeFee:
+          typeof order.stripeFee === 'number' && Number.isFinite(order.stripeFee)
+            ? order.stripeFee
+            : 0,
+        stripeNetReceived:
+          typeof order.stripeNetReceived === 'number' && Number.isFinite(order.stripeNetReceived)
+            ? order.stripeNetReceived
+            : null,
+        stripeCheckoutSessionId: order.stripeCheckoutSessionId || '',
+        stripePaymentIntentId: order.stripePaymentIntentId || '',
+
         orderId: order.id,
         source: 'customer_checkout',
         impressions: 0,
