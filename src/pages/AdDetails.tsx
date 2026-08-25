@@ -1079,14 +1079,18 @@ const AdDetails = () => {
           );
         })()
       ) : (
-        <div className="hidden lg:flex mb-5 min-h-[92px] rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-r from-slate-950 via-[#0b2d55] to-indigo-700 shadow-sm items-center justify-between px-8 py-4 text-white">
+        <button
+          type="button"
+          onClick={() => navigate('/advertise')}
+          className="hidden lg:flex w-full mb-5 min-h-[92px] rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-r from-slate-950 via-[#0b2d55] to-indigo-700 shadow-sm items-center justify-between px-8 py-4 text-white text-left hover:shadow-md transition-shadow"
+        >
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.28em] text-sky-300 mb-1">ConnectBoat Advertising</div>
             <div className="text-xl font-black tracking-tight">Put your marine brand in front of boat buyers</div>
-            <div className="text-xs text-slate-300 mt-1">Premium banner space for marine businesses, dealers and services.</div>
+            <div className="text-xs text-slate-300 mt-1">Choose your exposure, pay securely and create your banner with AI.</div>
           </div>
-          <div className="shrink-0 rounded-xl bg-white/10 border border-white/20 px-5 py-3 text-sm font-black backdrop-blur-sm">Advertising Space</div>
-        </div>
+          <div className="shrink-0 rounded-xl bg-white/10 border border-white/20 px-5 py-3 text-sm font-black backdrop-blur-sm">Advertise Here</div>
+        </button>
       )}
 
       {/* DESKTOP LAYOUT */}
