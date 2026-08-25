@@ -633,7 +633,36 @@ const AdDetails = () => {
         const snap = await getDocsWithCacheFallback(sellerQuery, `seller_listings_${ad.sellerId}`);
         const items = snap.docs
           .map(d => ({ id: d.id, ...d.data() } as Ad))
-          .filter(item => item.id !== ad.id && item.status === 'active' && !item.isHidden)
+          .filter((item: any) => {
+            if (item.id === ad.id || item.isHidden) return false;
+
+            const isActive =
+              item.adStatus === 'active' ||
+              item.status === 'active' ||
+              item.status === 'approved';
+
+            const isExpired =
+              item.expirationDate?.toDate
+                ? item.expirationDate.toDate().getTime() < Date.now()
+                : item.expirationDate
+                  ? new Date(item.expirationDate).getTime() < Date.now()
+                  : false;
+
+            return isActive && !isExpired;
+          })
+          .sort((a: any, b: any) => {
+            const dateA = a.createdAt?.toDate
+              ? a.createdAt.toDate().getTime()
+              : a.createdAt
+                ? new Date(a.createdAt).getTime()
+                : 0;
+            const dateB = b.createdAt?.toDate
+              ? b.createdAt.toDate().getTime()
+              : b.createdAt
+                ? new Date(b.createdAt).getTime()
+                : 0;
+            return dateB - dateA;
+          })
           .slice(0, 6);
         setSellerAds(items);
       } catch (err) {
@@ -2257,22 +2286,47 @@ const AdDetails = () => {
 
       {/* MORE FROM THIS SELLER */}
       {sellerAds.length > 0 && (
-        <div className="mt-12 pt-8 border-t border-slate-200/80 text-left">
-          <div className="flex items-end justify-between gap-4 mb-6">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-600 mb-1">Seller collection</div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">More From This Seller</h2>
-              <p className="text-xs text-slate-500 font-bold mt-1">Explore more active listings from the same seller.</p>
+        <section className="mt-10 sm:mt-12 rounded-[1.75rem] sm:rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden text-left">
+          <div className="px-4 sm:px-6 lg:px-7 py-5 sm:py-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-indigo-50/50">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-indigo-600 mb-1">
+                  Seller collection
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  More From This Seller
+                </h2>
+                <p className="text-[11px] sm:text-xs text-slate-500 font-semibold mt-1">
+                  More active listings from {hasSourceUrl ? 'this partner' : (ad.sellerName || 'this seller')}.
+                </p>
+              </div>
+
+              <div className="hidden sm:flex shrink-0 items-center justify-center min-w-12 h-10 px-3 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700">
+                <span className="text-sm font-black">{sellerAds.length}</span>
+                <span className="ml-1 text-[9px] font-black uppercase tracking-wide">more</span>
+              </div>
             </div>
           </div>
-          <div className="flex gap-4 sm:gap-5 overflow-x-auto pb-4 snap-x snap-mandatory">
-            {sellerAds.map((sellerAd) => (
-              <div key={sellerAd.id} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[320px] max-w-[340px] snap-start">
-                <AdCard ad={sellerAd} />
-              </div>
-            ))}
+
+          {/* Mobile/tablet: swipe horizontally. Desktop: large 3-column dealer-style grid. */}
+          <div className="p-4 sm:p-5 lg:p-6">
+            <div className="flex lg:grid lg:grid-cols-3 gap-4 sm:gap-5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 snap-x snap-mandatory scrollbar-thin">
+              {sellerAds.map((sellerAd) => (
+                <div
+                  key={sellerAd.id}
+                  className="min-w-[82vw] xs:min-w-[300px] sm:min-w-[340px] lg:min-w-0 lg:w-auto snap-start"
+                >
+                  <AdCard ad={sellerAd} />
+                </div>
+              ))}
+            </div>
+
+            <div className="lg:hidden mt-2 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400">
+              <span>Swipe to see more listings</span>
+              <ChevronRight size={13} />
+            </div>
           </div>
-        </div>
+        </section>
       )}
 
       {/* RELATED LISTINGS SECTION (Anúncios Náuticos Semelhantes) */}
