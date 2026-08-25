@@ -75,6 +75,8 @@ export default function Advertise() {
   const [brief, setBrief] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
+  const [designMode, setDesignMode] = useState<'ready' | 'ai' | null>(null);
+  const [readyBannerFile, setReadyBannerFile] = useState<File | null>(null);
 
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState<string[]>([]);
@@ -202,6 +204,10 @@ export default function Advertise() {
     if (!orderIdFromUrl || !tokenFromUrl || order?.paymentStatus !== 'paid') return;
     if (!headline.trim()) {
       setDesignError('Add a main headline for your banner.');
+      return;
+    }
+    if (!referenceFile) {
+      setDesignError('Upload a real photo of your business, product or service before generating AI banners.');
       return;
     }
 
@@ -443,10 +449,40 @@ export default function Advertise() {
 
           <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-5 sm:p-7 space-y-5">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">AI Banner Creator</div>
-              <h2 className="text-2xl font-black text-slate-900 mt-1">Create your professional banner</h2>
-              <p className="text-sm text-slate-500 mt-1">The final output is automatically formatted for the ConnectBoat advertising space.</p>
+              <div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">Choose Your Banner</div>
+              <h2 className="text-2xl font-black text-slate-900 mt-1">How would you like to provide your banner?</h2>
+              <p className="text-sm text-slate-500 mt-1">Every banner is reviewed by ConnectBoat before publication.</p>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button type="button" onClick={() => { setDesignMode('ready'); setDesignError(''); }} className={`rounded-2xl border p-4 text-left ${designMode === 'ready' ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}>
+                <div className="font-black text-slate-900">I already have my banner</div>
+                <div className="text-xs text-slate-500 mt-1">Upload your finished banner and send it directly for approval.</div>
+              </button>
+              <button type="button" onClick={() => { setDesignMode('ai'); setDesignError(''); }} className={`rounded-2xl border p-4 text-left ${designMode === 'ai' ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-100' : 'border-slate-200'}`}>
+                <div className="font-black text-slate-900">Create my banner with AI</div>
+                <div className="text-xs text-slate-500 mt-1">Upload a real business photo and AI will create professional banner options from it.</div>
+              </button>
+            </div>
+
+            {designMode === 'ready' && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <label className="block text-xs font-black text-emerald-900 mb-2">Finished banner image</label>
+                <label className="w-full px-4 py-4 rounded-xl border border-dashed border-emerald-300 bg-white flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-600">
+                  <Upload size={16} />
+                  {readyBannerFile ? readyBannerFile.name : 'Upload your finished banner'}
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => setReadyBannerFile(e.target.files?.[0] || null)} />
+                </label>
+                <p className="text-xs text-emerald-800 mt-2">Your image will be checked for size and proportions before it can be submitted for approval.</p>
+              </div>
+            )}
+
+            {designMode === 'ai' && (<>
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">AI Banner Creator</div>
+                <h3 className="text-xl font-black text-slate-900 mt-1">Create from your real business photo</h3>
+                <p className="text-sm text-slate-500 mt-1">Your photo is required and will be used as the visual basis for the banner.</p>
+              </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -493,10 +529,10 @@ export default function Advertise() {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-600 mb-2">Reference image (optional)</label>
+              <label className="block text-xs font-black text-slate-600 mb-2">Business / advertising photo (required)</label>
               <label className="w-full px-4 py-3 rounded-xl border border-dashed border-slate-300 flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-600">
                 <ImageIcon size={16} />
-                {referenceFile ? referenceFile.name : 'Upload a photo to inspire the background'}
+                {referenceFile ? referenceFile.name : 'Upload a real photo of your business, product or service'}
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => setReferenceFile(e.target.files?.[0] || null)} />
               </label>
             </div>
@@ -510,11 +546,12 @@ export default function Advertise() {
 
             {designError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{designError}</div>}
 
-            <button type="button" onClick={generateBanners} disabled={generating}
+            <button type="button" onClick={generateBanners} disabled={generating || !referenceFile}
               className="w-full sm:w-auto rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white px-6 py-3 font-black flex items-center justify-center gap-2">
               <WandSparkles size={18} />
               {generating ? 'AI is creating your banners...' : `Generate ${settings.aiGenerationsIncluded || 3} Options`}
             </button>
+            </>)}
           </div>
 
           {generated.length > 0 && (
