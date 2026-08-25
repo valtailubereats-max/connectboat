@@ -39,12 +39,58 @@ const DEFAULT_SETTINGS: SalesSettings = {
 const exposureOptions = [4, 6, 8, 10] as const;
 const durationOptions = [7, 14, 30] as const;
 
-const fileToDataUrl = (file: File): Promise<string> =>
+const fileToOptimizedDataUrl = (
+  file: File,
+  options: { maxWidth: number; maxHeight: number; quality: number; preservePng?: boolean }
+): Promise<string> =>
   new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      try {
+        const scale = Math.min(
+          1,
+          options.maxWidth / Math.max(1, image.naturalWidth),
+          options.maxHeight / Math.max(1, image.naturalHeight)
+        );
+
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const context = canvas.getContext('2d');
+        if (!context) {
+          throw new Error('Unable to prepare this image.');
+        }
+
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        context.drawImage(image, 0, 0, width, height);
+
+        const outputType =
+          options.preservePng && file.type === 'image/png'
+            ? 'image/png'
+            : 'image/jpeg';
+
+        const dataUrl = canvas.toDataURL(outputType, options.quality);
+        URL.revokeObjectURL(objectUrl);
+        resolve(dataUrl);
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        reject(error);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Unable to read this image.'));
+    };
+
+    image.src = objectUrl;
   });
 
 export default function Advertise() {
@@ -348,9 +394,25 @@ export default function Advertise() {
       setGenerating(true);
       setDesignError('');
 
+      // Compress the images before sending them to the Vercel function.
+      // This avoids FUNCTION_PAYLOAD_TOO_LARGE (HTTP 413) when customers
+      // upload high-resolution PNG/JPG photos or logos.
       const [logoDataUrl, referenceDataUrl] = await Promise.all([
-        logoFile ? fileToDataUrl(logoFile) : Promise.resolve(''),
-        referenceFile ? fileToDataUrl(referenceFile) : Promise.resolve(''),
+        logoFile
+          ? fileToOptimizedDataUrl(logoFile, {
+              maxWidth: 600,
+              maxHeight: 600,
+              quality: 0.82,
+              preservePng: true,
+            })
+          : Promise.resolve(''),
+        referenceFile
+          ? fileToOptimizedDataUrl(referenceFile, {
+              maxWidth: 1600,
+              maxHeight: 1200,
+              quality: 0.78,
+            })
+          : Promise.resolve(''),
       ]);
 
       const response = await fetch('/api/stripe/create-checkout-session', {
@@ -371,7 +433,22 @@ export default function Advertise() {
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data: any = null;
+
+      try {
+        data = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        if (!response.ok) {
+          throw new Error(
+            response.status === 413
+              ? 'The uploaded images are too large. Please try smaller images.'
+              : `AI banner generation failed (${response.status}).`
+          );
+        }
+        throw new Error('AI banner generation returned an invalid response.');
+      }
+
       if (!response.ok || data?.success !== true) {
         throw new Error(data?.errorMessage || data?.error || 'AI banner generation failed.');
       }
