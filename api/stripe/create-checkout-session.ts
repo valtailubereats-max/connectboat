@@ -477,6 +477,132 @@ Premium, commercial, realistic, clean and suitable for the ConnectBoat UK marine
   });
 }
 
+
+async function advertisingUploadReadyBanner(req: Request, res: Response) {
+  const {
+    orderId,
+    accessToken,
+    bannerDataUrl,
+  } = req.body || {};
+
+  if (!orderId || !accessToken || !bannerDataUrl) {
+    return res.status(400).json({
+      success: false,
+      error: 'MISSING_READY_BANNER_FIELDS',
+      errorMessage: 'Order access and banner image are required.',
+    });
+  }
+
+  const db = getAdminDb();
+  const orderRef = db.collection('advertisingOrders').doc(String(orderId));
+  const snapshot = await orderRef.get();
+
+  if (!snapshot.exists) {
+    return res.status(404).json({
+      success: false,
+      error: 'ADVERTISING_ORDER_NOT_FOUND',
+      errorMessage: 'Advertising order not found.',
+    });
+  }
+
+  const order = snapshot.data() || {};
+
+  if (order.accessToken !== accessToken) {
+    return res.status(403).json({
+      success: false,
+      error: 'INVALID_ADVERTISING_ACCESS_TOKEN',
+      errorMessage: 'Invalid advertising order access token.',
+    });
+  }
+
+  if (order.paymentStatus !== 'paid') {
+    return res.status(402).json({
+      success: false,
+      error: 'PAYMENT_REQUIRED',
+      errorMessage: 'Payment must be confirmed before submitting a banner.',
+    });
+  }
+
+  const parsed = stripDataUrl(String(bannerDataUrl));
+  if (!parsed || !['image/png', 'image/jpeg', 'image/webp'].includes(parsed.mimeType)) {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_BANNER_FILE',
+      errorMessage: 'Use a PNG, JPG/JPEG or WebP image.',
+    });
+  }
+
+  const inputBuffer = Buffer.from(parsed.data, 'base64');
+
+  if (inputBuffer.length > 8 * 1024 * 1024) {
+    return res.status(400).json({
+      success: false,
+      error: 'BANNER_FILE_TOO_LARGE',
+      errorMessage: 'The banner image must be 8MB or smaller.',
+    });
+  }
+
+  const metadata = await sharp(inputBuffer).metadata();
+  const width = Number(metadata.width || 0);
+  const height = Number(metadata.height || 0);
+
+  if (!width || !height) {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_BANNER_DIMENSIONS',
+      errorMessage: 'Unable to read the banner dimensions.',
+    });
+  }
+
+  const ratio = width / height;
+
+  // The ConnectBoat ad slot is designed around a very wide 1600 x 240 banner (~6.67:1).
+  // Accept a safe range without cropping or distorting the customer's finished artwork.
+  if (width < 1200 || height < 180 || ratio < 5.5 || ratio > 8.5) {
+    return res.status(400).json({
+      success: false,
+      error: 'BANNER_DIMENSIONS_NOT_SUITABLE',
+      errorMessage:
+        `This banner is ${width}×${height}px. Please upload a wide banner of at least 1200×180px, ideally 1600×240px.`,
+      required: {
+        minimumWidth: 1200,
+        minimumHeight: 180,
+        recommendedWidth: 1600,
+        recommendedHeight: 240,
+        minimumAspectRatio: 5.5,
+        maximumAspectRatio: 8.5,
+      },
+    });
+  }
+
+  // Preserve the customer's artwork exactly; only normalize encoding.
+  const normalizedBanner = await sharp(inputBuffer)
+    .rotate()
+    .png({ compressionLevel: 8 })
+    .toBuffer();
+
+  const bannerUrl = await saveAdvertisingImage(String(orderId), 1, normalizedBanner);
+
+  await orderRef.set({
+    generatedBanners: [bannerUrl],
+    selectedBannerUrl: bannerUrl,
+    workflowStatus: 'pending_approval',
+    designSource: 'customer_ready_banner',
+    originalBannerWidth: width,
+    originalBannerHeight: height,
+    submittedForApprovalAt: FieldValue.serverTimestamp(),
+    adminNote: '',
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  return res.status(200).json({
+    success: true,
+    bannerUrl,
+    workflowStatus: 'pending_approval',
+    dimensions: { width, height },
+  });
+}
+
 async function advertisingSelectBanner(req: Request, res: Response) {
   const { orderId, accessToken, selectedBannerUrl } = req.body || {};
 
@@ -530,6 +656,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       }
       if (advertisingAction === 'advertising_generate_banner') {
         return await advertisingGenerateBanner(req, res);
+      }
+      if (advertisingAction === 'advertising_upload_ready_banner') {
+        return await advertisingUploadReadyBanner(req, res);
       }
       if (advertisingAction === 'advertising_select_banner') {
         return await advertisingSelectBanner(req, res);
