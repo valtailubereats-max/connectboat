@@ -1529,6 +1529,159 @@ export default async function stripeWebhookHandler(
           }
         }
       } else if (
+        itemType === 'advertising_campaign'
+      ) {
+        const advertisingOrderId =
+          metadata.advertisingOrderId;
+
+        if (!advertisingOrderId) {
+          console.error(
+            '[Stripe Webhook Advertising] Missing advertisingOrderId in metadata.'
+          );
+        } else {
+          const firebaseAdmin =
+            (admin as any).default || admin;
+
+          const orderRef =
+            db.collection('advertisingOrders').doc(advertisingOrderId);
+
+          const orderSnap =
+            await orderRef.get();
+
+          const orderData =
+            orderSnap.exists ? orderSnap.data() || {} : {};
+
+          const confirmedAmountPaid =
+            typeof session.amount_total === 'number'
+              ? session.amount_total / 100
+              : Number(orderData.amountExpected || 0);
+
+          const confirmedCurrency =
+            (session.currency || 'gbp').toUpperCase();
+
+          let stripeFee = 0;
+          let stripeNetReceived = confirmedAmountPaid;
+
+          try {
+            const paymentIntentId =
+              typeof session.payment_intent === 'string'
+                ? session.payment_intent
+                : session.payment_intent?.id || null;
+
+            if (paymentIntentId) {
+              const paymentIntent =
+                await stripe.paymentIntents.retrieve(
+                  paymentIntentId,
+                  { expand: ['latest_charge.balance_transaction'] }
+                );
+
+              const latestCharge =
+                paymentIntent.latest_charge &&
+                typeof paymentIntent.latest_charge !== 'string'
+                  ? paymentIntent.latest_charge
+                  : null;
+
+              const balanceTransaction =
+                latestCharge?.balance_transaction &&
+                typeof latestCharge.balance_transaction !== 'string'
+                  ? latestCharge.balance_transaction
+                  : null;
+
+              if (balanceTransaction) {
+                stripeFee = balanceTransaction.fee / 100;
+                stripeNetReceived = balanceTransaction.net / 100;
+              }
+            }
+          } catch (feeError) {
+            console.error(
+              `[Stripe Webhook Advertising] Unable to retrieve Stripe fee for ${session.id}:`,
+              feeError
+            );
+          }
+
+          const customerEmail =
+            session.customer_details?.email ||
+            session.customer_email ||
+            orderData.contactEmail ||
+            '';
+
+          await orderRef.set(
+            {
+              paymentStatus: 'paid',
+              workflowStatus: 'design_pending',
+              amountPaid: confirmedAmountPaid,
+              amountRefunded: 0,
+              currency: confirmedCurrency,
+              stripeFee,
+              stripeNetReceived,
+              stripeCheckoutSessionId: session.id,
+              stripePaymentIntentId:
+                typeof session.payment_intent === 'string'
+                  ? session.payment_intent
+                  : session.payment_intent?.id || null,
+              contactEmail: customerEmail || orderData.contactEmail || '',
+              paidAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+              paidDate: new Date().toISOString().slice(0, 10),
+              updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+
+          try {
+            const resendApiKey = process.env.RESEND_API_KEY;
+            if (resendApiKey && customerEmail) {
+              const emailFrom =
+                process.env.EMAIL_FROM ||
+                'ConnectBoat <no-reply@connectboat.co.uk>';
+              const emailReplyTo =
+                process.env.EMAIL_REPLY_TO ||
+                'contato@connectboat.co.uk';
+
+              await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${resendApiKey}`,
+                },
+                body: JSON.stringify({
+                  from: emailFrom,
+                  to: [customerEmail],
+                  reply_to: emailReplyTo,
+                  subject: 'ConnectBoat advertising payment confirmed',
+                  html: `
+                    <div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#334155;">
+                      <h2 style="color:#0f172a;">ConnectBoat Advertising</h2>
+                      <p>Your payment has been confirmed.</p>
+                      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin:20px 0;">
+                        <p><strong>Campaign:</strong> ${orderData.advertiserName || 'Advertising campaign'}</p>
+                        <p><strong>Exposure:</strong> ${orderData.displaySeconds || metadata.displaySeconds || 4} seconds per rotation</p>
+                        <p><strong>Duration:</strong> ${orderData.durationDays || metadata.durationDays || 30} days</p>
+                        <p><strong>Amount:</strong> £${confirmedAmountPaid.toFixed(2)}</p>
+                      </div>
+                      <p>Return to ConnectBoat to create your banner with the AI Banner Creator. Your final design will be reviewed before it goes live.</p>
+                      <p style="font-size:12px;color:#64748b;">Questions? Reply to this email or contact contato@connectboat.co.uk.</p>
+                    </div>
+                  `,
+                }),
+              });
+
+              await orderRef.set({
+                paymentEmailSent: true,
+                paymentEmailSentAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+              }, { merge: true });
+            }
+          } catch (emailError) {
+            console.error(
+              '[Stripe Webhook Advertising] Payment email failed:',
+              emailError
+            );
+          }
+
+          console.log(
+            `[Stripe Webhook Advertising] Payment confirmed for order ${advertisingOrderId}.`
+          );
+        }
+      } else if (
         itemType ===
           'digital_showcase' &&
         userId
