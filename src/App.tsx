@@ -48,6 +48,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Links from './pages/Links';
 import BoatsForHire from './pages/BoatsForHire';
 import NotFound from './pages/NotFound';
+import Advertise from './pages/Advertise';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ShareModal } from './components/ShareModal';
 import { AnalyticsTracker } from './components/AnalyticsTracker';
@@ -413,6 +414,13 @@ const Navbar = () => {
                       >
                         🏷️ Pricing Plans
                       </Link>
+                      <Link
+                        to="/advertise"
+                        onClick={() => setShowUserDropdown(false)}
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-indigo-600"
+                      >
+                        📣 Advertise on ConnectBoat
+                      </Link>
 
                       <div className="border-t border-slate-100 my-2" />
 
@@ -640,6 +648,7 @@ const Navbar = () => {
                 <Link to="/photos" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Marine Gallery</Link>
               )}
               <Link to="/pricing" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Pricing Plans</Link>
+              <Link to="/advertise" onClick={() => setIsOpen(false)} className="text-lg font-black text-indigo-300">Advertise on ConnectBoat</Link>
               
               {user ? <>
                 {isAdmin && (
@@ -909,6 +918,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/pricing" element={<Precos />} />
+                <Route path="/advertise" element={<Advertise />} />
                 <Route path="/precos" element={<Navigate to="/pricing" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
