@@ -1,3 +1,158 @@
+
+observe no concorrente que a unica imagem que é vertical tem bordas acizentadas, embora eu nao goste disso, nao temos o que fazer a nao ser o que voce propoz, porem queremos focar mais nas imagens em que o barco da maior destaque sem corte possivel
+
+
+connectboat-main (6).zip
+Arquivo zip
+disponibilizo o meu codigo completo em zip, voce ve e me disponibiliza o codigo a qual devo trocar em seus respectivos arquivos
+
+Sim. Eu abri o ZIP completo e localizei exatamente onde esse comportamento está sendo controlado.
+
+A boa notícia é que não precisamos mexer na Home.tsx. Os cards da Home usam o componente central:
+
+src/components/AdCard.tsx
+
+E o preview da criação do anúncio usa:
+
+src/pages/CreateAd.tsx
+
+Preparei os dois arquivos completos, já corrigidos.
+
+Baixar AdCard.tsx completo corrigido
+
+Baixar CreateAd.tsx completo corrigido
+
+O que foi alterado:
+
+a imagem principal agora usa object-contain, então aparece inteira por padrão;
+
+não distorce a foto;
+
+não perde qualidade;
+
+o fundo continua sendo a mesma imagem ampliada e desfocada, então não teremos aquelas barras cinzentas feias;
+
+imagens horizontais continuam dando bastante destaque ao barco;
+
+imagens verticais aparecem inteiras com o fundo preenchido;
+
+removi o zoom automático no hover que poderia voltar a cortar a imagem;
+
+se o anunciante tiver aplicado zoom manual, esse enquadramento continua respeitado;
+
+o Live Listing Preview da criação do anúncio passa a mostrar o mesmo comportamento que o card público.
+
+No GitHub faça assim
+Substitua integralmente:
+
+src/components/AdCard.tsx
+
+pelo primeiro arquivo.
+
+Depois substitua:
+
+src/pages/CreateAd.tsx
+
+pelo segundo.
+
+Faça um commit, por exemplo:
+
+Preserve full listing images in cards
+
+Depois deixe a Vercel ficar Ready.
+
+Um detalhe: tentei executar o build localmente, mas o ZIP não vem com node_modules instalado no ambiente e o comando parou porque o vite não estava disponível. As alterações são pontuais exatamente sobre os arquivos que você enviou; a Vercel fará a compilação real após o commit.
+
+Depois do deploy, quero que testemos justamente três tipos de imagem: uma horizontal normal de barco, uma vertical e essa capa do ShowBoat. Aí confirmamos visualmente se chegamos exatamente ao comportamento que você quer. 
+
+
+AdCard-no-crop-images.tsx
+Código
+
+
+CreateAd-no-crop-preview.tsx
+Código
+
+
+esta bem, mas acabo de notar alguns detalhes no concorrente que me fez pensar em avaliar melhor mais algumas coisas, entao vamos juntos pensar e fazer tudo depois:
+
+veja que o site deles aproveita muito mais as laterais, quase eliminando por completo, mas deixando uma margem pequena, veja a foto principal como é maior e as miniaturas como nao sao tao pequenas como no connectboat, tambem a forma a qual eles deixaram um banner para publicidade, o que me agradou muito e gostaria de ter no meu site tambem, la embaixo eles tem um setor para mais barcos daquele mesmo vendedor, o que seria super interessante, pois isso agrada o usuario que esta a anunciar mais que um barco
+d2a8205c-4684-442e-8b0a-5f519aa2b503.png
+beee0608-07c3-40fa-bf25-7cd172a25bae.png
+esta bem, mas acabo de notar alguns detalhes no concorrente que me fez pensar em avaliar melhor mais algumas coisas, entao vamos juntos pensar e fazer tudo depois:  veja que o site deles aproveita muito mais as laterais, quase eliminando por completo, mas deixando uma margem pequena, veja a foto principal como é maior e as miniaturas como nao sao tao pequenas como no connectboat, tambem a forma a qual eles deixaram um banner para publicidade, o que me agradou muito e gostaria de ter no meu site tambem, la embaixo eles tem um setor para mais barcos daquele mesmo vendedor, o que seria super interessante, pois isso agrada o usuario que esta a anunciar mais que um barco  
+
+Sim — e olhando os dois lado a lado, eu acho que você percebeu quatro melhorias realmente importantes para o ConnectBoat. Eu não copiaria o concorrente; eu aproveitaria a lógica que funciona melhor e manteria a identidade visual do ConnectBoat.
+
+A primeira é usar melhor a largura da tela. Hoje o ConnectBoat deixa bastante espaço lateral vazio e concentra demais a página no centro. Eu ampliaria o container da página de detalhes, mantendo só uma margem pequena e elegante. Isso já faria o anúncio parecer muito mais “marketplace grande”.
+
+A segunda é a galeria. Eu aumentaria bastante a foto principal e também as miniaturas. A foto do barco precisa ser a protagonista da página. No ConnectBoat, hoje ela está bonita, mas ainda pequena em relação ao espaço disponível. Eu faria algo mais próximo do concorrente: foto principal grande, miniaturas mais largas e fáceis de clicar, mantendo o tratamento que conversamos para evitar cortes desnecessários.
+
+A terceira é o banner publicitário. Eu gostei bastante dessa ideia para o ConnectBoat. Poderíamos ter um espaço logo acima da área principal do anúncio, como no concorrente, mas controlado pelo Admin. Isso abre várias possibilidades no futuro: publicidade de marinas, seguros, financiamento, empresas de detailing, motores, acessórios — e inclusive o próprio ShowBoat Detailing poderia aparecer ali no começo. Isso pode virar uma fonte de receita separada dos anúncios.
+
+E a quarta, que eu considero excelente, é “More From This Seller”. Se o anunciante possui 5 barcos, quando alguém olha um deles, mostrar mais 3 ou 4 daquele vendedor aumenta muito a exposição dele. Isso é muito bom para dealers e vendedores profissionais e pode ser um argumento comercial forte para trazer empresas para o ConnectBoat.
+
+Eu organizaria a futura alteração assim:
+
+Aumentar largura útil da página e reduzir margens laterais.
+
+Aumentar foto principal e miniaturas.
+
+Criar espaço de banner publicitário.
+
+Criar More From This Seller abaixo do anúncio.
+
+Manter depois serviços relacionados abaixo, por exemplo detailing, marina, transporte etc.
+
+E tem algo interessante: essas mudanças não são apenas estéticas. Elas começam a transformar a página de anúncio em uma página comercial completa, onde ganham o comprador, o vendedor e o próprio ConnectBoat.
+
+Eu não mexeria no código ainda. Primeiro eu desenharia com você a estrutura ideal da página inteira e só depois fazemos todas as alterações juntas, evitando ficar mudando o mesmo arquivo várias vezes.
+
+
+vamos comecar, sem enrolacao, direto com os arquivos completos e eu substituo, nao precisa colocar explicacoes demasiadas, a intensao é fazer o mais rapido possivel, pois agora vc ja sabe o que eu quero
+
+Vamos direto. Para esta primeira etapa, você precisa substituir apenas 1 arquivo completo:
+
+src/pages/AdDetails.tsx
+
+Baixar AdDetails.tsx completo atualizado
+
+Já coloquei nele:
+
+página aproveitando muito mais as laterais do desktop;
+
+foto principal significativamente maior;
+
+proporção mais favorável para fotos de barcos;
+
+miniaturas maiores;
+
+menos espaço desperdiçado entre foto e informações;
+
+área de banner publicitário acima do anúncio;
+
+nova seção “More From This Seller”;
+
+mostra até 6 outros anúncios ativos daquele mesmo vendedor;
+
+carrossel horizontal nessa seção;
+
+mantém “Similar Vessels” separadamente mais abaixo;
+
+não mexi no funcionamento de WhatsApp, vendedor, especificações, favoritos etc.
+
+Faça agora: substitua somente src/pages/AdDetails.tsx por esse arquivo e faça o deploy. Depois me mostre o resultado em desktop. Não substitua ainda aqueles dois arquivos anteriores de imagem; vamos consolidar tudo depois de vermos esta nova página. 
+
+
+AdDetails-upgrade-marketplace.tsx
+Código
+
+nao esqueca do nosso problema inicial, a foto que esta sendo cortada:
+
+Biblioteca
+/
+AdDetails-upgrade-marketplace.tsx
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -129,6 +284,7 @@ const AdDetails = () => {
 
   // Related Ads & Swipe Gestures
   const [relatedAds, setRelatedAds] = useState<Ad[]>([]);
+  const [sellerAds, setSellerAds] = useState<Ad[]>([]);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -615,6 +771,35 @@ const AdDetails = () => {
     };
   }, [ad]);
 
+  // More listings from the same seller
+  useEffect(() => {
+    if (!ad?.sellerId) {
+      setSellerAds([]);
+      return;
+    }
+
+    const fetchSellerListings = async () => {
+      try {
+        const sellerQuery = query(
+          collection(db, 'ads'),
+          where('sellerId', '==', ad.sellerId),
+          limit(12)
+        );
+        const snap = await getDocsWithCacheFallback(sellerQuery, `seller_listings_${ad.sellerId}`);
+        const items = snap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Ad))
+          .filter(item => item.id !== ad.id && item.status === 'active' && !item.isHidden)
+          .slice(0, 6);
+        setSellerAds(items);
+      } catch (err) {
+        console.warn('Error fetching seller listings:', err);
+        setSellerAds([]);
+      }
+    };
+
+    fetchSellerListings();
+  }, [ad?.id, ad?.sellerId]);
+
   // Fetch and similarity-score related listings
   useEffect(() => {
     if (!ad) return;
@@ -795,7 +980,7 @@ const AdDetails = () => {
   const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="w-full max-w-[1680px] mx-auto px-3 sm:px-4 lg:px-5 xl:px-6 py-5">
       {ad && (
         <Helmet>
           <title>{ad.title} - {ad.city || 'United Kingdom'} | ConnectBoat</title>
@@ -849,7 +1034,7 @@ const AdDetails = () => {
       )}
 
       {/* Back Button */}
-      <div className="mb-6">
+      <div className="mb-3">
         <button 
           onClick={() => navigate(-1)} 
           className="inline-flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition-all p-2 hover:bg-slate-50 rounded-xl"
@@ -858,12 +1043,22 @@ const AdDetails = () => {
         </button>
       </div>
 
-      {/* DESKTOP LAYOUT (Excellent for large devices) */}
-      <div className="hidden lg:grid lg:grid-cols-12 gap-8">
+      {/* Premium advertising slot */}
+      <div className="hidden lg:flex mb-5 min-h-[92px] rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-r from-slate-950 via-[#0b2d55] to-indigo-700 shadow-sm items-center justify-between px-8 py-4 text-white">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.28em] text-sky-300 mb-1">ConnectBoat Advertising</div>
+          <div className="text-xl font-black tracking-tight">Put your marine brand in front of boat buyers</div>
+          <div className="text-xs text-slate-300 mt-1">Premium banner space for marine businesses, dealers and services.</div>
+        </div>
+        <div className="shrink-0 rounded-xl bg-white/10 border border-white/20 px-5 py-3 text-sm font-black backdrop-blur-sm">Advertising Space</div>
+      </div>
+
+      {/* DESKTOP LAYOUT */}
+      <div className="hidden lg:grid lg:grid-cols-12 gap-5 xl:gap-6">
         {/* LADO ESQUERDO: Imagens e Galeria */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-8 space-y-4">
           <div 
-            className="relative aspect-[4/3] md:aspect-[16/10] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[16/10] xl:aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -957,7 +1152,7 @@ const AdDetails = () => {
                     pauseVideos();
                     setCurrentImageIndex(i);
                   }}
-                  className={`relative w-20 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                  className={`relative w-28 h-20 xl:w-32 xl:h-24 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
                     validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
                   }`}
                 >
@@ -1284,7 +1479,7 @@ const AdDetails = () => {
         </div>
 
         {/* LADO DIREITO: Dados, Vendedor e WhatsApp */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-4 space-y-6">
           <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6">
             
             {/* Categoria & Visualizações / Tempo */}
@@ -2214,6 +2409,26 @@ const AdDetails = () => {
         </div>
 
       </div> {/* closes block lg:hidden */}
+
+      {/* MORE FROM THIS SELLER */}
+      {sellerAds.length > 0 && (
+        <div className="mt-12 pt-8 border-t border-slate-200/80 text-left">
+          <div className="flex items-end justify-between gap-4 mb-6">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-600 mb-1">Seller collection</div>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">More From This Seller</h2>
+              <p className="text-xs text-slate-500 font-bold mt-1">Explore more active listings from the same seller.</p>
+            </div>
+          </div>
+          <div className="flex gap-4 sm:gap-5 overflow-x-auto pb-4 snap-x snap-mandatory">
+            {sellerAds.map((sellerAd) => (
+              <div key={sellerAd.id} className="min-w-[260px] sm:min-w-[300px] lg:min-w-[320px] max-w-[340px] snap-start">
+                <AdCard ad={sellerAd} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* RELATED LISTINGS SECTION (Anúncios Náuticos Semelhantes) */}
       {relatedAds.length > 0 && (
