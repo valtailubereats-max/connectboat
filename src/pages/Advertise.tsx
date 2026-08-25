@@ -103,9 +103,15 @@ export default function Advertise() {
     try {
       setOrderLoading(true);
       setOrderError('');
-      const response = await fetch(
-        `/api/advertising/order?orderId=${encodeURIComponent(orderIdFromUrl)}&accessToken=${encodeURIComponent(tokenFromUrl)}`
-      );
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'advertising_get_order',
+          orderId: orderIdFromUrl,
+          accessToken: tokenFromUrl,
+        }),
+      });
       const data = await response.json();
       if (!response.ok || data?.success !== true) {
         throw new Error(data?.errorMessage || data?.error || 'Unable to load advertising order.');
@@ -165,10 +171,11 @@ export default function Advertise() {
 
     try {
       setCheckoutLoading(true);
-      const response = await fetch('/api/advertising/create-checkout', {
+      const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'advertising_create_checkout',
           advertiserName: advertiserName.trim(),
           contactEmail: contactEmail.trim(),
           targetUrl: targetUrl.trim(),
@@ -207,10 +214,11 @@ export default function Advertise() {
         referenceFile ? fileToDataUrl(referenceFile) : Promise.resolve(''),
       ]);
 
-      const response = await fetch('/api/advertising/generate-banner', {
+      const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'advertising_generate_banner',
           orderId: orderIdFromUrl,
           accessToken: tokenFromUrl,
           advertiserName: order?.advertiserName || advertiserName,
@@ -246,10 +254,11 @@ export default function Advertise() {
     try {
       setSubmittingSelection(true);
       setDesignError('');
-      const response = await fetch('/api/advertising/select-banner', {
+      const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'advertising_select_banner',
           orderId: orderIdFromUrl,
           accessToken: tokenFromUrl,
           selectedBannerUrl: selected,
