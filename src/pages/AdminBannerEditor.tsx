@@ -269,14 +269,97 @@ export default function AdminBannerEditor() {
   const loadListingCampaigns = async () => {
     try {
       setCampaignsLoading(true);
-      const snapshot = await getDocs(collection(db, 'advertisingCampaigns'));
-      const campaigns = snapshot.docs
-        .map((campaignDoc) => ({ id: campaignDoc.id, ...campaignDoc.data() } as any))
+
+      const [campaignSnapshot, orderSnapshot] = await Promise.all([
+        getDocs(collection(db, 'advertisingCampaigns')),
+        getDocs(collection(db, 'advertisingOrders')),
+      ]);
+
+      const ordersById = new Map(
+        orderSnapshot.docs.map((orderDoc) => [
+          orderDoc.id,
+          { id: orderDoc.id, ...orderDoc.data() } as any,
+        ])
+      );
+
+      const campaigns = campaignSnapshot.docs
+        .map((campaignDoc) => {
+          const campaign = {
+            id: campaignDoc.id,
+            ...campaignDoc.data(),
+          } as any;
+
+          // Backward compatibility:
+          // older checkout-created campaigns may not have copied the payment fields.
+          // If an orderId exists, recover payment information from advertisingOrders.
+          if (
+            campaign.orderId &&
+            (campaign.paymentStatus !== 'paid' ||
+              typeof campaign.amountPaid !== 'number')
+          ) {
+            const order = ordersById.get(campaign.orderId);
+
+            if (order?.paymentStatus === 'paid') {
+              const recoveredAmountPaid = Number(order.amountPaid || 0);
+
+              campaign.paymentStatus = 'paid';
+              campaign.amountPaid = Number.isFinite(recoveredAmountPaid)
+                ? Math.round(recoveredAmountPaid * 100) / 100
+                : 0;
+              campaign.currency = order.currency || campaign.currency || 'GBP';
+              campaign.paidDate =
+                order.paidDate ||
+                (order.paidAt?.toDate
+                  ? order.paidAt.toDate().toISOString().slice(0, 10)
+                  : campaign.paidDate || '');
+              campaign.stripeFee =
+                typeof order.stripeFee === 'number' && Number.isFinite(order.stripeFee)
+                  ? order.stripeFee
+                  : campaign.stripeFee || 0;
+              campaign.stripeNetReceived =
+                typeof order.stripeNetReceived === 'number' &&
+                Number.isFinite(order.stripeNetReceived)
+                  ? order.stripeNetReceived
+                  : campaign.stripeNetReceived ?? null;
+              campaign.stripeCheckoutSessionId =
+                order.stripeCheckoutSessionId ||
+                campaign.stripeCheckoutSessionId ||
+                '';
+              campaign.stripePaymentIntentId =
+                order.stripePaymentIntentId ||
+                campaign.stripePaymentIntentId ||
+                '';
+
+              // Persist the recovered values once, so future reads no longer
+              // depend on the fallback and Finance also sees the corrected data.
+              updateDoc(doc(db, 'advertisingCampaigns', campaign.id), {
+                paymentStatus: 'paid',
+                amountPaid: campaign.amountPaid,
+                currency: campaign.currency,
+                paidDate: campaign.paidDate,
+                stripeFee: campaign.stripeFee,
+                stripeNetReceived: campaign.stripeNetReceived,
+                stripeCheckoutSessionId: campaign.stripeCheckoutSessionId,
+                stripePaymentIntentId: campaign.stripePaymentIntentId,
+                updatedAt: serverTimestamp(),
+                updatedBy: user?.email || 'admin',
+              }).catch((syncError) => {
+                console.warn(
+                  `Unable to sync recovered payment data for campaign ${campaign.id}:`,
+                  syncError
+                );
+              });
+            }
+          }
+
+          return campaign;
+        })
         .sort((a, b) => {
           const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
           const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
           return bTime - aTime;
         });
+
       setListingCampaigns(campaigns);
     } catch (error) {
       console.warn('Unable to load listing advertising campaigns:', error);
