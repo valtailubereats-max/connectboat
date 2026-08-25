@@ -478,21 +478,22 @@ Premium, commercial, realistic, clean and suitable for the ConnectBoat UK marine
 }
 
 
-async function advertisingUploadReadyBanner(req: Request, res: Response) {
+async function advertisingPrepareReadyBannerUpload(req: Request, res: Response) {
   const {
     orderId,
     accessToken,
-    bannerUrl,
+    fileName,
+    mimeType,
     width,
     height,
-    mimeType,
+    fileSize,
   } = req.body || {};
 
-  if (!orderId || !accessToken || !bannerUrl) {
+  if (!orderId || !accessToken || !fileName || !mimeType) {
     return res.status(400).json({
       success: false,
       error: 'MISSING_READY_BANNER_FIELDS',
-      errorMessage: 'Order access and banner URL are required.',
+      errorMessage: 'Order access and banner file details are required.',
     });
   }
 
@@ -528,16 +529,24 @@ async function advertisingUploadReadyBanner(req: Request, res: Response) {
 
   const parsedWidth = Number(width || 0);
   const parsedHeight = Number(height || 0);
+  const parsedFileSize = Number(fileSize || 0);
+  const ratio = parsedWidth && parsedHeight ? parsedWidth / parsedHeight : 0;
 
-  if (!parsedWidth || !parsedHeight) {
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(String(mimeType))) {
     return res.status(400).json({
       success: false,
-      error: 'INVALID_BANNER_DIMENSIONS',
-      errorMessage: 'Unable to read the banner dimensions.',
+      error: 'INVALID_BANNER_FILE',
+      errorMessage: 'Use a PNG, JPG/JPEG or WebP banner image.',
     });
   }
 
-  const ratio = parsedWidth / parsedHeight;
+  if (parsedFileSize > 8 * 1024 * 1024) {
+    return res.status(400).json({
+      success: false,
+      error: 'BANNER_FILE_TOO_LARGE',
+      errorMessage: 'The banner image must be 8MB or smaller.',
+    });
+  }
 
   if (
     parsedWidth < 1200 ||
@@ -550,38 +559,140 @@ async function advertisingUploadReadyBanner(req: Request, res: Response) {
       error: 'BANNER_DIMENSIONS_NOT_SUITABLE',
       errorMessage:
         `This banner is ${parsedWidth}×${parsedHeight}px. Please upload a very wide horizontal banner of at least 1200×180px, ideally 1600×240px.`,
-      required: {
-        minimumWidth: 1200,
-        minimumHeight: 180,
-        recommendedWidth: 1600,
-        recommendedHeight: 240,
-        minimumAspectRatio: 5.5,
-        maximumAspectRatio: 8.5,
-      },
     });
   }
 
+  const bucket = getStorage(getApp()).bucket(
+    process.env.FIREBASE_STORAGE_BUCKET || 'navlink-489413.firebasestorage.app'
+  );
+
+  const safeName = String(fileName).replace(/[^a-zA-Z0-9._-]/g, '-');
+  const objectPath = `advertising/customer-ready/${String(orderId)}/${Date.now()}_${safeName}`;
+  const file = bucket.file(objectPath);
+
+  const [uploadUrl] = await file.getSignedUrl({
+    version: 'v4',
+    action: 'write',
+    expires: Date.now() + 10 * 60 * 1000,
+    contentType: String(mimeType),
+  });
+
   await orderRef.set({
-    generatedBanners: [String(bannerUrl)],
-    selectedBannerUrl: String(bannerUrl),
-    workflowStatus: 'pending_approval',
-    designSource: 'customer_ready_banner',
-    originalBannerWidth: parsedWidth,
-    originalBannerHeight: parsedHeight,
-    originalBannerMimeType: String(mimeType || ''),
-    submittedForApprovalAt: FieldValue.serverTimestamp(),
-    adminNote: '',
+    pendingReadyBannerPath: objectPath,
+    pendingReadyBannerWidth: parsedWidth,
+    pendingReadyBannerHeight: parsedHeight,
+    pendingReadyBannerMimeType: String(mimeType),
     updatedAt: FieldValue.serverTimestamp(),
   }, { merge: true });
 
   return res.status(200).json({
     success: true,
-    bannerUrl: String(bannerUrl),
-    workflowStatus: 'pending_approval',
-    dimensions: {
-      width: parsedWidth,
-      height: parsedHeight,
+    uploadUrl,
+    objectPath,
+  });
+}
+
+async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response) {
+  const {
+    orderId,
+    accessToken,
+    objectPath,
+  } = req.body || {};
+
+  if (!orderId || !accessToken || !objectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'MISSING_FINALIZE_FIELDS',
+      errorMessage: 'Missing banner upload confirmation details.',
+    });
+  }
+
+  const db = getAdminDb();
+  const orderRef = db.collection('advertisingOrders').doc(String(orderId));
+  const snapshot = await orderRef.get();
+
+  if (!snapshot.exists) {
+    return res.status(404).json({
+      success: false,
+      error: 'ADVERTISING_ORDER_NOT_FOUND',
+      errorMessage: 'Advertising order not found.',
+    });
+  }
+
+  const order = snapshot.data() || {};
+
+  if (order.accessToken !== accessToken) {
+    return res.status(403).json({
+      success: false,
+      error: 'INVALID_ADVERTISING_ACCESS_TOKEN',
+      errorMessage: 'Invalid advertising order access token.',
+    });
+  }
+
+  if (order.paymentStatus !== 'paid') {
+    return res.status(402).json({
+      success: false,
+      error: 'PAYMENT_REQUIRED',
+      errorMessage: 'Payment must be confirmed before submitting a banner.',
+    });
+  }
+
+  if (order.pendingReadyBannerPath !== objectPath) {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_BANNER_UPLOAD_PATH',
+      errorMessage: 'This uploaded banner does not match the current advertising order.',
+    });
+  }
+
+  const bucket = getStorage(getApp()).bucket(
+    process.env.FIREBASE_STORAGE_BUCKET || 'navlink-489413.firebasestorage.app'
+  );
+  const file = bucket.file(String(objectPath));
+
+  const [exists] = await file.exists();
+  if (!exists) {
+    return res.status(400).json({
+      success: false,
+      error: 'BANNER_UPLOAD_NOT_FOUND',
+      errorMessage: 'The banner upload was not found. Please try again.',
+    });
+  }
+
+  const downloadToken = randomUUID();
+
+  await file.setMetadata({
+    contentType: String(order.pendingReadyBannerMimeType || 'image/png'),
+    metadata: {
+      firebaseStorageDownloadTokens: downloadToken,
     },
+  });
+
+  const bannerUrl =
+    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(String(objectPath))}` +
+    `?alt=media&token=${downloadToken}`;
+
+  await orderRef.set({
+    generatedBanners: [bannerUrl],
+    selectedBannerUrl: bannerUrl,
+    workflowStatus: 'pending_approval',
+    designSource: 'customer_ready_banner',
+    originalBannerWidth: Number(order.pendingReadyBannerWidth || 0),
+    originalBannerHeight: Number(order.pendingReadyBannerHeight || 0),
+    originalBannerMimeType: String(order.pendingReadyBannerMimeType || ''),
+    submittedForApprovalAt: FieldValue.serverTimestamp(),
+    adminNote: '',
+    pendingReadyBannerPath: FieldValue.delete(),
+    pendingReadyBannerWidth: FieldValue.delete(),
+    pendingReadyBannerHeight: FieldValue.delete(),
+    pendingReadyBannerMimeType: FieldValue.delete(),
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  return res.status(200).json({
+    success: true,
+    bannerUrl,
+    workflowStatus: 'pending_approval',
   });
 }
 
@@ -639,8 +750,11 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       if (advertisingAction === 'advertising_generate_banner') {
         return await advertisingGenerateBanner(req, res);
       }
-      if (advertisingAction === 'advertising_upload_ready_banner') {
-        return await advertisingUploadReadyBanner(req, res);
+      if (advertisingAction === 'advertising_prepare_ready_banner_upload') {
+        return await advertisingPrepareReadyBannerUpload(req, res);
+      }
+      if (advertisingAction === 'advertising_finalize_ready_banner_upload') {
+        return await advertisingFinalizeReadyBannerUpload(req, res);
       }
       if (advertisingAction === 'advertising_select_banner') {
         return await advertisingSelectBanner(req, res);
