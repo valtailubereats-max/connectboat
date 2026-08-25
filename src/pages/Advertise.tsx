@@ -303,20 +303,20 @@ export default function Advertise() {
 
             <div>
               <p className="text-xs font-black text-slate-600 mb-3">Display time per rotation</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-4 gap-2 sm:gap-3">
                 {exposureOptions.map((seconds) => (
                   <button
                     key={seconds}
                     type="button"
                     onClick={() => setDisplaySeconds(seconds)}
-                    className={`rounded-2xl border p-4 text-center transition-all ${
+                    className={`rounded-xl sm:rounded-2xl border px-1.5 py-2.5 sm:p-4 text-center transition-all ${
                       displaySeconds === seconds
                         ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100'
                         : 'border-slate-200 hover:border-slate-300 text-slate-700'
                     }`}
                   >
-                    <Clock3 className="mx-auto mb-2" size={18} />
-                    <div className="text-lg font-black">{seconds}s</div>
+                    <Clock3 className="mx-auto mb-1 sm:mb-2" size={16} />
+                    <div className="text-sm sm:text-lg font-black">{seconds}s</div>
                   </button>
                 ))}
               </div>
