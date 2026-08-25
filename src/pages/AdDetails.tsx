@@ -182,6 +182,14 @@ const AdDetails = () => {
   }, []);
 
   useEffect(() => {
+    listingAdCampaigns.forEach((campaign) => {
+      if (!campaign?.imageUrl) return;
+      const img = new Image();
+      img.src = campaign.imageUrl;
+    });
+  }, [listingAdCampaigns]);
+
+  useEffect(() => {
     if (listingAdCampaigns.length <= 1) return;
 
     const campaign = listingAdCampaigns[listingAdIndex];
@@ -1005,14 +1013,18 @@ const AdDetails = () => {
         </div>
       )}
 
-      {/* Back Button */}
-      <div className="mb-3">
-        <button 
-          onClick={() => navigate(-1)} 
-          className="inline-flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition-all p-2 hover:bg-slate-50 rounded-xl"
+      {/* Compact top strip: floating Back button + advertising label */}
+      <div className="relative h-9 sm:h-10 mb-2">
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute left-0 top-0 inline-flex items-center gap-1.5 text-slate-500 hover:text-indigo-600 font-bold transition-all px-2.5 py-1.5 rounded-xl bg-white/80 hover:bg-white border border-slate-200/80 shadow-sm backdrop-blur-sm z-10"
         >
-          <ChevronLeft size={20} /> Back
+          <ChevronLeft size={18} /> Back
         </button>
+
+        <div className="absolute right-0 top-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-sm backdrop-blur-sm text-[9px] sm:text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 z-10">
+          Sponsored
+        </div>
       </div>
 
       {/* Rotating advertising campaigns */}
@@ -1021,29 +1033,29 @@ const AdDetails = () => {
           const campaign = listingAdCampaigns[listingAdIndex] || listingAdCampaigns[0];
 
           return (
-            <div className="mb-5">
+            <div className="mb-4">
               {campaign.targetUrl ? (
                 <a
                   href={campaign.targetUrl}
                   target="_blank"
                   rel="noopener noreferrer sponsored"
                   onClick={() => handleAdvertisingClick(campaign)}
-                  className="block w-full lg:w-[80%] mx-auto rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow"
+                  className="block w-full lg:w-[80%] h-[92px] sm:h-[118px] lg:h-[150px] mx-auto rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow"
                   aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
                 >
                   <img
                     src={campaign.imageUrl}
                     alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising banner'}
-                    className="block w-full h-auto max-h-[170px] sm:max-h-[190px] lg:max-h-[150px] object-contain bg-white"
+                    className="block w-full h-[92px] sm:h-[118px] lg:h-[150px] object-contain bg-white transition-opacity duration-300"
                     loading="eager"
                   />
                 </a>
               ) : (
-                <div className="w-full lg:w-[80%] mx-auto rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+                <div className="w-full lg:w-[80%] h-[92px] sm:h-[118px] lg:h-[150px] mx-auto rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
                   <img
                     src={campaign.imageUrl}
                     alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising banner'}
-                    className="block w-full h-auto max-h-[170px] sm:max-h-[190px] lg:max-h-[150px] object-contain bg-white"
+                    className="block w-full h-[92px] sm:h-[118px] lg:h-[150px] object-contain bg-white transition-opacity duration-300"
                     loading="eager"
                   />
                 </div>
