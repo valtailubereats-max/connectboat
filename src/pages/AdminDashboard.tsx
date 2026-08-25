@@ -65,6 +65,7 @@ const AdminDashboard = () => {
   const [financeDateFrom, setFinanceDateFrom] = useState('');
   const [financeDateTo, setFinanceDateTo] = useState('');
   const [financeExpenses, setFinanceExpenses] = useState<any[]>([]);
+  const [financeAdvertisingRevenue, setFinanceAdvertisingRevenue] = useState<any[]>([]);
   const [financeExpensesLoading, setFinanceExpensesLoading] = useState(false);
   const [financeExpenseModalOpen, setFinanceExpenseModalOpen] = useState(false);
   const [financeExpenseSaving, setFinanceExpenseSaving] = useState(false);
@@ -151,6 +152,25 @@ const AdminDashboard = () => {
       setFinanceDataError(error?.message || 'Unable to load operating expenses.');
     } finally {
       setFinanceExpensesLoading(false);
+    }
+  };
+
+  const loadFinanceAdvertisingRevenue = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, 'advertisingCampaigns'));
+      setFinanceAdvertisingRevenue(
+        snapshot.docs
+          .map((campaignDoc) => ({ id: campaignDoc.id, ...campaignDoc.data() } as any))
+          .filter((campaign) =>
+            campaign.paymentStatus === 'paid' &&
+            typeof campaign.amountPaid === 'number' &&
+            Number.isFinite(campaign.amountPaid) &&
+            campaign.amountPaid > 0
+          )
+      );
+    } catch (error) {
+      console.error('[Finance] Unable to load advertising revenue:', error);
+      setFinanceDataError('Unable to load advertising revenue.');
     }
   };
 
@@ -269,6 +289,7 @@ const AdminDashboard = () => {
       await Promise.all([
         loadFinanceData(),
         loadFinanceExpenses(financePassword),
+        loadFinanceAdvertisingRevenue(),
       ]);
       setFinancePassword('');
       setFinanceModalOpen(false);
@@ -868,7 +889,26 @@ const AdminDashboard = () => {
     );
   });
 
-  const financeGrossRevenue = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountPaid || 0), 0);
+  const filteredFinanceAdvertisingRevenue = financeAdvertisingRevenue
+    .filter((campaign) => {
+      if (!campaign.paidDate) return !financeRangeStart && !financeRangeEnd;
+      const paidDate = new Date(`${campaign.paidDate}T12:00:00`);
+      if (Number.isNaN(paidDate.getTime())) return false;
+      if (financeRangeStart && paidDate < financeRangeStart) return false;
+      if (financeRangeEnd && paidDate > financeRangeEnd) return false;
+      return true;
+    })
+    .sort((a, b) => String(b.paidDate || '').localeCompare(String(a.paidDate || '')));
+
+  const visibleFinanceAdvertisingRevenue = filteredFinanceAdvertisingRevenue.filter((campaign) => {
+    if (!normalizedFinanceSearch) return true;
+    return [campaign.advertiserName, campaign.id, campaign.targetUrl]
+      .some((value) => String(value || '').toLowerCase().includes(normalizedFinanceSearch));
+  });
+
+  const financeListingRevenue = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountPaid || 0), 0);
+  const financeAdvertisingTotal = filteredFinanceAdvertisingRevenue.reduce((sum, campaign) => sum + Number(campaign.amountPaid || 0), 0);
+  const financeGrossRevenue = financeListingRevenue + financeAdvertisingTotal;
   const financeRefunds = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountRefunded || 0), 0);
   const financeStripeFees = filteredFinanceRecords.reduce(
     (sum, record) => sum + (typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee) ? record.stripeFee : 0),
@@ -955,6 +995,29 @@ const AdminDashboard = () => {
       ];
     });
 
+    const advertisingRows = visibleFinanceAdvertisingRevenue.map((campaign) => {
+      const amount = Number(campaign.amountPaid || 0);
+      return [
+        'Advertising Revenue',
+        campaign.paidDate || '',
+        campaign.advertiserName || 'Advertising campaign',
+        '',
+        '',
+        'Advertising',
+        'Paid',
+        amount.toFixed(2),
+        '0.00',
+        '0.00',
+        '0.00',
+        amount.toFixed(2),
+        campaign.currency || 'GBP',
+        '',
+        '',
+        '',
+        campaign.id || '',
+      ];
+    });
+
     const expenseRows = visibleFinanceExpenses.map((expense) => {
       const amount = Number(expense.amount || 0);
 
@@ -979,10 +1042,15 @@ const AdminDashboard = () => {
       ];
     });
 
-    const totalReceived = visibleFinanceRecords.reduce(
+    const totalListingReceived = visibleFinanceRecords.reduce(
       (sum, record) => sum + Number(record.amountPaid || 0),
       0
     );
+    const totalAdvertisingReceived = visibleFinanceAdvertisingRevenue.reduce(
+      (sum, campaign) => sum + Number(campaign.amountPaid || 0),
+      0
+    );
+    const totalReceived = totalListingReceived + totalAdvertisingReceived;
     const totalRefunded = visibleFinanceRecords.reduce(
       (sum, record) => sum + Number(record.amountRefunded || 0),
       0
@@ -1008,6 +1076,8 @@ const AdminDashboard = () => {
     const summaryRows = [
       [],
       ['SUMMARY'],
+      ['Listing Revenue GBP', totalListingReceived.toFixed(2)],
+      ['Advertising Revenue GBP', totalAdvertisingReceived.toFixed(2)],
       ['Total Received GBP', totalReceived.toFixed(2)],
       ['Total Refunded GBP', totalRefunded.toFixed(2)],
       ['Total Stripe Fees GBP', totalStripeFees.toFixed(2)],
@@ -1017,7 +1087,7 @@ const AdminDashboard = () => {
       ['Operating Expenses', visibleFinanceExpenses.length],
     ];
 
-    const combinedRows = [...transactionRows, ...expenseRows].sort((a, b) =>
+    const combinedRows = [...transactionRows, ...advertisingRows, ...expenseRows].sort((a, b) =>
       String(b[1] || '').localeCompare(String(a[1] || ''))
     );
 
@@ -1543,7 +1613,7 @@ const AdminDashboard = () => {
                   <button
                     type="button"
                     onClick={handleDownloadFinanceCsv}
-                    disabled={visibleFinanceRecords.length === 0 && visibleFinanceExpenses.length === 0}
+                    disabled={visibleFinanceRecords.length === 0 && visibleFinanceAdvertisingRevenue.length === 0 && visibleFinanceExpenses.length === 0}
                     className="rounded-xl bg-emerald-500 px-4 py-2.5 text-[11px] font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     <Download size={14} />
@@ -1581,10 +1651,14 @@ const AdminDashboard = () => {
                   )}
 
                   <div className="rounded-2xl border border-slate-800 bg-slate-900/65 overflow-hidden">
-                    <div className="grid grid-cols-2 md:grid-cols-5 divide-x divide-y md:divide-y-0 divide-slate-800">
+                    <div className="grid grid-cols-2 md:grid-cols-6 divide-x divide-y md:divide-y-0 divide-slate-800">
                       <div className="p-2.5 sm:p-3 min-w-0">
-                        <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Received</p>
-                        <p className="text-sm sm:text-xl font-black text-white mt-0.5 truncate">{formatGBP(financeGrossRevenue)}</p>
+                        <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Listings</p>
+                        <p className="text-sm sm:text-xl font-black text-white mt-0.5 truncate">{formatGBP(financeListingRevenue)}</p>
+                      </div>
+                      <div className="p-2.5 sm:p-3 min-w-0">
+                        <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Advertising</p>
+                        <p className="text-sm sm:text-xl font-black text-sky-300 mt-0.5 truncate">{formatGBP(financeAdvertisingTotal)}</p>
                       </div>
                       <div className="p-2.5 sm:p-3 min-w-0">
                         <p className="text-[8px] sm:text-[9px] uppercase tracking-wider font-black text-slate-500">Refunded</p>
@@ -1605,7 +1679,7 @@ const AdminDashboard = () => {
                     </div>
                     <div className="border-t border-slate-800 px-3 py-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] sm:text-[11px]">
                       <span className="text-slate-400">
-                        {formatGBP(financeGrossRevenue)} − {formatGBP(financeRefunds)} − {formatGBP(financeStripeFees)} − {formatGBP(financeOperatingExpenses)} = <strong className={financeRealNet < 0 ? 'text-rose-300' : 'text-emerald-300'}>{formatGBP(financeRealNet)}</strong>
+                        ({formatGBP(financeListingRevenue)} + {formatGBP(financeAdvertisingTotal)}) − {formatGBP(financeRefunds)} − {formatGBP(financeStripeFees)} − {formatGBP(financeOperatingExpenses)} = <strong className={financeRealNet < 0 ? 'text-rose-300' : 'text-emerald-300'}>{formatGBP(financeRealNet)}</strong>
                       </span>
                       <span className="text-slate-500 whitespace-nowrap">Paid {financePaidListings} · Refunded {financeRefundedListings}</span>
                     </div>
@@ -1715,6 +1789,36 @@ const AdminDashboard = () => {
                             </div>
                           );
                         })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-800 overflow-hidden">
+                    <div className="px-3 py-2.5 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-black text-white">Advertising Revenue</p>
+                        <p className="text-[10px] text-slate-500">Paid banner campaigns in the selected period.</p>
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-500">{visibleFinanceAdvertisingRevenue.length} records</p>
+                    </div>
+
+                    {visibleFinanceAdvertisingRevenue.length === 0 ? (
+                      <div className="p-4 text-sm text-slate-400 bg-slate-900/40">No paid advertising campaigns in this period.</div>
+                    ) : (
+                      <div className="divide-y divide-slate-800 bg-slate-950/20">
+                        {visibleFinanceAdvertisingRevenue.map((campaign) => (
+                          <div key={campaign.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-black text-white text-sm truncate">{campaign.advertiserName || 'Advertising campaign'}</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                {campaign.paidDate || 'No paid date'} · {campaign.displaySeconds || 4}s · {campaign.impressions || 0} impressions · {campaign.clicks || 0} clicks
+                              </p>
+                            </div>
+                            <span className="rounded-xl bg-sky-500/10 border border-sky-400/20 px-3 py-2 text-xs font-black text-sky-200">
+                              +{formatGBP(Number(campaign.amountPaid || 0))}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
