@@ -482,14 +482,17 @@ async function advertisingUploadReadyBanner(req: Request, res: Response) {
   const {
     orderId,
     accessToken,
-    bannerDataUrl,
+    bannerUrl,
+    width,
+    height,
+    mimeType,
   } = req.body || {};
 
-  if (!orderId || !accessToken || !bannerDataUrl) {
+  if (!orderId || !accessToken || !bannerUrl) {
     return res.status(400).json({
       success: false,
       error: 'MISSING_READY_BANNER_FIELDS',
-      errorMessage: 'Order access and banner image are required.',
+      errorMessage: 'Order access and banner URL are required.',
     });
   }
 
@@ -523,30 +526,10 @@ async function advertisingUploadReadyBanner(req: Request, res: Response) {
     });
   }
 
-  const parsed = stripDataUrl(String(bannerDataUrl));
-  if (!parsed || !['image/png', 'image/jpeg', 'image/webp'].includes(parsed.mimeType)) {
-    return res.status(400).json({
-      success: false,
-      error: 'INVALID_BANNER_FILE',
-      errorMessage: 'Use a PNG, JPG/JPEG or WebP image.',
-    });
-  }
+  const parsedWidth = Number(width || 0);
+  const parsedHeight = Number(height || 0);
 
-  const inputBuffer = Buffer.from(parsed.data, 'base64');
-
-  if (inputBuffer.length > 8 * 1024 * 1024) {
-    return res.status(400).json({
-      success: false,
-      error: 'BANNER_FILE_TOO_LARGE',
-      errorMessage: 'The banner image must be 8MB or smaller.',
-    });
-  }
-
-  const metadata = await sharp(inputBuffer).metadata();
-  const width = Number(metadata.width || 0);
-  const height = Number(metadata.height || 0);
-
-  if (!width || !height) {
+  if (!parsedWidth || !parsedHeight) {
     return res.status(400).json({
       success: false,
       error: 'INVALID_BANNER_DIMENSIONS',
@@ -554,16 +537,19 @@ async function advertisingUploadReadyBanner(req: Request, res: Response) {
     });
   }
 
-  const ratio = width / height;
+  const ratio = parsedWidth / parsedHeight;
 
-  // The ConnectBoat ad slot is designed around a very wide 1600 x 240 banner (~6.67:1).
-  // Accept a safe range without cropping or distorting the customer's finished artwork.
-  if (width < 1200 || height < 180 || ratio < 5.5 || ratio > 8.5) {
+  if (
+    parsedWidth < 1200 ||
+    parsedHeight < 180 ||
+    ratio < 5.5 ||
+    ratio > 8.5
+  ) {
     return res.status(400).json({
       success: false,
       error: 'BANNER_DIMENSIONS_NOT_SUITABLE',
       errorMessage:
-        `This banner is ${width}×${height}px. Please upload a wide banner of at least 1200×180px, ideally 1600×240px.`,
+        `This banner is ${parsedWidth}×${parsedHeight}px. Please upload a very wide horizontal banner of at least 1200×180px, ideally 1600×240px.`,
       required: {
         minimumWidth: 1200,
         minimumHeight: 180,
@@ -575,21 +561,14 @@ async function advertisingUploadReadyBanner(req: Request, res: Response) {
     });
   }
 
-  // Preserve the customer's artwork exactly; only normalize encoding.
-  const normalizedBanner = await sharp(inputBuffer)
-    .rotate()
-    .png({ compressionLevel: 8 })
-    .toBuffer();
-
-  const bannerUrl = await saveAdvertisingImage(String(orderId), 1, normalizedBanner);
-
   await orderRef.set({
-    generatedBanners: [bannerUrl],
-    selectedBannerUrl: bannerUrl,
+    generatedBanners: [String(bannerUrl)],
+    selectedBannerUrl: String(bannerUrl),
     workflowStatus: 'pending_approval',
     designSource: 'customer_ready_banner',
-    originalBannerWidth: width,
-    originalBannerHeight: height,
+    originalBannerWidth: parsedWidth,
+    originalBannerHeight: parsedHeight,
+    originalBannerMimeType: String(mimeType || ''),
     submittedForApprovalAt: FieldValue.serverTimestamp(),
     adminNote: '',
     updatedAt: FieldValue.serverTimestamp(),
@@ -597,9 +576,12 @@ async function advertisingUploadReadyBanner(req: Request, res: Response) {
 
   return res.status(200).json({
     success: true,
-    bannerUrl,
+    bannerUrl: String(bannerUrl),
     workflowStatus: 'pending_approval',
-    dimensions: { width, height },
+    dimensions: {
+      width: parsedWidth,
+      height: parsedHeight,
+    },
   });
 }
 
