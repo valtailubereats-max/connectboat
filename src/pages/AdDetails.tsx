@@ -2308,21 +2308,21 @@ const AdDetails = () => {
             </div>
           </div>
 
-          {/* Mobile/tablet: swipe horizontally. Desktop: large 3-column dealer-style grid. */}
+          {/* Single-row horizontal carousel on all screen sizes */}
           <div className="p-4 sm:p-5 lg:p-6">
-            <div className="flex lg:grid lg:grid-cols-3 gap-4 sm:gap-5 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 snap-x snap-mandatory scrollbar-thin">
+            <div className="flex gap-4 sm:gap-5 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-thin">
               {sellerAds.map((sellerAd) => (
                 <div
                   key={sellerAd.id}
-                  className="min-w-[82vw] xs:min-w-[300px] sm:min-w-[340px] lg:min-w-0 lg:w-auto snap-start"
+                  className="min-w-[76vw] xs:min-w-[260px] sm:min-w-[280px] md:min-w-[290px] lg:min-w-[270px] xl:min-w-[285px] max-w-[285px] snap-start"
                 >
                   <AdCard ad={sellerAd} />
                 </div>
               ))}
             </div>
 
-            <div className="lg:hidden mt-2 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400">
-              <span>Swipe to see more listings</span>
+            <div className="mt-2 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400">
+              <span>Swipe or scroll to see more listings</span>
               <ChevronRight size={13} />
             </div>
           </div>
