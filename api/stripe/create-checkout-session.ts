@@ -550,15 +550,14 @@ async function advertisingPrepareReadyBannerUpload(req: Request, res: Response) 
 
   if (
     parsedWidth < 1200 ||
-    parsedHeight < 180 ||
-    ratio < 5.5 ||
-    ratio > 8.5
+    parsedWidth <= parsedHeight ||
+    ratio < 1.2
   ) {
     return res.status(400).json({
       success: false,
       error: 'BANNER_DIMENSIONS_NOT_SUITABLE',
       errorMessage:
-        `This banner is ${parsedWidth}×${parsedHeight}px. Please upload a very wide horizontal banner of at least 1200×180px, ideally 1600×240px.`,
+        `This image is ${parsedWidth}×${parsedHeight}px. Please upload a horizontal image at least 1200px wide. ConnectBoat will automatically adapt it to the banner space.`,
     });
   }
 
@@ -659,27 +658,62 @@ async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response)
     });
   }
 
-  const downloadToken = randomUUID();
+  const [sourceBuffer] = await file.download();
 
-  await file.setMetadata({
-    contentType: String(order.pendingReadyBannerMimeType || 'image/png'),
+  // Create a ConnectBoat-ready 1600x240 banner without distorting the customer's image:
+  // blurred full-bleed background + original image contained in the foreground.
+  const blurredBackground = await sharp(sourceBuffer)
+    .rotate()
+    .resize(1600, 240, { fit: 'cover', position: 'centre' })
+    .blur(18)
+    .modulate({ brightness: 0.72, saturation: 0.85 })
+    .png()
+    .toBuffer();
+
+  const foreground = await sharp(sourceBuffer)
+    .rotate()
+    .resize(1600, 240, {
+      fit: 'contain',
+      position: 'centre',
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+      withoutEnlargement: false,
+    })
+    .png()
+    .toBuffer();
+
+  const adaptedBanner = await sharp(blurredBackground)
+    .composite([{ input: foreground, top: 0, left: 0 }])
+    .png({ compressionLevel: 8 })
+    .toBuffer();
+
+  const downloadToken = randomUUID();
+  const adaptedPath = `advertising/customer-ready/${String(orderId)}/adapted-${Date.now()}.png`;
+  const adaptedFile = bucket.file(adaptedPath);
+
+  await adaptedFile.save(adaptedBanner, {
+    resumable: false,
     metadata: {
-      firebaseStorageDownloadTokens: downloadToken,
+      contentType: 'image/png',
+      metadata: {
+        firebaseStorageDownloadTokens: downloadToken,
+      },
     },
   });
 
   const bannerUrl =
-    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(String(objectPath))}` +
+    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(adaptedPath)}` +
     `?alt=media&token=${downloadToken}`;
 
   await orderRef.set({
     generatedBanners: [bannerUrl],
     selectedBannerUrl: bannerUrl,
     workflowStatus: 'pending_approval',
-    designSource: 'customer_ready_banner',
+    designSource: 'customer_ready_banner_adapted',
     originalBannerWidth: Number(order.pendingReadyBannerWidth || 0),
     originalBannerHeight: Number(order.pendingReadyBannerHeight || 0),
     originalBannerMimeType: String(order.pendingReadyBannerMimeType || ''),
+    adaptedBannerWidth: 1600,
+    adaptedBannerHeight: 240,
     submittedForApprovalAt: FieldValue.serverTimestamp(),
     adminNote: '',
     pendingReadyBannerPath: FieldValue.delete(),
@@ -689,10 +723,18 @@ async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response)
     updatedAt: FieldValue.serverTimestamp(),
   }, { merge: true });
 
+  // Remove the raw temporary upload after the normalized banner is safely stored.
+  try {
+    await file.delete();
+  } catch (cleanupError) {
+    console.warn('[Advertising ready banner] Temporary source cleanup failed:', cleanupError);
+  }
+
   return res.status(200).json({
     success: true,
     bannerUrl,
     workflowStatus: 'pending_approval',
+    adaptedDimensions: { width: 1600, height: 240 },
   });
 }
 
