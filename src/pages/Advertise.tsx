@@ -39,9 +39,21 @@ const DEFAULT_SETTINGS: SalesSettings = {
 const exposureOptions = [4, 6, 8, 10] as const;
 const durationOptions = [7, 14, 30] as const;
 
+const dataUrlSizeBytes = (dataUrl: string) => {
+  const comma = dataUrl.indexOf(',');
+  if (comma < 0) return 0;
+  const base64 = dataUrl.slice(comma + 1);
+  return Math.ceil((base64.length * 3) / 4);
+};
+
 const fileToOptimizedDataUrl = (
   file: File,
-  options: { maxWidth: number; maxHeight: number; quality: number; preservePng?: boolean }
+  options: {
+    maxWidth: number;
+    maxHeight: number;
+    quality: number;
+    targetBytes: number;
+  }
 ): Promise<string> =>
   new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
@@ -49,36 +61,52 @@ const fileToOptimizedDataUrl = (
 
     image.onload = () => {
       try {
-        const scale = Math.min(
+        let scale = Math.min(
           1,
           options.maxWidth / Math.max(1, image.naturalWidth),
           options.maxHeight / Math.max(1, image.naturalHeight)
         );
 
-        const width = Math.max(1, Math.round(image.naturalWidth * scale));
-        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+        let quality = options.quality;
+        let result = '';
 
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        for (let attempt = 0; attempt < 7; attempt += 1) {
+          const width = Math.max(1, Math.round(image.naturalWidth * scale));
+          const height = Math.max(1, Math.round(image.naturalHeight * scale));
 
-        const context = canvas.getContext('2d');
-        if (!context) {
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const context = canvas.getContext('2d');
+          if (!context) {
+            throw new Error('Unable to prepare this image.');
+          }
+
+          context.imageSmoothingEnabled = true;
+          context.imageSmoothingQuality = 'high';
+          context.drawImage(image, 0, 0, width, height);
+
+          // WebP dramatically reduces the request payload while preserving
+          // enough quality for Gemini visual reference and uploaded logos.
+          result = canvas.toDataURL('image/webp', quality);
+
+          if (dataUrlSizeBytes(result) <= options.targetBytes) {
+            break;
+          }
+
+          // If still too large, reduce both resolution and quality.
+          scale *= 0.82;
+          quality = Math.max(0.42, quality - 0.08);
+        }
+
+        URL.revokeObjectURL(objectUrl);
+
+        if (!result) {
           throw new Error('Unable to prepare this image.');
         }
 
-        context.imageSmoothingEnabled = true;
-        context.imageSmoothingQuality = 'high';
-        context.drawImage(image, 0, 0, width, height);
-
-        const outputType =
-          options.preservePng && file.type === 'image/png'
-            ? 'image/png'
-            : 'image/jpeg';
-
-        const dataUrl = canvas.toDataURL(outputType, options.quality);
-        URL.revokeObjectURL(objectUrl);
-        resolve(dataUrl);
+        resolve(result);
       } catch (error) {
         URL.revokeObjectURL(objectUrl);
         reject(error);
@@ -400,20 +428,31 @@ export default function Advertise() {
       const [logoDataUrl, referenceDataUrl] = await Promise.all([
         logoFile
           ? fileToOptimizedDataUrl(logoFile, {
-              maxWidth: 600,
-              maxHeight: 600,
-              quality: 0.82,
-              preservePng: true,
+              maxWidth: 360,
+              maxHeight: 360,
+              quality: 0.72,
+              targetBytes: 180 * 1024,
             })
           : Promise.resolve(''),
         referenceFile
           ? fileToOptimizedDataUrl(referenceFile, {
-              maxWidth: 1600,
-              maxHeight: 1200,
-              quality: 0.78,
+              maxWidth: 1100,
+              maxHeight: 825,
+              quality: 0.62,
+              targetBytes: 700 * 1024,
             })
           : Promise.resolve(''),
       ]);
+
+      const estimatedPayloadBytes =
+        dataUrlSizeBytes(logoDataUrl) +
+        dataUrlSizeBytes(referenceDataUrl);
+
+      if (estimatedPayloadBytes > 1.2 * 1024 * 1024) {
+        throw new Error(
+          'The selected images are still too large after optimisation. Please choose smaller image files.'
+        );
+      }
 
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
