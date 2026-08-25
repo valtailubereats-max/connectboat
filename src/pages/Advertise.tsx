@@ -246,12 +246,11 @@ export default function Advertise() {
 
       if (
         dimensions.width < 1200 ||
-        dimensions.height < 180 ||
-        ratio < 5.5 ||
-        ratio > 8.5
+        dimensions.width <= dimensions.height ||
+        ratio < 1.2
       ) {
         throw new Error(
-          `This banner is ${dimensions.width}×${dimensions.height}px. Please upload a very wide horizontal banner of at least 1200×180px, ideally 1600×240px.`
+          `This image is ${dimensions.width}×${dimensions.height}px. Please upload a horizontal image at least 1200px wide. ConnectBoat will automatically adapt it to the banner space.`
         );
       }
 
@@ -591,7 +590,7 @@ export default function Advertise() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button type="button" onClick={() => { setDesignMode('ready'); setDesignError(''); }} className={`rounded-2xl border p-4 text-left ${designMode === 'ready' ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}>
                 <div className="font-black text-slate-900">I already have my banner</div>
-                <div className="text-xs text-slate-500 mt-1">Upload your finished banner and send it directly for approval.</div>
+                <div className="text-xs text-slate-500 mt-1">Upload your horizontal banner or artwork. ConnectBoat will automatically fit it to the advertising space before approval.</div>
               </button>
               <button type="button" onClick={() => { setDesignMode('ai'); setDesignError(''); }} className={`rounded-2xl border p-4 text-left ${designMode === 'ai' ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-100' : 'border-slate-200'}`}>
                 <div className="font-black text-slate-900">Create my banner with AI</div>
@@ -619,8 +618,8 @@ export default function Advertise() {
                 </div>
 
                 <div className="rounded-xl bg-white/80 border border-emerald-200 p-3 text-xs text-emerald-900">
-                  <strong>Recommended:</strong> 1600×240px. Minimum 1200×180px. Very wide horizontal banners only.
-                  ConnectBoat will not stretch, crop or distort your finished artwork.
+                  <strong>Easy upload:</strong> choose any good horizontal image at least 1200px wide.
+                  ConnectBoat will automatically adapt it to the 1600×240 advertising space without stretching the original image.
                 </div>
 
                 {designError && (
