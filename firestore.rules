@@ -242,8 +242,31 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin() && (
         (settingsId == 'global' && isValidSettings(request.resource.data)) ||
-        (settingsId in ['health_last_run', 'health_email_tracker', 'bannerConfig', 'banner', 'adDetailsAdvertising'])
+        (settingsId in ['health_last_run', 'health_email_tracker', 'bannerConfig', 'banner', 'adDetailsAdvertising', 'advertisingSales'])
       );
+    }
+
+    match /advertisingOrders/{orderId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /advertisingCampaigns/{campaignId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if
+        isAdmin() ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['impressions']) &&
+          request.resource.data.impressions is number &&
+          resource.data.impressions is number &&
+          request.resource.data.impressions == resource.data.impressions + 1
+        ) ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks']) &&
+          request.resource.data.clicks is number &&
+          resource.data.clicks is number &&
+          request.resource.data.clicks == resource.data.clicks + 1
+        );
     }
 
     match /users/{userId} {
