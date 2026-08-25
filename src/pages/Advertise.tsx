@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { db, storage } from '../firebase';
 import { CheckCircle2, CreditCard, Image as ImageIcon, Sparkles, Upload, WandSparkles, Clock3, CalendarDays, ArrowRight, ShieldCheck } from 'lucide-react';
 
 type SalesSettings = {
@@ -221,7 +222,51 @@ export default function Advertise() {
       setSubmittingReadyBanner(true);
       setDesignError('');
 
-      const bannerDataUrl = await fileToDataUrl(readyBannerFile);
+      const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(readyBannerFile);
+        const image = new Image();
+
+        image.onload = () => {
+          const result = {
+            width: image.naturalWidth,
+            height: image.naturalHeight,
+          };
+          URL.revokeObjectURL(objectUrl);
+          resolve(result);
+        };
+
+        image.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error('Unable to read this image.'));
+        };
+
+        image.src = objectUrl;
+      });
+
+      const ratio = dimensions.width / dimensions.height;
+
+      if (
+        dimensions.width < 1200 ||
+        dimensions.height < 180 ||
+        ratio < 5.5 ||
+        ratio > 8.5
+      ) {
+        throw new Error(
+          `This banner is ${dimensions.width}×${dimensions.height}px. Please upload a very wide horizontal banner of at least 1200×180px, ideally 1600×240px.`
+        );
+      }
+
+      const safeName = readyBannerFile.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const bannerRef = ref(
+        storage,
+        `advertising/customer-ready/${orderIdFromUrl}/${Date.now()}_${safeName}`
+      );
+
+      const uploadResult = await uploadBytes(bannerRef, readyBannerFile, {
+        contentType: readyBannerFile.type,
+      });
+
+      const bannerUrl = await getDownloadURL(uploadResult.ref);
 
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
@@ -230,7 +275,10 @@ export default function Advertise() {
           action: 'advertising_upload_ready_banner',
           orderId: orderIdFromUrl,
           accessToken: tokenFromUrl,
-          bannerDataUrl,
+          bannerUrl,
+          width: dimensions.width,
+          height: dimensions.height,
+          mimeType: readyBannerFile.type,
         }),
       });
 
