@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { db, storage } from '../firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, getDocs, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   Sliders, 
@@ -35,14 +35,25 @@ export default function AdminBannerEditor() {
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  const [listingAdEnabled, setListingAdEnabled] = useState(false);
-  const [listingAdImageUrl, setListingAdImageUrl] = useState('');
-  const [listingAdTargetUrl, setListingAdTargetUrl] = useState('');
-  const [listingAdAltText, setListingAdAltText] = useState('ConnectBoat advertising banner');
+  const [listingCampaigns, setListingCampaigns] = useState<any[]>([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(false);
   const [listingAdSaving, setListingAdSaving] = useState(false);
   const [listingAdSaved, setListingAdSaved] = useState(false);
   const [listingAdUploading, setListingAdUploading] = useState(false);
   const listingAdFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [campaignId, setCampaignId] = useState('');
+  const [listingAdEnabled, setListingAdEnabled] = useState(true);
+  const [listingAdAdvertiser, setListingAdAdvertiser] = useState('');
+  const [listingAdImageUrl, setListingAdImageUrl] = useState('');
+  const [listingAdTargetUrl, setListingAdTargetUrl] = useState('');
+  const [listingAdAltText, setListingAdAltText] = useState('ConnectBoat advertising banner');
+  const [listingAdDisplaySeconds, setListingAdDisplaySeconds] = useState('4');
+  const [listingAdStartDate, setListingAdStartDate] = useState('');
+  const [listingAdEndDate, setListingAdEndDate] = useState('');
+  const [listingAdAmountPaid, setListingAdAmountPaid] = useState('');
+  const [listingAdPaymentStatus, setListingAdPaymentStatus] = useState<'paid' | 'pending'>('pending');
+  const [listingAdPaidDate, setListingAdPaidDate] = useState('');
 
   useEffect(() => {
     if (initialBannerConfig) {
@@ -61,27 +72,42 @@ export default function AdminBannerEditor() {
     }
   }, [initialBannerConfig]);
 
+  const resetListingCampaignForm = () => {
+    setCampaignId('');
+    setListingAdEnabled(true);
+    setListingAdAdvertiser('');
+    setListingAdImageUrl('');
+    setListingAdTargetUrl('');
+    setListingAdAltText('ConnectBoat advertising banner');
+    setListingAdDisplaySeconds('4');
+    setListingAdStartDate('');
+    setListingAdEndDate('');
+    setListingAdAmountPaid('');
+    setListingAdPaymentStatus('pending');
+    setListingAdPaidDate('');
+  };
+
+  const loadListingCampaigns = async () => {
+    try {
+      setCampaignsLoading(true);
+      const snapshot = await getDocs(collection(db, 'advertisingCampaigns'));
+      const campaigns = snapshot.docs
+        .map((campaignDoc) => ({ id: campaignDoc.id, ...campaignDoc.data() } as any))
+        .sort((a, b) => {
+          const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return bTime - aTime;
+        });
+      setListingCampaigns(campaigns);
+    } catch (error) {
+      console.warn('Unable to load listing advertising campaigns:', error);
+    } finally {
+      setCampaignsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadListingAdvertising = async () => {
-      try {
-        const snapshot = await getDoc(doc(db, 'settings', 'adDetailsAdvertising'));
-        if (!snapshot.exists()) return;
-
-        const data = snapshot.data() || {};
-        setListingAdEnabled(data.enabled === true);
-        setListingAdImageUrl(typeof data.imageUrl === 'string' ? data.imageUrl : '');
-        setListingAdTargetUrl(typeof data.targetUrl === 'string' ? data.targetUrl : '');
-        setListingAdAltText(
-          typeof data.altText === 'string' && data.altText.trim()
-            ? data.altText
-            : 'ConnectBoat advertising banner'
-        );
-      } catch (error) {
-        console.warn('Unable to load listing advertising banner:', error);
-      }
-    };
-
-    loadListingAdvertising();
+    loadListingCampaigns();
   }, []);
 
   const handleListingAdImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,57 +128,114 @@ export default function AdminBannerEditor() {
 
     try {
       setListingAdUploading(true);
-
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-      const imageRef = ref(
-        storage,
-        `advertising/listing-page/${Date.now()}_${safeName}`
-      );
-
-      const uploadResult = await uploadBytes(imageRef, file, {
-        contentType: file.type,
-      });
+      const imageRef = ref(storage, `advertising/listing-page/${Date.now()}_${safeName}`);
+      const uploadResult = await uploadBytes(imageRef, file, { contentType: file.type });
       const downloadUrl = await getDownloadURL(uploadResult.ref);
-
       setListingAdImageUrl(downloadUrl);
     } catch (error) {
       console.error('Error uploading listing advertising banner:', error);
-      alert(
-        `Failed to upload banner image: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
+      alert(`Failed to upload banner image: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setListingAdUploading(false);
       event.target.value = '';
     }
   };
 
+  const editListingCampaign = (campaign: any) => {
+    setCampaignId(campaign.id);
+    setListingAdEnabled(campaign.enabled === true);
+    setListingAdAdvertiser(campaign.advertiserName || '');
+    setListingAdImageUrl(campaign.imageUrl || '');
+    setListingAdTargetUrl(campaign.targetUrl || '');
+    setListingAdAltText(campaign.altText || 'ConnectBoat advertising banner');
+    setListingAdDisplaySeconds(String(campaign.displaySeconds || 4));
+    setListingAdStartDate(campaign.startDate || '');
+    setListingAdEndDate(campaign.endDate || '');
+    setListingAdAmountPaid(typeof campaign.amountPaid === 'number' ? String(campaign.amountPaid) : '');
+    setListingAdPaymentStatus(campaign.paymentStatus === 'paid' ? 'paid' : 'pending');
+    setListingAdPaidDate(campaign.paidDate || '');
+  };
+
   const handleSaveListingAdvertising = async () => {
+    const displaySeconds = Number(listingAdDisplaySeconds);
+    const amountPaid = Number(listingAdAmountPaid || 0);
+
+    if (!listingAdAdvertiser.trim()) {
+      alert('Enter the advertiser or campaign name.');
+      return;
+    }
+    if (!listingAdImageUrl.trim()) {
+      alert('Upload a banner image.');
+      return;
+    }
+    if (!Number.isFinite(displaySeconds) || displaySeconds < 2 || displaySeconds > 60) {
+      alert('Display time must be between 2 and 60 seconds.');
+      return;
+    }
+    if (!Number.isFinite(amountPaid) || amountPaid < 0) {
+      alert('Enter a valid advertising revenue amount.');
+      return;
+    }
+
     try {
       setListingAdSaving(true);
       setListingAdSaved(false);
 
-      await setDoc(
-        doc(db, 'settings', 'adDetailsAdvertising'),
-        {
-          enabled: listingAdEnabled,
-          imageUrl: listingAdImageUrl.trim(),
-          targetUrl: listingAdTargetUrl.trim(),
-          altText: listingAdAltText.trim() || 'ConnectBoat advertising banner',
-          updatedAt: new Date().toISOString(),
-          updatedBy: user?.email || 'admin',
-        },
-        { merge: true }
-      );
+      const payload = {
+        enabled: listingAdEnabled,
+        advertiserName: listingAdAdvertiser.trim(),
+        imageUrl: listingAdImageUrl.trim(),
+        targetUrl: listingAdTargetUrl.trim(),
+        altText: listingAdAltText.trim() || `${listingAdAdvertiser.trim()} advertising banner`,
+        displaySeconds,
+        startDate: listingAdStartDate,
+        endDate: listingAdEndDate,
+        amountPaid: Math.round(amountPaid * 100) / 100,
+        currency: 'GBP',
+        paymentStatus: listingAdPaymentStatus,
+        paidDate: listingAdPaymentStatus === 'paid'
+          ? (listingAdPaidDate || new Date().toISOString().slice(0, 10))
+          : '',
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.email || 'admin',
+      };
+
+      if (campaignId) {
+        await updateDoc(doc(db, 'advertisingCampaigns', campaignId), payload);
+      } else {
+        await addDoc(collection(db, 'advertisingCampaigns'), {
+          ...payload,
+          impressions: 0,
+          clicks: 0,
+          createdAt: serverTimestamp(),
+          createdBy: user?.email || 'admin',
+        });
+      }
 
       setListingAdSaved(true);
       setTimeout(() => setListingAdSaved(false), 3000);
+      resetListingCampaignForm();
+      await loadListingCampaigns();
     } catch (error) {
-      console.error('Error saving listing advertising banner:', error);
-      alert('Failed to save listing advertising banner.');
+      console.error('Error saving listing advertising campaign:', error);
+      alert('Failed to save listing advertising campaign.');
     } finally {
       setListingAdSaving(false);
+    }
+  };
+
+  const handleDeleteListingCampaign = async (campaign: any) => {
+    if (!campaign?.id) return;
+    if (!confirm(`Delete advertising campaign "${campaign.advertiserName || campaign.id}"?`)) return;
+
+    try {
+      await deleteDoc(doc(db, 'advertisingCampaigns', campaign.id));
+      if (campaignId === campaign.id) resetListingCampaignForm();
+      await loadListingCampaigns();
+    } catch (error) {
+      console.error('Error deleting advertising campaign:', error);
+      alert('Failed to delete advertising campaign.');
     }
   };
 
@@ -281,122 +364,192 @@ export default function AdminBannerEditor() {
       </div>
 
       {/* LISTING DETAILS ADVERTISING */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="p-3 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-2xl">
               <Megaphone size={22} />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
-                Listing Page Advertising
-              </h2>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">Listing Page Advertising</h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Controls the advertising banner displayed above every listing details page.
+                Multiple rotating banners. Each campaign has its own exposure time, dates and revenue.
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSaveListingAdvertising}
-            disabled={listingAdSaving}
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <Save size={15} />
-            {listingAdSaving ? 'Saving...' : listingAdSaved ? 'Saved!' : 'Save Advertising'}
+          <button type="button" onClick={resetListingCampaignForm}
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-700 dark:text-slate-300">
+            + New Campaign
           </button>
         </div>
 
-        <label className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={listingAdEnabled}
-            onChange={(event) => setListingAdEnabled(event.target.checked)}
-            className="w-5 h-5 rounded"
-          />
-          <div>
-            <p className="text-sm font-black text-slate-900 dark:text-white">Enable advertising banner</p>
-            <p className="text-xs text-slate-500">Turn the banner on or off without changing code.</p>
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 space-y-4 bg-slate-50/50 dark:bg-slate-950/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-black text-slate-900 dark:text-white">{campaignId ? 'Edit Campaign' : 'Add Campaign'}</p>
+              <p className="text-[10px] text-slate-500">Rotation respects each banner's individual display time.</p>
+            </div>
+            {campaignId && <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Editing</span>}
           </div>
-        </label>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">
-              Banner image
-            </label>
+          <label className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-3 cursor-pointer bg-white dark:bg-slate-900">
+            <input type="checkbox" checked={listingAdEnabled} onChange={(e) => setListingAdEnabled(e.target.checked)} className="w-5 h-5 rounded" />
+            <div>
+              <p className="text-sm font-black text-slate-900 dark:text-white">Campaign active</p>
+              <p className="text-xs text-slate-500">Inactive campaigns stay saved but do not rotate.</p>
+            </div>
+          </label>
 
-            <input
-              ref={listingAdFileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleListingAdImageUpload}
-              className="hidden"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Advertiser / campaign</label>
+              <input type="text" value={listingAdAdvertiser} onChange={(e) => setListingAdAdvertiser(e.target.value)}
+                placeholder="ShowBoat Detailing"
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
 
-            <button
-              type="button"
-              onClick={() => listingAdFileInputRef.current?.click()}
-              disabled={listingAdUploading}
-              className="w-full px-4 py-3 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors disabled:opacity-50"
-            >
-              <Upload size={16} />
-              {listingAdUploading ? 'Uploading...' : listingAdImageUrl ? 'Replace Image' : 'Upload Image'}
-            </button>
+            <div>
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Display time (seconds)</label>
+              <input type="number" min="2" max="60" step="1" value={listingAdDisplaySeconds} onChange={(e) => setListingAdDisplaySeconds(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
 
-            {listingAdImageUrl && (
-              <p className="mt-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                Image uploaded to Firebase Storage.
-              </p>
+            <div>
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Advertising revenue (£)</label>
+              <input type="number" min="0" step="0.01" value={listingAdAmountPaid} onChange={(e) => setListingAdAmountPaid(e.target.value)}
+                placeholder="0.00"
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Start date</label>
+              <input type="date" value={listingAdStartDate} onChange={(e) => setListingAdStartDate(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">End date</label>
+              <input type="date" value={listingAdEndDate} onChange={(e) => setListingAdEndDate(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Payment status</label>
+              <select value={listingAdPaymentStatus} onChange={(e) => setListingAdPaymentStatus(e.target.value === 'paid' ? 'paid' : 'pending')}
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="pending">Pending</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
+
+            {listingAdPaymentStatus === 'paid' && (
+              <div>
+                <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Paid date</label>
+                <input type="date" value={listingAdPaidDate} onChange={(e) => setListingAdPaidDate(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
             )}
           </div>
 
-          <div>
-            <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Click destination URL</label>
-            <input
-              type="url"
-              value={listingAdTargetUrl}
-              onChange={(event) => setListingAdTargetUrl(event.target.value)}
-              placeholder="https://advertiser.co.uk"
-              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Alternative text</label>
-          <input
-            type="text"
-            value={listingAdAltText}
-            onChange={(event) => setListingAdAltText(event.target.value)}
-            placeholder="Advertiser name or campaign description"
-            className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-
-        {listingAdImageUrl.trim() && (
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-50 dark:bg-slate-950">
-            <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-widest font-black text-slate-500">Live preview</span>
-              {listingAdTargetUrl.trim() && (
-                <a
-                  href={listingAdTargetUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-bold text-indigo-600 flex items-center gap-1"
-                >
-                  Test link <ExternalLink size={12} />
-                </a>
-              )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Banner image</label>
+              <input ref={listingAdFileInputRef} type="file" accept="image/*" onChange={handleListingAdImageUpload} className="hidden" />
+              <button type="button" onClick={() => listingAdFileInputRef.current?.click()} disabled={listingAdUploading}
+                className="w-full px-4 py-3 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 text-sm font-black flex items-center justify-center gap-2 disabled:opacity-50">
+                <Upload size={16} />
+                {listingAdUploading ? 'Uploading...' : listingAdImageUrl ? 'Replace Image' : 'Upload Image'}
+              </button>
+              {listingAdImageUrl && <p className="mt-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Image uploaded to Firebase Storage.</p>}
             </div>
-            <img
-              src={listingAdImageUrl}
-              alt={listingAdAltText || 'Advertising preview'}
-              className="w-full max-h-[180px] object-contain bg-white"
-            />
+
+            <div>
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Click destination URL</label>
+              <input type="url" value={listingAdTargetUrl} onChange={(e) => setListingAdTargetUrl(e.target.value)}
+                placeholder="https://advertiser.co.uk"
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
           </div>
-        )}
+
+          <div>
+            <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Alternative text</label>
+            <input type="text" value={listingAdAltText} onChange={(e) => setListingAdAltText(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+
+          {listingAdImageUrl.trim() && (
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-50 dark:bg-slate-950">
+              <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-widest font-black text-slate-500">Preview</span>
+                {listingAdTargetUrl.trim() && (
+                  <a href={listingAdTargetUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-indigo-600 flex items-center gap-1">
+                    Test link <ExternalLink size={12} />
+                  </a>
+                )}
+              </div>
+              <img src={listingAdImageUrl} alt={listingAdAltText || 'Advertising preview'} className="w-full max-h-[180px] object-contain bg-white" />
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-2 justify-end">
+            {campaignId && (
+              <button type="button" onClick={resetListingCampaignForm}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-700 dark:text-slate-300">
+                Cancel Edit
+              </button>
+            )}
+            <button type="button" onClick={handleSaveListingAdvertising} disabled={listingAdSaving || listingAdUploading}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center justify-center gap-2 disabled:opacity-50">
+              <Save size={15} />
+              {listingAdSaving ? 'Saving...' : listingAdSaved ? 'Saved!' : campaignId ? 'Update Campaign' : 'Add Campaign'}
+            </button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="px-4 py-3 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-black text-slate-900 dark:text-white">Advertising Campaigns</p>
+              <p className="text-[10px] text-slate-500">Each banner rotates according to its own display time.</p>
+            </div>
+            <span className="text-xs font-black text-slate-500">{listingCampaigns.length}</span>
+          </div>
+
+          {campaignsLoading ? (
+            <div className="p-5 text-sm text-slate-500">Loading campaigns...</div>
+          ) : listingCampaigns.length === 0 ? (
+            <div className="p-5 text-sm text-slate-500">No advertising campaigns yet.</div>
+          ) : (
+            <div className="divide-y divide-slate-200 dark:divide-slate-800">
+              {listingCampaigns.map((campaign) => (
+                <div key={campaign.id} className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {campaign.imageUrl ? (
+                      <img src={campaign.imageUrl} alt={campaign.altText || campaign.advertiserName || 'Campaign'}
+                        className="w-28 h-12 object-contain rounded-lg border border-slate-200 bg-white shrink-0" />
+                    ) : <div className="w-28 h-12 rounded-lg bg-slate-100 shrink-0" />}
+
+                    <div className="min-w-0">
+                      <p className="font-black text-sm text-slate-900 dark:text-white truncate">{campaign.advertiserName || 'Unnamed campaign'}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        {campaign.displaySeconds || 4}s · {campaign.enabled ? 'Active' : 'Inactive'} · {campaign.paymentStatus === 'paid' ? `Paid £${Number(campaign.amountPaid || 0).toFixed(2)}` : 'Payment pending'}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{campaign.impressions || 0} impressions · {campaign.clicks || 0} clicks</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button type="button" onClick={() => editListingCampaign(campaign)}
+                      className="px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-black">Edit</button>
+                    <button type="button" onClick={() => handleDeleteListingCampaign(campaign)}
+                      className="px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-xs font-black">Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* LIVE PREVIEW BANNER */}
