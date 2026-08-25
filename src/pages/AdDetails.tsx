@@ -999,7 +999,7 @@ const AdDetails = () => {
                   target="_blank"
                   rel="noopener noreferrer sponsored"
                   onClick={() => handleAdvertisingClick(campaign)}
-                  className="block rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow"
+                  className="block w-full lg:w-[80%] mx-auto rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow"
                   aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
                 >
                   <img
@@ -1010,7 +1010,7 @@ const AdDetails = () => {
                   />
                 </a>
               ) : (
-                <div className="rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+                <div className="w-full lg:w-[80%] mx-auto rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
                   <img
                     src={campaign.imageUrl}
                     alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising banner'}
