@@ -417,7 +417,7 @@ Premium, commercial, realistic, clean and suitable for the ConnectBoat UK marine
     const buttonWidth = Math.max(150, Math.min(310, callToAction.length * 12 + 48));
 
     const overlaySvg = Buffer.from(`
-      <svg width="1600" height="240" xmlns="http://www.w3.org/2000/svg">
+      <svg width="1600" height="240" xmlns="http://www.w3.org/2000/svg" encoding="UTF-8">
         <defs>
           <linearGradient id="shade" x1="0" x2="1">
             <stop offset="0%" stop-color="#071426" stop-opacity="0.96"/>
@@ -427,11 +427,11 @@ Premium, commercial, realistic, clean and suitable for the ConnectBoat UK marine
           </linearGradient>
         </defs>
         <rect width="1600" height="240" fill="url(#shade)"/>
-        <text x="54" y="48" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#7dd3fc">${xmlEscape(brand.toUpperCase())}</text>
-        <text x="54" y="104" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="900" fill="#ffffff">${xmlEscape(mainHeadline)}</text>
-        ${supportingText ? `<text x="54" y="143" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="500" fill="#dbeafe">${xmlEscape(supportingText)}</text>` : ''}
+        <text x="54" y="48" font-family="DejaVu Sans, sans-serif" font-size="20" font-weight="700" fill="#7dd3fc">${xmlEscape(brand.toUpperCase())}</text>
+        <text x="54" y="104" font-family="DejaVu Sans, sans-serif" font-size="40" font-weight="900" fill="#ffffff">${xmlEscape(mainHeadline)}</text>
+        ${supportingText ? `<text x="54" y="143" font-family="DejaVu Sans, sans-serif" font-size="20" font-weight="500" fill="#dbeafe">${xmlEscape(supportingText)}</text>` : ''}
         <rect x="54" y="171" width="${buttonWidth}" height="44" rx="12" fill="#2563eb"/>
-        <text x="76" y="199" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#ffffff">${xmlEscape(callToAction)}</text>
+        <text x="76" y="199" font-family="DejaVu Sans, sans-serif" font-size="18" font-weight="800" fill="#ffffff">${xmlEscape(callToAction)}</text>
       </svg>
     `);
 
