@@ -170,7 +170,7 @@ const AdDetails = () => {
   const [reportDetails, setReportDetails] = useState('');
   const [reporting, setReporting] = useState(false);
 
-  // Estados para Negócios Reivindicáveis/Claimable
+  // Conditions para Negócios Reivindicáveis/Claimable
   const [showUnclaimedContactModal, setShowUnclaimedContactModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [claimName, setClaimName] = useState('');
@@ -825,7 +825,7 @@ const AdDetails = () => {
   const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
 
   return (
-    <div className="w-full max-w-[1680px] mx-auto px-3 sm:px-4 lg:px-5 xl:px-6 py-5">
+    <div className="w-full max-w-[1880px] mx-auto px-2 sm:px-3 lg:px-4 xl:px-5 2xl:px-6 py-5">
       {ad && (
         <Helmet>
           <title>{ad.title} - {ad.city || 'United Kingdom'} | ConnectBoat</title>
@@ -899,11 +899,11 @@ const AdDetails = () => {
       </div>
 
       {/* DESKTOP LAYOUT */}
-      <div className="hidden lg:grid lg:grid-cols-12 gap-5 xl:gap-6">
+      <div className="hidden lg:grid lg:grid-cols-12 gap-4 xl:gap-5">
         {/* LADO ESQUERDO: Imagens e Galeria */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className="lg:col-span-9 space-y-4">
           <div 
-            className="relative aspect-[16/10] xl:aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -997,7 +997,7 @@ const AdDetails = () => {
                     pauseVideos();
                     setCurrentImageIndex(i);
                   }}
-                  className={`relative w-28 h-20 xl:w-32 xl:h-24 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                  className={`relative w-32 h-24 xl:w-36 xl:h-28 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
                     validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
                   }`}
                 >
@@ -1054,8 +1054,8 @@ const AdDetails = () => {
                     <Anchor size={22} />
                   </div>
                   <div>
-                    <h2 className="text-xl font-black text-slate-900 leading-none">⚓ Especificações Náuticas</h2>
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5">Ficha Técnica Oficial ConnectBoat</p>
+                    <h2 className="text-xl font-black text-slate-900 leading-none">⚓ Marine Specifications</h2>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5">Official ConnectBoat Specification</p>
                   </div>
                 </div>
                 {ad.condition && (
@@ -1071,12 +1071,12 @@ const AdDetails = () => {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-sky-800 bg-sky-50/70 p-2.5 rounded-xl border border-sky-100/60">
                       <Anchor size={16} className="text-sky-600" />
-                      <span>Informação da Embarcação</span>
+                      <span>Vessel Information</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {ad.boatType && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tipo de Barco</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Boat Type</span>
                           <span className="text-xs sm:text-sm font-black text-slate-900 block mt-0.5">{ad.boatType}</span>
                         </div>
                       )}
@@ -1094,13 +1094,13 @@ const AdDetails = () => {
                       )}
                       {ad.year && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ano de Fabrico</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Year</span>
                           <span className="text-xs sm:text-sm font-black text-slate-900 block mt-0.5">{ad.year}</span>
                         </div>
                       )}
                       {ad.condition && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Estado</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Condition</span>
                           <span className="text-xs sm:text-sm font-black text-slate-900 block mt-0.5">{ad.condition}</span>
                         </div>
                       )}
@@ -1324,7 +1324,7 @@ const AdDetails = () => {
         </div>
 
         {/* LADO DIREITO: Dados, Vendedor e WhatsApp */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="lg:col-span-3 space-y-6">
           <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6">
             
             {/* Categoria & Visualizações / Tempo */}
@@ -1626,7 +1626,7 @@ const AdDetails = () => {
         {/* CAROUSEL FLOW */}
         <div className="space-y-3">
           <div 
-            className="relative aspect-[4/3] bg-slate-950 rounded-2xl overflow-hidden shadow-md group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden shadow-md group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1715,7 +1715,7 @@ const AdDetails = () => {
                     pauseVideos();
                     setCurrentImageIndex(i);
                   }}
-                  className={`relative w-14 h-11 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                  className={`relative w-20 h-16 sm:w-24 sm:h-18 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
                     validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
                   }`}
                 >
