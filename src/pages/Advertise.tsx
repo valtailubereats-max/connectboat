@@ -83,6 +83,7 @@ export default function Advertise() {
   const [selected, setSelected] = useState('');
   const [designError, setDesignError] = useState('');
   const [submittingSelection, setSubmittingSelection] = useState(false);
+  const [submittingReadyBanner, setSubmittingReadyBanner] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -197,6 +198,67 @@ export default function Advertise() {
     } catch (error: any) {
       setCheckoutError(error?.message || 'Unable to start checkout.');
       setCheckoutLoading(false);
+    }
+  };
+
+  const submitReadyBanner = async () => {
+    if (!readyBannerFile || !orderIdFromUrl || !tokenFromUrl || order?.paymentStatus !== 'paid') {
+      setDesignError('Choose your finished banner image first.');
+      return;
+    }
+
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(readyBannerFile.type)) {
+      setDesignError('Use a PNG, JPG/JPEG or WebP banner image.');
+      return;
+    }
+
+    if (readyBannerFile.size > 8 * 1024 * 1024) {
+      setDesignError('The banner image must be 8MB or smaller.');
+      return;
+    }
+
+    try {
+      setSubmittingReadyBanner(true);
+      setDesignError('');
+
+      const bannerDataUrl = await fileToDataUrl(readyBannerFile);
+
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'advertising_upload_ready_banner',
+          orderId: orderIdFromUrl,
+          accessToken: tokenFromUrl,
+          bannerDataUrl,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data?.success !== true || !data.bannerUrl) {
+        throw new Error(
+          data?.errorMessage ||
+          data?.error ||
+          'Unable to submit your banner.'
+        );
+      }
+
+      setSelected(data.bannerUrl);
+      setOrder((prev) =>
+        prev
+          ? {
+              ...prev,
+              selectedBannerUrl: data.bannerUrl,
+              generatedBanners: [data.bannerUrl],
+              workflowStatus: 'pending_approval',
+            }
+          : prev
+      );
+    } catch (error: any) {
+      setDesignError(error?.message || 'Unable to submit your banner.');
+    } finally {
+      setSubmittingReadyBanner(false);
     }
   };
 
@@ -466,14 +528,38 @@ export default function Advertise() {
             </div>
 
             {designMode === 'ready' && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-                <label className="block text-xs font-black text-emerald-900 mb-2">Finished banner image</label>
-                <label className="w-full px-4 py-4 rounded-xl border border-dashed border-emerald-300 bg-white flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-600">
-                  <Upload size={16} />
-                  {readyBannerFile ? readyBannerFile.name : 'Upload your finished banner'}
-                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => setReadyBannerFile(e.target.files?.[0] || null)} />
-                </label>
-                <p className="text-xs text-emerald-800 mt-2">Your image will be checked for size and proportions before it can be submitted for approval.</p>
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+                <div>
+                  <label className="block text-xs font-black text-emerald-900 mb-2">Finished banner image</label>
+                  <label className="w-full px-4 py-4 rounded-xl border border-dashed border-emerald-300 bg-white flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-600">
+                    <Upload size={16} />
+                    {readyBannerFile ? readyBannerFile.name : 'Upload your finished banner'}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        setReadyBannerFile(e.target.files?.[0] || null);
+                        setDesignError('');
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <div className="rounded-xl bg-white/80 border border-emerald-200 p-3 text-xs text-emerald-900">
+                  <strong>Recommended:</strong> 1600×240px. Minimum 1200×180px. Very wide horizontal banners only.
+                  ConnectBoat will not stretch, crop or distort your finished artwork.
+                </div>
+
+                <button
+                  type="button"
+                  onClick={submitReadyBanner}
+                  disabled={!readyBannerFile || submittingReadyBanner}
+                  className="w-full sm:w-auto rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-6 py-3 font-black flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 size={18} />
+                  {submittingReadyBanner ? 'Checking & submitting...' : 'Submit Banner for Approval'}
+                </button>
               </div>
             )}
 
