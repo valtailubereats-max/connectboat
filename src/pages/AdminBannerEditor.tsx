@@ -55,6 +55,18 @@ export default function AdminBannerEditor() {
   const [listingAdPaymentStatus, setListingAdPaymentStatus] = useState<'paid' | 'pending'>('pending');
   const [listingAdPaidDate, setListingAdPaidDate] = useState('');
 
+  const [advertisingSalesEnabled, setAdvertisingSalesEnabled] = useState(false);
+  const [price4s30d, setPrice4s30d] = useState('');
+  const [price6s30d, setPrice6s30d] = useState('');
+  const [price8s30d, setPrice8s30d] = useState('');
+  const [price10s30d, setPrice10s30d] = useState('');
+  const [aiGenerationsIncluded, setAiGenerationsIncluded] = useState('3');
+  const [salesSettingsSaving, setSalesSettingsSaving] = useState(false);
+
+  const [pendingAdvertisingOrders, setPendingAdvertisingOrders] = useState<any[]>([]);
+  const [pendingOrdersLoading, setPendingOrdersLoading] = useState(false);
+  const [approvingOrderId, setApprovingOrderId] = useState('');
+
   useEffect(() => {
     if (initialBannerConfig) {
       setConfig({
@@ -71,6 +83,149 @@ export default function AdminBannerEditor() {
       });
     }
   }, [initialBannerConfig]);
+
+  const loadAdvertisingSalesSettings = async () => {
+    try {
+      const snapshot = await getDoc(doc(db, 'settings', 'advertisingSales'));
+      if (!snapshot.exists()) return;
+      const data = snapshot.data() || {};
+      setAdvertisingSalesEnabled(data.enabled === true);
+      setPrice4s30d(typeof data.price4s30d === 'number' ? String(data.price4s30d) : '');
+      setPrice6s30d(typeof data.price6s30d === 'number' ? String(data.price6s30d) : '');
+      setPrice8s30d(typeof data.price8s30d === 'number' ? String(data.price8s30d) : '');
+      setPrice10s30d(typeof data.price10s30d === 'number' ? String(data.price10s30d) : '');
+      setAiGenerationsIncluded(String(data.aiGenerationsIncluded || 3));
+    } catch (error) {
+      console.warn('Unable to load advertising sales settings:', error);
+    }
+  };
+
+  const saveAdvertisingSalesSettings = async () => {
+    const values = [price4s30d, price6s30d, price8s30d, price10s30d].map((value) => Number(value || 0));
+    if (values.some((value) => !Number.isFinite(value) || value < 0)) {
+      alert('Advertising prices must be valid positive numbers.');
+      return;
+    }
+
+    try {
+      setSalesSettingsSaving(true);
+      await setDoc(doc(db, 'settings', 'advertisingSales'), {
+        enabled: advertisingSalesEnabled,
+        price4s30d: values[0],
+        price6s30d: values[1],
+        price8s30d: values[2],
+        price10s30d: values[3],
+        aiGenerationsIncluded: Math.max(1, Math.min(5, Number(aiGenerationsIncluded || 3))),
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.email || 'admin',
+      }, { merge: true });
+      alert('Advertising sales settings saved.');
+    } catch (error) {
+      console.error('Unable to save advertising sales settings:', error);
+      alert('Failed to save advertising sales settings.');
+    } finally {
+      setSalesSettingsSaving(false);
+    }
+  };
+
+  const loadPendingAdvertisingOrders = async () => {
+    try {
+      setPendingOrdersLoading(true);
+      const snapshot = await getDocs(collection(db, 'advertisingOrders'));
+      const orders = snapshot.docs
+        .map((orderDoc) => ({ id: orderDoc.id, ...orderDoc.data() } as any))
+        .filter((order) =>
+          order.paymentStatus === 'paid' &&
+          ['pending_approval', 'changes_requested'].includes(order.workflowStatus)
+        )
+        .sort((a, b) => {
+          const aTime = a.submittedForApprovalAt?.toMillis ? a.submittedForApprovalAt.toMillis() : 0;
+          const bTime = b.submittedForApprovalAt?.toMillis ? b.submittedForApprovalAt.toMillis() : 0;
+          return bTime - aTime;
+        });
+      setPendingAdvertisingOrders(orders);
+    } catch (error) {
+      console.warn('Unable to load pending advertising orders:', error);
+    } finally {
+      setPendingOrdersLoading(false);
+    }
+  };
+
+  const approveAdvertisingOrder = async (order: any) => {
+    if (!order?.id || !order?.selectedBannerUrl) return;
+
+    try {
+      setApprovingOrderId(order.id);
+
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(end.getDate() + Math.max(1, Number(order.durationDays || 30)) - 1);
+
+      const startDate = start.toISOString().slice(0, 10);
+      const endDate = end.toISOString().slice(0, 10);
+
+      const campaignRef = await addDoc(collection(db, 'advertisingCampaigns'), {
+        enabled: true,
+        advertiserName: order.advertiserName || 'Advertiser',
+        imageUrl: order.selectedBannerUrl,
+        targetUrl: order.targetUrl || '',
+        altText: `${order.advertiserName || 'Advertiser'} sponsored banner`,
+        displaySeconds: Number(order.displaySeconds || 4),
+        startDate,
+        endDate,
+        orderId: order.id,
+        source: 'customer_checkout',
+        impressions: 0,
+        clicks: 0,
+        createdAt: serverTimestamp(),
+        createdBy: user?.email || 'admin',
+        updatedAt: serverTimestamp(),
+      });
+
+      await updateDoc(doc(db, 'advertisingOrders', order.id), {
+        workflowStatus: 'approved',
+        approvedAt: serverTimestamp(),
+        approvedBy: user?.email || 'admin',
+        campaignId: campaignRef.id,
+        campaignStartDate: startDate,
+        campaignEndDate: endDate,
+        adminNote: '',
+        updatedAt: serverTimestamp(),
+      });
+
+      await Promise.all([
+        loadPendingAdvertisingOrders(),
+        loadListingCampaigns(),
+      ]);
+    } catch (error) {
+      console.error('Unable to approve advertising order:', error);
+      alert('Failed to approve advertising campaign.');
+    } finally {
+      setApprovingOrderId('');
+    }
+  };
+
+  const requestAdvertisingChanges = async (order: any) => {
+    if (!order?.id) return;
+    const note = window.prompt(
+      'Tell the advertiser what should be changed:',
+      order.adminNote || 'Please choose or generate a clearer banner with larger text.'
+    );
+    if (note === null) return;
+
+    try {
+      await updateDoc(doc(db, 'advertisingOrders', order.id), {
+        workflowStatus: 'changes_requested',
+        adminNote: note.trim(),
+        updatedAt: serverTimestamp(),
+      });
+      await loadPendingAdvertisingOrders();
+    } catch (error) {
+      console.error('Unable to request banner changes:', error);
+      alert('Failed to request changes.');
+    }
+  };
 
   const resetListingCampaignForm = () => {
     setCampaignId('');
@@ -108,6 +263,8 @@ export default function AdminBannerEditor() {
 
   useEffect(() => {
     loadListingCampaigns();
+    loadAdvertisingSalesSettings();
+    loadPendingAdvertisingOrders();
   }, []);
 
   const handleListingAdImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -361,6 +518,141 @@ export default function AdminBannerEditor() {
           <Smartphone size={16} />
           <span>Telemóvel (Mobile)</span>
         </button>
+      </div>
+
+      {/* ADVERTISING SALES AUTOMATION */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] font-black text-indigo-600">Automated Sales</div>
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">Advertising Checkout & AI Pricing</h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Customers pay first, create three AI banner options, then submit the selected design for your approval.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={saveAdvertisingSalesSettings}
+            disabled={salesSettingsSaving}
+            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black disabled:opacity-50"
+          >
+            {salesSettingsSaving ? 'Saving...' : 'Save Sales Settings'}
+          </button>
+        </div>
+
+        <label className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={advertisingSalesEnabled}
+            onChange={(event) => setAdvertisingSalesEnabled(event.target.checked)}
+            className="w-5 h-5 rounded"
+          />
+          <div>
+            <p className="text-sm font-black text-slate-900 dark:text-white">Enable online advertising sales</p>
+            <p className="text-xs text-slate-500">When disabled, /advertise remains visible but Stripe checkout cannot start.</p>
+          </div>
+        </label>
+
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {[
+            ['4 seconds / 30 days', price4s30d, setPrice4s30d],
+            ['6 seconds / 30 days', price6s30d, setPrice6s30d],
+            ['8 seconds / 30 days', price8s30d, setPrice8s30d],
+            ['10 seconds / 30 days', price10s30d, setPrice10s30d],
+          ].map(([label, value, setter]: any) => (
+            <div key={label}>
+              <label className="block text-[10px] font-black text-slate-500 mb-1.5">{label}</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">£</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={value}
+                  onChange={(event) => setter(event.target.value)}
+                  className="w-full pl-7 pr-3 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+          ))}
+
+          <div>
+            <label className="block text-[10px] font-black text-slate-500 mb-1.5">AI generation rounds included</label>
+            <input
+              type="number"
+              min="1"
+              max="5"
+              value={aiGenerationsIncluded}
+              onChange={(event) => setAiGenerationsIncluded(event.target.value)}
+              className="w-full px-3 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900 p-4 text-xs text-indigo-800 dark:text-indigo-200">
+          Prices above are for 30 days. The public checkout automatically prorates 7-day and 14-day campaigns. You keep full control of the price for each exposure time.
+        </div>
+      </div>
+
+      {/* CUSTOMER BANNERS AWAITING APPROVAL */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] font-black text-amber-600">Approval Queue</div>
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">Customer Advertising Banners</h2>
+            <p className="text-xs text-slate-500 mt-1">Paid banners never go live until you approve them.</p>
+          </div>
+          <span className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-black text-amber-700">
+            {pendingAdvertisingOrders.length} pending
+          </span>
+        </div>
+
+        {pendingOrdersLoading ? (
+          <div className="p-4 text-sm text-slate-500">Loading approval queue...</div>
+        ) : pendingAdvertisingOrders.length === 0 ? (
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 text-sm text-slate-500">No customer banners are waiting for approval.</div>
+        ) : (
+          <div className="space-y-4">
+            {pendingAdvertisingOrders.map((order) => (
+              <div key={order.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <img
+                  src={order.selectedBannerUrl}
+                  alt={order.advertiserName || 'Submitted advertising banner'}
+                  className="w-full h-auto bg-white"
+                />
+                <div className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div>
+                    <p className="font-black text-slate-900 dark:text-white">{order.advertiserName || 'Advertiser'}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {order.displaySeconds || 4}s · {order.durationDays || 30} days · Paid £{Number(order.amountPaid || 0).toFixed(2)}
+                    </p>
+                    {order.adminNote && (
+                      <p className="text-xs text-amber-700 mt-1">Previous note: {order.adminNote}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => requestAdvertisingChanges(order)}
+                      className="px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-black"
+                    >
+                      Request Changes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => approveAdvertisingOrder(order)}
+                      disabled={approvingOrderId === order.id}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-black disabled:opacity-50"
+                    >
+                      {approvingOrderId === order.id ? 'Approving...' : 'Approve & Publish'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* LISTING DETAILS ADVERTISING */}
