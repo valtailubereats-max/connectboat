@@ -8,7 +8,7 @@ import {
   Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video
 } from 'lucide-react';
 import { 
-  doc, updateDoc, increment, setDoc, collection, query, where, limit, getDoc, serverTimestamp, Timestamp 
+  doc, updateDoc, increment, setDoc, collection, query, where, limit, getDoc, serverTimestamp, Timestamp, onSnapshot 
 } from 'firebase/firestore';
 import { db, getDocWithCacheFallback, getDocsWithCacheFallback, parseFirestoreDate, handleFirestoreError, OperationType } from '../firebase';
 import { Ad, UserProfile, Review, getRegionForCity } from '../types';
@@ -39,6 +39,12 @@ const AdDetails = () => {
   const isService = ad ? (ad.category === 'Boat Services' || ad.category === 'Serviços' || ad.category?.includes('Services') || ad.category?.includes('Serviços')) : false;
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [listingAdBanner, setListingAdBanner] = useState<any>({
+    enabled: false,
+    imageUrl: '',
+    targetUrl: '',
+    altText: 'ConnectBoat advertising banner',
+  });
 
   // Imagens e galeria
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -116,6 +122,40 @@ const AdDetails = () => {
   useEffect(() => {
     pauseVideos();
   }, [currentImageIndex]);
+
+  useEffect(() => {
+    const bannerRef = doc(db, 'settings', 'adDetailsAdvertising');
+    const unsubscribe = onSnapshot(
+      bannerRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setListingAdBanner({
+            enabled: false,
+            imageUrl: '',
+            targetUrl: '',
+            altText: 'ConnectBoat advertising banner',
+          });
+          return;
+        }
+
+        const data = snapshot.data() || {};
+        setListingAdBanner({
+          enabled: data.enabled === true,
+          imageUrl: typeof data.imageUrl === 'string' ? data.imageUrl.trim() : '',
+          targetUrl: typeof data.targetUrl === 'string' ? data.targetUrl.trim() : '',
+          altText:
+            typeof data.altText === 'string' && data.altText.trim()
+              ? data.altText.trim()
+              : 'ConnectBoat advertising banner',
+        });
+      },
+      (error) => {
+        console.warn('[AdDetails] Advertising banner unavailable:', error);
+      }
+    );
+
+    return unsubscribe;
+  }, []);
 
   // Vendedor e avaliações gerais
   const [sellerProfile, setSellerProfile] = useState<UserProfile | null>(null);
@@ -917,15 +957,43 @@ const AdDetails = () => {
         </button>
       </div>
 
-      {/* Premium advertising slot */}
-      <div className="hidden lg:flex mb-5 min-h-[92px] rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-r from-slate-950 via-[#0b2d55] to-indigo-700 shadow-sm items-center justify-between px-8 py-4 text-white">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.28em] text-sky-300 mb-1">ConnectBoat Advertising</div>
-          <div className="text-xl font-black tracking-tight">Put your marine brand in front of boat buyers</div>
-          <div className="text-xs text-slate-300 mt-1">Premium banner space for marine businesses, dealers and services.</div>
+      {/* Admin-controlled advertising banner */}
+      {listingAdBanner.enabled && listingAdBanner.imageUrl ? (
+        listingAdBanner.targetUrl ? (
+          <a
+            href={listingAdBanner.targetUrl}
+            target="_blank"
+            rel="noopener noreferrer sponsored"
+            className="block mb-5 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow"
+            aria-label={listingAdBanner.altText}
+          >
+            <img
+              src={listingAdBanner.imageUrl}
+              alt={listingAdBanner.altText}
+              className="block w-full h-auto max-h-[170px] sm:max-h-[190px] lg:max-h-[150px] object-contain bg-white"
+              loading="eager"
+            />
+          </a>
+        ) : (
+          <div className="mb-5 rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
+            <img
+              src={listingAdBanner.imageUrl}
+              alt={listingAdBanner.altText}
+              className="block w-full h-auto max-h-[170px] sm:max-h-[190px] lg:max-h-[150px] object-contain bg-white"
+              loading="eager"
+            />
+          </div>
+        )
+      ) : (
+        <div className="hidden lg:flex mb-5 min-h-[92px] rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-r from-slate-950 via-[#0b2d55] to-indigo-700 shadow-sm items-center justify-between px-8 py-4 text-white">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-sky-300 mb-1">ConnectBoat Advertising</div>
+            <div className="text-xl font-black tracking-tight">Put your marine brand in front of boat buyers</div>
+            <div className="text-xs text-slate-300 mt-1">Premium banner space for marine businesses, dealers and services.</div>
+          </div>
+          <div className="shrink-0 rounded-xl bg-white/10 border border-white/20 px-5 py-3 text-sm font-black backdrop-blur-sm">Advertising Space</div>
         </div>
-        <div className="shrink-0 rounded-xl bg-white/10 border border-white/20 px-5 py-3 text-sm font-black backdrop-blur-sm">Advertising Space</div>
-      </div>
+      )}
 
       {/* DESKTOP LAYOUT */}
       <div className="hidden lg:grid lg:grid-cols-12 gap-4 xl:gap-5">
@@ -1477,9 +1545,9 @@ const AdDetails = () => {
             </div>
 
             {/* Cartão do Vendedor e Avaliações */}
-            <div className="bg-slate-50 rounded-2xl p-4 md:p-6 border border-slate-100 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/60">
-                <div className="flex items-center gap-3">
+            <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 space-y-4 overflow-hidden">
+              <div className="flex flex-col gap-3 pb-3 border-b border-slate-200/60">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className="w-12 h-12 bg-indigo-600/10 text-indigo-700 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0">
                     {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
                   </div>
@@ -1515,7 +1583,7 @@ const AdDetails = () => {
                 {user && user.uid !== ad.sellerId && (
                   <button
                     onClick={() => setShowReviewModal(true)}
-                    className="text-[11px] font-black bg-indigo-50 text-indigo-600 py-1.5 px-3.5 rounded-xl border border-indigo-100 hover:bg-indigo-100/80 hover:text-indigo-700 font-bold transition-all text-center w-full sm:w-auto self-start sm:self-center flex-shrink-0"
+                    className="w-full text-[11px] font-black bg-indigo-50 text-indigo-600 py-2 px-3 rounded-xl border border-indigo-100 hover:bg-indigo-100/80 hover:text-indigo-700 transition-all text-center"
                   >
                     Rate Seller
                   </button>
