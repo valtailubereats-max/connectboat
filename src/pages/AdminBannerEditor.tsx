@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { 
   Sliders, 
   Save, 
@@ -16,7 +16,9 @@ import {
   Move, 
   Eye,
   Info,
-  ArrowUpDown
+  ArrowUpDown,
+  Megaphone,
+  ExternalLink
 } from 'lucide-react';
 import { BannerConfig, DEFAULT_BANNER_CONFIG, BannerDeviceConfig } from '../types';
 
@@ -30,6 +32,13 @@ export default function AdminBannerEditor() {
   const [config, setConfig] = useState<BannerConfig>(DEFAULT_BANNER_CONFIG);
   const [saving, setSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  const [listingAdEnabled, setListingAdEnabled] = useState(false);
+  const [listingAdImageUrl, setListingAdImageUrl] = useState('');
+  const [listingAdTargetUrl, setListingAdTargetUrl] = useState('');
+  const [listingAdAltText, setListingAdAltText] = useState('ConnectBoat advertising banner');
+  const [listingAdSaving, setListingAdSaving] = useState(false);
+  const [listingAdSaved, setListingAdSaved] = useState(false);
 
   useEffect(() => {
     if (initialBannerConfig) {
@@ -47,6 +56,57 @@ export default function AdminBannerEditor() {
       });
     }
   }, [initialBannerConfig]);
+
+  useEffect(() => {
+    const loadListingAdvertising = async () => {
+      try {
+        const snapshot = await getDoc(doc(db, 'settings', 'adDetailsAdvertising'));
+        if (!snapshot.exists()) return;
+
+        const data = snapshot.data() || {};
+        setListingAdEnabled(data.enabled === true);
+        setListingAdImageUrl(typeof data.imageUrl === 'string' ? data.imageUrl : '');
+        setListingAdTargetUrl(typeof data.targetUrl === 'string' ? data.targetUrl : '');
+        setListingAdAltText(
+          typeof data.altText === 'string' && data.altText.trim()
+            ? data.altText
+            : 'ConnectBoat advertising banner'
+        );
+      } catch (error) {
+        console.warn('Unable to load listing advertising banner:', error);
+      }
+    };
+
+    loadListingAdvertising();
+  }, []);
+
+  const handleSaveListingAdvertising = async () => {
+    try {
+      setListingAdSaving(true);
+      setListingAdSaved(false);
+
+      await setDoc(
+        doc(db, 'settings', 'adDetailsAdvertising'),
+        {
+          enabled: listingAdEnabled,
+          imageUrl: listingAdImageUrl.trim(),
+          targetUrl: listingAdTargetUrl.trim(),
+          altText: listingAdAltText.trim() || 'ConnectBoat advertising banner',
+          updatedAt: new Date().toISOString(),
+          updatedBy: user?.email || 'admin',
+        },
+        { merge: true }
+      );
+
+      setListingAdSaved(true);
+      setTimeout(() => setListingAdSaved(false), 3000);
+    } catch (error) {
+      console.error('Error saving listing advertising banner:', error);
+      alert('Failed to save listing advertising banner.');
+    } finally {
+      setListingAdSaving(false);
+    }
+  };
 
   const currentDeviceConfig = config[activeTab];
 
@@ -170,6 +230,106 @@ export default function AdminBannerEditor() {
           <Smartphone size={16} />
           <span>Telemóvel (Mobile)</span>
         </button>
+      </div>
+
+      {/* LISTING DETAILS ADVERTISING */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+              <Megaphone size={22} />
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                Listing Page Advertising
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Controls the advertising banner displayed above every listing details page.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSaveListingAdvertising}
+            disabled={listingAdSaving}
+            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <Save size={15} />
+            {listingAdSaving ? 'Saving...' : listingAdSaved ? 'Saved!' : 'Save Advertising'}
+          </button>
+        </div>
+
+        <label className="flex items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={listingAdEnabled}
+            onChange={(event) => setListingAdEnabled(event.target.checked)}
+            className="w-5 h-5 rounded"
+          />
+          <div>
+            <p className="text-sm font-black text-slate-900 dark:text-white">Enable advertising banner</p>
+            <p className="text-xs text-slate-500">Turn the banner on or off without changing code.</p>
+          </div>
+        </label>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Banner image URL</label>
+            <input
+              type="url"
+              value={listingAdImageUrl}
+              onChange={(event) => setListingAdImageUrl(event.target.value)}
+              placeholder="https://..."
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Click destination URL</label>
+            <input
+              type="url"
+              value={listingAdTargetUrl}
+              onChange={(event) => setListingAdTargetUrl(event.target.value)}
+              placeholder="https://advertiser.co.uk"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Alternative text</label>
+          <input
+            type="text"
+            value={listingAdAltText}
+            onChange={(event) => setListingAdAltText(event.target.value)}
+            placeholder="Advertiser name or campaign description"
+            className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+
+        {listingAdImageUrl.trim() && (
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-50 dark:bg-slate-950">
+            <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <span className="text-[10px] uppercase tracking-widest font-black text-slate-500">Live preview</span>
+              {listingAdTargetUrl.trim() && (
+                <a
+                  href={listingAdTargetUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-indigo-600 flex items-center gap-1"
+                >
+                  Test link <ExternalLink size={12} />
+                </a>
+              )}
+            </div>
+            <img
+              src={listingAdImageUrl}
+              alt={listingAdAltText || 'Advertising preview'}
+              className="w-full max-h-[180px] object-contain bg-white"
+            />
+          </div>
+        )}
       </div>
 
       {/* LIVE PREVIEW BANNER */}
