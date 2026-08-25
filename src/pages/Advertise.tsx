@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 import { CheckCircle2, CreditCard, Image as ImageIcon, Sparkles, Upload, WandSparkles, Clock3, CalendarDays, ArrowRight, ShieldCheck } from 'lucide-react';
 
 type SalesSettings = {
@@ -256,49 +255,74 @@ export default function Advertise() {
         );
       }
 
-      const safeName = readyBannerFile.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-      const bannerRef = ref(
-        storage,
-        `advertising/customer-ready/${orderIdFromUrl}/${Date.now()}_${safeName}`
-      );
-
-      const uploadResult = await uploadBytes(bannerRef, readyBannerFile, {
-        contentType: readyBannerFile.type,
-      });
-
-      const bannerUrl = await getDownloadURL(uploadResult.ref);
-
-      const response = await fetch('/api/stripe/create-checkout-session', {
+      // Ask the existing backend function for a temporary signed upload URL.
+      const prepareResponse = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'advertising_upload_ready_banner',
+          action: 'advertising_prepare_ready_banner_upload',
           orderId: orderIdFromUrl,
           accessToken: tokenFromUrl,
-          bannerUrl,
+          fileName: readyBannerFile.name,
+          mimeType: readyBannerFile.type,
+          fileSize: readyBannerFile.size,
           width: dimensions.width,
           height: dimensions.height,
-          mimeType: readyBannerFile.type,
         }),
       });
 
-      const data = await response.json();
+      const prepareData = await prepareResponse.json();
 
-      if (!response.ok || data?.success !== true || !data.bannerUrl) {
+      if (!prepareResponse.ok || prepareData?.success !== true || !prepareData.uploadUrl) {
         throw new Error(
-          data?.errorMessage ||
-          data?.error ||
-          'Unable to submit your banner.'
+          prepareData?.errorMessage ||
+          prepareData?.error ||
+          'Unable to prepare the banner upload.'
         );
       }
 
-      setSelected(data.bannerUrl);
+      // Upload directly to the short-lived signed Google Cloud Storage URL.
+      const uploadResponse = await fetch(prepareData.uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': readyBannerFile.type,
+        },
+        body: readyBannerFile,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Banner upload failed (${uploadResponse.status}). Please try again.`);
+      }
+
+      // Tell ConnectBoat the upload completed so it can submit the banner for approval.
+      const finalizeResponse = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'advertising_finalize_ready_banner_upload',
+          orderId: orderIdFromUrl,
+          accessToken: tokenFromUrl,
+          objectPath: prepareData.objectPath,
+        }),
+      });
+
+      const finalizeData = await finalizeResponse.json();
+
+      if (!finalizeResponse.ok || finalizeData?.success !== true || !finalizeData.bannerUrl) {
+        throw new Error(
+          finalizeData?.errorMessage ||
+          finalizeData?.error ||
+          'Unable to submit your banner for approval.'
+        );
+      }
+
+      setSelected(finalizeData.bannerUrl);
       setOrder((prev) =>
         prev
           ? {
               ...prev,
-              selectedBannerUrl: data.bannerUrl,
-              generatedBanners: [data.bannerUrl],
+              selectedBannerUrl: finalizeData.bannerUrl,
+              generatedBanners: [finalizeData.bannerUrl],
               workflowStatus: 'pending_approval',
             }
           : prev
@@ -598,6 +622,12 @@ export default function Advertise() {
                   <strong>Recommended:</strong> 1600×240px. Minimum 1200×180px. Very wide horizontal banners only.
                   ConnectBoat will not stretch, crop or distort your finished artwork.
                 </div>
+
+                {designError && (
+                  <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">
+                    {designError}
+                  </div>
+                )}
 
                 <button
                   type="button"
