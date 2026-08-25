@@ -139,7 +139,36 @@ const AdDetails = () => {
             return aTime - bTime;
           });
 
-        setListingAdCampaigns(campaigns);
+        setListingAdCampaigns((previous) => {
+          const previousKey = previous
+            .map((campaign) => [
+              campaign.id,
+              campaign.enabled,
+              campaign.imageUrl,
+              campaign.targetUrl,
+              campaign.altText,
+              campaign.displaySeconds,
+              campaign.startDate,
+              campaign.endDate,
+            ].join('|'))
+            .join('||');
+
+          const nextKey = campaigns
+            .map((campaign) => [
+              campaign.id,
+              campaign.enabled,
+              campaign.imageUrl,
+              campaign.targetUrl,
+              campaign.altText,
+              campaign.displaySeconds,
+              campaign.startDate,
+              campaign.endDate,
+            ].join('|'))
+            .join('||');
+
+          return previousKey === nextKey ? previous : campaigns;
+        });
+
         setListingAdIndex((current) =>
           campaigns.length === 0 ? 0 : Math.min(current, campaigns.length - 1)
         );
