@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   Sliders, 
   Save, 
@@ -18,7 +19,8 @@ import {
   Info,
   ArrowUpDown,
   Megaphone,
-  ExternalLink
+  ExternalLink,
+  Upload
 } from 'lucide-react';
 import { BannerConfig, DEFAULT_BANNER_CONFIG, BannerDeviceConfig } from '../types';
 
@@ -39,6 +41,8 @@ export default function AdminBannerEditor() {
   const [listingAdAltText, setListingAdAltText] = useState('ConnectBoat advertising banner');
   const [listingAdSaving, setListingAdSaving] = useState(false);
   const [listingAdSaved, setListingAdSaved] = useState(false);
+  const [listingAdUploading, setListingAdUploading] = useState(false);
+  const listingAdFileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (initialBannerConfig) {
@@ -79,6 +83,50 @@ export default function AdminBannerEditor() {
 
     loadListingAdvertising();
   }, []);
+
+  const handleListingAdImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      alert('The banner image must be 8MB or smaller.');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      setListingAdUploading(true);
+
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const imageRef = ref(
+        storage,
+        `advertising/listing-page/${Date.now()}_${safeName}`
+      );
+
+      const uploadResult = await uploadBytes(imageRef, file, {
+        contentType: file.type,
+      });
+      const downloadUrl = await getDownloadURL(uploadResult.ref);
+
+      setListingAdImageUrl(downloadUrl);
+    } catch (error) {
+      console.error('Error uploading listing advertising banner:', error);
+      alert(
+        `Failed to upload banner image: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    } finally {
+      setListingAdUploading(false);
+      event.target.value = '';
+    }
+  };
 
   const handleSaveListingAdvertising = async () => {
     try {
@@ -275,14 +323,33 @@ export default function AdminBannerEditor() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Banner image URL</label>
+            <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">
+              Banner image
+            </label>
+
             <input
-              type="url"
-              value={listingAdImageUrl}
-              onChange={(event) => setListingAdImageUrl(event.target.value)}
-              placeholder="https://..."
-              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+              ref={listingAdFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleListingAdImageUpload}
+              className="hidden"
             />
+
+            <button
+              type="button"
+              onClick={() => listingAdFileInputRef.current?.click()}
+              disabled={listingAdUploading}
+              className="w-full px-4 py-3 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 text-sm font-black flex items-center justify-center gap-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors disabled:opacity-50"
+            >
+              <Upload size={16} />
+              {listingAdUploading ? 'Uploading...' : listingAdImageUrl ? 'Replace Image' : 'Upload Image'}
+            </button>
+
+            {listingAdImageUrl && (
+              <p className="mt-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                Image uploaded to Firebase Storage.
+              </p>
+            )}
           </div>
 
           <div>
