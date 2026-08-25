@@ -157,17 +157,48 @@ const AdminDashboard = () => {
 
   const loadFinanceAdvertisingRevenue = async () => {
     try {
-      const snapshot = await getDocs(collection(db, 'advertisingCampaigns'));
-      setFinanceAdvertisingRevenue(
-        snapshot.docs
-          .map((campaignDoc) => ({ id: campaignDoc.id, ...campaignDoc.data() } as any))
-          .filter((campaign) =>
-            campaign.paymentStatus === 'paid' &&
-            typeof campaign.amountPaid === 'number' &&
-            Number.isFinite(campaign.amountPaid) &&
-            campaign.amountPaid > 0
-          )
-      );
+      const [campaignSnapshot, orderSnapshot] = await Promise.all([
+        getDocs(collection(db, 'advertisingCampaigns')),
+        getDocs(collection(db, 'advertisingOrders')),
+      ]);
+
+      const manualCampaignRevenue = campaignSnapshot.docs
+        .map((campaignDoc) => ({ id: campaignDoc.id, ...campaignDoc.data() } as any))
+        .filter((campaign) =>
+          !campaign.orderId &&
+          campaign.paymentStatus === 'paid' &&
+          typeof campaign.amountPaid === 'number' &&
+          Number.isFinite(campaign.amountPaid) &&
+          campaign.amountPaid > 0
+        )
+        .map((campaign) => ({
+          ...campaign,
+          financeSource: 'manual_campaign',
+          stripeFee: typeof campaign.stripeFee === 'number' ? campaign.stripeFee : 0,
+        }));
+
+      const automatedOrderRevenue = orderSnapshot.docs
+        .map((orderDoc) => ({ id: orderDoc.id, ...orderDoc.data() } as any))
+        .filter((order) =>
+          order.paymentStatus === 'paid' &&
+          typeof order.amountPaid === 'number' &&
+          Number.isFinite(order.amountPaid) &&
+          order.amountPaid > 0
+        )
+        .map((order) => ({
+          ...order,
+          financeSource: 'stripe_advertising_order',
+          advertiserName: order.advertiserName || 'Advertising campaign',
+          paidDate:
+            order.paidDate ||
+            (order.paidAt?.toDate ? order.paidAt.toDate().toISOString().slice(0, 10) : ''),
+          stripeFee: typeof order.stripeFee === 'number' ? order.stripeFee : 0,
+        }));
+
+      setFinanceAdvertisingRevenue([
+        ...automatedOrderRevenue,
+        ...manualCampaignRevenue,
+      ]);
     } catch (error) {
       console.error('[Finance] Unable to load advertising revenue:', error);
       setFinanceDataError('Unable to load advertising revenue.');
@@ -910,10 +941,15 @@ const AdminDashboard = () => {
   const financeAdvertisingTotal = filteredFinanceAdvertisingRevenue.reduce((sum, campaign) => sum + Number(campaign.amountPaid || 0), 0);
   const financeGrossRevenue = financeListingRevenue + financeAdvertisingTotal;
   const financeRefunds = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountRefunded || 0), 0);
-  const financeStripeFees = filteredFinanceRecords.reduce(
+  const financeListingStripeFees = filteredFinanceRecords.reduce(
     (sum, record) => sum + (typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee) ? record.stripeFee : 0),
     0
   );
+  const financeAdvertisingStripeFees = filteredFinanceAdvertisingRevenue.reduce(
+    (sum, record) => sum + (typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee) ? record.stripeFee : 0),
+    0
+  );
+  const financeStripeFees = financeListingStripeFees + financeAdvertisingStripeFees;
   const financeOperatingExpenses = filteredFinanceExpenses.reduce(
     (sum, expense) => sum + Number(expense.amount || 0),
     0
@@ -997,6 +1033,8 @@ const AdminDashboard = () => {
 
     const advertisingRows = visibleFinanceAdvertisingRevenue.map((campaign) => {
       const amount = Number(campaign.amountPaid || 0);
+      const stripeFee = Number(campaign.stripeFee || 0);
+      const realNet = amount - stripeFee;
       return [
         'Advertising Revenue',
         campaign.paidDate || '',
@@ -1007,12 +1045,12 @@ const AdminDashboard = () => {
         'Paid',
         amount.toFixed(2),
         '0.00',
+        stripeFee.toFixed(2),
         '0.00',
-        '0.00',
-        amount.toFixed(2),
+        realNet.toFixed(2),
         campaign.currency || 'GBP',
-        '',
-        '',
+        campaign.stripeCheckoutSessionId || '',
+        campaign.stripePaymentIntentId || '',
         '',
         campaign.id || '',
       ];
@@ -1055,14 +1093,23 @@ const AdminDashboard = () => {
       (sum, record) => sum + Number(record.amountRefunded || 0),
       0
     );
-    const totalStripeFees = visibleFinanceRecords.reduce(
-      (sum, record) =>
-        sum +
-        (typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee)
-          ? Number(record.stripeFee)
-          : 0),
-      0
-    );
+    const totalStripeFees =
+      visibleFinanceRecords.reduce(
+        (sum, record) =>
+          sum +
+          (typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee)
+            ? Number(record.stripeFee)
+            : 0),
+        0
+      ) +
+      visibleFinanceAdvertisingRevenue.reduce(
+        (sum, record) =>
+          sum +
+          (typeof record.stripeFee === 'number' && Number.isFinite(record.stripeFee)
+            ? Number(record.stripeFee)
+            : 0),
+        0
+      );
     const totalOperatingExpenses = visibleFinanceExpenses.reduce(
       (sum, expense) => sum + Number(expense.amount || 0),
       0
@@ -1083,7 +1130,8 @@ const AdminDashboard = () => {
       ['Total Stripe Fees GBP', totalStripeFees.toFixed(2)],
       ['Operating Expenses GBP', totalOperatingExpenses.toFixed(2)],
       ['Final Net GBP', totalFinalNet.toFixed(2)],
-      ['Transactions', visibleFinanceRecords.length],
+      ['Listing Transactions', visibleFinanceRecords.length],
+      ['Advertising Transactions', visibleFinanceAdvertisingRevenue.length],
       ['Operating Expenses', visibleFinanceExpenses.length],
     ];
 
