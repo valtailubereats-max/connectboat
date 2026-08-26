@@ -14,7 +14,6 @@ import {
   Sparkles, 
   Type, 
   Palette, 
-  Move, 
   Eye,
   Info,
   ArrowUpDown,
@@ -26,240 +25,6 @@ import {
 import { BannerConfig, DEFAULT_BANNER_CONFIG, BannerDeviceConfig } from '../types';
 
 const boatBannerBg = "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=1600&q=80";
-
-const ADMIN_FINAL_WIDTH = 1600;
-const ADMIN_FINAL_HEIGHT = 240;
-const ADMIN_MIN_WIDTH = 1200;
-const ADMIN_MIN_HEIGHT = 300;
-const ADMIN_MAX_DIMENSION = 12000;
-const ADMIN_MAX_FILE_BYTES = 12 * 1024 * 1024;
-const ADMIN_MIN_RATIO = 1.2;
-const ADMIN_MAX_RATIO = 8;
-
-type AdminBannerImageEditorProps = {
-  order: any;
-  initialUrl: string;
-  onReady: (url: string) => void;
-  onCancel: () => void;
-};
-
-function AdminBannerImageEditor({ order, initialUrl, onReady, onCancel }: AdminBannerImageEditorProps) {
-  const [sourceUrl, setSourceUrl] = useState(initialUrl || '');
-  const [sourceWidth, setSourceWidth] = useState(0);
-  const [sourceHeight, setSourceHeight] = useState(0);
-  const [zoom, setZoom] = useState(1);
-  const [positionX, setPositionX] = useState(50);
-  const [positionY, setPositionY] = useState(50);
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [objectUrl, setObjectUrl] = useState('');
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  const loadDimensions = (url: string) => new Promise<{ width: number; height: number }>((resolve, reject) => {
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
-    image.onerror = () => reject(new Error('Unable to load this banner image.'));
-    image.src = url;
-  });
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!sourceUrl) return;
-    loadDimensions(sourceUrl)
-      .then(({ width, height }) => {
-        if (!cancelled) {
-          setSourceWidth(width);
-          setSourceHeight(height);
-        }
-      })
-      .catch((loadError: any) => {
-        if (!cancelled) setError(loadError?.message || 'Unable to load this banner image.');
-      });
-    return () => { cancelled = true; };
-  }, [sourceUrl]);
-
-  useEffect(() => () => {
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-  }, [objectUrl]);
-
-  const baseScale = sourceWidth && sourceHeight
-    ? Math.max(ADMIN_FINAL_WIDTH / sourceWidth, ADMIN_FINAL_HEIGHT / sourceHeight)
-    : 1;
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !sourceUrl || !sourceWidth || !sourceHeight) return;
-
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.onload = () => {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      canvas.width = ADMIN_FINAL_WIDTH;
-      canvas.height = ADMIN_FINAL_HEIGHT;
-      ctx.fillStyle = '#081426';
-      ctx.fillRect(0, 0, ADMIN_FINAL_WIDTH, ADMIN_FINAL_HEIGHT);
-
-      const scale = baseScale * zoom;
-      const drawWidth = sourceWidth * scale;
-      const drawHeight = sourceHeight * scale;
-      const overflowX = Math.max(0, drawWidth - ADMIN_FINAL_WIDTH);
-      const overflowY = Math.max(0, drawHeight - ADMIN_FINAL_HEIGHT);
-      const x = -(overflowX * positionX / 100);
-      const y = -(overflowY * positionY / 100);
-
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(image, x, y, drawWidth, drawHeight);
-    };
-    image.onerror = () => setError('Unable to preview this image.');
-    image.src = sourceUrl;
-  }, [sourceUrl, sourceWidth, sourceHeight, baseScale, zoom, positionX, positionY]);
-
-  const chooseReplacement = async (file?: File | null) => {
-    if (!file) return;
-    setError('');
-
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      setError('Use a PNG, JPG/JPEG or WebP image.');
-      return;
-    }
-    if (file.size > ADMIN_MAX_FILE_BYTES) {
-      setError('The image must be 12MB or smaller.');
-      return;
-    }
-
-    const url = URL.createObjectURL(file);
-    try {
-      const { width, height } = await loadDimensions(url);
-      const ratio = width / height;
-      if (width <= height) throw new Error('Vertical images are not accepted. Choose a horizontal image.');
-      if (width < ADMIN_MIN_WIDTH || height < ADMIN_MIN_HEIGHT) {
-        throw new Error(`Image is too small. Minimum ${ADMIN_MIN_WIDTH}×${ADMIN_MIN_HEIGHT}px.`);
-      }
-      if (width > ADMIN_MAX_DIMENSION || height > ADMIN_MAX_DIMENSION) {
-        throw new Error(`Image is too large. Maximum dimension is ${ADMIN_MAX_DIMENSION}px.`);
-      }
-      if (ratio < ADMIN_MIN_RATIO || ratio > ADMIN_MAX_RATIO) {
-        throw new Error('Choose a wider horizontal image suitable for a banner.');
-      }
-
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      setObjectUrl(url);
-      setSourceUrl(url);
-      setSourceWidth(width);
-      setSourceHeight(height);
-      setZoom(1);
-      setPositionX(50);
-      setPositionY(50);
-    } catch (chooseError: any) {
-      URL.revokeObjectURL(url);
-      setError(chooseError?.message || 'Unable to use this image.');
-    }
-  };
-
-  const exportBanner = async () => {
-    if (!sourceUrl || !sourceWidth || !sourceHeight) throw new Error('Choose an image first.');
-
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error('Unable to prepare this image.'));
-      image.src = sourceUrl;
-    });
-
-    const canvas = document.createElement('canvas');
-    canvas.width = ADMIN_FINAL_WIDTH;
-    canvas.height = ADMIN_FINAL_HEIGHT;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Unable to prepare this banner.');
-
-    ctx.fillStyle = '#081426';
-    ctx.fillRect(0, 0, ADMIN_FINAL_WIDTH, ADMIN_FINAL_HEIGHT);
-    const scale = baseScale * zoom;
-    const drawWidth = sourceWidth * scale;
-    const drawHeight = sourceHeight * scale;
-    const overflowX = Math.max(0, drawWidth - ADMIN_FINAL_WIDTH);
-    const overflowY = Math.max(0, drawHeight - ADMIN_FINAL_HEIGHT);
-    const x = -(overflowX * positionX / 100);
-    const y = -(overflowY * positionY / 100);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(image, x, y, drawWidth, drawHeight);
-
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob(
-        (blob) => blob ? resolve(blob) : reject(new Error('Unable to export the banner.')),
-        'image/jpeg',
-        0.92
-      );
-    });
-  };
-
-  const saveAdminVersion = async () => {
-    try {
-      setSaving(true);
-      setError('');
-      const blob = await exportBanner();
-      const proposalRef = ref(storage, `advertising/admin-proposals/${order.id}/${Date.now()}_admin-edited-banner.jpg`);
-      const uploadResult = await uploadBytes(proposalRef, blob, { contentType: 'image/jpeg' });
-      const url = await getDownloadURL(uploadResult.ref);
-      onReady(url);
-    } catch (saveError: any) {
-      console.error('Unable to save edited admin banner:', saveError);
-      setError(saveError?.message || 'Unable to save the edited banner.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50/70 p-3 sm:p-4 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">Admin image editor</div>
-          <p className="text-xs text-slate-600 mt-1">Zoom, reposition or replace the image. The preview below is the exact 1600×240 output.</p>
-        </div>
-        <button type="button" onClick={onCancel} className="px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-black text-slate-600">Close</button>
-      </div>
-
-      <div className="w-full overflow-hidden rounded-xl bg-slate-950 border border-slate-300">
-        <canvas ref={canvasRef} className="block w-full h-auto" aria-label="Admin banner preview" />
-      </div>
-
-      <label className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-indigo-300 bg-white text-indigo-700 text-xs font-black cursor-pointer">
-        <Upload size={15} /> Replace with another horizontal image
-        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => chooseReplacement(e.target.files?.[0])} />
-      </label>
-
-      <div className="grid grid-cols-1 gap-4 rounded-xl bg-white border border-indigo-100 p-4">
-        <label className="text-xs font-black text-slate-700">
-          <span className="flex items-center gap-2 mb-2"><ZoomIn size={15}/>Zoom</span>
-          <input type="range" min="1" max="3" step="0.01" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="w-full"/>
-        </label>
-        <label className="text-xs font-black text-slate-700">
-          <span className="flex items-center gap-2 mb-2"><Move size={15}/>Horizontal position</span>
-          <input type="range" min="0" max="100" value={positionX} onChange={(e) => setPositionX(Number(e.target.value))} className="w-full"/>
-        </label>
-        <label className="text-xs font-black text-slate-700">
-          <span className="flex items-center gap-2 mb-2"><Move size={15}/>Vertical position</span>
-          <input type="range" min="0" max="100" value={positionY} onChange={(e) => setPositionY(Number(e.target.value))} className="w-full"/>
-        </label>
-        <button type="button" onClick={() => { setZoom(1); setPositionX(50); setPositionY(50); }} className="inline-flex justify-center items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-black text-slate-700">
-          <RotateCcw size={15}/>Reset position
-        </button>
-      </div>
-
-      {error && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700">{error}</div>}
-
-      <button type="button" onClick={saveAdminVersion} disabled={saving || !sourceWidth || !sourceHeight} className="w-full rounded-xl bg-indigo-600 text-white px-5 py-3 font-black disabled:opacity-50">
-        {saving ? 'Saving Admin Version...' : 'Save Admin Version'}
-      </button>
-    </div>
-  );
-}
 
 export default function AdminBannerEditor() {
   const { bannerConfig: initialBannerConfig } = useSettings();
@@ -480,6 +245,31 @@ export default function AdminBannerEditor() {
       alert('Failed to send the proposal to the customer.');
     } finally {
       setSendingProposalId('');
+    }
+  };
+
+  const downloadSubmittedBanner = async (order: any) => {
+    const url = order?.selectedBannerUrl || order?.customerSubmittedBannerUrl || '';
+    if (!url) {
+      alert('No submitted banner image is available.');
+      return;
+    }
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Download failed (${response.status})`);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `${String(order.advertiserName || 'advertiser').replace(/[^a-zA-Z0-9._-]/g, '-')}-original-banner.${blob.type.includes('jpeg') ? 'jpg' : blob.type.includes('webp') ? 'webp' : 'png'}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      console.error('Unable to download submitted banner:', error);
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -1092,27 +882,7 @@ export default function AdminBannerEditor() {
                     )}
 
                     {!waitingCustomer && (
-                      <div className="space-y-3">
-                        {!editingOrderIds[order.id] ? (
-                          <button
-                            type="button"
-                            onClick={() => setEditingOrderIds((current) => ({ ...current, [order.id]: true }))}
-                            className="w-full rounded-xl border-2 border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-black text-indigo-700"
-                          >
-                            Edit Banner in ConnectBoat
-                          </button>
-                        ) : (
-                          <AdminBannerImageEditor
-                            order={order}
-                            initialUrl={proposalUrl || order.selectedBannerUrl}
-                            onCancel={() => setEditingOrderIds((current) => ({ ...current, [order.id]: false }))}
-                            onReady={(url) => {
-                              setAdminProposalUrls((current) => ({ ...current, [order.id]: url }));
-                              setEditingOrderIds((current) => ({ ...current, [order.id]: false }));
-                            }}
-                          />
-                        )}
-                      </div>
+                      
                     )}
 
                     <div>
