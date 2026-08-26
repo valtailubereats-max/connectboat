@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, CreditCard, Upload, Clock3, CalendarDays, ShieldCheck, RotateCcw, ZoomIn, Move } from 'lucide-react';
+import { CheckCircle2, CreditCard, Upload, Clock3, CalendarDays, ShieldCheck } from 'lucide-react';
 
 type SalesSettings = {
   enabled?: boolean;
@@ -46,14 +46,13 @@ const advertisingCategories = [
   'Insurance & Finance', 'Automotive & Towing', 'Other Marine-Related Business',
 ] as const;
 
-const FINAL_WIDTH = 1600;
-const FINAL_HEIGHT = 240;
-const MIN_WIDTH = 1200;
-const MIN_HEIGHT = 300;
-const MAX_DIMENSION = 12000;
-const MAX_FILE_BYTES = 12 * 1024 * 1024;
-const MIN_RATIO = 1.2;
-const MAX_RATIO = 8;
+const STANDARD_RATIO = 16 / 9;
+const RATIO_TOLERANCE = 0.025;
+const MIN_WIDTH = 1280;
+const MIN_HEIGHT = 720;
+const MAX_WIDTH = 3840;
+const MAX_HEIGHT = 2160;
+const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
 const readImage = (file: File): Promise<{ image: HTMLImageElement; url: string }> =>
   new Promise((resolve, reject) => {
@@ -89,14 +88,10 @@ export default function Advertise() {
   const [sourceUrl, setSourceUrl] = useState('');
   const [sourceWidth, setSourceWidth] = useState(0);
   const [sourceHeight, setSourceHeight] = useState(0);
-  const [zoom, setZoom] = useState(1);
-  const [positionX, setPositionX] = useState(50);
-  const [positionY, setPositionY] = useState(50);
   const [designError, setDesignError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [customerMessage, setCustomerMessage] = useState('');
   const [reviewingProposal, setReviewingProposal] = useState(false);
-  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     getDoc(doc(db, 'settings', 'advertisingSales'))
@@ -160,40 +155,19 @@ export default function Advertise() {
     if (!file) return;
     setDesignError('');
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return setDesignError('Use a PNG, JPG/JPEG or WebP image.');
-    if (file.size > MAX_FILE_BYTES) return setDesignError('The image must be 12MB or smaller.');
+    if (file.size > MAX_FILE_BYTES) return setDesignError('The image must be 8MB or smaller.');
     try {
       const { image, url } = await readImage(file);
       const width = image.naturalWidth;
       const height = image.naturalHeight;
       const ratio = width / Math.max(1, height);
       if (width <= height) { URL.revokeObjectURL(url); return setDesignError(`Vertical images are not accepted. This image is ${width}×${height}px. Please choose a horizontal image.`); }
-      if (width < MIN_WIDTH || height < MIN_HEIGHT) { URL.revokeObjectURL(url); return setDesignError(`This image is ${width}×${height}px. Minimum accepted size is ${MIN_WIDTH}×${MIN_HEIGHT}px.`); }
-      if (width > MAX_DIMENSION || height > MAX_DIMENSION) { URL.revokeObjectURL(url); return setDesignError(`This image is too large. Maximum dimension is ${MAX_DIMENSION}px.`); }
-      if (ratio < MIN_RATIO || ratio > MAX_RATIO) { URL.revokeObjectURL(url); return setDesignError(`This image proportion is not suitable. Please use a horizontal image with a width-to-height ratio between ${MIN_RATIO}:1 and ${MAX_RATIO}:1.`); }
+      if (width < MIN_WIDTH || height < MIN_HEIGHT) { URL.revokeObjectURL(url); return setDesignError(`This image is ${width}×${height}px. Please use a 16:9 image of at least ${MIN_WIDTH}×${MIN_HEIGHT}px.`); }
+      if (width > MAX_WIDTH || height > MAX_HEIGHT) { URL.revokeObjectURL(url); return setDesignError(`This image is ${width}×${height}px. Maximum accepted size is ${MAX_WIDTH}×${MAX_HEIGHT}px.`); }
+      if (Math.abs(ratio - STANDARD_RATIO) > RATIO_TOLERANCE) { URL.revokeObjectURL(url); return setDesignError(`This image is ${width}×${height}px. Advertising artwork must use the standard 16:9 proportion (for example 1280×720 or 1920×1080).`); }
       if (sourceUrl) URL.revokeObjectURL(sourceUrl);
-      setSourceFile(file); setSourceUrl(url); setSourceWidth(width); setSourceHeight(height); setZoom(1); setPositionX(50); setPositionY(50);
+      setSourceFile(file); setSourceUrl(url); setSourceWidth(width); setSourceHeight(height);
     } catch (error: any) { setDesignError(error?.message || 'Unable to read this image.'); }
-  };
-
-  const baseScale = useMemo(() => {
-    if (!sourceWidth || !sourceHeight) return 1;
-    return Math.max(FINAL_WIDTH / sourceWidth, FINAL_HEIGHT / sourceHeight);
-  }, [sourceWidth, sourceHeight]);
-
-  const renderPreparedBlob = async (): Promise<Blob> => {
-    if (!sourceFile) throw new Error('Choose an image first.');
-    const { image, url } = await readImage(sourceFile);
-    try {
-      const canvas = document.createElement('canvas'); canvas.width = FINAL_WIDTH; canvas.height = FINAL_HEIGHT;
-      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Unable to prepare the banner.');
-      ctx.fillStyle = '#081426'; ctx.fillRect(0, 0, FINAL_WIDTH, FINAL_HEIGHT);
-      const scale = baseScale * zoom;
-      const drawW = sourceWidth * scale; const drawH = sourceHeight * scale;
-      const overflowX = Math.max(0, drawW - FINAL_WIDTH); const overflowY = Math.max(0, drawH - FINAL_HEIGHT);
-      const x = -(overflowX * positionX / 100); const y = -(overflowY * positionY / 100);
-      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(image, x, y, drawW, drawH);
-      return await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Unable to export the banner.')), 'image/jpeg', 0.9));
-    } finally { URL.revokeObjectURL(url); }
   };
 
   const submitPreparedBanner = async () => {
@@ -201,14 +175,14 @@ export default function Advertise() {
     if (order?.adminIntervened && !customerMessage.trim()) return setDesignError('Add a short message to ConnectBoat explaining your new version.');
     try {
       setSubmitting(true); setDesignError('');
-      const blob = await renderPreparedBlob();
+      const blob = sourceFile;
       const prepareResponse = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'advertising_prepare_ready_banner_upload', orderId: orderIdFromUrl, accessToken: tokenFromUrl, fileName: 'prepared-banner.jpg', mimeType: 'image/jpeg', fileSize: blob.size, width: FINAL_WIDTH, height: FINAL_HEIGHT }),
+        body: JSON.stringify({ action: 'advertising_prepare_ready_banner_upload', orderId: orderIdFromUrl, accessToken: tokenFromUrl, fileName: sourceFile.name || 'advertising-artwork.jpg', mimeType: sourceFile.type, fileSize: sourceFile.size, width: sourceWidth, height: sourceHeight }),
       });
       const prepareData = await prepareResponse.json();
       if (!prepareResponse.ok || prepareData?.success !== true || !prepareData.uploadUrl) throw new Error(prepareData?.errorMessage || prepareData?.error || 'Unable to prepare the banner upload.');
-      const uploadResponse = await fetch(prepareData.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+      const uploadResponse = await fetch(prepareData.uploadUrl, { method: 'PUT', headers: { 'Content-Type': sourceFile.type }, body: sourceFile });
       if (!uploadResponse.ok) throw new Error(`Banner upload failed (${uploadResponse.status}).`);
       const finalResponse = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -243,35 +217,12 @@ export default function Advertise() {
   const customerRejected = order?.workflowStatus === 'customer_rejected_admin_proposal';
   const changesRequested = order?.workflowStatus === 'changes_requested';
 
-  useEffect(() => {
-    const canvas = previewCanvasRef.current;
-    if (!canvas || !sourceUrl || !sourceWidth || !sourceHeight) return;
-    const image = new Image();
-    image.onload = () => {
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      canvas.width = FINAL_WIDTH;
-      canvas.height = FINAL_HEIGHT;
-      ctx.fillStyle = '#081426';
-      ctx.fillRect(0, 0, FINAL_WIDTH, FINAL_HEIGHT);
-      const scale = baseScale * zoom;
-      const drawW = sourceWidth * scale;
-      const drawH = sourceHeight * scale;
-      const overflowX = Math.max(0, drawW - FINAL_WIDTH);
-      const overflowY = Math.max(0, drawH - FINAL_HEIGHT);
-      const x = -(overflowX * positionX / 100);
-      const y = -(overflowY * positionY / 100);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(image, x, y, drawW, drawH);
-    };
-    image.src = sourceUrl;
-  }, [sourceUrl, sourceWidth, sourceHeight, baseScale, zoom, positionX, positionY]);
+
 
 
   return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
     <div className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-[#0b2d55] to-indigo-700 text-white p-6 sm:p-10 shadow-xl">
-      <div className="max-w-3xl"><div className="text-[10px] uppercase tracking-[0.28em] font-black text-sky-300 mb-2">ConnectBoat Advertising</div><h1 className="text-3xl sm:text-5xl font-black tracking-tight">Advertise to boat buyers across ConnectBoat</h1><p className="mt-4 text-slate-200 text-sm sm:text-base">Choose your campaign, pay securely, then prepare your own banner with a simple crop and zoom preview.</p></div>
+      <div className="max-w-3xl"><div className="text-[10px] uppercase tracking-[0.28em] font-black text-sky-300 mb-2">ConnectBoat Advertising</div><h1 className="text-3xl sm:text-5xl font-black tracking-tight">Advertise to boat buyers across ConnectBoat</h1><p className="mt-4 text-slate-200 text-sm sm:text-base">Choose your campaign, pay securely, then upload your finished 16:9 advertising image. ConnectBoat will display it without cropping, stretching or adding background.</p></div>
     </div>
 
     {!orderIdFromUrl ? <div className="mt-8 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
@@ -284,13 +235,13 @@ export default function Advertise() {
         <div><label className="block text-xs font-black text-slate-600 mb-2">Destination website</label><input type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-300" placeholder="https://yourcompany.co.uk"/></div>
         {checkoutError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{checkoutError}</div>}
       </div>
-      <div className="bg-slate-950 text-white rounded-[2rem] border border-slate-800 shadow-xl p-6 h-fit"><div className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400">Campaign total</div><div className="text-4xl font-black mt-2">{settingsLoading ? '—' : `£${estimatedPrice.toFixed(2)}`}</div><div className="mt-4 space-y-2 text-sm text-slate-300"><p>{displaySeconds} seconds per rotation</p><p>{durationDays} days</p><p>Unlimited preview before submission</p></div><button type="button" onClick={startCheckout} disabled={checkoutLoading || settings.enabled !== true || estimatedPrice <= 0} className="mt-6 w-full rounded-xl bg-indigo-500 disabled:bg-slate-700 px-5 py-3.5 font-black flex items-center justify-center gap-2"><CreditCard size={18}/>{checkoutLoading ? 'Opening Stripe...' : 'Pay & Create Banner'}</button><div className="mt-5 pt-5 border-t border-slate-800 flex gap-2 text-xs text-slate-400"><ShieldCheck size={16} className="text-emerald-400"/>Your banner only goes live after approval.</div></div>
+      <div className="bg-slate-950 text-white rounded-[2rem] border border-slate-800 shadow-xl p-6 h-fit"><div className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400">Campaign total</div><div className="text-4xl font-black mt-2">{settingsLoading ? '—' : `£${estimatedPrice.toFixed(2)}`}</div><div className="mt-4 space-y-2 text-sm text-slate-300"><p>{displaySeconds} seconds per rotation</p><p>{durationDays} days</p><p>Use standard 16:9 artwork</p></div><button type="button" onClick={startCheckout} disabled={checkoutLoading || settings.enabled !== true || estimatedPrice <= 0} className="mt-6 w-full rounded-xl bg-indigo-500 disabled:bg-slate-700 px-5 py-3.5 font-black flex items-center justify-center gap-2"><CreditCard size={18}/>{checkoutLoading ? 'Opening Stripe...' : 'Pay & Submit Artwork'}</button><div className="mt-5 pt-5 border-t border-slate-800 flex gap-2 text-xs text-slate-400"><ShieldCheck size={16} className="text-emerald-400"/>Your banner only goes live after approval.</div></div>
     </div> : orderLoading ? <div className="mt-8 bg-white rounded-3xl border p-8 text-center text-slate-500">Confirming your campaign...</div> : orderError ? <div className="mt-8 bg-rose-50 rounded-3xl border border-rose-200 p-6 text-rose-700 font-bold">{orderError}</div> : !paid ? <div className="mt-8 bg-white rounded-3xl border p-8 text-center">Waiting for Stripe payment confirmation...</div> : approved ? <div className="mt-8 bg-emerald-50 rounded-3xl border border-emerald-200 p-8 text-center"><CheckCircle2 size={48} className="mx-auto text-emerald-600 mb-3"/><h2 className="text-2xl font-black text-emerald-900">Your campaign is live</h2></div> : customerReview ? <div className="mt-8 bg-white rounded-[2rem] border border-indigo-200 p-5 sm:p-7 space-y-5"><div><div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">ConnectBoat proposal</div><h2 className="text-2xl font-black text-slate-900 mt-1">Review the revised banner</h2><p className="text-sm text-slate-600 mt-2">{order?.adminProposalMessage}</p></div>{order?.adminProposalUrl && <img src={order.adminProposalUrl} alt="ConnectBoat proposed banner" className="w-full rounded-2xl border"/>}<textarea value={customerMessage} onChange={(e) => setCustomerMessage(e.target.value)} placeholder="Message to ConnectBoat (required if you request changes)" className="w-full min-h-24 rounded-xl border border-slate-300 p-3"/>{designError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{designError}</div>}<div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><button onClick={() => reviewAdminProposal('reject')} disabled={reviewingProposal} className="rounded-xl border border-amber-300 bg-amber-50 text-amber-800 px-5 py-3 font-black">Request Changes</button><button onClick={() => reviewAdminProposal('approve')} disabled={reviewingProposal} className="rounded-xl bg-emerald-600 text-white px-5 py-3 font-black">Approve & Publish</button></div></div> : awaitingApproval ? <div className="mt-8 bg-indigo-50 rounded-3xl border border-indigo-200 p-8 text-center"><CheckCircle2 size={48} className="mx-auto text-indigo-600 mb-3"/><h2 className="text-2xl font-black text-indigo-900">Banner submitted for approval</h2><p className="text-sm text-indigo-800 mt-2">ConnectBoat will review it before it goes live.</p>{order?.selectedBannerUrl && <img src={order.selectedBannerUrl} alt="Submitted banner" className="mt-6 w-full rounded-2xl border"/>}</div> : <div className="mt-8 space-y-6">
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={22}/><div><p className="font-black text-emerald-900">Payment confirmed</p><p className="text-xs text-emerald-800">Test your banner as many times as you want before submitting it.</p></div></div>
       {(changesRequested || customerRejected) && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="font-black text-amber-900">Changes requested</p><p className="text-sm text-amber-800 mt-1">{order?.adminNote || order?.adminProposalMessage || 'Please prepare a new version.'}</p>{order?.customerNote && <p className="mt-2 text-xs text-amber-700"><strong>Your last message:</strong> {order.customerNote}</p>}</div>}
-      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-5 sm:p-7 space-y-5"><div><div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">Banner editor</div><h2 className="text-2xl font-black text-slate-900 mt-1">Choose, zoom and position your banner</h2><p className="text-sm text-slate-500 mt-1">Horizontal images only. Minimum {MIN_WIDTH}×{MIN_HEIGHT}px. Nothing is sent until you press Submit for Approval.</p></div>
-      <label className="w-full px-4 py-5 rounded-xl border border-dashed border-indigo-300 bg-indigo-50 flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-700"><Upload size={18}/>{sourceFile ? 'Change image' : 'Choose horizontal image'}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => chooseImage(e.target.files?.[0])}/></label>
-      {sourceUrl && <><div className="w-full overflow-hidden rounded-2xl bg-slate-950 border border-slate-300"><canvas ref={previewCanvasRef} className="block w-full h-auto" aria-label="Exact banner preview" /></div><div className="grid grid-cols-1 gap-4 rounded-2xl bg-slate-50 border border-slate-200 p-4"><label className="text-xs font-black text-slate-700"><span className="flex items-center gap-2 mb-2"><ZoomIn size={15}/>Zoom</span><input type="range" min="1" max="3" step="0.01" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="w-full"/></label><label className="text-xs font-black text-slate-700"><span className="flex items-center gap-2 mb-2"><Move size={15}/>Horizontal position</span><input type="range" min="0" max="100" value={positionX} onChange={(e) => setPositionX(Number(e.target.value))} className="w-full"/></label><label className="text-xs font-black text-slate-700"><span className="flex items-center gap-2 mb-2"><Move size={15}/>Vertical position</span><input type="range" min="0" max="100" value={positionY} onChange={(e) => setPositionY(Number(e.target.value))} className="w-full"/></label><button type="button" onClick={() => { setZoom(1); setPositionX(50); setPositionY(50); }} className="inline-flex justify-center items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black"><RotateCcw size={15}/>Reset</button></div></>}
+      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-5 sm:p-7 space-y-5"><div><div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">Advertising artwork</div><h2 className="text-2xl font-black text-slate-900 mt-1">Upload your 16:9 image</h2><p className="text-sm text-slate-500 mt-1">Use the common 16:9 format, such as 1280×720 or 1920×1080. Vertical images are not accepted and ConnectBoat will not crop, stretch or add background to your artwork.</p></div>
+      <label className="w-full px-4 py-5 rounded-xl border border-dashed border-indigo-300 bg-indigo-50 flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-700"><Upload size={18}/>{sourceFile ? 'Try another image' : 'Choose 16:9 image'}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => chooseImage(e.target.files?.[0])}/></label>
+      {sourceUrl && <div className="space-y-3"><div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950"><img src={sourceUrl} alt="Advertising preview" className="block w-full aspect-video object-contain" /></div><div className="text-xs text-slate-500 text-center">Preview: {sourceWidth}×{sourceHeight}px · nothing has been submitted yet.</div></div>}
       {order?.adminIntervened && <div><label className="block text-xs font-black text-slate-700 mb-2">Message to ConnectBoat</label><textarea value={customerMessage} onChange={(e) => setCustomerMessage(e.target.value)} placeholder="Explain what you changed or what you want the admin to know." className="w-full min-h-24 rounded-xl border border-slate-300 p-3"/></div>}
       {designError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{designError}</div>}
       <button type="button" onClick={submitPreparedBanner} disabled={!sourceFile || submitting} className="w-full rounded-xl bg-indigo-600 disabled:bg-slate-300 text-white px-6 py-3.5 font-black flex items-center justify-center gap-2"><CheckCircle2 size={18}/>{submitting ? 'Submitting...' : 'Submit for Approval'}</button></div>
