@@ -195,8 +195,15 @@ export default function AdminBannerEditor() {
       image.src = url;
     });
 
-    if (dimensions.width !== 1600 || dimensions.height !== 240) {
-      alert(`Admin proposal must be exactly 1600×240px. This file is ${dimensions.width}×${dimensions.height}px.`);
+    const ratio = dimensions.width / Math.max(1, dimensions.height);
+    const standardRatio = 16 / 9;
+    if (
+      dimensions.width <= dimensions.height ||
+      dimensions.width < 1280 || dimensions.height < 720 ||
+      dimensions.width > 3840 || dimensions.height > 2160 ||
+      Math.abs(ratio - standardRatio) > 0.025
+    ) {
+      alert(`Admin proposal must use the standard 16:9 proportion (1280×720 to 3840×2160). This file is ${dimensions.width}×${dimensions.height}px.`);
       return;
     }
 
@@ -219,7 +226,7 @@ export default function AdminBannerEditor() {
     const proposalUrl = adminProposalUrls[order.id] || order.adminProposalUrl || '';
     const message = (adminMessages[order.id] || '').trim();
     if (!proposalUrl) {
-      alert('Upload a revised 1600×240 banner first.');
+      alert('Upload a revised 16:9 image first.');
       return;
     }
     if (!message) {
@@ -856,7 +863,7 @@ export default function AdminBannerEditor() {
               return (
                 <div key={order.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                   <div className="bg-slate-950">
-                    <img src={proposalUrl || order.selectedBannerUrl} alt={order.advertiserName || 'Advertising banner'} className="w-full aspect-[20/3] object-cover" />
+                    <img src={proposalUrl || order.selectedBannerUrl} alt={order.advertiserName || 'Advertising banner'} className="w-full aspect-video object-cover" />
                   </div>
                   <div className="p-4 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -904,7 +911,7 @@ export default function AdminBannerEditor() {
                     {!waitingCustomer && (
                       <label className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-600 text-xs font-black cursor-pointer">
                         <Upload size={15} />
-                        {adminProposalUploadingId === order.id ? 'Uploading external artwork...' : 'Or upload finished 1600×240 artwork'}
+                        {adminProposalUploadingId === order.id ? 'Uploading external artwork...' : 'Or upload finished 16:9 artwork'}
                         <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={adminProposalUploadingId === order.id} onChange={(e) => uploadAdminProposal(order.id, e.target.files?.[0])} />
                       </label>
                     )}
