@@ -1022,8 +1022,16 @@ const AdDetails = () => {
           <ChevronLeft size={18} /> Back
         </button>
 
-        <div className="absolute right-0 top-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-sm backdrop-blur-sm text-[9px] sm:text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 z-10">
-          Sponsored
+        <div className="absolute right-0 top-0 flex items-center gap-1.5 z-10">
+          <div className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-white/80 border border-slate-200/80 shadow-sm backdrop-blur-sm text-[9px] sm:text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+            Sponsored
+          </div>
+          <Link
+            to="/advertise"
+            className="inline-flex items-center px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 border border-indigo-600 shadow-sm text-[9px] sm:text-[10px] font-black uppercase tracking-[0.08em] text-white transition-colors"
+          >
+            Advertise Here
+          </Link>
         </div>
       </div>
 
@@ -1154,7 +1162,12 @@ const AdDetails = () => {
             <div className="text-xl font-black tracking-tight">Put your marine brand in front of boat buyers</div>
             <div className="text-xs text-slate-300 mt-1">Premium banner space for marine businesses, dealers and services.</div>
           </div>
-          <div className="shrink-0 rounded-xl bg-white/10 border border-white/20 px-5 py-3 text-sm font-black backdrop-blur-sm">Advertising Space</div>
+          <Link
+            to="/advertise"
+            className="shrink-0 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 border border-white px-5 py-3 text-sm font-black transition-colors shadow-sm"
+          >
+            Advertise Here
+          </Link>
         </div>
       )}
 
