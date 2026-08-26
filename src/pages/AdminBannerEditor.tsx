@@ -66,6 +66,13 @@ export default function AdminBannerEditor() {
   const [pendingAdvertisingOrders, setPendingAdvertisingOrders] = useState<any[]>([]);
   const [pendingOrdersLoading, setPendingOrdersLoading] = useState(false);
   const [approvingOrderId, setApprovingOrderId] = useState('');
+  const [pendingCampaignDrafts, setPendingCampaignDrafts] = useState<Record<string, {
+    headline: string;
+    supportingText: string;
+    ctaText: string;
+    logoUrl: string;
+  }>>({});
+  const [pendingLogoUploadingId, setPendingLogoUploadingId] = useState('');
 
   useEffect(() => {
     if (initialBannerConfig) {
@@ -144,10 +151,69 @@ export default function AdminBannerEditor() {
           return bTime - aTime;
         });
       setPendingAdvertisingOrders(orders);
+      setPendingCampaignDrafts((current) => {
+        const next = { ...current };
+        orders.forEach((order) => {
+          if (!next[order.id]) {
+            next[order.id] = {
+              headline: order.headline || '',
+              supportingText: order.supportingText || '',
+              ctaText: order.ctaText || 'Learn More',
+              logoUrl: order.logoUrl || '',
+            };
+          }
+        });
+        return next;
+      });
     } catch (error) {
       console.warn('Unable to load pending advertising orders:', error);
     } finally {
       setPendingOrdersLoading(false);
+    }
+  };
+
+  const updatePendingCampaignDraft = (
+    orderId: string,
+    field: 'headline' | 'supportingText' | 'ctaText' | 'logoUrl',
+    value: string
+  ) => {
+    setPendingCampaignDrafts((current) => ({
+      ...current,
+      [orderId]: {
+        headline: current[orderId]?.headline || '',
+        supportingText: current[orderId]?.supportingText || '',
+        ctaText: current[orderId]?.ctaText || 'Learn More',
+        logoUrl: current[orderId]?.logoUrl || '',
+        [field]: value,
+      },
+    }));
+  };
+
+  const uploadPendingCampaignLogo = async (orderId: string, file?: File | null) => {
+    if (!file) return;
+
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      alert('Use a PNG, JPG/JPEG or WebP logo.');
+      return;
+    }
+
+    if (file.size > 4 * 1024 * 1024) {
+      alert('Logo must be 4MB or smaller.');
+      return;
+    }
+
+    try {
+      setPendingLogoUploadingId(orderId);
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const logoRef = ref(storage, `advertising/logos/${orderId}/${Date.now()}_${safeName}`);
+      const uploadResult = await uploadBytes(logoRef, file, { contentType: file.type });
+      const logoUrl = await getDownloadURL(uploadResult.ref);
+      updatePendingCampaignDraft(orderId, 'logoUrl', logoUrl);
+    } catch (error) {
+      console.error('Unable to upload advertising logo:', error);
+      alert('Failed to upload logo.');
+    } finally {
+      setPendingLogoUploadingId('');
     }
   };
 
@@ -172,10 +238,22 @@ export default function AdminBannerEditor() {
           ? order.paidAt.toDate().toISOString().slice(0, 10)
           : new Date().toISOString().slice(0, 10));
 
+      const draft = pendingCampaignDrafts[order.id] || {
+        headline: '',
+        supportingText: '',
+        ctaText: 'Learn More',
+        logoUrl: '',
+      };
+
       const campaignRef = await addDoc(collection(db, 'advertisingCampaigns'), {
         enabled: true,
         advertiserName: order.advertiserName || 'Advertiser',
+        businessCategory: order.businessCategory || '',
         imageUrl: order.selectedBannerUrl,
+        headline: draft.headline.trim(),
+        supportingText: draft.supportingText.trim(),
+        ctaText: draft.ctaText.trim() || 'Learn More',
+        logoUrl: draft.logoUrl || '',
         targetUrl: order.targetUrl || '',
         altText: `${order.advertiserName || 'Advertiser'} sponsored banner`,
         displaySeconds: Number(order.displaySeconds || 4),
@@ -214,6 +292,10 @@ export default function AdminBannerEditor() {
         campaignId: campaignRef.id,
         campaignStartDate: startDate,
         campaignEndDate: endDate,
+        headline: draft.headline.trim(),
+        supportingText: draft.supportingText.trim(),
+        ctaText: draft.ctaText.trim() || 'Learn More',
+        logoUrl: draft.logoUrl || '',
         adminNote: '',
         updatedAt: serverTimestamp(),
       });
@@ -720,44 +802,133 @@ export default function AdminBannerEditor() {
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 text-sm text-slate-500">No customer banners are waiting for approval.</div>
         ) : (
           <div className="space-y-4">
-            {pendingAdvertisingOrders.map((order) => (
-              <div key={order.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <img
-                  src={order.selectedBannerUrl}
-                  alt={order.advertiserName || 'Submitted advertising banner'}
-                  className="w-full h-auto bg-white"
-                />
-                <div className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div>
-                    <p className="font-black text-slate-900 dark:text-white">{order.advertiserName || 'Advertiser'}</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {order.displaySeconds || 4}s · {order.durationDays || 30} days · Paid £{Number(order.amountPaid || 0).toFixed(2)}
-                    </p>
-                    {order.adminNote && (
-                      <p className="text-xs text-amber-700 mt-1">Previous note: {order.adminNote}</p>
+            {pendingAdvertisingOrders.map((order) => {
+              const draft = pendingCampaignDrafts[order.id] || {
+                headline: '',
+                supportingText: '',
+                ctaText: 'Learn More',
+                logoUrl: '',
+              };
+
+              return (
+                <div key={order.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="relative bg-slate-950 overflow-hidden">
+                    <img
+                      src={order.selectedBannerUrl}
+                      alt={order.advertiserName || 'Submitted advertising banner'}
+                      className="w-full h-[150px] sm:h-[190px] object-cover"
+                    />
+                    {(draft.headline || draft.supportingText || draft.logoUrl) && (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/60 to-transparent" />
+                        <div className="absolute inset-0 p-4 sm:p-6 flex items-center justify-between gap-4">
+                          <div className="max-w-[68%] text-white">
+                            {draft.headline && (
+                              <div className="text-lg sm:text-2xl font-black leading-tight">{draft.headline}</div>
+                            )}
+                            {draft.supportingText && (
+                              <div className="mt-1 text-xs sm:text-sm text-slate-200">{draft.supportingText}</div>
+                            )}
+                            {draft.ctaText && (
+                              <div className="mt-3 inline-flex rounded-lg bg-indigo-600 px-3 py-1.5 text-[10px] sm:text-xs font-black">
+                                {draft.ctaText}
+                              </div>
+                            )}
+                          </div>
+                          {draft.logoUrl && (
+                            <img
+                              src={draft.logoUrl}
+                              alt="Advertiser logo"
+                              className="max-w-[22%] max-h-[70px] object-contain bg-white/90 rounded-lg p-2"
+                            />
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => requestAdvertisingChanges(order)}
-                      className="px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-black"
-                    >
-                      Request Changes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => approveAdvertisingOrder(order)}
-                      disabled={approvingOrderId === order.id}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-black disabled:opacity-50"
-                    >
-                      {approvingOrderId === order.id ? 'Approving...' : 'Approve & Publish'}
-                    </button>
+                  <div className="p-4 space-y-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                      <div>
+                        <p className="font-black text-slate-900 dark:text-white">{order.advertiserName || 'Advertiser'}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {order.businessCategory || 'Uncategorised'} · {order.displaySeconds || 4}s · {order.durationDays || 30} days · Paid £{Number(order.amountPaid || 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2 text-[10px] font-black text-slate-600 dark:text-slate-300">
+                        Admin completes the ad
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-500 mb-1.5">Headline</label>
+                        <input
+                          value={draft.headline}
+                          onChange={(e) => updatePendingCampaignDraft(order.id, 'headline', e.target.value)}
+                          placeholder="Make Your Boat Shine Again"
+                          className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-500 mb-1.5">Supporting text</label>
+                        <input
+                          value={draft.supportingText}
+                          onChange={(e) => updatePendingCampaignDraft(order.id, 'supportingText', e.target.value)}
+                          placeholder="Professional boat cleaning & detailing"
+                          className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-500 mb-1.5">CTA</label>
+                        <input
+                          value={draft.ctaText}
+                          onChange={(e) => updatePendingCampaignDraft(order.id, 'ctaText', e.target.value)}
+                          placeholder="Learn More"
+                          className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                      <label className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-indigo-300 bg-indigo-50 text-indigo-700 text-xs font-black cursor-pointer">
+                        <Upload size={15} />
+                        {pendingLogoUploadingId === order.id
+                          ? 'Uploading logo...'
+                          : draft.logoUrl
+                            ? 'Replace logo'
+                            : 'Upload logo (optional)'}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          disabled={pendingLogoUploadingId === order.id}
+                          onChange={(e) => uploadPendingCampaignLogo(order.id, e.target.files?.[0])}
+                        />
+                      </label>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => requestAdvertisingChanges(order)}
+                          className="px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-black"
+                        >
+                          Request Changes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => approveAdvertisingOrder(order)}
+                          disabled={approvingOrderId === order.id || pendingLogoUploadingId === order.id}
+                          className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-black disabled:opacity-50"
+                        >
+                          {approvingOrderId === order.id ? 'Approving...' : 'Approve & Publish'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
