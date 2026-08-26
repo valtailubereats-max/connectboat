@@ -14,13 +14,15 @@ import {
   Sparkles, 
   Type, 
   Palette, 
+  Move, 
   Eye,
   Info,
   ArrowUpDown,
   Megaphone,
   ExternalLink,
   Upload,
-  ZoomIn
+  Image as ImageIcon,
+  Video as VideoIcon
 } from 'lucide-react';
 import { BannerConfig, DEFAULT_BANNER_CONFIG, BannerDeviceConfig } from '../types';
 
@@ -70,7 +72,16 @@ export default function AdminBannerEditor() {
   const [adminProposalUrls, setAdminProposalUrls] = useState<Record<string, string>>({});
   const [adminProposalUploadingId, setAdminProposalUploadingId] = useState('');
   const [sendingProposalId, setSendingProposalId] = useState('');
-  const [editingOrderIds, setEditingOrderIds] = useState<Record<string, boolean>>({});
+
+
+  const [detailsBgEnabled, setDetailsBgEnabled] = useState(false);
+  const [detailsBgType, setDetailsBgType] = useState<'image' | 'video'>('video');
+  const [detailsBgMediaUrl, setDetailsBgMediaUrl] = useState('');
+  const [detailsBgFileName, setDetailsBgFileName] = useState('');
+  const [detailsBgLoop, setDetailsBgLoop] = useState(true);
+  const [detailsBgOverlayOpacity, setDetailsBgOverlayOpacity] = useState(28);
+  const [detailsBgUploading, setDetailsBgUploading] = useState(false);
+  const [detailsBgSaving, setDetailsBgSaving] = useState(false);
 
   useEffect(() => {
     if (initialBannerConfig) {
@@ -130,6 +141,91 @@ export default function AdminBannerEditor() {
       alert('Failed to save advertising sales settings.');
     } finally {
       setSalesSettingsSaving(false);
+    }
+  };
+
+
+  const loadListingDetailsBackground = async () => {
+    try {
+      const snapshot = await getDoc(doc(db, 'settings', 'listingDetailsBackground'));
+      if (!snapshot.exists()) return;
+      const data = snapshot.data() || {};
+      setDetailsBgEnabled(data.enabled === true);
+      setDetailsBgType(data.type === 'image' ? 'image' : 'video');
+      setDetailsBgMediaUrl(String(data.mediaUrl || ''));
+      setDetailsBgFileName(String(data.fileName || ''));
+      setDetailsBgLoop(data.loop !== false);
+      setDetailsBgOverlayOpacity(
+        Number.isFinite(Number(data.overlayOpacity))
+          ? Math.max(0, Math.min(70, Number(data.overlayOpacity)))
+          : 28
+      );
+    } catch (error) {
+      console.warn('Unable to load listing details background:', error);
+    }
+  };
+
+  const uploadListingDetailsBackground = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type === 'video/mp4' || file.type === 'video/webm';
+    if (!isImage && !isVideo) {
+      alert('Use a JPG, PNG, WebP, MP4 or WebM file.');
+      event.target.value = '';
+      return;
+    }
+
+    const maxBytes = isVideo ? 50 * 1024 * 1024 : 12 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert(isVideo ? 'Background video must be 50MB or smaller.' : 'Background image must be 12MB or smaller.');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      setDetailsBgUploading(true);
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const storageRef = ref(storage, `page-backgrounds/listing-details/${Date.now()}_${safeName}`);
+      const result = await uploadBytes(storageRef, file, { contentType: file.type });
+      const url = await getDownloadURL(result.ref);
+      setDetailsBgType(isImage ? 'image' : 'video');
+      setDetailsBgMediaUrl(url);
+      setDetailsBgFileName(file.name);
+    } catch (error) {
+      console.error('Unable to upload listing details background:', error);
+      alert('Failed to upload the page background.');
+    } finally {
+      setDetailsBgUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const saveListingDetailsBackground = async () => {
+    if (detailsBgEnabled && !detailsBgMediaUrl) {
+      alert('Upload an image or video before enabling the background.');
+      return;
+    }
+
+    try {
+      setDetailsBgSaving(true);
+      await setDoc(doc(db, 'settings', 'listingDetailsBackground'), {
+        enabled: detailsBgEnabled,
+        type: detailsBgType,
+        mediaUrl: detailsBgMediaUrl,
+        fileName: detailsBgFileName,
+        loop: detailsBgLoop,
+        overlayOpacity: detailsBgOverlayOpacity,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.email || 'admin',
+      }, { merge: true });
+      alert('Listing details background saved.');
+    } catch (error) {
+      console.error('Unable to save listing details background:', error);
+      alert('Failed to save the page background.');
+    } finally {
+      setDetailsBgSaving(false);
     }
   };
 
@@ -195,15 +291,8 @@ export default function AdminBannerEditor() {
       image.src = url;
     });
 
-    const ratio = dimensions.width / Math.max(1, dimensions.height);
-    const standardRatio = 16 / 9;
-    if (
-      dimensions.width <= dimensions.height ||
-      dimensions.width < 1280 || dimensions.height < 720 ||
-      dimensions.width > 3840 || dimensions.height > 2160 ||
-      Math.abs(ratio - standardRatio) > 0.025
-    ) {
-      alert(`Admin proposal must use the standard 16:9 proportion (1280×720 to 3840×2160). This file is ${dimensions.width}×${dimensions.height}px.`);
+    if (dimensions.width !== 1600 || dimensions.height !== 240) {
+      alert(`Admin proposal must be exactly 1600×240px. This file is ${dimensions.width}×${dimensions.height}px.`);
       return;
     }
 
@@ -226,7 +315,7 @@ export default function AdminBannerEditor() {
     const proposalUrl = adminProposalUrls[order.id] || order.adminProposalUrl || '';
     const message = (adminMessages[order.id] || '').trim();
     if (!proposalUrl) {
-      alert('Upload a revised 16:9 image first.');
+      alert('Upload a revised 1600×240 banner first.');
       return;
     }
     if (!message) {
@@ -252,31 +341,6 @@ export default function AdminBannerEditor() {
       alert('Failed to send the proposal to the customer.');
     } finally {
       setSendingProposalId('');
-    }
-  };
-
-  const downloadSubmittedBanner = async (order: any) => {
-    const url = order?.selectedBannerUrl || order?.customerSubmittedBannerUrl || '';
-    if (!url) {
-      alert('No submitted banner image is available.');
-      return;
-    }
-
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Download failed (${response.status})`);
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = `${String(order.advertiserName || 'advertiser').replace(/[^a-zA-Z0-9._-]/g, '-')}-original-banner.${blob.type.includes('jpeg') ? 'jpg' : blob.type.includes('webp') ? 'webp' : 'png'}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch (error) {
-      console.error('Unable to download submitted banner:', error);
-      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -506,6 +570,7 @@ export default function AdminBannerEditor() {
     loadListingCampaigns();
     loadAdvertisingSalesSettings();
     loadPendingAdvertisingOrders();
+    loadListingDetailsBackground();
   }, []);
 
   const handleListingAdImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -761,14 +826,158 @@ export default function AdminBannerEditor() {
         </button>
       </div>
 
+      {/* LISTING DETAILS PAGE BACKGROUND */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.22em] font-black text-sky-600">Page Appearance</div>
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">Listing Details Page Background</h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Control the image or video shown behind the listing details page. The sponsored carousel remains transparent and floats over this background.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={saveListingDetailsBackground}
+            disabled={detailsBgSaving || detailsBgUploading}
+            className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-black disabled:opacity-50"
+          >
+            {detailsBgSaving ? 'Saving...' : 'Save Background'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_420px] gap-6">
+          <div className="space-y-5">
+            <div>
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">Background type</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDetailsBgType('video')}
+                  className={`rounded-xl border px-4 py-3 flex items-center justify-center gap-2 text-sm font-black transition ${
+                    detailsBgType === 'video'
+                      ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950/40'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  <VideoIcon size={17} /> Video
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetailsBgType('image')}
+                  className={`rounded-xl border px-4 py-3 flex items-center justify-center gap-2 text-sm font-black transition ${
+                    detailsBgType === 'image'
+                      ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950/40'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  <ImageIcon size={17} /> Image
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">Background file</label>
+              <label className="min-h-[118px] rounded-2xl border border-dashed border-sky-300 bg-sky-50/50 dark:bg-sky-950/20 flex flex-col items-center justify-center gap-2 cursor-pointer text-center p-5">
+                <Upload size={22} className="text-sky-600" />
+                <span className="text-sm font-black text-slate-800 dark:text-white">
+                  {detailsBgUploading ? 'Uploading...' : detailsBgFileName || 'Upload image or video'}
+                </span>
+                <span className="text-[11px] text-slate-500">Images up to 12MB · MP4/WebM up to 50MB</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+                  className="hidden"
+                  disabled={detailsBgUploading}
+                  onChange={uploadListingDetailsBackground}
+                />
+              </label>
+            </div>
+
+            {detailsBgType === 'video' && (
+              <label className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                <div>
+                  <p className="text-sm font-black text-slate-900 dark:text-white">Loop playback</p>
+                  <p className="text-xs text-slate-500">Recommended for calm sea and horizon videos.</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={detailsBgLoop}
+                  onChange={(event) => setDetailsBgLoop(event.target.checked)}
+                  className="w-5 h-5 rounded"
+                />
+              </label>
+            )}
+
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+              <div className="flex items-center justify-between gap-4 mb-2">
+                <div>
+                  <p className="text-sm font-black text-slate-900 dark:text-white">Content overlay</p>
+                  <p className="text-xs text-slate-500">Darkens the background so listing content remains easy to read.</p>
+                </div>
+                <span className="text-xs font-black text-sky-700 bg-sky-50 px-3 py-1.5 rounded-lg">{detailsBgOverlayOpacity}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="70"
+                step="1"
+                value={detailsBgOverlayOpacity}
+                onChange={(event) => setDetailsBgOverlayOpacity(Number(event.target.value))}
+                className="w-full accent-sky-600"
+              />
+            </div>
+
+            <label className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+              <div>
+                <p className="text-sm font-black text-slate-900 dark:text-white">Background active</p>
+                <p className="text-xs text-slate-500">Turn the custom listing background on or off without deleting the uploaded file.</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={detailsBgEnabled}
+                onChange={(event) => setDetailsBgEnabled(event.target.checked)}
+                className="w-5 h-5 rounded"
+              />
+            </label>
+          </div>
+
+          <div>
+            <p className="text-xs font-black text-slate-700 dark:text-slate-300 mb-2">Preview</p>
+            <div className="relative aspect-[9/16] sm:aspect-video xl:aspect-[9/14] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-950">
+              {detailsBgMediaUrl ? (
+                detailsBgType === 'video' ? (
+                  <video
+                    src={detailsBgMediaUrl}
+                    autoPlay
+                    muted
+                    loop={detailsBgLoop}
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <img src={detailsBgMediaUrl} alt="Listing details background preview" className="absolute inset-0 w-full h-full object-cover" />
+                )
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-400">No background uploaded</div>
+              )}
+              <div className="absolute inset-0 bg-slate-950" style={{ opacity: detailsBgOverlayOpacity / 100 }} />
+              <div className="absolute inset-x-4 top-4 h-10 rounded-xl bg-white/90 shadow" />
+              <div className="absolute inset-x-4 top-20 aspect-video rounded-2xl bg-white/90 shadow-lg" />
+              <div className="absolute inset-x-4 bottom-4 h-28 rounded-2xl bg-white/95 shadow-lg" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ADVERTISING SALES AUTOMATION */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div>
             <div className="text-[10px] uppercase tracking-[0.22em] font-black text-indigo-600">Automated Sales</div>
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">Advertising Checkout & Pricing</h2>
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">Advertising Checkout & AI Pricing</h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Customers pay first, prepare their banner, then submit the final image for your approval.
+              Customers pay first, create three AI banner options, then submit the selected design for your approval.
             </p>
           </div>
           <button
@@ -863,7 +1072,7 @@ export default function AdminBannerEditor() {
               return (
                 <div key={order.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                   <div className="bg-slate-950">
-                    <img src={proposalUrl || order.selectedBannerUrl} alt={order.advertiserName || 'Advertising banner'} className="w-full aspect-video object-cover" />
+                    <img src={proposalUrl || order.selectedBannerUrl} alt={order.advertiserName || 'Advertising banner'} className="w-full aspect-[20/3] object-cover" />
                   </div>
                   <div className="p-4 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -888,16 +1097,6 @@ export default function AdminBannerEditor() {
                       </div>
                     )}
 
-                    {!waitingCustomer && (
-                      <button
-                        type="button"
-                        onClick={() => downloadSubmittedBanner(order)}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-black"
-                      >
-                        Download Original
-                      </button>
-                    )}
-
                     <div>
                       <label className="block text-[10px] font-black text-slate-500 mb-1.5">Message to customer</label>
                       <textarea
@@ -908,18 +1107,16 @@ export default function AdminBannerEditor() {
                       />
                     </div>
 
-                    {!waitingCustomer && (
-                      <label className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-600 text-xs font-black cursor-pointer">
-                        <Upload size={15} />
-                        {adminProposalUploadingId === order.id ? 'Uploading external artwork...' : 'Or upload finished 16:9 artwork'}
-                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={adminProposalUploadingId === order.id} onChange={(e) => uploadAdminProposal(order.id, e.target.files?.[0])} />
-                      </label>
-                    )}
+                    <label className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-indigo-300 bg-indigo-50 text-indigo-700 text-xs font-black cursor-pointer">
+                      <Upload size={15} />
+                      {adminProposalUploadingId === order.id ? 'Uploading revised banner...' : proposalUrl ? 'Replace admin version (1600×240)' : 'Upload revised banner (1600×240)'}
+                      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={adminProposalUploadingId === order.id} onChange={(e) => uploadAdminProposal(order.id, e.target.files?.[0])} />
+                    </label>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <button type="button" onClick={() => requestAdvertisingChanges(order)} disabled={waitingCustomer} className="px-4 py-2.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-700 text-xs font-black disabled:opacity-40">Request Changes</button>
-                      <button type="button" onClick={() => sendAdminProposalToCustomer(order)} disabled={!proposalUrl || sendingProposalId === order.id || waitingCustomer} className="px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-black disabled:opacity-40">{sendingProposalId === order.id ? 'Sending...' : 'Send Proposal'}</button>
-                      <button type="button" onClick={() => approveAdvertisingOrder(order)} disabled={approvingOrderId === order.id || waitingCustomer} className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-black disabled:opacity-50">{approvingOrderId === order.id ? 'Publishing...' : proposalUrl ? 'Approve Admin Version' : 'Approve & Publish'}</button>
+                      <button type="button" onClick={() => sendAdminProposalToCustomer(order)} disabled={!proposalUrl || sendingProposalId === order.id} className="px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-black disabled:opacity-40">{sendingProposalId === order.id ? 'Sending...' : 'Send Proposal'}</button>
+                      <button type="button" onClick={() => approveAdvertisingOrder(order)} disabled={approvingOrderId === order.id} className="px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-black disabled:opacity-50">{approvingOrderId === order.id ? 'Publishing...' : proposalUrl ? 'Approve Admin Version' : 'Approve & Publish'}</button>
                     </div>
                   </div>
                 </div>
