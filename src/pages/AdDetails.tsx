@@ -42,6 +42,20 @@ const AdDetails = () => {
   const [listingAdCampaigns, setListingAdCampaigns] = useState<any[]>([]);
   const [listingAdIndex, setListingAdIndex] = useState(0);
 
+  const [listingPageBackground, setListingPageBackground] = useState<{
+    enabled: boolean;
+    type: 'image' | 'video';
+    mediaUrl: string;
+    loop: boolean;
+    overlayOpacity: number;
+  }>({
+    enabled: false,
+    type: 'video',
+    mediaUrl: '',
+    loop: true,
+    overlayOpacity: 28,
+  });
+
   // Imagens e galeria
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showFullImage, setShowFullImage] = useState(false);
@@ -118,6 +132,30 @@ const AdDetails = () => {
   useEffect(() => {
     pauseVideos();
   }, [currentImageIndex]);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      doc(db, 'settings', 'listingDetailsBackground'),
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setListingPageBackground((current) => ({ ...current, enabled: false }));
+          return;
+        }
+        const data = snapshot.data() || {};
+        setListingPageBackground({
+          enabled: data.enabled === true,
+          type: data.type === 'image' ? 'image' : 'video',
+          mediaUrl: String(data.mediaUrl || ''),
+          loop: data.loop !== false,
+          overlayOpacity: Number.isFinite(Number(data.overlayOpacity))
+            ? Math.max(0, Math.min(70, Number(data.overlayOpacity)))
+            : 28,
+        });
+      },
+      (error) => console.warn('Unable to load listing details background:', error)
+    );
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -960,7 +998,32 @@ const AdDetails = () => {
   const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
 
   return (
-    <div className="w-full max-w-[1880px] mx-auto px-2 sm:px-3 lg:px-4 xl:px-5 2xl:px-6 py-5">
+    <>
+      {listingPageBackground.enabled && listingPageBackground.mediaUrl && (
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+          {listingPageBackground.type === 'video' ? (
+            <video
+              src={listingPageBackground.mediaUrl}
+              autoPlay
+              muted
+              loop={listingPageBackground.loop}
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <img
+              src={listingPageBackground.mediaUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+          <div
+            className="absolute inset-0 bg-slate-950"
+            style={{ opacity: listingPageBackground.overlayOpacity / 100 }}
+          />
+        </div>
+      )}
+      <div className="relative z-10 w-full max-w-[1880px] mx-auto px-2 sm:px-3 lg:px-4 xl:px-5 2xl:px-6 py-5">
       {ad && (
         <Helmet>
           <title>{ad.title} - {ad.city || 'United Kingdom'} | ConnectBoat</title>
@@ -2883,7 +2946,8 @@ const AdDetails = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 
