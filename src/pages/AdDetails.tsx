@@ -1028,7 +1028,7 @@ const AdDetails = () => {
       </div>
 
       {/* Sponsored carousel — clean static background, no video */}
-      <section className="relative mb-5 overflow-hidden rounded-3xl border border-slate-200 shadow-sm min-h-[138px] sm:min-h-[176px] lg:min-h-[224px] bg-white">
+      <section className="relative mb-5 overflow-hidden rounded-3xl min-h-[138px] sm:min-h-[176px] lg:min-h-[224px] bg-transparent">
 
         {listingAdCampaigns.length > 0 ? (
           <div className="relative z-10 h-full py-3 sm:py-4 flex items-center overflow-hidden">
@@ -1060,7 +1060,7 @@ const AdDetails = () => {
           </div>
         ) : (
           <div className="relative z-10 min-h-[138px] sm:min-h-[176px] lg:min-h-[224px] flex items-center justify-center px-6 text-center text-white">
-            <div className="rounded-2xl bg-slate-950/45 border border-white/25 backdrop-blur-sm px-6 py-5">
+            <div className="rounded-2xl bg-transparent border border-white/20 px-6 py-5">
               <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-200">ConnectBoat Advertising</div>
               <div className="mt-2 text-xl sm:text-2xl font-black">Your marine brand could be here</div>
             </div>
