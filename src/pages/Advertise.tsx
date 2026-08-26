@@ -18,6 +18,7 @@ type OrderData = {
   workflowStatus?: string;
   advertiserName?: string;
   targetUrl?: string;
+  businessCategory?: string;
   displaySeconds?: number;
   durationDays?: number;
   amountPaid?: number;
@@ -39,86 +40,19 @@ const DEFAULT_SETTINGS: SalesSettings = {
 const exposureOptions = [4, 6, 8, 10] as const;
 const durationOptions = [7, 14, 30] as const;
 
-const dataUrlSizeBytes = (dataUrl: string) => {
-  const comma = dataUrl.indexOf(',');
-  if (comma < 0) return 0;
-  const base64 = dataUrl.slice(comma + 1);
-  return Math.ceil((base64.length * 3) / 4);
-};
+const advertisingCategories = [
+  'Boats & Yachts', 'Marine Services', 'Marinas', 'Boat Equipment & Electronics',
+  'Fishing & Watersports', 'Coastal Hotels & Resorts', 'Waterfront Restaurants & Hospitality',
+  'Luxury Travel & Tourism', 'Aviation & Helicopters', 'Marine Property & Real Estate',
+  'Insurance & Finance', 'Automotive & Towing', 'Other Marine-Related Business',
+] as const;
 
-const fileToOptimizedDataUrl = (
-  file: File,
-  options: {
-    maxWidth: number;
-    maxHeight: number;
-    quality: number;
-    targetBytes: number;
-  }
-): Promise<string> =>
+const fileToDataUrl = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const image = new Image();
-
-    image.onload = () => {
-      try {
-        let scale = Math.min(
-          1,
-          options.maxWidth / Math.max(1, image.naturalWidth),
-          options.maxHeight / Math.max(1, image.naturalHeight)
-        );
-
-        let quality = options.quality;
-        let result = '';
-
-        for (let attempt = 0; attempt < 7; attempt += 1) {
-          const width = Math.max(1, Math.round(image.naturalWidth * scale));
-          const height = Math.max(1, Math.round(image.naturalHeight * scale));
-
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-
-          const context = canvas.getContext('2d');
-          if (!context) {
-            throw new Error('Unable to prepare this image.');
-          }
-
-          context.imageSmoothingEnabled = true;
-          context.imageSmoothingQuality = 'high';
-          context.drawImage(image, 0, 0, width, height);
-
-          // WebP dramatically reduces the request payload while preserving
-          // enough quality for Gemini visual reference and uploaded logos.
-          result = canvas.toDataURL('image/webp', quality);
-
-          if (dataUrlSizeBytes(result) <= options.targetBytes) {
-            break;
-          }
-
-          // If still too large, reduce both resolution and quality.
-          scale *= 0.82;
-          quality = Math.max(0.42, quality - 0.08);
-        }
-
-        URL.revokeObjectURL(objectUrl);
-
-        if (!result) {
-          throw new Error('Unable to prepare this image.');
-        }
-
-        resolve(result);
-      } catch (error) {
-        URL.revokeObjectURL(objectUrl);
-        reject(error);
-      }
-    };
-
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('Unable to read this image.'));
-    };
-
-    image.src = objectUrl;
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 
 export default function Advertise() {
@@ -133,6 +67,7 @@ export default function Advertise() {
   const [advertiserName, setAdvertiserName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
+  const [businessCategory, setBusinessCategory] = useState('');
   const [displaySeconds, setDisplaySeconds] = useState<number>(4);
   const [durationDays, setDurationDays] = useState<number>(30);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -198,6 +133,7 @@ export default function Advertise() {
       setSelected(data.order?.selectedBannerUrl || '');
       if (!advertiserName && data.order?.advertiserName) setAdvertiserName(data.order.advertiserName);
       if (!targetUrl && data.order?.targetUrl) setTargetUrl(data.order.targetUrl);
+      if (!businessCategory && data.order?.businessCategory) setBusinessCategory(data.order.businessCategory);
     } catch (error: any) {
       setOrderError(error?.message || 'Unable to load advertising order.');
     } finally {
@@ -237,6 +173,10 @@ export default function Advertise() {
       setCheckoutError('Enter your business name and contact email.');
       return;
     }
+    if (!businessCategory) {
+      setCheckoutError('Choose your business category.');
+      return;
+    }
     if (!targetUrl.trim().startsWith('http://') && !targetUrl.trim().startsWith('https://')) {
       setCheckoutError('Website URL must start with http:// or https://');
       return;
@@ -256,6 +196,7 @@ export default function Advertise() {
           advertiserName: advertiserName.trim(),
           contactEmail: contactEmail.trim(),
           targetUrl: targetUrl.trim(),
+          businessCategory,
           displaySeconds,
           durationDays,
           successUrl: `${window.location.origin}/advertise?payment=success`,
@@ -316,15 +257,9 @@ export default function Advertise() {
         image.src = objectUrl;
       });
 
-      const ratio = dimensions.width / dimensions.height;
-
-      if (
-        dimensions.width < 1200 ||
-        dimensions.width <= dimensions.height ||
-        ratio < 1.2
-      ) {
+      if (Math.max(dimensions.width, dimensions.height) < 500) {
         throw new Error(
-          `This image is ${dimensions.width}×${dimensions.height}px. Please upload a horizontal image at least 1200px wide. ConnectBoat will automatically adapt it to the banner space.`
+          `This image is ${dimensions.width}×${dimensions.height}px. Please choose a clearer image with at least 500px on its longest side.`
         );
       }
 
@@ -422,37 +357,10 @@ export default function Advertise() {
       setGenerating(true);
       setDesignError('');
 
-      // Compress the images before sending them to the Vercel function.
-      // This avoids FUNCTION_PAYLOAD_TOO_LARGE (HTTP 413) when customers
-      // upload high-resolution PNG/JPG photos or logos.
       const [logoDataUrl, referenceDataUrl] = await Promise.all([
-        logoFile
-          ? fileToOptimizedDataUrl(logoFile, {
-              maxWidth: 360,
-              maxHeight: 360,
-              quality: 0.72,
-              targetBytes: 180 * 1024,
-            })
-          : Promise.resolve(''),
-        referenceFile
-          ? fileToOptimizedDataUrl(referenceFile, {
-              maxWidth: 1100,
-              maxHeight: 825,
-              quality: 0.62,
-              targetBytes: 700 * 1024,
-            })
-          : Promise.resolve(''),
+        logoFile ? fileToDataUrl(logoFile) : Promise.resolve(''),
+        referenceFile ? fileToDataUrl(referenceFile) : Promise.resolve(''),
       ]);
-
-      const estimatedPayloadBytes =
-        dataUrlSizeBytes(logoDataUrl) +
-        dataUrlSizeBytes(referenceDataUrl);
-
-      if (estimatedPayloadBytes > 1.2 * 1024 * 1024) {
-        throw new Error(
-          'The selected images are still too large after optimisation. Please choose smaller image files.'
-        );
-      }
 
       const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
@@ -472,22 +380,7 @@ export default function Advertise() {
         }),
       });
 
-      const responseText = await response.text();
-      let data: any = null;
-
-      try {
-        data = responseText ? JSON.parse(responseText) : null;
-      } catch {
-        if (!response.ok) {
-          throw new Error(
-            response.status === 413
-              ? 'The uploaded images are too large. Please try smaller images.'
-              : `AI banner generation failed (${response.status}).`
-          );
-        }
-        throw new Error('AI banner generation returned an invalid response.');
-      }
-
+      const data = await response.json();
       if (!response.ok || data?.success !== true) {
         throw new Error(data?.errorMessage || data?.error || 'AI banner generation failed.');
       }
@@ -543,7 +436,7 @@ export default function Advertise() {
           <div className="text-[10px] uppercase tracking-[0.28em] font-black text-sky-300 mb-2">ConnectBoat Advertising</div>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tight">Advertise to boat buyers across ConnectBoat</h1>
           <p className="mt-4 text-slate-200 text-sm sm:text-base">
-            Choose your exposure time, pay securely with Stripe, then create your professional banner with AI.
+            Choose your exposure time, pay securely with Stripe, then upload your advertising image. ConnectBoat will adapt it for the banner space.
           </p>
         </div>
       </div>
@@ -614,6 +507,18 @@ export default function Advertise() {
             </div>
 
             <div>
+              <label className="block text-xs font-black text-slate-600 mb-2">Business category</label>
+              <select value={businessCategory} onChange={(e) => setBusinessCategory(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="">Choose a category</option>
+                {advertisingCategories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-1">Marine businesses and brands with clear synergy with the ConnectBoat audience.</p>
+            </div>
+
+            <div>
               <label className="block text-xs font-black text-slate-600 mb-2">Destination website</label>
               <input type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500"
@@ -633,7 +538,7 @@ export default function Advertise() {
             <div className="mt-4 space-y-2 text-sm text-slate-300">
               <p>{displaySeconds} seconds per rotation</p>
               <p>{durationDays} days</p>
-              <p>{settings.aiGenerationsIncluded || 3} AI banner options included</p>
+              <p>Automatic image adaptation included</p>
             </div>
             <button
               type="button"
@@ -698,162 +603,32 @@ export default function Advertise() {
 
           <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-5 sm:p-7 space-y-5">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">Choose Your Banner</div>
-              <h2 className="text-2xl font-black text-slate-900 mt-1">How would you like to provide your banner?</h2>
-              <p className="text-sm text-slate-500 mt-1">Every banner is reviewed by ConnectBoat before publication.</p>
+              <div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">Upload Your Image</div>
+              <h2 className="text-2xl font-black text-slate-900 mt-1">Send us your advertising image</h2>
+              <p className="text-sm text-slate-500 mt-1">Portrait, square or horizontal images are accepted. ConnectBoat automatically adapts the image to the 1600×240 banner space without stretching it.</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button type="button" onClick={() => { setDesignMode('ready'); setDesignError(''); }} className={`rounded-2xl border p-4 text-left ${designMode === 'ready' ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200'}`}>
-                <div className="font-black text-slate-900">I already have my banner</div>
-                <div className="text-xs text-slate-500 mt-1">Upload your horizontal banner or artwork. ConnectBoat will automatically fit it to the advertising space before approval.</div>
-              </button>
-              <button type="button" onClick={() => { setDesignMode('ai'); setDesignError(''); }} className={`rounded-2xl border p-4 text-left ${designMode === 'ai' ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-100' : 'border-slate-200'}`}>
-                <div className="font-black text-slate-900">Create my banner with AI</div>
-                <div className="text-xs text-slate-500 mt-1">Upload a real business photo and AI will create professional banner options from it.</div>
-              </button>
-            </div>
-
-            {designMode === 'ready' && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 space-y-3">
-                <div>
-                  <label className="block text-xs font-black text-emerald-900 mb-2">Finished banner image</label>
-                  <label className="w-full px-4 py-4 rounded-xl border border-dashed border-emerald-300 bg-white flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-600">
-                    <Upload size={16} />
-                    {readyBannerFile ? readyBannerFile.name : 'Upload your finished banner'}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      onChange={(e) => {
-                        setReadyBannerFile(e.target.files?.[0] || null);
-                        setDesignError('');
-                      }}
-                    />
-                  </label>
-                </div>
-
-                <div className="rounded-xl bg-white/80 border border-emerald-200 p-3 text-xs text-emerald-900">
-                  <strong>Easy upload:</strong> choose any good horizontal image at least 1200px wide.
-                  ConnectBoat will automatically adapt it to the 1600×240 advertising space without stretching the original image.
-                </div>
-
-                {designError && (
-                  <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">
-                    {designError}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={submitReadyBanner}
-                  disabled={!readyBannerFile || submittingReadyBanner}
-                  className="w-full sm:w-auto rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-6 py-3 font-black flex items-center justify-center gap-2"
-                >
-                  <CheckCircle2 size={18} />
-                  {submittingReadyBanner ? 'Checking & submitting...' : 'Submit Banner for Approval'}
-                </button>
-              </div>
-            )}
-
-            {designMode === 'ai' && (<>
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">AI Banner Creator</div>
-                <h3 className="text-xl font-black text-slate-900 mt-1">Create from your real business photo</h3>
-                <p className="text-sm text-slate-500 mt-1">Your photo is required and will be used as the visual basis for the banner.</p>
-              </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-black text-slate-600 mb-2">Main headline</label>
-                <input value={headline} onChange={(e) => setHeadline(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Make Your Boat Ready to Impress" />
-              </div>
-              <div>
-                <label className="block text-xs font-black text-slate-600 mb-2">Call to action</label>
-                <input value={cta} onChange={(e) => setCta(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Learn More" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-black text-slate-600 mb-2">Supporting text</label>
-              <input value={subheadline} onChange={(e) => setSubheadline(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Professional service across Southampton and surrounding marinas" />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-black text-slate-600 mb-2">Visual style</label>
-                <select value={style} onChange={(e) => setStyle(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
-                  <option>Premium Marine</option>
-                  <option>Clean & Minimal</option>
-                  <option>Bold & Modern</option>
-                  <option>Luxury</option>
-                  <option>Professional Corporate</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-black text-slate-600 mb-2">Logo (optional)</label>
-                <label className="w-full px-4 py-3 rounded-xl border border-dashed border-slate-300 flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-600">
-                  <Upload size={16} />
-                  {logoFile ? logoFile.name : 'Upload logo'}
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} />
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-black text-slate-600 mb-2">Business / advertising photo (required)</label>
-              <label className="w-full px-4 py-3 rounded-xl border border-dashed border-slate-300 flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-600">
-                <ImageIcon size={16} />
-                {referenceFile ? referenceFile.name : 'Upload a real photo of your business, product or service'}
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => setReferenceFile(e.target.files?.[0] || null)} />
+            <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 space-y-3">
+              <label className="w-full px-4 py-5 rounded-xl border border-dashed border-indigo-300 bg-white flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-600">
+                <Upload size={18} />
+                {readyBannerFile ? readyBannerFile.name : 'Choose business photo or advertising artwork'}
+                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
+                  onChange={(e) => { setReadyBannerFile(e.target.files?.[0] || null); setDesignError(''); }} />
               </label>
-            </div>
 
-            <div>
-              <label className="block text-xs font-black text-slate-600 mb-2">Describe your business / desired look</label>
-              <textarea rows={3} value={brief} onChange={(e) => setBrief(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Example: Boat detailing service, premium, navy and white, Southampton..." />
-            </div>
-
-            {designError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{designError}</div>}
-
-            <button type="button" onClick={generateBanners} disabled={generating || !referenceFile}
-              className="w-full sm:w-auto rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white px-6 py-3 font-black flex items-center justify-center gap-2">
-              <WandSparkles size={18} />
-              {generating ? 'AI is creating your banners...' : `Generate ${settings.aiGenerationsIncluded || 3} Options`}
-            </button>
-            </>)}
-          </div>
-
-          {generated.length > 0 && (
-            <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-5 sm:p-7">
-              <h3 className="text-xl font-black text-slate-900">Choose your favourite</h3>
-              <div className="mt-5 space-y-4">
-                {generated.map((url, index) => (
-                  <button key={url} type="button" onClick={() => setSelected(url)}
-                    className={`block w-full rounded-2xl border-2 overflow-hidden transition-all ${
-                      selected === url ? 'border-indigo-500 ring-4 ring-indigo-100' : 'border-slate-200 hover:border-slate-300'
-                    }`}>
-                    <img src={url} alt={`AI banner option ${index + 1}`} className="w-full h-auto bg-white" />
-                  </button>
-                ))}
+              <div className="rounded-xl bg-white/80 border border-indigo-200 p-3 text-xs text-indigo-900">
+                No design skills required. ConnectBoat will fit the image and complete the final advertising layout before publication.
               </div>
 
-              <button type="button" onClick={submitSelection} disabled={!selected || submittingSelection}
-                className="mt-6 w-full sm:w-auto rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white px-6 py-3 font-black flex items-center justify-center gap-2">
+              {designError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{designError}</div>}
+
+              <button type="button" onClick={submitReadyBanner} disabled={!readyBannerFile || submittingReadyBanner}
+                className="w-full sm:w-auto rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-6 py-3 font-black flex items-center justify-center gap-2">
                 <CheckCircle2 size={18} />
-                {submittingSelection ? 'Submitting...' : 'Submit Selected Banner for Approval'}
+                {submittingReadyBanner ? 'Preparing image...' : 'Send Image to ConnectBoat'}
               </button>
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
