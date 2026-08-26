@@ -882,7 +882,13 @@ export default function AdminBannerEditor() {
                     )}
 
                     {!waitingCustomer && (
-                      
+                      <button
+                        type="button"
+                        onClick={() => downloadSubmittedBanner(order)}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-xs font-black"
+                      >
+                        Download Original
+                      </button>
                     )}
 
                     <div>
