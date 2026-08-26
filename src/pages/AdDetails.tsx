@@ -1027,19 +1027,8 @@ const AdDetails = () => {
         </div>
       </div>
 
-      {/* Sponsored carousel over continuous turquoise water */}
-      <section className="relative mb-5 overflow-hidden rounded-3xl border border-cyan-100 shadow-sm min-h-[138px] sm:min-h-[176px] lg:min-h-[224px] bg-cyan-700">
-        <video
-          className="absolute inset-0 h-full w-full object-cover"
-          src="/turquoise-water-loop.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          aria-hidden="true"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-sky-950/10 via-transparent to-cyan-950/10" />
+      {/* Sponsored carousel — clean static background, no video */}
+      <section className="relative mb-5 overflow-hidden rounded-3xl border border-slate-200 shadow-sm min-h-[138px] sm:min-h-[176px] lg:min-h-[224px] bg-white">
 
         {listingAdCampaigns.length > 0 ? (
           <div className="relative z-10 h-full py-3 sm:py-4 flex items-center overflow-hidden">
