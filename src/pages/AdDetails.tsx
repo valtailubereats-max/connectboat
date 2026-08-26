@@ -1027,70 +1027,73 @@ const AdDetails = () => {
         </div>
       </div>
 
-      {/* Rotating advertising campaigns */}
-      {listingAdCampaigns.length > 0 ? (
-        (() => {
-          const campaign = listingAdCampaigns[listingAdIndex] || listingAdCampaigns[0];
+      {/* Sponsored carousel over continuous turquoise water */}
+      <section className="relative mb-5 overflow-hidden rounded-3xl border border-cyan-100 shadow-sm min-h-[138px] sm:min-h-[176px] lg:min-h-[224px] bg-cyan-700">
+        <video
+          className="absolute inset-0 h-full w-full object-cover"
+          src="/turquoise-water-loop.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-sky-950/10 via-transparent to-cyan-950/10" />
 
-          return (
-            <div className="mb-4">
-              {campaign.targetUrl ? (
-                <a
-                  href={campaign.targetUrl}
-                  target="_blank"
-                  rel="noopener noreferrer sponsored"
-                  onClick={() => handleAdvertisingClick(campaign)}
-                  className="block w-full lg:w-[80%] h-[92px] sm:h-[118px] lg:h-[150px] mx-auto rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow"
-                  aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
-                >
-                  <img
-                    src={campaign.imageUrl}
-                    alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising banner'}
-                    className="block w-full h-full object-cover transition-opacity duration-300"
-                    loading="eager"
-                  />
-                </a>
-              ) : (
-                <div className="w-full lg:w-[80%] h-[92px] sm:h-[118px] lg:h-[150px] mx-auto rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-sm">
-                  <img
-                    src={campaign.imageUrl}
-                    alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising banner'}
-                    className="block w-full h-full object-cover transition-opacity duration-300"
-                    loading="eager"
-                  />
-                </div>
-              )}
-
-              {listingAdCampaigns.length > 1 && (
-                <div className="mt-2 flex items-center justify-center gap-1.5">
-                  {listingAdCampaigns.map((item, index) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setListingAdIndex(index)}
-                      className={`h-1.5 rounded-full transition-all ${
-                        index === listingAdIndex
-                          ? 'w-6 bg-indigo-600'
-                          : 'w-1.5 bg-slate-300 hover:bg-slate-400'
-                      }`}
-                      aria-label={`Show advertising banner ${index + 1}`}
-                    />
-                  ))}
-                </div>
-              )}
+        {listingAdCampaigns.length > 0 ? (
+          <div className="relative z-10 h-full py-3 sm:py-4 flex items-center overflow-hidden">
+            <div className="connectboat-ad-marquee flex w-max items-center gap-3 sm:gap-4 px-3 sm:px-4 will-change-transform">
+              {[...listingAdCampaigns, ...listingAdCampaigns].map((campaign, index) => (
+                <React.Fragment key={`${campaign.id}-${index}`}>
+                  {campaign.targetUrl ? (
+                    <a
+                      href={campaign.targetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer sponsored"
+                      onClick={() => handleAdvertisingClick(campaign)}
+                      className="group block shrink-0 w-[190px] sm:w-[245px] lg:w-[300px] aspect-video overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl"
+                      aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
+                    >
+                      <img src={campaign.imageUrl} alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" loading={index < 4 ? 'eager' : 'lazy'} />
+                    </a>
+                  ) : (
+                    <div className="shrink-0 w-[190px] sm:w-[245px] lg:w-[300px] aspect-video overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl">
+                      <img src={campaign.imageUrl} alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'} className="h-full w-full object-cover" loading={index < 4 ? 'eager' : 'lazy'} />
+                    </div>
+                  )}
+                  <div className="shrink-0 h-6 w-6 sm:h-8 sm:w-8 rounded-full bg-slate-950/90 border border-white/70 shadow-lg p-1 flex items-center justify-center" aria-hidden="true">
+                    <img src="/connectboat-exact-logo-hd.png" alt="" className="h-full w-full object-contain" />
+                  </div>
+                </React.Fragment>
+              ))}
             </div>
-          );
-        })()
-      ) : (
-        <div className="hidden lg:flex mb-5 min-h-[92px] rounded-2xl overflow-hidden border border-slate-200 bg-gradient-to-r from-slate-950 via-[#0b2d55] to-indigo-700 shadow-sm items-center justify-between px-8 py-4 text-white">
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-sky-300 mb-1">ConnectBoat Advertising</div>
-            <div className="text-xl font-black tracking-tight">Put your marine brand in front of boat buyers</div>
-            <div className="text-xs text-slate-300 mt-1">Premium banner space for marine businesses, dealers and services.</div>
           </div>
-          <div className="shrink-0 rounded-xl bg-white/10 border border-white/20 px-5 py-3 text-sm font-black backdrop-blur-sm">Advertising Space</div>
-        </div>
-      )}
+        ) : (
+          <div className="relative z-10 min-h-[138px] sm:min-h-[176px] lg:min-h-[224px] flex items-center justify-center px-6 text-center text-white">
+            <div className="rounded-2xl bg-slate-950/45 border border-white/25 backdrop-blur-sm px-6 py-5">
+              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-200">ConnectBoat Advertising</div>
+              <div className="mt-2 text-xl sm:text-2xl font-black">Your marine brand could be here</div>
+            </div>
+          </div>
+        )}
+
+        <style>{`
+          @keyframes connectboat-ad-marquee-right {
+            from { transform: translateX(-50%); }
+            to { transform: translateX(0); }
+          }
+          .connectboat-ad-marquee {
+            animation: connectboat-ad-marquee-right 70s linear infinite;
+          }
+          .connectboat-ad-marquee:hover {
+            animation-play-state: paused;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .connectboat-ad-marquee { animation: none; }
+          }
+        `}</style>
+      </section>
 
       {/* DESKTOP LAYOUT */}
       <div className="hidden lg:grid lg:grid-cols-12 gap-4 xl:gap-5">
