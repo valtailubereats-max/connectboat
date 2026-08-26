@@ -543,6 +543,12 @@ const Navbar = () => {
               </div>
             </> : (
               <div className="flex items-center gap-3">
+                <Link
+                  to="/advertise"
+                  className="hidden lg:inline-flex items-center gap-1.5 border border-indigo-400/50 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500 hover:text-white px-4 py-2 rounded-xl transition-all font-black text-sm"
+                >
+                  📣 Advertise
+                </Link>
                 <Link to="/login" className="bg-sky-600 text-white px-5 py-2 rounded-xl hover:bg-sky-500 transition-all shadow-md font-bold text-sm">Sign In</Link>
                 
                 <div className="relative" ref={userDropdownRef}>
@@ -588,6 +594,14 @@ const Navbar = () => {
                           id="nav-precos-link-guest"
                         >
                           🏷️ Pricing Plans
+                        </Link>
+                        <Link
+                          to="/advertise"
+                          onClick={() => setShowUserDropdown(false)}
+                          className="flex items-center gap-2 px-4 py-2 hover:bg-indigo-50 transition-colors text-sm font-black text-indigo-600"
+                          id="nav-advertise-link-guest"
+                        >
+                          📣 Advertise on ConnectBoat
                         </Link>
 
                         <div className="border-t border-slate-100 my-2" />
