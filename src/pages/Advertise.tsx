@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { CheckCircle2, CreditCard, Image as ImageIcon, Sparkles, Upload, WandSparkles, Clock3, CalendarDays, ArrowRight, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, CreditCard, Upload, Clock3, CalendarDays, ShieldCheck, RotateCcw, ZoomIn, Move } from 'lucide-react';
 
 type SalesSettings = {
   enabled?: boolean;
@@ -9,7 +9,6 @@ type SalesSettings = {
   price6s30d?: number;
   price8s30d?: number;
   price10s30d?: number;
-  aiGenerationsIncluded?: number;
 };
 
 type OrderData = {
@@ -23,8 +22,10 @@ type OrderData = {
   durationDays?: number;
   amountPaid?: number;
   selectedBannerUrl?: string;
-  generatedBanners?: string[];
-  accessToken?: string;
+  adminProposalUrl?: string;
+  adminProposalMessage?: string;
+  customerNote?: string;
+  adminIntervened?: boolean;
   adminNote?: string;
 };
 
@@ -34,12 +35,10 @@ const DEFAULT_SETTINGS: SalesSettings = {
   price6s30d: 0,
   price8s30d: 0,
   price10s30d: 0,
-  aiGenerationsIncluded: 3,
 };
 
 const exposureOptions = [4, 6, 8, 10] as const;
 const durationOptions = [7, 14, 30] as const;
-
 const advertisingCategories = [
   'Boats & Yachts', 'Marine Services', 'Marinas', 'Boat Equipment & Electronics',
   'Fishing & Watersports', 'Coastal Hotels & Resorts', 'Waterfront Restaurants & Hospitality',
@@ -47,12 +46,22 @@ const advertisingCategories = [
   'Insurance & Finance', 'Automotive & Towing', 'Other Marine-Related Business',
 ] as const;
 
-const fileToDataUrl = (file: File): Promise<string> =>
+const FINAL_WIDTH = 1600;
+const FINAL_HEIGHT = 240;
+const MIN_WIDTH = 1200;
+const MIN_HEIGHT = 300;
+const MAX_DIMENSION = 12000;
+const MAX_FILE_BYTES = 12 * 1024 * 1024;
+const MIN_RATIO = 1.2;
+const MAX_RATIO = 8;
+
+const readImage = (file: File): Promise<{ image: HTMLImageElement; url: string }> =>
   new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => resolve({ image, url });
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Unable to read this image.')); };
+    image.src = url;
   });
 
 export default function Advertise() {
@@ -63,7 +72,6 @@ export default function Advertise() {
 
   const [settings, setSettings] = useState<SalesSettings>(DEFAULT_SETTINGS);
   const [settingsLoading, setSettingsLoading] = useState(true);
-
   const [advertiserName, setAdvertiserName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [targetUrl, setTargetUrl] = useState('');
@@ -77,38 +85,27 @@ export default function Advertise() {
   const [orderLoading, setOrderLoading] = useState(!!orderIdFromUrl);
   const [orderError, setOrderError] = useState('');
 
-  const [headline, setHeadline] = useState('');
-  const [subheadline, setSubheadline] = useState('');
-  const [cta, setCta] = useState('Learn More');
-  const [style, setStyle] = useState('Premium Marine');
-  const [brief, setBrief] = useState('');
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [referenceFile, setReferenceFile] = useState<File | null>(null);
-  const [designMode, setDesignMode] = useState<'ready' | 'ai' | null>(null);
-  const [readyBannerFile, setReadyBannerFile] = useState<File | null>(null);
-
-  const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated] = useState<string[]>([]);
-  const [selected, setSelected] = useState('');
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [sourceWidth, setSourceWidth] = useState(0);
+  const [sourceHeight, setSourceHeight] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [positionX, setPositionX] = useState(50);
+  const [positionY, setPositionY] = useState(50);
   const [designError, setDesignError] = useState('');
-  const [submittingSelection, setSubmittingSelection] = useState(false);
-  const [submittingReadyBanner, setSubmittingReadyBanner] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [customerMessage, setCustomerMessage] = useState('');
+  const [reviewingProposal, setReviewingProposal] = useState(false);
+  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const snap = await getDoc(doc(db, 'settings', 'advertisingSales'));
-        if (snap.exists()) {
-          setSettings({ ...DEFAULT_SETTINGS, ...(snap.data() as SalesSettings) });
-        }
-      } catch (error) {
-        console.warn('Unable to load advertising sales settings:', error);
-      } finally {
-        setSettingsLoading(false);
-      }
-    };
-    loadSettings();
+    getDoc(doc(db, 'settings', 'advertisingSales'))
+      .then((snap) => { if (snap.exists()) setSettings({ ...DEFAULT_SETTINGS, ...(snap.data() as SalesSettings) }); })
+      .catch((error) => console.warn('Unable to load advertising sales settings:', error))
+      .finally(() => setSettingsLoading(false));
   }, []);
+
+  useEffect(() => () => { if (sourceUrl) URL.revokeObjectURL(sourceUrl); }, [sourceUrl]);
 
   const loadOrder = async () => {
     if (!orderIdFromUrl || !tokenFromUrl) return;
@@ -116,521 +113,187 @@ export default function Advertise() {
       setOrderLoading(true);
       setOrderError('');
       const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'advertising_get_order',
-          orderId: orderIdFromUrl,
-          accessToken: tokenFromUrl,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'advertising_get_order', orderId: orderIdFromUrl, accessToken: tokenFromUrl }),
       });
       const data = await response.json();
-      if (!response.ok || data?.success !== true) {
-        throw new Error(data?.errorMessage || data?.error || 'Unable to load advertising order.');
-      }
+      if (!response.ok || data?.success !== true) throw new Error(data?.errorMessage || data?.error || 'Unable to load advertising order.');
       setOrder(data.order);
-      setGenerated(Array.isArray(data.order?.generatedBanners) ? data.order.generatedBanners : []);
-      setSelected(data.order?.selectedBannerUrl || '');
       if (!advertiserName && data.order?.advertiserName) setAdvertiserName(data.order.advertiserName);
       if (!targetUrl && data.order?.targetUrl) setTargetUrl(data.order.targetUrl);
       if (!businessCategory && data.order?.businessCategory) setBusinessCategory(data.order.businessCategory);
+      if (data.order?.customerNote) setCustomerMessage(data.order.customerNote);
     } catch (error: any) {
       setOrderError(error?.message || 'Unable to load advertising order.');
-    } finally {
-      setOrderLoading(false);
-    }
+    } finally { setOrderLoading(false); }
   };
 
+  useEffect(() => { loadOrder(); }, [orderIdFromUrl, tokenFromUrl]);
   useEffect(() => {
-    loadOrder();
-  }, [orderIdFromUrl, tokenFromUrl]);
-
-  useEffect(() => {
-    if (!orderIdFromUrl || !tokenFromUrl || paymentResult !== 'success') return;
-    if (order?.paymentStatus === 'paid') return;
-
-    const timer = window.setInterval(() => {
-      loadOrder();
-    }, 1800);
-
+    if (!orderIdFromUrl || !tokenFromUrl || paymentResult !== 'success' || order?.paymentStatus === 'paid') return;
+    const timer = window.setInterval(loadOrder, 1800);
     return () => window.clearInterval(timer);
   }, [orderIdFromUrl, tokenFromUrl, paymentResult, order?.paymentStatus]);
 
-  const price30 = useMemo(() => {
-    if (displaySeconds === 4) return Number(settings.price4s30d || 0);
-    if (displaySeconds === 6) return Number(settings.price6s30d || 0);
-    if (displaySeconds === 8) return Number(settings.price8s30d || 0);
-    return Number(settings.price10s30d || 0);
-  }, [displaySeconds, settings]);
-
-  const estimatedPrice = useMemo(() => {
-    return Math.round((price30 * durationDays / 30) * 100) / 100;
-  }, [price30, durationDays]);
+  const price30 = useMemo(() => displaySeconds === 4 ? Number(settings.price4s30d || 0) : displaySeconds === 6 ? Number(settings.price6s30d || 0) : displaySeconds === 8 ? Number(settings.price8s30d || 0) : Number(settings.price10s30d || 0), [displaySeconds, settings]);
+  const estimatedPrice = useMemo(() => Math.round((price30 * durationDays / 30) * 100) / 100, [price30, durationDays]);
 
   const startCheckout = async () => {
     setCheckoutError('');
-    if (!advertiserName.trim() || !contactEmail.trim()) {
-      setCheckoutError('Enter your business name and contact email.');
-      return;
-    }
-    if (!businessCategory) {
-      setCheckoutError('Choose your business category.');
-      return;
-    }
-    if (!targetUrl.trim().startsWith('http://') && !targetUrl.trim().startsWith('https://')) {
-      setCheckoutError('Website URL must start with http:// or https://');
-      return;
-    }
-    if (estimatedPrice <= 0) {
-      setCheckoutError('Advertising prices are not configured yet.');
-      return;
-    }
-
+    if (!advertiserName.trim() || !contactEmail.trim()) return setCheckoutError('Enter your business name and contact email.');
+    if (!businessCategory) return setCheckoutError('Choose your business category.');
+    if (!/^https?:\/\//i.test(targetUrl.trim())) return setCheckoutError('Website URL must start with http:// or https://');
+    if (estimatedPrice <= 0) return setCheckoutError('Advertising prices are not configured yet.');
     try {
       setCheckoutLoading(true);
       const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'advertising_create_checkout',
-          advertiserName: advertiserName.trim(),
-          contactEmail: contactEmail.trim(),
-          targetUrl: targetUrl.trim(),
-          businessCategory,
-          displaySeconds,
-          durationDays,
-          successUrl: `${window.location.origin}/advertise?payment=success`,
-          cancelUrl: `${window.location.origin}/advertise?payment=cancelled`,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'advertising_create_checkout', advertiserName: advertiserName.trim(), contactEmail: contactEmail.trim(), targetUrl: targetUrl.trim(), businessCategory, displaySeconds, durationDays, successUrl: `${window.location.origin}/advertise?payment=success`, cancelUrl: `${window.location.origin}/advertise?payment=cancelled` }),
       });
-
       const data = await response.json();
-      if (!response.ok || data?.success !== true || !data.checkoutUrl) {
-        throw new Error(data?.errorMessage || data?.error || 'Unable to start checkout.');
-      }
-
+      if (!response.ok || data?.success !== true || !data.checkoutUrl) throw new Error(data?.errorMessage || data?.error || 'Unable to start checkout.');
       window.location.href = data.checkoutUrl;
-    } catch (error: any) {
-      setCheckoutError(error?.message || 'Unable to start checkout.');
-      setCheckoutLoading(false);
-    }
+    } catch (error: any) { setCheckoutError(error?.message || 'Unable to start checkout.'); setCheckoutLoading(false); }
   };
 
-  const submitReadyBanner = async () => {
-    if (!readyBannerFile || !orderIdFromUrl || !tokenFromUrl || order?.paymentStatus !== 'paid') {
-      setDesignError('Choose your finished banner image first.');
-      return;
-    }
-
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(readyBannerFile.type)) {
-      setDesignError('Use a PNG, JPG/JPEG or WebP banner image.');
-      return;
-    }
-
-    if (readyBannerFile.size > 8 * 1024 * 1024) {
-      setDesignError('The banner image must be 8MB or smaller.');
-      return;
-    }
-
+  const chooseImage = async (file?: File | null) => {
+    if (!file) return;
+    setDesignError('');
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return setDesignError('Use a PNG, JPG/JPEG or WebP image.');
+    if (file.size > MAX_FILE_BYTES) return setDesignError('The image must be 12MB or smaller.');
     try {
-      setSubmittingReadyBanner(true);
-      setDesignError('');
+      const { image, url } = await readImage(file);
+      const width = image.naturalWidth;
+      const height = image.naturalHeight;
+      const ratio = width / Math.max(1, height);
+      if (width <= height) { URL.revokeObjectURL(url); return setDesignError(`Vertical images are not accepted. This image is ${width}×${height}px. Please choose a horizontal image.`); }
+      if (width < MIN_WIDTH || height < MIN_HEIGHT) { URL.revokeObjectURL(url); return setDesignError(`This image is ${width}×${height}px. Minimum accepted size is ${MIN_WIDTH}×${MIN_HEIGHT}px.`); }
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) { URL.revokeObjectURL(url); return setDesignError(`This image is too large. Maximum dimension is ${MAX_DIMENSION}px.`); }
+      if (ratio < MIN_RATIO || ratio > MAX_RATIO) { URL.revokeObjectURL(url); return setDesignError(`This image proportion is not suitable. Please use a horizontal image with a width-to-height ratio between ${MIN_RATIO}:1 and ${MAX_RATIO}:1.`); }
+      if (sourceUrl) URL.revokeObjectURL(sourceUrl);
+      setSourceFile(file); setSourceUrl(url); setSourceWidth(width); setSourceHeight(height); setZoom(1); setPositionX(50); setPositionY(50);
+    } catch (error: any) { setDesignError(error?.message || 'Unable to read this image.'); }
+  };
 
-      const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-        const objectUrl = URL.createObjectURL(readyBannerFile);
-        const image = new Image();
+  const baseScale = useMemo(() => {
+    if (!sourceWidth || !sourceHeight) return 1;
+    return Math.max(FINAL_WIDTH / sourceWidth, FINAL_HEIGHT / sourceHeight);
+  }, [sourceWidth, sourceHeight]);
 
-        image.onload = () => {
-          const result = {
-            width: image.naturalWidth,
-            height: image.naturalHeight,
-          };
-          URL.revokeObjectURL(objectUrl);
-          resolve(result);
-        };
+  const renderPreparedBlob = async (): Promise<Blob> => {
+    if (!sourceFile) throw new Error('Choose an image first.');
+    const { image, url } = await readImage(sourceFile);
+    try {
+      const canvas = document.createElement('canvas'); canvas.width = FINAL_WIDTH; canvas.height = FINAL_HEIGHT;
+      const ctx = canvas.getContext('2d'); if (!ctx) throw new Error('Unable to prepare the banner.');
+      ctx.fillStyle = '#081426'; ctx.fillRect(0, 0, FINAL_WIDTH, FINAL_HEIGHT);
+      const scale = baseScale * zoom;
+      const drawW = sourceWidth * scale; const drawH = sourceHeight * scale;
+      const overflowX = Math.max(0, drawW - FINAL_WIDTH); const overflowY = Math.max(0, drawH - FINAL_HEIGHT);
+      const x = -(overflowX * positionX / 100); const y = -(overflowY * positionY / 100);
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(image, x, y, drawW, drawH);
+      return await new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Unable to export the banner.')), 'image/jpeg', 0.9));
+    } finally { URL.revokeObjectURL(url); }
+  };
 
-        image.onerror = () => {
-          URL.revokeObjectURL(objectUrl);
-          reject(new Error('Unable to read this image.'));
-        };
-
-        image.src = objectUrl;
-      });
-
-      if (Math.max(dimensions.width, dimensions.height) < 500) {
-        throw new Error(
-          `This image is ${dimensions.width}×${dimensions.height}px. Please choose a clearer image with at least 500px on its longest side.`
-        );
-      }
-
-      // Ask the existing backend function for a temporary signed upload URL.
+  const submitPreparedBanner = async () => {
+    if (!sourceFile || !orderIdFromUrl || !tokenFromUrl || order?.paymentStatus !== 'paid') return;
+    if (order?.adminIntervened && !customerMessage.trim()) return setDesignError('Add a short message to ConnectBoat explaining your new version.');
+    try {
+      setSubmitting(true); setDesignError('');
+      const blob = await renderPreparedBlob();
       const prepareResponse = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'advertising_prepare_ready_banner_upload',
-          orderId: orderIdFromUrl,
-          accessToken: tokenFromUrl,
-          fileName: readyBannerFile.name,
-          mimeType: readyBannerFile.type,
-          fileSize: readyBannerFile.size,
-          width: dimensions.width,
-          height: dimensions.height,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'advertising_prepare_ready_banner_upload', orderId: orderIdFromUrl, accessToken: tokenFromUrl, fileName: 'prepared-banner.jpg', mimeType: 'image/jpeg', fileSize: blob.size, width: FINAL_WIDTH, height: FINAL_HEIGHT }),
       });
-
       const prepareData = await prepareResponse.json();
-
-      if (!prepareResponse.ok || prepareData?.success !== true || !prepareData.uploadUrl) {
-        throw new Error(
-          prepareData?.errorMessage ||
-          prepareData?.error ||
-          'Unable to prepare the banner upload.'
-        );
-      }
-
-      // Upload directly to the short-lived signed Google Cloud Storage URL.
-      const uploadResponse = await fetch(prepareData.uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': readyBannerFile.type,
-        },
-        body: readyBannerFile,
+      if (!prepareResponse.ok || prepareData?.success !== true || !prepareData.uploadUrl) throw new Error(prepareData?.errorMessage || prepareData?.error || 'Unable to prepare the banner upload.');
+      const uploadResponse = await fetch(prepareData.uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+      if (!uploadResponse.ok) throw new Error(`Banner upload failed (${uploadResponse.status}).`);
+      const finalResponse = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'advertising_finalize_ready_banner_upload', orderId: orderIdFromUrl, accessToken: tokenFromUrl, objectPath: prepareData.objectPath, customerNote: customerMessage.trim() }),
       });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Banner upload failed (${uploadResponse.status}). Please try again.`);
-      }
-
-      // Tell ConnectBoat the upload completed so it can submit the banner for approval.
-      const finalizeResponse = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'advertising_finalize_ready_banner_upload',
-          orderId: orderIdFromUrl,
-          accessToken: tokenFromUrl,
-          objectPath: prepareData.objectPath,
-        }),
-      });
-
-      const finalizeData = await finalizeResponse.json();
-
-      if (!finalizeResponse.ok || finalizeData?.success !== true || !finalizeData.bannerUrl) {
-        throw new Error(
-          finalizeData?.errorMessage ||
-          finalizeData?.error ||
-          'Unable to submit your banner for approval.'
-        );
-      }
-
-      setSelected(finalizeData.bannerUrl);
-      setOrder((prev) =>
-        prev
-          ? {
-              ...prev,
-              selectedBannerUrl: finalizeData.bannerUrl,
-              generatedBanners: [finalizeData.bannerUrl],
-              workflowStatus: 'pending_approval',
-            }
-          : prev
-      );
-    } catch (error: any) {
-      setDesignError(error?.message || 'Unable to submit your banner.');
-    } finally {
-      setSubmittingReadyBanner(false);
-    }
+      const finalData = await finalResponse.json();
+      if (!finalResponse.ok || finalData?.success !== true) throw new Error(finalData?.errorMessage || finalData?.error || 'Unable to submit your banner.');
+      await loadOrder(); setSourceFile(null); if (sourceUrl) URL.revokeObjectURL(sourceUrl); setSourceUrl('');
+    } catch (error: any) { setDesignError(error?.message || 'Unable to submit your banner.'); }
+    finally { setSubmitting(false); }
   };
 
-  const generateBanners = async () => {
-    if (!orderIdFromUrl || !tokenFromUrl || order?.paymentStatus !== 'paid') return;
-    if (!headline.trim()) {
-      setDesignError('Add a main headline for your banner.');
-      return;
-    }
-    if (!referenceFile) {
-      setDesignError('Upload a real photo of your business, product or service before generating AI banners.');
-      return;
-    }
-
+  const reviewAdminProposal = async (decision: 'approve' | 'reject') => {
+    if (decision === 'reject' && !customerMessage.trim()) return setDesignError('Tell ConnectBoat what you would like changed.');
     try {
-      setGenerating(true);
-      setDesignError('');
-
-      const [logoDataUrl, referenceDataUrl] = await Promise.all([
-        logoFile ? fileToDataUrl(logoFile) : Promise.resolve(''),
-        referenceFile ? fileToDataUrl(referenceFile) : Promise.resolve(''),
-      ]);
-
+      setReviewingProposal(true); setDesignError('');
       const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'advertising_generate_banner',
-          orderId: orderIdFromUrl,
-          accessToken: tokenFromUrl,
-          advertiserName: order?.advertiserName || advertiserName,
-          headline: headline.trim(),
-          subheadline: subheadline.trim(),
-          cta: cta.trim(),
-          style,
-          brief: brief.trim(),
-          logoDataUrl,
-          referenceDataUrl,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok || data?.success !== true) {
-        throw new Error(data?.errorMessage || data?.error || 'AI banner generation failed.');
-      }
-
-      const urls = Array.isArray(data.bannerUrls) ? data.bannerUrls : [];
-      setGenerated(urls);
-      setOrder((prev) => prev ? { ...prev, generatedBanners: urls, workflowStatus: 'design_generated' } : prev);
-      setSelected('');
-    } catch (error: any) {
-      setDesignError(error?.message || 'AI banner generation failed.');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const submitSelection = async () => {
-    if (!selected || !orderIdFromUrl || !tokenFromUrl) return;
-
-    try {
-      setSubmittingSelection(true);
-      setDesignError('');
-      const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'advertising_select_banner',
-          orderId: orderIdFromUrl,
-          accessToken: tokenFromUrl,
-          selectedBannerUrl: selected,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'advertising_customer_review_admin_proposal', orderId: orderIdFromUrl, accessToken: tokenFromUrl, decision, customerMessage: customerMessage.trim() }),
       });
       const data = await response.json();
-      if (!response.ok || data?.success !== true) {
-        throw new Error(data?.errorMessage || data?.error || 'Unable to submit banner.');
-      }
-      setOrder((prev) => prev ? { ...prev, selectedBannerUrl: selected, workflowStatus: 'pending_approval' } : prev);
-    } catch (error: any) {
-      setDesignError(error?.message || 'Unable to submit banner.');
-    } finally {
-      setSubmittingSelection(false);
-    }
+      if (!response.ok || data?.success !== true) throw new Error(data?.errorMessage || data?.error || 'Unable to save your response.');
+      await loadOrder();
+    } catch (error: any) { setDesignError(error?.message || 'Unable to save your response.'); }
+    finally { setReviewingProposal(false); }
   };
 
   const paid = order?.paymentStatus === 'paid';
-  const awaitingApproval = order?.workflowStatus === 'pending_approval';
   const approved = order?.workflowStatus === 'approved';
+  const awaitingApproval = order?.workflowStatus === 'pending_approval';
+  const customerReview = order?.workflowStatus === 'customer_review';
+  const customerRejected = order?.workflowStatus === 'customer_rejected_admin_proposal';
   const changesRequested = order?.workflowStatus === 'changes_requested';
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-      <div className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-[#0b2d55] to-indigo-700 text-white p-6 sm:p-10 shadow-xl">
-        <div className="max-w-3xl">
-          <div className="text-[10px] uppercase tracking-[0.28em] font-black text-sky-300 mb-2">ConnectBoat Advertising</div>
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight">Advertise to boat buyers across ConnectBoat</h1>
-          <p className="mt-4 text-slate-200 text-sm sm:text-base">
-            Choose your exposure time, pay securely with Stripe, then upload your advertising image. ConnectBoat will adapt it for the banner space.
-          </p>
-        </div>
-      </div>
+  useEffect(() => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas || !sourceUrl || !sourceWidth || !sourceHeight) return;
+    const image = new Image();
+    image.onload = () => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      canvas.width = FINAL_WIDTH;
+      canvas.height = FINAL_HEIGHT;
+      ctx.fillStyle = '#081426';
+      ctx.fillRect(0, 0, FINAL_WIDTH, FINAL_HEIGHT);
+      const scale = baseScale * zoom;
+      const drawW = sourceWidth * scale;
+      const drawH = sourceHeight * scale;
+      const overflowX = Math.max(0, drawW - FINAL_WIDTH);
+      const overflowY = Math.max(0, drawH - FINAL_HEIGHT);
+      const x = -(overflowX * positionX / 100);
+      const y = -(overflowY * positionY / 100);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(image, x, y, drawW, drawH);
+    };
+    image.src = sourceUrl;
+  }, [sourceUrl, sourceWidth, sourceHeight, baseScale, zoom, positionX, positionY]);
 
-      {!orderIdFromUrl ? (
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-          <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-5 sm:p-7 space-y-6">
-            <div>
-              <h2 className="text-xl font-black text-slate-900">1. Choose your campaign</h2>
-              <p className="text-sm text-slate-500 mt-1">Longer display time gives your banner more attention in each rotation.</p>
-            </div>
 
-            <div>
-              <p className="text-xs font-black text-slate-600 mb-3">Display time per rotation</p>
-              <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                {exposureOptions.map((seconds) => (
-                  <button
-                    key={seconds}
-                    type="button"
-                    onClick={() => setDisplaySeconds(seconds)}
-                    className={`rounded-xl sm:rounded-2xl border px-1.5 py-2.5 sm:p-4 text-center transition-all ${
-                      displaySeconds === seconds
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100'
-                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
-                    }`}
-                  >
-                    <Clock3 className="mx-auto mb-1 sm:mb-2" size={16} />
-                    <div className="text-sm sm:text-lg font-black">{seconds}s</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-black text-slate-600 mb-3">Campaign duration</p>
-              <div className="grid grid-cols-3 gap-3">
-                {durationOptions.map((days) => (
-                  <button
-                    key={days}
-                    type="button"
-                    onClick={() => setDurationDays(days)}
-                    className={`rounded-2xl border p-4 text-center transition-all ${
-                      durationDays === days
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100'
-                        : 'border-slate-200 hover:border-slate-300 text-slate-700'
-                    }`}
-                  >
-                    <CalendarDays className="mx-auto mb-2" size={18} />
-                    <div className="font-black">{days} days</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-black text-slate-600 mb-2">Business / advertiser name</label>
-                <input value={advertiserName} onChange={(e) => setAdvertiserName(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Your business name" />
-              </div>
-              <div>
-                <label className="block text-xs font-black text-slate-600 mb-2">Contact email</label>
-                <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="you@company.co.uk" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-black text-slate-600 mb-2">Business category</label>
-              <select value={businessCategory} onChange={(e) => setBusinessCategory(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="">Choose a category</option>
-                {advertisingCategories.map((category) => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
-              <p className="text-xs text-slate-500 mt-1">Marine businesses and brands with clear synergy with the ConnectBoat audience.</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-black text-slate-600 mb-2">Destination website</label>
-              <input type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="https://yourcompany.co.uk" />
-            </div>
-
-            {checkoutError && (
-              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{checkoutError}</div>
-            )}
-          </div>
-
-          <div className="bg-slate-950 text-white rounded-[2rem] border border-slate-800 shadow-xl p-6 h-fit lg:sticky lg:top-24">
-            <div className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400">Campaign total</div>
-            <div className="text-4xl font-black mt-2">
-              {settingsLoading ? '—' : `£${estimatedPrice.toFixed(2)}`}
-            </div>
-            <div className="mt-4 space-y-2 text-sm text-slate-300">
-              <p>{displaySeconds} seconds per rotation</p>
-              <p>{durationDays} days</p>
-              <p>Automatic image adaptation included</p>
-            </div>
-            <button
-              type="button"
-              onClick={startCheckout}
-              disabled={checkoutLoading || settings.enabled !== true || estimatedPrice <= 0}
-              className="mt-6 w-full rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:bg-slate-700 disabled:text-slate-400 px-5 py-3.5 font-black flex items-center justify-center gap-2"
-            >
-              <CreditCard size={18} />
-              {checkoutLoading ? 'Opening Stripe...' : 'Pay & Create Banner'}
-            </button>
-            {settings.enabled !== true && !settingsLoading && (
-              <p className="mt-3 text-xs text-amber-300 font-bold">Online advertising sales are currently being configured.</p>
-            )}
-            <div className="mt-5 pt-5 border-t border-slate-800 flex items-start gap-2 text-xs text-slate-400">
-              <ShieldCheck size={16} className="shrink-0 text-emerald-400" />
-              Secure Stripe payment. Your banner will not go live until ConnectBoat approves the final design.
-            </div>
-          </div>
-        </div>
-      ) : orderLoading ? (
-        <div className="mt-8 bg-white rounded-3xl border border-slate-200 p-8 text-center text-slate-500">Confirming your campaign...</div>
-      ) : orderError ? (
-        <div className="mt-8 bg-rose-50 rounded-3xl border border-rose-200 p-6 text-rose-700 font-bold">{orderError}</div>
-      ) : paymentResult === 'cancelled' && !paid ? (
-        <div className="mt-8 bg-amber-50 rounded-3xl border border-amber-200 p-6">
-          <h2 className="font-black text-amber-900">Payment cancelled</h2>
-          <p className="text-sm text-amber-800 mt-1">No campaign was activated.</p>
-        </div>
-      ) : !paid ? (
-        <div className="mt-8 bg-white rounded-3xl border border-slate-200 p-8 text-center">
-          <div className="animate-pulse text-slate-500 font-bold">Waiting for Stripe payment confirmation...</div>
-        </div>
-      ) : approved ? (
-        <div className="mt-8 bg-emerald-50 rounded-3xl border border-emerald-200 p-8 text-center">
-          <CheckCircle2 size={48} className="mx-auto text-emerald-600 mb-3" />
-          <h2 className="text-2xl font-black text-emerald-900">Your campaign is live</h2>
-          <p className="text-sm text-emerald-800 mt-2">ConnectBoat approved your banner and activated the campaign.</p>
-        </div>
-      ) : awaitingApproval ? (
-        <div className="mt-8 bg-indigo-50 rounded-3xl border border-indigo-200 p-8 text-center">
-          <CheckCircle2 size={48} className="mx-auto text-indigo-600 mb-3" />
-          <h2 className="text-2xl font-black text-indigo-900">Banner submitted for approval</h2>
-          <p className="text-sm text-indigo-800 mt-2">Your payment is confirmed. ConnectBoat will review the banner before it goes live.</p>
-          {selected && <img src={selected} alt="Selected banner" className="mt-6 w-full max-w-4xl mx-auto rounded-2xl border border-indigo-200 bg-white" />}
-        </div>
-      ) : (
-        <div className="mt-8 space-y-6">
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3">
-            <CheckCircle2 className="text-emerald-600 shrink-0" size={22} />
-            <div>
-              <p className="font-black text-emerald-900">Payment confirmed</p>
-              <p className="text-xs text-emerald-800">Now create your banner. It will still require final ConnectBoat approval.</p>
-            </div>
-          </div>
-
-          {changesRequested && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <p className="font-black text-amber-900">Changes requested by ConnectBoat</p>
-              <p className="text-sm text-amber-800 mt-1">{order?.adminNote || 'Please generate or select a different banner.'}</p>
-            </div>
-          )}
-
-          <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-5 sm:p-7 space-y-5">
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">Upload Your Image</div>
-              <h2 className="text-2xl font-black text-slate-900 mt-1">Send us your advertising image</h2>
-              <p className="text-sm text-slate-500 mt-1">Portrait, square or horizontal images are accepted. ConnectBoat automatically adapts the image to the 1600×240 banner space without stretching it.</p>
-            </div>
-
-            <div className="rounded-2xl border border-indigo-200 bg-indigo-50 p-4 space-y-3">
-              <label className="w-full px-4 py-5 rounded-xl border border-dashed border-indigo-300 bg-white flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-600">
-                <Upload size={18} />
-                {readyBannerFile ? readyBannerFile.name : 'Choose business photo or advertising artwork'}
-                <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
-                  onChange={(e) => { setReadyBannerFile(e.target.files?.[0] || null); setDesignError(''); }} />
-              </label>
-
-              <div className="rounded-xl bg-white/80 border border-indigo-200 p-3 text-xs text-indigo-900">
-                No design skills required. ConnectBoat will fit the image and complete the final advertising layout before publication.
-              </div>
-
-              {designError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{designError}</div>}
-
-              <button type="button" onClick={submitReadyBanner} disabled={!readyBannerFile || submittingReadyBanner}
-                className="w-full sm:w-auto rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white px-6 py-3 font-black flex items-center justify-center gap-2">
-                <CheckCircle2 size={18} />
-                {submittingReadyBanner ? 'Preparing image...' : 'Send Image to ConnectBoat'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+  return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    <div className="rounded-[2rem] bg-gradient-to-br from-slate-950 via-[#0b2d55] to-indigo-700 text-white p-6 sm:p-10 shadow-xl">
+      <div className="max-w-3xl"><div className="text-[10px] uppercase tracking-[0.28em] font-black text-sky-300 mb-2">ConnectBoat Advertising</div><h1 className="text-3xl sm:text-5xl font-black tracking-tight">Advertise to boat buyers across ConnectBoat</h1><p className="mt-4 text-slate-200 text-sm sm:text-base">Choose your campaign, pay securely, then prepare your own banner with a simple crop and zoom preview.</p></div>
     </div>
-  );
+
+    {!orderIdFromUrl ? <div className="mt-8 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-5 sm:p-7 space-y-6">
+        <div><h2 className="text-xl font-black text-slate-900">1. Choose your campaign</h2><p className="text-sm text-slate-500 mt-1">Longer display time gives your banner more attention in each rotation.</p></div>
+        <div><p className="text-xs font-black text-slate-600 mb-3">Display time per rotation</p><div className="grid grid-cols-4 gap-2 sm:gap-3">{exposureOptions.map((seconds) => <button key={seconds} type="button" onClick={() => setDisplaySeconds(seconds)} className={`rounded-xl sm:rounded-2xl border px-1.5 py-2.5 sm:p-4 text-center ${displaySeconds === seconds ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100' : 'border-slate-200 text-slate-700'}`}><Clock3 className="mx-auto mb-1 sm:mb-2" size={16}/><div className="text-sm sm:text-lg font-black">{seconds}s</div></button>)}</div></div>
+        <div><p className="text-xs font-black text-slate-600 mb-3">Campaign duration</p><div className="grid grid-cols-3 gap-3">{durationOptions.map((days) => <button key={days} type="button" onClick={() => setDurationDays(days)} className={`rounded-2xl border p-4 text-center ${durationDays === days ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100' : 'border-slate-200 text-slate-700'}`}><CalendarDays className="mx-auto mb-2" size={18}/><div className="font-black">{days} days</div></button>)}</div></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div><label className="block text-xs font-black text-slate-600 mb-2">Business / advertiser name</label><input value={advertiserName} onChange={(e) => setAdvertiserName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-300" placeholder="Your business name"/></div><div><label className="block text-xs font-black text-slate-600 mb-2">Contact email</label><input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-300" placeholder="you@company.co.uk"/></div></div>
+        <div><label className="block text-xs font-black text-slate-600 mb-2">Business category</label><select value={businessCategory} onChange={(e) => setBusinessCategory(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-300 bg-white"><option value="">Choose a category</option>{advertisingCategories.map((category) => <option key={category} value={category}>{category}</option>)}</select><p className="text-xs text-slate-500 mt-1">Marine businesses and brands with clear synergy with the ConnectBoat audience.</p></div>
+        <div><label className="block text-xs font-black text-slate-600 mb-2">Destination website</label><input type="url" value={targetUrl} onChange={(e) => setTargetUrl(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-300" placeholder="https://yourcompany.co.uk"/></div>
+        {checkoutError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{checkoutError}</div>}
+      </div>
+      <div className="bg-slate-950 text-white rounded-[2rem] border border-slate-800 shadow-xl p-6 h-fit"><div className="text-[10px] uppercase tracking-[0.2em] font-black text-slate-400">Campaign total</div><div className="text-4xl font-black mt-2">{settingsLoading ? '—' : `£${estimatedPrice.toFixed(2)}`}</div><div className="mt-4 space-y-2 text-sm text-slate-300"><p>{displaySeconds} seconds per rotation</p><p>{durationDays} days</p><p>Unlimited preview before submission</p></div><button type="button" onClick={startCheckout} disabled={checkoutLoading || settings.enabled !== true || estimatedPrice <= 0} className="mt-6 w-full rounded-xl bg-indigo-500 disabled:bg-slate-700 px-5 py-3.5 font-black flex items-center justify-center gap-2"><CreditCard size={18}/>{checkoutLoading ? 'Opening Stripe...' : 'Pay & Create Banner'}</button><div className="mt-5 pt-5 border-t border-slate-800 flex gap-2 text-xs text-slate-400"><ShieldCheck size={16} className="text-emerald-400"/>Your banner only goes live after approval.</div></div>
+    </div> : orderLoading ? <div className="mt-8 bg-white rounded-3xl border p-8 text-center text-slate-500">Confirming your campaign...</div> : orderError ? <div className="mt-8 bg-rose-50 rounded-3xl border border-rose-200 p-6 text-rose-700 font-bold">{orderError}</div> : !paid ? <div className="mt-8 bg-white rounded-3xl border p-8 text-center">Waiting for Stripe payment confirmation...</div> : approved ? <div className="mt-8 bg-emerald-50 rounded-3xl border border-emerald-200 p-8 text-center"><CheckCircle2 size={48} className="mx-auto text-emerald-600 mb-3"/><h2 className="text-2xl font-black text-emerald-900">Your campaign is live</h2></div> : customerReview ? <div className="mt-8 bg-white rounded-[2rem] border border-indigo-200 p-5 sm:p-7 space-y-5"><div><div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">ConnectBoat proposal</div><h2 className="text-2xl font-black text-slate-900 mt-1">Review the revised banner</h2><p className="text-sm text-slate-600 mt-2">{order?.adminProposalMessage}</p></div>{order?.adminProposalUrl && <img src={order.adminProposalUrl} alt="ConnectBoat proposed banner" className="w-full rounded-2xl border"/>}<textarea value={customerMessage} onChange={(e) => setCustomerMessage(e.target.value)} placeholder="Message to ConnectBoat (required if you request changes)" className="w-full min-h-24 rounded-xl border border-slate-300 p-3"/>{designError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{designError}</div>}<div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><button onClick={() => reviewAdminProposal('reject')} disabled={reviewingProposal} className="rounded-xl border border-amber-300 bg-amber-50 text-amber-800 px-5 py-3 font-black">Request Changes</button><button onClick={() => reviewAdminProposal('approve')} disabled={reviewingProposal} className="rounded-xl bg-emerald-600 text-white px-5 py-3 font-black">Approve & Publish</button></div></div> : awaitingApproval ? <div className="mt-8 bg-indigo-50 rounded-3xl border border-indigo-200 p-8 text-center"><CheckCircle2 size={48} className="mx-auto text-indigo-600 mb-3"/><h2 className="text-2xl font-black text-indigo-900">Banner submitted for approval</h2><p className="text-sm text-indigo-800 mt-2">ConnectBoat will review it before it goes live.</p>{order?.selectedBannerUrl && <img src={order.selectedBannerUrl} alt="Submitted banner" className="mt-6 w-full rounded-2xl border"/>}</div> : <div className="mt-8 space-y-6">
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-center gap-3"><CheckCircle2 className="text-emerald-600" size={22}/><div><p className="font-black text-emerald-900">Payment confirmed</p><p className="text-xs text-emerald-800">Test your banner as many times as you want before submitting it.</p></div></div>
+      {(changesRequested || customerRejected) && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><p className="font-black text-amber-900">Changes requested</p><p className="text-sm text-amber-800 mt-1">{order?.adminNote || order?.adminProposalMessage || 'Please prepare a new version.'}</p>{order?.customerNote && <p className="mt-2 text-xs text-amber-700"><strong>Your last message:</strong> {order.customerNote}</p>}</div>}
+      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-5 sm:p-7 space-y-5"><div><div className="text-[10px] uppercase tracking-[0.2em] font-black text-indigo-600">Banner editor</div><h2 className="text-2xl font-black text-slate-900 mt-1">Choose, zoom and position your banner</h2><p className="text-sm text-slate-500 mt-1">Horizontal images only. Minimum {MIN_WIDTH}×{MIN_HEIGHT}px. Nothing is sent until you press Submit for Approval.</p></div>
+      <label className="w-full px-4 py-5 rounded-xl border border-dashed border-indigo-300 bg-indigo-50 flex items-center justify-center gap-2 cursor-pointer text-sm font-bold text-slate-700"><Upload size={18}/>{sourceFile ? 'Change image' : 'Choose horizontal image'}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => chooseImage(e.target.files?.[0])}/></label>
+      {sourceUrl && <><div className="w-full overflow-hidden rounded-2xl bg-slate-950 border border-slate-300"><canvas ref={previewCanvasRef} className="block w-full h-auto" aria-label="Exact banner preview" /></div><div className="grid grid-cols-1 gap-4 rounded-2xl bg-slate-50 border border-slate-200 p-4"><label className="text-xs font-black text-slate-700"><span className="flex items-center gap-2 mb-2"><ZoomIn size={15}/>Zoom</span><input type="range" min="1" max="3" step="0.01" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="w-full"/></label><label className="text-xs font-black text-slate-700"><span className="flex items-center gap-2 mb-2"><Move size={15}/>Horizontal position</span><input type="range" min="0" max="100" value={positionX} onChange={(e) => setPositionX(Number(e.target.value))} className="w-full"/></label><label className="text-xs font-black text-slate-700"><span className="flex items-center gap-2 mb-2"><Move size={15}/>Vertical position</span><input type="range" min="0" max="100" value={positionY} onChange={(e) => setPositionY(Number(e.target.value))} className="w-full"/></label><button type="button" onClick={() => { setZoom(1); setPositionX(50); setPositionY(50); }} className="inline-flex justify-center items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-black"><RotateCcw size={15}/>Reset</button></div></>}
+      {order?.adminIntervened && <div><label className="block text-xs font-black text-slate-700 mb-2">Message to ConnectBoat</label><textarea value={customerMessage} onChange={(e) => setCustomerMessage(e.target.value)} placeholder="Explain what you changed or what you want the admin to know." className="w-full min-h-24 rounded-xl border border-slate-300 p-3"/></div>}
+      {designError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{designError}</div>}
+      <button type="button" onClick={submitPreparedBanner} disabled={!sourceFile || submitting} className="w-full rounded-xl bg-indigo-600 disabled:bg-slate-300 text-white px-6 py-3.5 font-black flex items-center justify-center gap-2"><CheckCircle2 size={18}/>{submitting ? 'Submitting...' : 'Submit for Approval'}</button></div>
+    </div>}
+  </div>;
 }
