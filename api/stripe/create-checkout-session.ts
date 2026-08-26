@@ -284,6 +284,10 @@ async function advertisingGetOrder(req: Request, res: Response) {
       currency: data.currency || 'GBP',
       generatedBanners: Array.isArray(data.generatedBanners) ? data.generatedBanners : [],
       selectedBannerUrl: data.selectedBannerUrl || '',
+      adminProposalUrl: data.adminProposalUrl || '',
+      adminProposalMessage: data.adminProposalMessage || '',
+      customerNote: data.customerNote || '',
+      adminIntervened: data.adminIntervened === true,
       generationCount: Number(data.generationCount || 0),
       aiGenerationsIncluded: Number(data.aiGenerationsIncluded || 3),
       adminNote: data.adminNote || '',
@@ -544,7 +548,6 @@ async function advertisingPrepareReadyBannerUpload(req: Request, res: Response) 
   const parsedWidth = Number(width || 0);
   const parsedHeight = Number(height || 0);
   const parsedFileSize = Number(fileSize || 0);
-  const ratio = parsedWidth && parsedHeight ? parsedWidth / parsedHeight : 0;
 
   if (!['image/png', 'image/jpeg', 'image/webp'].includes(String(mimeType))) {
     return res.status(400).json({
@@ -554,19 +557,19 @@ async function advertisingPrepareReadyBannerUpload(req: Request, res: Response) 
     });
   }
 
-  if (parsedFileSize > 8 * 1024 * 1024) {
+  if (parsedFileSize > 4 * 1024 * 1024) {
     return res.status(400).json({
       success: false,
       error: 'BANNER_FILE_TOO_LARGE',
-      errorMessage: 'The banner image must be 8MB or smaller.',
+      errorMessage: 'The prepared banner must be 4MB or smaller.',
     });
   }
 
-  if (parsedWidth < 1 || parsedHeight < 1 || Math.max(parsedWidth, parsedHeight) < 500) {
+  if (parsedWidth !== 1600 || parsedHeight !== 240) {
     return res.status(400).json({
       success: false,
       error: 'BANNER_DIMENSIONS_NOT_SUITABLE',
-      errorMessage: `This image is ${parsedWidth}×${parsedHeight}px. Please upload a clearer image with at least 500px on its longest side.`,
+      errorMessage: `The prepared banner must be exactly 1600×240px. Received ${parsedWidth}×${parsedHeight}px.`,
     });
   }
 
@@ -605,6 +608,7 @@ async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response)
     orderId,
     accessToken,
     objectPath,
+    customerNote,
   } = req.body || {};
 
   if (!orderId || !accessToken || !objectPath) {
@@ -669,37 +673,19 @@ async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response)
 
   const [sourceBuffer] = await file.download();
 
-  // Create a ConnectBoat-ready 1600x240 banner without distorting the customer's image:
-  // blurred full-bleed background + original image contained in the foreground.
-  const blurredBackground = await sharp(sourceBuffer)
+  // The customer has already previewed/cropped the artwork in the browser.
+  // We only normalize the confirmed 1600x240 output here; no AI, no extra text and no automatic reframing.
+  const finalBanner = await sharp(sourceBuffer)
     .rotate()
-    .resize(1600, 240, { fit: 'cover', position: 'centre' })
-    .blur(18)
-    .modulate({ brightness: 0.72, saturation: 0.85 })
-    .png()
-    .toBuffer();
-
-  const foreground = await sharp(sourceBuffer)
-    .rotate()
-    .resize(1600, 240, {
-      fit: 'contain',
-      position: 'centre',
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-      withoutEnlargement: false,
-    })
-    .png()
-    .toBuffer();
-
-  const adaptedBanner = await sharp(blurredBackground)
-    .composite([{ input: foreground, top: 0, left: 0 }])
+    .resize(1600, 240, { fit: 'fill' })
     .png({ compressionLevel: 8 })
     .toBuffer();
 
   const downloadToken = randomUUID();
-  const adaptedPath = `advertising/customer-ready/${String(orderId)}/adapted-${Date.now()}.png`;
-  const adaptedFile = bucket.file(adaptedPath);
+  const finalPath = `advertising/customer-ready/${String(orderId)}/final-${Date.now()}.png`;
+  const finalFile = bucket.file(finalPath);
 
-  await adaptedFile.save(adaptedBanner, {
+  await finalFile.save(finalBanner, {
     resumable: false,
     metadata: {
       contentType: 'image/png',
@@ -710,21 +696,24 @@ async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response)
   });
 
   const bannerUrl =
-    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(adaptedPath)}` +
+    `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(finalPath)}` +
     `?alt=media&token=${downloadToken}`;
 
   await orderRef.set({
     generatedBanners: [bannerUrl],
     selectedBannerUrl: bannerUrl,
     workflowStatus: 'pending_approval',
-    designSource: 'customer_ready_banner_adapted',
+    designSource: 'customer_cropped_banner',
     originalBannerWidth: Number(order.pendingReadyBannerWidth || 0),
     originalBannerHeight: Number(order.pendingReadyBannerHeight || 0),
     originalBannerMimeType: String(order.pendingReadyBannerMimeType || ''),
     adaptedBannerWidth: 1600,
     adaptedBannerHeight: 240,
     submittedForApprovalAt: FieldValue.serverTimestamp(),
+    customerNote: String(customerNote || '').trim().slice(0, 1000),
     adminNote: '',
+    adminProposalUrl: FieldValue.delete(),
+    adminProposalMessage: FieldValue.delete(),
     pendingReadyBannerPath: FieldValue.delete(),
     pendingReadyBannerWidth: FieldValue.delete(),
     pendingReadyBannerHeight: FieldValue.delete(),
@@ -732,7 +721,6 @@ async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response)
     updatedAt: FieldValue.serverTimestamp(),
   }, { merge: true });
 
-  // Remove the raw temporary upload after the normalized banner is safely stored.
   try {
     await file.delete();
   } catch (cleanupError) {
@@ -744,6 +732,133 @@ async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response)
     bannerUrl,
     workflowStatus: 'pending_approval',
     adaptedDimensions: { width: 1600, height: 240 },
+  });
+}
+
+
+async function publishAdvertisingCampaignFromOrder(
+  orderRef: any,
+  order: any,
+  imageUrl: string,
+  approvedBy: string
+) {
+  const db = getAdminDb();
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const end = new Date(now);
+  end.setDate(end.getDate() + Math.max(1, Number(order.durationDays || 30)) - 1);
+  const startDate = now.toISOString().slice(0, 10);
+  const endDate = end.toISOString().slice(0, 10);
+
+  const amountPaid = Number(order.amountPaid || 0);
+  const paidDate = order.paidDate || new Date().toISOString().slice(0, 10);
+
+  let campaignId = String(order.campaignId || '');
+  if (campaignId) {
+    await db.collection('advertisingCampaigns').doc(campaignId).set({
+      enabled: true,
+      imageUrl,
+      targetUrl: order.targetUrl || '',
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  } else {
+    const campaignRef = await db.collection('advertisingCampaigns').add({
+      enabled: true,
+      advertiserName: order.advertiserName || 'Advertiser',
+      businessCategory: order.businessCategory || '',
+      imageUrl,
+      targetUrl: order.targetUrl || '',
+      altText: `${order.advertiserName || 'Advertiser'} sponsored banner`,
+      displaySeconds: Number(order.displaySeconds || 4),
+      startDate,
+      endDate,
+      amountPaid: Number.isFinite(amountPaid) ? Math.round(amountPaid * 100) / 100 : 0,
+      currency: order.currency || 'GBP',
+      paymentStatus: 'paid',
+      paidDate,
+      stripeFee: typeof order.stripeFee === 'number' ? order.stripeFee : 0,
+      stripeNetReceived: typeof order.stripeNetReceived === 'number' ? order.stripeNetReceived : null,
+      stripeCheckoutSessionId: order.stripeCheckoutSessionId || '',
+      stripePaymentIntentId: order.stripePaymentIntentId || '',
+      orderId: orderRef.id,
+      source: 'customer_checkout',
+      impressions: 0,
+      clicks: 0,
+      createdAt: FieldValue.serverTimestamp(),
+      createdBy: approvedBy,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    campaignId = campaignRef.id;
+  }
+
+  await orderRef.set({
+    workflowStatus: 'approved',
+    selectedBannerUrl: imageUrl,
+    approvedAt: FieldValue.serverTimestamp(),
+    approvedBy,
+    campaignId,
+    campaignStartDate: startDate,
+    campaignEndDate: endDate,
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  return { campaignId, startDate, endDate };
+}
+
+async function advertisingCustomerReviewAdminProposal(req: Request, res: Response) {
+  const { orderId, accessToken, decision, customerMessage } = req.body || {};
+  if (!orderId || !accessToken || !['approve', 'reject'].includes(String(decision))) {
+    return res.status(400).json({ success: false, error: 'Missing customer review details.' });
+  }
+
+  const db = getAdminDb();
+  const orderRef = db.collection('advertisingOrders').doc(String(orderId));
+  const snapshot = await orderRef.get();
+  if (!snapshot.exists) {
+    return res.status(404).json({ success: false, error: 'Advertising order not found.' });
+  }
+
+  const order = snapshot.data() || {};
+  if (order.accessToken !== accessToken) {
+    return res.status(403).json({ success: false, error: 'Invalid advertising order access token.' });
+  }
+  if (order.paymentStatus !== 'paid') {
+    return res.status(402).json({ success: false, error: 'Payment is not confirmed.' });
+  }
+  if (order.workflowStatus !== 'customer_review' || !order.adminProposalUrl) {
+    return res.status(400).json({ success: false, error: 'There is no admin proposal waiting for review.' });
+  }
+
+  if (decision === 'reject') {
+    const note = String(customerMessage || '').trim();
+    if (!note) {
+      return res.status(400).json({ success: false, error: 'Tell ConnectBoat what you would like changed.' });
+    }
+    await orderRef.set({
+      workflowStatus: 'customer_rejected_admin_proposal',
+      customerNote: note.slice(0, 1000),
+      customerRespondedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    return res.status(200).json({ success: true, workflowStatus: 'customer_rejected_admin_proposal' });
+  }
+
+  const published = await publishAdvertisingCampaignFromOrder(
+    orderRef,
+    order,
+    String(order.adminProposalUrl),
+    'customer_approved_admin_proposal'
+  );
+
+  await orderRef.set({
+    customerNote: String(customerMessage || '').trim().slice(0, 1000),
+    customerRespondedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  return res.status(200).json({
+    success: true,
+    workflowStatus: 'approved',
+    campaignId: published.campaignId,
   });
 }
 
@@ -803,6 +918,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       }
       if (advertisingAction === 'advertising_finalize_ready_banner_upload') {
         return await advertisingFinalizeReadyBannerUpload(req, res);
+      }
+      if (advertisingAction === 'advertising_customer_review_admin_proposal') {
+        return await advertisingCustomerReviewAdminProposal(req, res);
       }
       if (advertisingAction === 'advertising_select_banner') {
         return await advertisingSelectBanner(req, res);
