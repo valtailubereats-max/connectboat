@@ -57,6 +57,13 @@ function getValidConfiguredPrice(value: unknown, fallback: number): number {
 const ADVERTISING_EXPOSURE_SECONDS = new Set([4, 6, 8, 10]);
 const ADVERTISING_DURATION_DAYS = new Set([7, 14, 30]);
 
+const ADVERTISING_CATEGORIES = new Set([
+  'Boats & Yachts', 'Marine Services', 'Marinas', 'Boat Equipment & Electronics',
+  'Fishing & Watersports', 'Coastal Hotels & Resorts', 'Waterfront Restaurants & Hospitality',
+  'Luxury Travel & Tourism', 'Aviation & Helicopters', 'Marine Property & Real Estate',
+  'Insurance & Finance', 'Automotive & Towing', 'Other Marine-Related Business',
+]);
+
 function getAdvertisingPrice(settings: any, seconds: number, days: number): number {
   const map: Record<number, number> = {
     4: Number(settings?.price4s30d || 0),
@@ -113,6 +120,7 @@ async function advertisingCreateCheckout(req: Request, res: Response) {
     advertiserName,
     contactEmail,
     targetUrl,
+    businessCategory,
     displaySeconds,
     durationDays,
     successUrl,
@@ -128,6 +136,10 @@ async function advertisingCreateCheckout(req: Request, res: Response) {
       error: 'MISSING_FIELDS',
       errorMessage: 'Business name, email and destination website are required.',
     });
+  }
+
+  if (!businessCategory || !ADVERTISING_CATEGORIES.has(String(businessCategory))) {
+    return res.status(400).json({ success: false, error: 'INVALID_ADVERTISING_CATEGORY', errorMessage: 'Choose a business category relevant to the ConnectBoat audience.' });
   }
 
   if (!/^https?:\/\//i.test(String(targetUrl))) {
@@ -174,6 +186,7 @@ async function advertisingCreateCheckout(req: Request, res: Response) {
     advertiserName: String(advertiserName).trim(),
     contactEmail: String(contactEmail).trim().toLowerCase(),
     targetUrl: String(targetUrl).trim(),
+    businessCategory: String(businessCategory),
     displaySeconds: seconds,
     durationDays: days,
     amountExpected: amount,
@@ -264,6 +277,7 @@ async function advertisingGetOrder(req: Request, res: Response) {
       workflowStatus: data.workflowStatus || 'awaiting_payment',
       advertiserName: data.advertiserName || '',
       targetUrl: data.targetUrl || '',
+      businessCategory: data.businessCategory || '',
       displaySeconds: Number(data.displaySeconds || 4),
       durationDays: Number(data.durationDays || 30),
       amountPaid: typeof data.amountPaid === 'number' ? data.amountPaid : null,
@@ -417,7 +431,7 @@ Premium, commercial, realistic, clean and suitable for the ConnectBoat UK marine
     const buttonWidth = Math.max(150, Math.min(310, callToAction.length * 12 + 48));
 
     const overlaySvg = Buffer.from(`
-      <svg width="1600" height="240" xmlns="http://www.w3.org/2000/svg" encoding="UTF-8">
+      <svg width="1600" height="240" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="shade" x1="0" x2="1">
             <stop offset="0%" stop-color="#071426" stop-opacity="0.96"/>
@@ -427,11 +441,11 @@ Premium, commercial, realistic, clean and suitable for the ConnectBoat UK marine
           </linearGradient>
         </defs>
         <rect width="1600" height="240" fill="url(#shade)"/>
-        <text x="54" y="48" font-family="DejaVu Sans, sans-serif" font-size="20" font-weight="700" fill="#7dd3fc">${xmlEscape(brand.toUpperCase())}</text>
-        <text x="54" y="104" font-family="DejaVu Sans, sans-serif" font-size="40" font-weight="900" fill="#ffffff">${xmlEscape(mainHeadline)}</text>
-        ${supportingText ? `<text x="54" y="143" font-family="DejaVu Sans, sans-serif" font-size="20" font-weight="500" fill="#dbeafe">${xmlEscape(supportingText)}</text>` : ''}
+        <text x="54" y="48" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700" fill="#7dd3fc">${xmlEscape(brand.toUpperCase())}</text>
+        <text x="54" y="104" font-family="Arial, Helvetica, sans-serif" font-size="40" font-weight="900" fill="#ffffff">${xmlEscape(mainHeadline)}</text>
+        ${supportingText ? `<text x="54" y="143" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="500" fill="#dbeafe">${xmlEscape(supportingText)}</text>` : ''}
         <rect x="54" y="171" width="${buttonWidth}" height="44" rx="12" fill="#2563eb"/>
-        <text x="76" y="199" font-family="DejaVu Sans, sans-serif" font-size="18" font-weight="800" fill="#ffffff">${xmlEscape(callToAction)}</text>
+        <text x="76" y="199" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#ffffff">${xmlEscape(callToAction)}</text>
       </svg>
     `);
 
@@ -548,16 +562,11 @@ async function advertisingPrepareReadyBannerUpload(req: Request, res: Response) 
     });
   }
 
-  if (
-    parsedWidth < 1200 ||
-    parsedWidth <= parsedHeight ||
-    ratio < 1.2
-  ) {
+  if (parsedWidth < 1 || parsedHeight < 1 || Math.max(parsedWidth, parsedHeight) < 500) {
     return res.status(400).json({
       success: false,
       error: 'BANNER_DIMENSIONS_NOT_SUITABLE',
-      errorMessage:
-        `This image is ${parsedWidth}×${parsedHeight}px. Please upload a horizontal image at least 1200px wide. ConnectBoat will automatically adapt it to the banner space.`,
+      errorMessage: `This image is ${parsedWidth}×${parsedHeight}px. Please upload a clearer image with at least 500px on its longest side.`,
     });
   }
 
@@ -788,9 +797,6 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       }
       if (advertisingAction === 'advertising_get_order') {
         return await advertisingGetOrder(req, res);
-      }
-      if (advertisingAction === 'advertising_generate_banner') {
-        return await advertisingGenerateBanner(req, res);
       }
       if (advertisingAction === 'advertising_prepare_ready_banner_upload') {
         return await advertisingPrepareReadyBannerUpload(req, res);
