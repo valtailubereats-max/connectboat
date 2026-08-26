@@ -557,19 +557,26 @@ async function advertisingPrepareReadyBannerUpload(req: Request, res: Response) 
     });
   }
 
-  if (parsedFileSize > 4 * 1024 * 1024) {
+  if (parsedFileSize > 8 * 1024 * 1024) {
     return res.status(400).json({
       success: false,
       error: 'BANNER_FILE_TOO_LARGE',
-      errorMessage: 'The prepared banner must be 4MB or smaller.',
+      errorMessage: 'The advertising image must be 8MB or smaller.',
     });
   }
 
-  if (parsedWidth !== 1600 || parsedHeight !== 240) {
+  const ratio = parsedWidth / Math.max(1, parsedHeight);
+  const standardRatio = 16 / 9;
+  if (
+    parsedWidth <= parsedHeight ||
+    parsedWidth < 1280 || parsedHeight < 720 ||
+    parsedWidth > 3840 || parsedHeight > 2160 ||
+    Math.abs(ratio - standardRatio) > 0.025
+  ) {
     return res.status(400).json({
       success: false,
       error: 'BANNER_DIMENSIONS_NOT_SUITABLE',
-      errorMessage: `The prepared banner must be exactly 1600×240px. Received ${parsedWidth}×${parsedHeight}px.`,
+      errorMessage: `Advertising artwork must be horizontal 16:9, between 1280×720 and 3840×2160. Received ${parsedWidth}×${parsedHeight}px.`,
     });
   }
 
@@ -673,22 +680,26 @@ async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response)
 
   const [sourceBuffer] = await file.download();
 
-  // The customer has already previewed/cropped the artwork in the browser.
-  // We only normalize the confirmed 1600x240 output here; no AI, no extra text and no automatic reframing.
+  // Preserve the customer's approved 16:9 composition exactly: no crop, no stretch and no background fill.
+  // We only rotate EXIF orientation and web-optimize the file.
+  const pipeline = sharp(sourceBuffer).rotate();
+  const sourceMeta = await pipeline.metadata();
+  const normalizedWidth = Math.min(1920, Number(sourceMeta.width || order.pendingReadyBannerWidth || 1920));
   const finalBanner = await sharp(sourceBuffer)
     .rotate()
-    .resize(1600, 240, { fit: 'fill' })
-    .png({ compressionLevel: 8 })
+    .resize({ width: normalizedWidth, withoutEnlargement: true, fit: 'inside' })
+    .webp({ quality: 88 })
     .toBuffer();
+  const finalMeta = await sharp(finalBanner).metadata();
 
   const downloadToken = randomUUID();
-  const finalPath = `advertising/customer-ready/${String(orderId)}/final-${Date.now()}.png`;
+  const finalPath = `advertising/customer-ready/${String(orderId)}/final-${Date.now()}.webp`;
   const finalFile = bucket.file(finalPath);
 
   await finalFile.save(finalBanner, {
     resumable: false,
     metadata: {
-      contentType: 'image/png',
+      contentType: 'image/webp',
       metadata: {
         firebaseStorageDownloadTokens: downloadToken,
       },
@@ -703,12 +714,12 @@ async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response)
     generatedBanners: [bannerUrl],
     selectedBannerUrl: bannerUrl,
     workflowStatus: 'pending_approval',
-    designSource: 'customer_cropped_banner',
+    designSource: 'customer_16x9_artwork',
     originalBannerWidth: Number(order.pendingReadyBannerWidth || 0),
     originalBannerHeight: Number(order.pendingReadyBannerHeight || 0),
     originalBannerMimeType: String(order.pendingReadyBannerMimeType || ''),
-    adaptedBannerWidth: 1600,
-    adaptedBannerHeight: 240,
+    adaptedBannerWidth: Number(finalMeta.width || 0),
+    adaptedBannerHeight: Number(finalMeta.height || 0),
     submittedForApprovalAt: FieldValue.serverTimestamp(),
     customerNote: String(customerNote || '').trim().slice(0, 1000),
     adminNote: '',
@@ -731,7 +742,7 @@ async function advertisingFinalizeReadyBannerUpload(req: Request, res: Response)
     success: true,
     bannerUrl,
     workflowStatus: 'pending_approval',
-    adaptedDimensions: { width: 1600, height: 240 },
+    adaptedDimensions: { width: Number(finalMeta.width || 0), height: Number(finalMeta.height || 0) },
   });
 }
 
