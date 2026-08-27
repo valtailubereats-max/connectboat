@@ -1110,8 +1110,16 @@ const AdDetails = () => {
                       <img src={campaign.imageUrl} alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'} className="h-full w-full object-cover" loading={index < 4 ? 'eager' : 'lazy'} />
                     </div>
                   )}
-                  <div className="shrink-0 h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center" aria-hidden="true">
-                    <img src="/connectboat-exact-logo-hd.png" alt="ConnectBoat" className="h-full w-full object-contain drop-shadow-sm" />
+                  <div
+                    className="shrink-0 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-[#071a3a]/90 border border-white/70 shadow-sm flex items-center justify-center p-1"
+                    aria-hidden="true"
+                  >
+                    <img
+                      src="/connectboat-exact-logo.svg"
+                      alt=""
+                      className="h-full w-full object-contain"
+                      draggable={false}
+                    />
                   </div>
                 </React.Fragment>
               ))}
