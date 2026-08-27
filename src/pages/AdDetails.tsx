@@ -1141,6 +1141,13 @@ const AdDetails = () => {
           .connectboat-ad-marquee:hover {
             animation-play-state: paused;
           }
+                    .connectboat-thumbnails {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+          }
+          .connectboat-thumbnails::-webkit-scrollbar {
+            display: none;
+          }
           .seller-more-card {
             flex-basis: calc((100% - 0.75rem) / 2);
             max-width: calc((100% - 0.75rem) / 2);
@@ -1162,7 +1169,7 @@ const AdDetails = () => {
         {/* LADO ESQUERDO: Imagens e Galeria */}
         <div className="lg:col-span-9 space-y-4">
           <div 
-            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/80 shadow-[0_10px_28px_rgba(4,18,38,0.20),0_0_0_1px_rgba(255,255,255,0.10)] group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1262,7 +1269,7 @@ const AdDetails = () => {
                     setCurrentImageIndex(i);
                   }}
                   className={`relative w-32 h-24 xl:w-36 xl:h-28 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
+                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500 ring-offset-2 ring-offset-white/40/30' : 'border-transparent opacity-75 hover:opacity-100'
                   }`}
                 >
                   {item.type === 'video' ? (
@@ -1976,7 +1983,7 @@ const AdDetails = () => {
 
           {/* Thumbnails list */}
           {mediaItems.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto py-1 scrollbar-none">
+            <div className="connectboat-thumbnails flex gap-2 overflow-x-auto py-1 scrollbar-none">
               {mediaItems.map((item, i) => (
                 <button
                   key={i}
@@ -1985,7 +1992,7 @@ const AdDetails = () => {
                     setCurrentImageIndex(i);
                   }}
                   className={`relative w-20 h-16 sm:w-24 sm:h-18 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
+                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500 ring-offset-2 ring-offset-white/40/30' : 'border-transparent opacity-75 hover:opacity-100'
                   }`}
                 >
                   {item.type === 'video' ? (
