@@ -116,6 +116,13 @@ const Terms = () => {
               Featured or Premium placement increases visibility but does not guarantee enquiries,
               clicks, leads, a sale, a hire booking or any particular commercial result.
             </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              ConnectBoat may also display clearly identified sponsored advertising from third-party
+              advertisers within or around listing pages. Sponsored advertising is separate from the
+              listing being viewed and does not imply that ConnectBoat endorses the advertiser,
+              product or service. Clicking sponsored advertising may take you to an external website
+              or service operated by a third party.
+            </p>
           </section>
 
           <section>
@@ -387,7 +394,7 @@ const Terms = () => {
               providers remain the responsibility of those parties.
             </p>
             <p className="text-sm text-slate-400 mt-2">
-              Last updated: 19 August 2026.
+              Last updated: 27 August 2026.
             </p>
           </section>
 
