@@ -21,6 +21,7 @@ import AdCard from '../components/AdCard';
 import ImageLightboxModal from '../components/ImageLightboxModal';
 import { normalizeDescription } from '../utils/textFormatter';
 import { triggerShare } from '../utils/shareUtils';
+import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 
 export interface MediaItem {
   type: 'video' | 'image';
@@ -1114,12 +1115,7 @@ const AdDetails = () => {
                     className="shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-[#0b1930]/95 border border-white/70 shadow-md flex items-center justify-center p-1"
                     aria-hidden="true"
                   >
-                    <img
-                      src="/connectboat-logo.png"
-                      alt=""
-                      className="h-full w-full object-contain"
-                      draggable={false}
-                    />
+                    <ConnectBoatLogo className="h-7 w-auto sm:h-8 shrink-0 text-white" />
                   </div>
                 </React.Fragment>
               ))}
