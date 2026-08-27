@@ -1086,8 +1086,8 @@ const AdDetails = () => {
           <ChevronLeft size={14} /> Back
         </button>
 
-        <div className="absolute right-1 top-1 z-30 inline-flex items-center px-1.5 py-0.5 rounded-md bg-white/45 border border-white/35 shadow-[0_1px_4px_rgba(15,23,42,0.12)] backdrop-blur-[2px] text-[7px] sm:text-[8px] font-black uppercase tracking-[0.08em] text-slate-600">
-          Sponsored
+        <div className="absolute right-1 top-1 z-30 inline-flex items-center px-1 py-0.5 rounded-md bg-white/30 border border-white/25 shadow-[0_1px_3px_rgba(15,23,42,0.10)] backdrop-blur-[2px] text-[7px] sm:text-[8px] font-black uppercase tracking-[0.08em] text-slate-600">
+          AD
         </div>
 
         {listingAdCampaigns.length > 0 ? (
