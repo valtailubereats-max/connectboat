@@ -1023,7 +1023,7 @@ const AdDetails = () => {
           />
         </div>
       )}
-      <div className="relative z-10 w-full max-w-[1880px] mx-auto px-2 sm:px-3 lg:px-4 xl:px-5 2xl:px-6 py-5">
+      <div className="relative z-10 w-full max-w-[1880px] mx-auto px-2 sm:px-3 lg:px-4 xl:px-5 2xl:px-6 pt-0 pb-5 sm:py-5">
       {ad && (
         <Helmet>
           <title>{ad.title} - {ad.city || 'United Kingdom'} | ConnectBoat</title>
@@ -1085,7 +1085,7 @@ const AdDetails = () => {
           <ChevronLeft size={14} /> Back
         </button>
 
-        <div className="absolute right-1 top-1 z-30 inline-flex items-center px-2 py-1 rounded-lg bg-white/75 border border-white/70 shadow-sm backdrop-blur-sm text-[8px] sm:text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">
+        <div className="absolute right-1 top-1 z-30 inline-flex items-center px-1.5 py-0.5 rounded-md bg-white/45 border border-white/35 shadow-[0_1px_4px_rgba(15,23,42,0.12)] backdrop-blur-[2px] text-[7px] sm:text-[8px] font-black uppercase tracking-[0.08em] text-slate-600">
           Sponsored
         </div>
 
@@ -1111,7 +1111,7 @@ const AdDetails = () => {
                     </div>
                   )}
                   <div className="shrink-0 h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center" aria-hidden="true">
-                    <img src="/connectboat-logo.png" alt="ConnectBoat" className="h-full w-full object-contain drop-shadow-sm" />
+                    <img src="/connectboat-exact-logo-hd.png" alt="ConnectBoat" className="h-full w-full object-contain drop-shadow-sm" />
                   </div>
                 </React.Fragment>
               ))}
@@ -1136,6 +1136,16 @@ const AdDetails = () => {
           }
           .connectboat-ad-marquee:hover {
             animation-play-state: paused;
+          }
+          .seller-more-card {
+            flex-basis: calc((100% - 0.75rem) / 2);
+            max-width: calc((100% - 0.75rem) / 2);
+          }
+          @media (min-width: 1024px) {
+            .seller-more-card {
+              flex-basis: calc((100% - 2rem) / 3);
+              max-width: calc((100% - 2rem) / 3);
+            }
           }
           @media (prefers-reduced-motion: reduce) {
             .connectboat-ad-marquee { animation: none; }
@@ -2526,11 +2536,11 @@ const AdDetails = () => {
 
           {/* Single-row horizontal carousel on all screen sizes */}
           <div className="p-4 sm:p-5 lg:p-6">
-            <div className="flex gap-4 sm:gap-5 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-thin">
+            <div className="flex gap-3 lg:gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-thin">
               {sellerAds.map((sellerAd) => (
                 <div
                   key={sellerAd.id}
-                  className="min-w-[76vw] xs:min-w-[260px] sm:min-w-[280px] md:min-w-[290px] lg:min-w-[270px] xl:min-w-[285px] max-w-[285px] snap-start"
+                  className="seller-more-card shrink-0 snap-start"
                 >
                   <AdCard ad={sellerAd} />
                 </div>
