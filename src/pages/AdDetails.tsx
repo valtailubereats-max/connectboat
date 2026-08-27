@@ -2342,46 +2342,6 @@ const AdDetails = () => {
               </div>
             )}
 
-            {/* CTAs */}
-            <div className="flex flex-col gap-2 pt-1">
-              {ad.adStatus === 'sold' || ad.status === 'sold' ? (
-                <div className="flex items-center justify-center gap-1 bg-slate-100 text-slate-500 py-2.5 px-4 rounded-xl font-black text-xs border border-slate-200">
-                  <Tag size={14} className="text-slate-400" />
-                  <span>Listing Sold</span>
-                </div>
-              ) : (
-                <button
-                  onClick={handleContactClick}
-                  className={`flex items-center justify-center gap-1.5 ${
-                    hasSourceUrl ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-500 hover:bg-emerald-600'
-                  } text-white py-2.5 px-4 rounded-xl font-black text-xs transition-all shadow-md active:scale-[0.98] w-full text-center`}
-                >
-                  {hasSourceUrl ? <ExternalLink size={14} /> : <MessageCircle size={14} />}
-                  <span>{hasSourceUrl ? 'Contact' : 'Contact via WhatsApp'}</span>
-                </button>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleShare}
-                  className={`flex items-center justify-center gap-1 border px-2 py-2 rounded-lg font-bold text-[9px] transition-all truncate ${
-                    shareCopied 
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
-                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <Share2 size={13} className={shareCopied ? 'text-emerald-500' : ''} />
-                  <span>{shareCopied ? 'Copied!' : 'Share'}</span>
-                </button>
-
-                <button
-                  onClick={() => setShowReportModal(true)}
-                  className="flex items-center justify-center gap-1 border border-rose-100 hover:border-rose-200 text-rose-500 bg-rose-50/50 hover:bg-rose-50 py-2 px-2 rounded-lg font-bold text-[9px] transition"
-                >
-                  <ShieldAlert size={13} /> Report
-                </button>
-              </div>
-            </div>
           </div>
         </div>
 
