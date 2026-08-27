@@ -1749,7 +1749,7 @@ const AdDetails = () => {
               </div>
 
               {/* CTAs */}
-              <div className="flex flex-col gap-3">
+              <div className="hidden lg:flex flex-col gap-3">
                 {ad.externalListing || (hasSourceUrl && !ad.demoListing) ? (
                   <a
                     href={ad.sourceUrl}
@@ -2583,14 +2583,15 @@ const AdDetails = () => {
         </div>
       )}
 
-      {/* STICKY MOBILE CONTACT BAR */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 shadow-2xl flex items-center justify-between gap-3">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Price</span>
-          <span className="text-sm font-black text-indigo-600">
-            {hasPrice ? formatPrice(ad.price, ad.country) : 'Price on Request'}
+      {/* STICKY MOBILE ACTION BAR */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2.5 shadow-2xl flex items-center gap-2">
+        <div className="flex flex-col shrink-0 min-w-[72px]">
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Price</span>
+          <span className="text-sm font-black text-indigo-600 leading-tight">
+            {hasPrice ? formatPrice(ad.price, ad.country) : 'On Request'}
           </span>
         </div>
+
         <button
           onClick={() => {
             if (isUnclaimed) {
@@ -2602,7 +2603,7 @@ const AdDetails = () => {
             }
           }}
           disabled={ad.adStatus === 'sold' || ad.status === 'sold'}
-          className={`flex-1 py-3 px-4 rounded-xl font-black text-xs text-white shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${
+          className={`flex-1 min-w-0 py-3 px-3 rounded-xl font-black text-xs text-white shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${
             ad.adStatus === 'sold' || ad.status === 'sold'
               ? 'bg-slate-400 cursor-not-allowed'
               : hasSourceUrl
@@ -2610,8 +2611,32 @@ const AdDetails = () => {
                 : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
           }`}
         >
-          <MessageCircle size={16} />
-          <span>{hasSourceUrl ? 'Contact Seller' : 'Contact via WhatsApp'}</span>
+          <MessageCircle size={17} className="shrink-0" />
+          <span className="truncate">{hasSourceUrl ? 'Contact Seller' : 'Contact'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleShare}
+          aria-label="Share listing"
+          title={shareCopied ? 'Link copied!' : 'Share'}
+          className={`w-11 h-11 shrink-0 rounded-xl border flex items-center justify-center transition-all active:scale-95 ${
+            shareCopied
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+              : 'bg-white border-slate-200 text-slate-600'
+          }`}
+        >
+          <Share2 size={18} className={shareCopied ? 'animate-bounce' : ''} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowReportModal(true)}
+          aria-label="Report listing"
+          title="Report"
+          className="w-11 h-11 shrink-0 rounded-xl border border-rose-100 bg-rose-50/70 text-rose-500 flex items-center justify-center transition-all active:scale-95"
+        >
+          <ShieldAlert size={18} />
         </button>
       </div>
 
