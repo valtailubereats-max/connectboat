@@ -1184,6 +1184,11 @@ const AdDetails = () => {
                   style={{ backgroundImage: `url(${currentMedia.url})` }}
                 />
                 {/* Main Carousel Image */}
+                <div
+                  className="absolute inset-0 bg-cover bg-center blur-2xl opacity-45 scale-110 pointer-events-none"
+                  style={{ backgroundImage: `url(${currentMedia.url})` }}
+                />
+                <div className="absolute inset-0 bg-slate-950/10 pointer-events-none" />
                 <img
                   src={currentMedia.url}
                   alt={ad.title}
@@ -1905,6 +1910,11 @@ const AdDetails = () => {
                   className="absolute inset-0 bg-cover bg-center blur-2xl opacity-25 select-none pointer-events-none scale-110"
                   style={{ backgroundImage: `url(${currentMedia.url})` }}
                 />
+                <div
+                  className="absolute inset-0 bg-cover bg-center blur-2xl opacity-45 scale-110 pointer-events-none"
+                  style={{ backgroundImage: `url(${currentMedia.url})` }}
+                />
+                <div className="absolute inset-0 bg-slate-950/10 pointer-events-none" />
                 <img
                   src={currentMedia.url}
                   alt={ad.title}
