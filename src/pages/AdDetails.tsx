@@ -1111,11 +1111,11 @@ const AdDetails = () => {
                     </div>
                   )}
                   <div
-                    className="shrink-0 h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-white/95 border border-white shadow-md flex items-center justify-center p-1.5"
+                    className="shrink-0 h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-[#0b1930]/95 border border-white/70 shadow-md flex items-center justify-center p-1"
                     aria-hidden="true"
                   >
                     <img
-                      src="/connectboat-exact-logo-hd.png"
+                      src="/connectboat-logo.png"
                       alt=""
                       className="h-full w-full object-contain"
                       draggable={false}
