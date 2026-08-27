@@ -71,7 +71,7 @@ const Privacy = () => {
 
         <div className="prose prose-slate max-w-none space-y-8">
           <p className="text-sm font-semibold text-indigo-600">
-            Last updated: 20 August 2026
+            Last updated: 27 August 2026
           </p>
 
           <section>
@@ -156,8 +156,10 @@ const Privacy = () => {
                 <p className="text-slate-600 text-sm leading-relaxed">
                   Device and browser information, page visits, approximate technical location
                   derived from network information, IP-related logs where available, login and
-                  authentication events, listing views, clicks, interaction counters, error logs,
-                  security events and diagnostic information used to operate and protect the platform.
+                  authentication events, listing views, sponsored-advertising impressions and clicks,
+                  interactions with contact or communication buttons, other interaction counters,
+                  error logs, security events and diagnostic information used to operate, measure and
+                  protect the platform.
                 </p>
               </div>
 
