@@ -68,7 +68,7 @@ const Cookies = () => {
 
         <div className="prose prose-slate max-w-none space-y-8">
           <p className="text-sm font-semibold text-emerald-600">
-            Last updated: 21 August 2026
+            Last updated: 27 August 2026
           </p>
 
           <section>
@@ -221,6 +221,14 @@ const Cookies = () => {
                 delivery service and is not used by ConnectBoat as an advertising-cookie provider.
               </li>
             </ul>
+
+            <p className="text-slate-600 leading-relaxed mt-3">
+              ConnectBoat may display sponsored advertising without this, by itself, meaning that
+              third-party advertising cookies or behavioural-tracking technologies are placed on
+              your device. If ConnectBoat introduces non-essential advertising cookies or similar
+              tracking technologies in the future, this policy and the applicable consent controls
+              will be updated before those technologies are used where consent is required.
+            </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">
               Third-party providers may process information under their own privacy and technology
