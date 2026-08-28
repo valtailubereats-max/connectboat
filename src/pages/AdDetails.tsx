@@ -2295,30 +2295,27 @@ const AdDetails = () => {
                     <Award size={11} className="text-indigo-500 shrink-0" />
                   </h4>
                   {hasSellerRating && (
-                    <>
-                  <div className="flex items-center gap-0.5 mt-0.5" title={`${effectiveSellerRatingAverage} / 5`}>
-                    <div className="flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => {
-                        const ratingVal = effectiveSellerRatingAverage;
-                        const isFilled = star <= Math.round(ratingVal);
-                        return (
-                          <Star
-                            key={star}
-                            size={9}
-                            className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
-                          />
-                        );
-                      })}
+                    <div className="flex items-center gap-0.5 mt-0.5" title={`${effectiveSellerRatingAverage} / 5`}>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const ratingVal = effectiveSellerRatingAverage;
+                          const isFilled = star <= Math.round(ratingVal);
+                          return (
+                            <Star
+                              key={star}
+                              size={9}
+                              className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
+                            />
+                          );
+                        })}
+                      </div>
+                      <span className="text-[9px] text-slate-500 font-bold ml-1">
+                        ({effectiveSellerRatingCount} reviews)
+                      </span>
                     </div>
-                    <span className="text-[9px] text-slate-500 font-bold ml-1">
-                      ({effectiveSellerRatingCount} reviews)
-                    </span>
-                  </div>
+                  )}
                 </div>
               </div>
-
-                    </>
-                  )}
 
               {/* Avaliar button */}
               {user && user.uid !== ad.sellerId && (
