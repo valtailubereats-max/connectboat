@@ -21,6 +21,7 @@ import AdCard from '../components/AdCard';
 import ImageLightboxModal from '../components/ImageLightboxModal';
 import { normalizeDescription } from '../utils/textFormatter';
 import { triggerShare } from '../utils/shareUtils';
+import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 
 export interface MediaItem {
   type: 'video' | 'image';
@@ -1119,12 +1120,11 @@ const AdDetails = () => {
                           />
                         </div>
                       )}
-                      <div className="shrink-0 h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center" aria-hidden="true">
-                        <img
-                          src="/connectboat-exact-logo-hd.png"
-                          alt="ConnectBoat"
-                          className="h-full w-full object-contain drop-shadow-sm"
-                        />
+                      <div
+                        className="shrink-0 h-7 w-7 sm:h-8 sm:w-8 lg:h-8 lg:w-8 rounded-full bg-[#0b1930]/95 border border-white/70 shadow-md flex items-center justify-center p-0.5"
+                        aria-hidden="true"
+                      >
+                        <ConnectBoatLogo className="h-5 w-auto sm:h-6 shrink-0 text-white" />
                       </div>
                     </React.Fragment>
                   ))}
@@ -1141,7 +1141,7 @@ const AdDetails = () => {
           </div>
 
           <div
-            className="relative z-30 inline-flex shrink-0 h-[28px] min-w-[42px] sm:h-[32px] sm:min-w-[48px] lg:h-[38px] lg:min-w-[68px] items-center justify-center rounded-lg lg:rounded-xl border-2 border-white bg-[#073b59]/65 px-2 lg:px-3 text-[10px] sm:text-xs lg:text-sm font-black uppercase leading-none text-white shadow-[0_6px_16px_rgba(0,0,0,0.24)] backdrop-blur-sm"
+            className="relative z-30 inline-flex shrink-0 h-[20px] min-w-[28px] sm:h-[22px] sm:min-w-[31px] lg:h-[38px] lg:min-w-[68px] items-center justify-center rounded-md lg:rounded-xl border border-white/90 lg:border-2 bg-[#073b59]/55 lg:bg-[#073b59]/65 px-1 lg:px-3 text-[7px] sm:text-[8px] lg:text-sm font-black uppercase leading-none text-white shadow-[0_3px_8px_rgba(0,0,0,0.18)] lg:shadow-[0_6px_16px_rgba(0,0,0,0.24)] backdrop-blur-sm"
             aria-label="Advertisement"
           >
             AD
@@ -1324,7 +1324,7 @@ const AdDetails = () => {
 
 
           {/* TITLE CARD — directly below thumbnails */}
-          <div className="bg-white rounded-[2rem] p-6 md:p-7 border border-slate-100 shadow-xl mt-4 text-left space-y-4">
+          <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-7 mt-4 text-left space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <span className="bg-indigo-50 text-indigo-600 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-indigo-100">
                 {ad.category}
@@ -1407,10 +1407,10 @@ const AdDetails = () => {
           </div>
 
           {/* DESCRIPTION CARD — separate from title and seller */}
-          <div className="bg-white rounded-[2rem] p-6 md:p-7 border border-slate-100 shadow-xl mt-4 text-left">
+          <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-7 mt-4 text-left">
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Detailed Description</h3>
-              <p className="text-slate-600 text-[15px] leading-relaxed whitespace-pre-line break-words overflow-hidden bg-slate-50/40 p-4 rounded-2xl border border-slate-50">
+              <p className="text-slate-700 text-[15px] leading-relaxed whitespace-pre-line break-words overflow-hidden bg-white/38 backdrop-blur-sm p-4 rounded-2xl border border-white/55">
                 {normalizedDescription.length > 400 && !descriptionExpanded
                   ? `${normalizedDescription.substring(0, 400).trim()}...`
                   : normalizedDescription}
@@ -1430,7 +1430,7 @@ const AdDetails = () => {
 
           {/* ESPECIFICAÇÕES TÉCNICAS DO BARCO (GROUPED MARINE SPECS) */}
           {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.length || ad.beam || ad.draft || ad.hullMaterial || ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType || ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
-            <div id="especificacoes-nauticas" className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6 mt-6 text-left">
+            <div id="especificacoes-nauticas" className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-8 space-y-6 mt-6 text-left">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-indigo-600/10 text-indigo-700 rounded-2xl flex items-center justify-center font-bold">
@@ -1629,10 +1629,10 @@ const AdDetails = () => {
 
         {/* LADO DIREITO: Dados, Vendedor e WhatsApp */}
         <div className="lg:col-span-3 space-y-6">
-          <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6">
+          <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-8 space-y-6">
 
             {/* Cartão do Vendedor e Avaliações */}
-            <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 space-y-4 overflow-hidden">
+            <div className="bg-white/58 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/70 space-y-4 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.60)]">
               <div className="flex flex-col gap-3 pb-3 border-b border-slate-200/60">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-12 h-12 bg-indigo-600/10 text-indigo-700 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0">
@@ -1782,7 +1782,7 @@ const AdDetails = () => {
           </div>
 
           {/* SECÇÃO DE LOCALIZAÇÃO */}
-          <div id="localizacao" className="bg-white rounded-[2rem] p-5 border border-slate-100 shadow-xl space-y-4 scroll-mt-24 text-left">
+          <div id="localizacao" className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-5 space-y-4 scroll-mt-24 text-left">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
                 <MapPin size={22} />
