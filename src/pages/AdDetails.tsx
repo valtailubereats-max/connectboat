@@ -1078,7 +1078,7 @@ const AdDetails = () => {
       )}
 
       {/* Sponsored carousel — Back | advertising | AD */}
-      <section className="relative mt-1 mb-1 bg-transparent lg:-mt-[36px]">
+      <section className="relative mt-1 mb-1 bg-transparent lg:-mt-[45px]">
         <div className="flex items-center gap-1 lg:gap-3 overflow-hidden py-0 px-1 lg:px-0">
           <button
             onClick={() => navigate(-1)}
