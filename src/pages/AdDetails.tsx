@@ -915,7 +915,57 @@ const AdDetails = () => {
   };
 
   if (loading) {
-    return (
+  
+  const compactBoatSpecs = [
+    { section: 'Vessel', tone: 'text-sky-800', label: 'Type', value: ad.boatType },
+    { section: 'Vessel', tone: 'text-sky-800', label: 'Make', value: ad.manufacturer },
+    { section: 'Vessel', tone: 'text-sky-800', label: 'Model', value: ad.model },
+    { section: 'Vessel', tone: 'text-sky-800', label: 'Year', value: ad.year },
+
+    { section: 'Dimensions', tone: 'text-teal-800', label: 'Length', value: ad.length },
+    { section: 'Dimensions', tone: 'text-teal-800', label: 'Beam', value: ad.beam },
+    { section: 'Dimensions', tone: 'text-teal-800', label: 'Draft', value: ad.draft },
+    { section: 'Dimensions', tone: 'text-teal-800', label: 'Hull', value: ad.hullMaterial },
+
+    { section: 'Engine', tone: 'text-amber-800', label: 'Make', value: ad.engineBrand },
+    { section: 'Engine', tone: 'text-amber-800', label: 'Power', value: ad.horsepower },
+    { section: 'Engine', tone: 'text-amber-800', label: 'Hours', value: ad.engineHours },
+    { section: 'Engine', tone: 'text-amber-800', label: 'Fuel', value: ad.fuelType },
+
+    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Cabins', value: ad.cabins },
+    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Berths', value: ad.berths },
+    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Toilets', value: ad.bathrooms },
+    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Trailer', value: ad.trailerIncluded },
+  ].filter(
+    (item) =>
+      item.value !== undefined &&
+      item.value !== null &&
+      String(item.value).trim() !== ''
+  );
+
+  const compactBoatSpecRows: Array<{
+    section: string;
+    tone: string;
+    items: typeof compactBoatSpecs;
+  }> = [];
+
+  compactBoatSpecs.forEach((item) => {
+    const lastRow = compactBoatSpecRows[compactBoatSpecRows.length - 1];
+
+    if (!lastRow || lastRow.items.length === 2) {
+      compactBoatSpecRows.push({
+        section: item.section,
+        tone: item.tone,
+        items: [item],
+      });
+    } else {
+      // Always use the empty second column before creating another row.
+      // Example: HULL on the left + FUEL on the right instead of FUEL alone below.
+      lastRow.items.push(item);
+    }
+  });
+
+  return (
       <div className="max-w-4xl mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[50vh]">
         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
         <span className="text-slate-500 font-medium">A carregar anúncio...</span>
@@ -2154,151 +2204,52 @@ const AdDetails = () => {
                 )}
               </div>
 
-              {/* Embarcação */}
-              {(ad.boatType || ad.manufacturer || ad.model || ad.year) && (
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-sky-800 tracking-wider block">Vessel</span>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {ad.boatType && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Type</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.boatType}</span>
-                      </div>
-                    )}
-                    {ad.manufacturer && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Make</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.manufacturer}</span>
-                      </div>
-                    )}
-                    {ad.model && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Model</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.model}</span>
-                      </div>
-                    )}
-                    {ad.year && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Year</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.year}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              <div className="space-y-3">
+                {compactBoatSpecRows.map((row, rowIndex) => (
+                  <div key={`compact-spec-row-${rowIndex}`} className="space-y-1.5">
+                    <span className={`text-[10px] font-black uppercase tracking-wider block ${row.tone}`}>
+                      {row.section}
+                    </span>
 
-              {/* Dimensões */}
-              {(ad.length || ad.beam || ad.draft || ad.hullMaterial) && (
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider block">Dimensions</span>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {ad.length && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Length</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.length}</span>
-                      </div>
-                    )}
-                    {ad.beam && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Beam</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.beam}</span>
-                      </div>
-                    )}
-                    {ad.draft && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Draft</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.draft}</span>
-                      </div>
-                    )}
-                    {ad.hullMaterial && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Hull</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.hullMaterial}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Motor */}
-              {(ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType) && (
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider block">Engine</span>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {ad.engineBrand && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Make</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.engineBrand}</span>
-                      </div>
-                    )}
-                    {ad.horsepower && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Power</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.horsepower}</span>
-                      </div>
-                    )}
-                    {ad.engineHours && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Hours</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.engineHours}</span>
-                      </div>
-                    )}
-                    {ad.fuelType && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Fuel</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.fuelType}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Acomodações e Conformidade */}
-              {(ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-indigo-800 tracking-wider block">Accommodations & Extras</span>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {ad.cabins && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Cabins</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.cabins}</span>
-                      </div>
-                    )}
-                    {ad.berths && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Berths</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.berths}</span>
-                      </div>
-                    )}
-                    {ad.bathrooms && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Toilets</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.bathrooms}</span>
-                      </div>
-                    )}
-                    {ad.trailerIncluded && (
-                      <div className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Trailer</span>
-                        <span className="font-extrabold text-slate-900 block truncate">{ad.trailerIncluded === 'Yes' ? 'Yes' : ad.trailerIncluded === 'No' ? 'No' : ad.trailerIncluded}</span>
-                      </div>
-                    )}
-                  </div>
-                  {(ad.vatPaid || ad.ceCertified) && (
-                    <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-200/60">
-                      {ad.vatPaid === 'Yes' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                          <ShieldCheck size={12} className="text-emerald-600" /> VAT Paid
-                        </span>
-                      )}
-                      {ad.ceCertified === 'Yes' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-800 text-[10px] font-bold border border-indigo-200">
-                          <Check size={12} className="text-indigo-600" /> CE Certified
-                        </span>
-                      )}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {row.items.map((item, itemIndex) => (
+                        <div
+                          key={`${item.section}-${item.label}-${itemIndex}`}
+                          className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm min-w-0"
+                        >
+                          <span className="text-[9px] font-bold text-slate-400 uppercase block">
+                            {item.label}
+                          </span>
+                          <span className="font-extrabold text-slate-900 block break-words">
+                            {item.label === 'Trailer'
+                              ? item.value === 'Yes'
+                                ? 'Yes'
+                                : item.value === 'No'
+                                  ? 'No'
+                                  : String(item.value)
+                              : String(item.value)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                ))}
+
+                {(ad.vatPaid || ad.ceCertified) && (
+                  <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-200/60">
+                    {ad.vatPaid === 'Yes' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                        <ShieldCheck size={12} className="text-emerald-600" /> VAT Paid
+                      </span>
+                    )}
+                    {ad.ceCertified === 'Yes' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-800 text-[10px] font-bold border border-indigo-200">
+                        <Check size={12} className="text-indigo-600" /> CE Certified
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
