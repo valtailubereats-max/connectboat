@@ -45,6 +45,7 @@ export default function AdminBannerEditor() {
   const listingAdFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [campaignId, setCampaignId] = useState('');
+  const [manualCampaignOpen, setManualCampaignOpen] = useState(false);
   const [listingAdEnabled, setListingAdEnabled] = useState(true);
   const [listingAdAdvertiser, setListingAdAdvertiser] = useState('');
   const [listingAdImageUrl, setListingAdImageUrl] = useState('');
@@ -54,7 +55,7 @@ export default function AdminBannerEditor() {
   const [listingAdStartDate, setListingAdStartDate] = useState('');
   const [listingAdEndDate, setListingAdEndDate] = useState('');
   const [listingAdAmountPaid, setListingAdAmountPaid] = useState('');
-  const [listingAdPaymentStatus, setListingAdPaymentStatus] = useState<'paid' | 'pending'>('pending');
+  const [listingAdPaymentStatus, setListingAdPaymentStatus] = useState<'paid' | 'pending' | 'admin'>('admin');
   const [listingAdPaidDate, setListingAdPaidDate] = useState('');
 
   const [advertisingSalesEnabled, setAdvertisingSalesEnabled] = useState(false);
@@ -458,6 +459,7 @@ export default function AdminBannerEditor() {
 
   const resetListingCampaignForm = () => {
     setCampaignId('');
+    setManualCampaignOpen(false);
     setListingAdEnabled(true);
     setListingAdAdvertiser('');
     setListingAdImageUrl('');
@@ -467,8 +469,15 @@ export default function AdminBannerEditor() {
     setListingAdStartDate('');
     setListingAdEndDate('');
     setListingAdAmountPaid('');
-    setListingAdPaymentStatus('pending');
+    setListingAdPaymentStatus('admin');
     setListingAdPaidDate('');
+  };
+
+  const startNewAdminCampaign = () => {
+    resetListingCampaignForm();
+    setManualCampaignOpen(true);
+    setListingAdPaymentStatus('admin');
+    setListingAdAmountPaid('0');
   };
 
   const loadListingCampaigns = async () => {
@@ -591,7 +600,35 @@ export default function AdminBannerEditor() {
     }
 
     if (file.size > 8 * 1024 * 1024) {
-      alert('The banner image must be 8MB or smaller.');
+      alert('The carousel image must be 8MB or smaller.');
+      event.target.value = '';
+      return;
+    }
+
+    const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        const result = { width: image.naturalWidth, height: image.naturalHeight };
+        URL.revokeObjectURL(url);
+        resolve(result);
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Unable to read this image.'));
+      };
+      image.src = url;
+    });
+
+    const ratio = dimensions.width / Math.max(1, dimensions.height);
+    const standardRatio = 16 / 9;
+    if (
+      dimensions.width <= dimensions.height ||
+      dimensions.width < 1280 || dimensions.height < 720 ||
+      dimensions.width > 3840 || dimensions.height > 2160 ||
+      Math.abs(ratio - standardRatio) > 0.025
+    ) {
+      alert(`Carousel image must be horizontal 16:9, between 1280×720 and 3840×2160. This file is ${dimensions.width}×${dimensions.height}px.`);
       event.target.value = '';
       return;
     }
@@ -613,6 +650,7 @@ export default function AdminBannerEditor() {
   };
 
   const editListingCampaign = (campaign: any) => {
+    setManualCampaignOpen(false);
     setCampaignId(campaign.id);
     setListingAdEnabled(campaign.enabled === true);
     setListingAdAdvertiser(campaign.advertiserName || '');
@@ -623,13 +661,19 @@ export default function AdminBannerEditor() {
     setListingAdStartDate(campaign.startDate || '');
     setListingAdEndDate(campaign.endDate || '');
     setListingAdAmountPaid(typeof campaign.amountPaid === 'number' ? String(campaign.amountPaid) : '');
-    setListingAdPaymentStatus(campaign.paymentStatus === 'paid' ? 'paid' : 'pending');
+    setListingAdPaymentStatus(
+      campaign.paymentStatus === 'paid'
+        ? 'paid'
+        : campaign.paymentStatus === 'admin'
+          ? 'admin'
+          : 'pending'
+    );
     setListingAdPaidDate(campaign.paidDate || '');
   };
 
   const handleSaveListingAdvertising = async () => {
-    if (!campaignId) {
-      alert('New carousel campaigns must originate from a paid Stripe advertising order.');
+    if (!campaignId && !manualCampaignOpen) {
+      alert('Choose an existing campaign to edit or click New Admin Campaign.');
       return;
     }
 
@@ -666,17 +710,31 @@ export default function AdminBannerEditor() {
         displaySeconds,
         startDate: listingAdStartDate,
         endDate: listingAdEndDate,
-        amountPaid: Math.round(amountPaid * 100) / 100,
+        amountPaid: manualCampaignOpen && !campaignId ? 0 : Math.round(amountPaid * 100) / 100,
         currency: 'GBP',
-        paymentStatus: listingAdPaymentStatus,
-        paidDate: listingAdPaymentStatus === 'paid'
+        paymentStatus: manualCampaignOpen && !campaignId ? 'admin' : listingAdPaymentStatus,
+        paidDate: (manualCampaignOpen && !campaignId) ? '' : listingAdPaymentStatus === 'paid'
           ? (listingAdPaidDate || new Date().toISOString().slice(0, 10))
           : '',
         updatedAt: serverTimestamp(),
         updatedBy: user?.email || 'admin',
       };
 
-      await updateDoc(doc(db, 'advertisingCampaigns', campaignId), payload);
+      if (campaignId) {
+        await updateDoc(doc(db, 'advertisingCampaigns', campaignId), payload);
+      } else {
+        await addDoc(collection(db, 'advertisingCampaigns'), {
+          ...payload,
+          amountPaid: 0,
+          paymentStatus: 'admin',
+          paidDate: '',
+          source: 'admin_manual',
+          createdAt: serverTimestamp(),
+          createdBy: user?.email || 'admin',
+          impressions: 0,
+          clicks: 0,
+        });
+      }
 
       setListingAdSaved(true);
       setTimeout(() => setListingAdSaved(false), 3000);
@@ -1074,7 +1132,7 @@ export default function AdminBannerEditor() {
               return (
                 <div key={order.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                   <div className="bg-slate-950">
-                    <img src={proposalUrl || order.selectedBannerUrl} alt={order.advertiserName || 'Advertising banner'} className="w-full aspect-[20/3] object-cover" />
+                    <img src={proposalUrl || order.selectedBannerUrl} alt={order.advertiserName || 'Advertising banner'} className="w-full aspect-video object-contain bg-slate-950" />
                   </div>
                   <div className="p-4 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -1138,25 +1196,31 @@ export default function AdminBannerEditor() {
             <div>
               <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">Carousel Campaigns</h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Published 16:9 carousel campaigns. New campaigns are created only from paid customer orders; existing campaigns can still be edited or removed here.
+                Published 16:9 carousel campaigns. Customer campaigns arrive through Stripe checkout, while admins can create internal campaigns without payment.
               </p>
             </div>
           </div>
 
-          <div className="px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-black">
-            New campaigns: Stripe checkout only
-          </div>
+          <button
+            type="button"
+            onClick={startNewAdminCampaign}
+            className="px-4 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-700 text-xs font-black hover:bg-indigo-100 transition-colors"
+          >
+            + New Admin Campaign
+          </button>
         </div>
 
-        {campaignId && (
+        {(campaignId || manualCampaignOpen) && (
           <>
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 space-y-4 bg-slate-50/50 dark:bg-slate-950/20">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-black text-slate-900 dark:text-white">Edit Campaign</p>
+              <p className="text-sm font-black text-slate-900 dark:text-white">{campaignId ? 'Edit Campaign' : 'New Admin Campaign'}</p>
               <p className="text-[10px] text-slate-500">Rotation respects each banner's individual display time.</p>
             </div>
-            {campaignId && <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Editing</span>}
+            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+              {campaignId ? 'Editing' : 'Admin / No Checkout'}
+            </span>
           </div>
 
           <label className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-3 cursor-pointer bg-white dark:bg-slate-900">
@@ -1183,9 +1247,11 @@ export default function AdminBannerEditor() {
 
             <div>
               <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Advertising revenue (£)</label>
-              <input type="number" min="0" step="0.01" value={listingAdAmountPaid} onChange={(e) => setListingAdAmountPaid(e.target.value)}
+              <input type="number" min="0" step="0.01" value={manualCampaignOpen && !campaignId ? '0' : listingAdAmountPaid}
+                disabled={manualCampaignOpen && !campaignId}
+                onChange={(e) => setListingAdAmountPaid(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-70" />
             </div>
 
             <div>
@@ -1202,8 +1268,15 @@ export default function AdminBannerEditor() {
 
             <div>
               <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Payment status</label>
-              <select value={listingAdPaymentStatus} onChange={(e) => setListingAdPaymentStatus(e.target.value === 'paid' ? 'paid' : 'pending')}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+              <select
+                value={listingAdPaymentStatus}
+                disabled={manualCampaignOpen && !campaignId}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setListingAdPaymentStatus(value === 'paid' ? 'paid' : value === 'admin' ? 'admin' : 'pending');
+                }}
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-70">
+                <option value="admin">Admin / No payment</option>
                 <option value="pending">Pending</option>
                 <option value="paid">Paid</option>
               </select>
@@ -1220,14 +1293,14 @@ export default function AdminBannerEditor() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Banner image</label>
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Carousel image (16:9)</label>
               <input ref={listingAdFileInputRef} type="file" accept="image/*" onChange={handleListingAdImageUpload} className="hidden" />
               <button type="button" onClick={() => listingAdFileInputRef.current?.click()} disabled={listingAdUploading}
                 className="w-full px-4 py-3 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50/60 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 text-sm font-black flex items-center justify-center gap-2 disabled:opacity-50">
                 <Upload size={16} />
-                {listingAdUploading ? 'Uploading...' : listingAdImageUrl ? 'Replace Image' : 'Upload Image'}
+                {listingAdUploading ? 'Uploading...' : listingAdImageUrl ? 'Replace 16:9 Image' : 'Upload 16:9 Image'}
               </button>
-              {listingAdImageUrl && <p className="mt-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Image uploaded to Firebase Storage.</p>}
+              {listingAdImageUrl && <p className="mt-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">16:9 image uploaded to Firebase Storage. Recommended: 1600×900 px.</p>}
             </div>
 
             <div>
@@ -1254,7 +1327,9 @@ export default function AdminBannerEditor() {
                   </a>
                 )}
               </div>
-              <img src={listingAdImageUrl} alt={listingAdAltText || 'Advertising preview'} className="w-full max-h-[180px] object-contain bg-white" />
+              <div className="w-full aspect-video bg-slate-950">
+                <img src={listingAdImageUrl} alt={listingAdAltText || 'Advertising preview'} className="w-full h-full object-contain" />
+              </div>
             </div>
           )}
 
@@ -1268,7 +1343,7 @@ export default function AdminBannerEditor() {
             <button type="button" onClick={handleSaveListingAdvertising} disabled={listingAdSaving || listingAdUploading}
               className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center justify-center gap-2 disabled:opacity-50">
               <Save size={15} />
-              {listingAdSaving ? 'Saving...' : listingAdSaved ? 'Saved!' : 'Update Campaign'}
+              {listingAdSaving ? 'Saving...' : listingAdSaved ? 'Saved!' : campaignId ? 'Update Campaign' : 'Add Admin Campaign'}
             </button>
           </div>
         </div>
@@ -1302,7 +1377,13 @@ export default function AdminBannerEditor() {
                     <div className="min-w-0">
                       <p className="font-black text-sm text-slate-900 dark:text-white truncate">{campaign.advertiserName || 'Unnamed campaign'}</p>
                       <p className="text-[10px] text-slate-500 mt-0.5">
-                        {campaign.displaySeconds || 4}s · {campaign.enabled ? 'Active' : 'Inactive'} · {campaign.paymentStatus === 'paid' ? `Paid £${Number(campaign.amountPaid || 0).toFixed(2)}` : 'Payment pending'}
+                        {campaign.displaySeconds || 4}s · {campaign.enabled ? 'Active' : 'Inactive'} · {
+                          campaign.paymentStatus === 'paid'
+                            ? `Paid £${Number(campaign.amountPaid || 0).toFixed(2)}`
+                            : campaign.paymentStatus === 'admin' || campaign.source === 'admin_manual'
+                              ? 'Admin / No payment'
+                              : 'Payment pending'
+                        }
                       </p>
                       <p className="text-[10px] text-slate-400 mt-0.5">{campaign.impressions || 0} impressions · {campaign.clicks || 0} clicks</p>
                     </div>
