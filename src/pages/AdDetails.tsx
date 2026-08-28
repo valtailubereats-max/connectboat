@@ -999,10 +999,21 @@ const AdDetails = () => {
 
   const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
 
+  const effectiveSellerRatingCount =
+    Number(sellerProfile?.ratingCount || 0) > 0
+      ? Number(sellerProfile?.ratingCount || 0)
+      : sellerReviews.length;
+
+  const effectiveSellerRatingAverage =
+    Number(sellerProfile?.ratingAverage || 0) > 0
+      ? Number(sellerProfile?.ratingAverage || 0)
+      : sellerReviews.length > 0
+        ? sellerReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / sellerReviews.length
+        : 0;
+
   const hasSellerRating =
-    sellerReviews.length > 0 ||
-    Number(sellerProfile?.ratingCount || 0) > 0 ||
-    Number(sellerProfile?.ratingAverage || 0) > 0;
+    effectiveSellerRatingCount > 0 &&
+    effectiveSellerRatingAverage > 0;
 
   const compactBoatSpecs = [
     { section: 'Vessel', tone: 'text-sky-800', label: 'Type', value: ad.boatType },
@@ -1778,6 +1789,8 @@ const AdDetails = () => {
 
             {/* Cartão do Vendedor e Avaliações */}
             <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 space-y-4 overflow-hidden">
+              {hasSellerRating && (
+                <>
               <div className="flex flex-col gap-3 pb-3 border-b border-slate-200/60">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-12 h-12 bg-indigo-600/10 text-indigo-700 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0">
@@ -1790,10 +1803,10 @@ const AdDetails = () => {
                     </h4>
                     
                     {/* Estrelas */}
-                    <div className="flex items-center gap-0.5 mt-1" title={`${sellerProfile?.ratingAverage || 0} / 5`}>
+                    <div className="flex items-center gap-0.5 mt-1" title={`${effectiveSellerRatingAverage} / 5`}>
                       <div className="flex items-center gap-0.5">
                         {[1, 2, 3, 4, 5].map((star) => {
-                          const ratingVal = sellerProfile?.ratingAverage || 0;
+                          const ratingVal = effectiveSellerRatingAverage;
                           const isFilled = star <= Math.round(ratingVal);
                           return (
                             <Star
@@ -1805,7 +1818,7 @@ const AdDetails = () => {
                         })}
                       </div>
                       <span className="text-[10px] text-slate-500 font-bold ml-1">
-                        ({sellerProfile?.ratingCount || 0} reviews)
+                        ({effectiveSellerRatingCount} reviews)
                       </span>
                     </div>
                   </div>
@@ -1821,6 +1834,9 @@ const AdDetails = () => {
                   </button>
                 )}
               </div>
+
+                </>
+              )}
 
               {/* CTAs */}
               <div className="hidden lg:flex flex-col gap-3">
@@ -2273,10 +2289,10 @@ const AdDetails = () => {
                     {hasSourceUrl ? 'Partner' : ad.sellerName}
                     <Award size={11} className="text-indigo-500 shrink-0" />
                   </h4>
-                  <div className="flex items-center gap-0.5 mt-0.5" title={`${sellerProfile?.ratingAverage || 0} / 5`}>
+                  <div className="flex items-center gap-0.5 mt-0.5" title={`${effectiveSellerRatingAverage} / 5`}>
                     <div className="flex items-center gap-0.5">
                       {[1, 2, 3, 4, 5].map((star) => {
-                        const ratingVal = sellerProfile?.ratingAverage || 0;
+                        const ratingVal = effectiveSellerRatingAverage;
                         const isFilled = star <= Math.round(ratingVal);
                         return (
                           <Star
@@ -2288,7 +2304,7 @@ const AdDetails = () => {
                       })}
                     </div>
                     <span className="text-[9px] text-slate-500 font-bold ml-1">
-                      ({sellerProfile?.ratingCount || 0} reviews)
+                      ({effectiveSellerRatingCount} reviews)
                     </span>
                   </div>
                 </div>
