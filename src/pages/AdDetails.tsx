@@ -1169,7 +1169,7 @@ const AdDetails = () => {
         {/* LADO ESQUERDO: Imagens e Galeria */}
         <div className="lg:col-span-9 space-y-4">
           <div 
-            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/80 shadow-[0_10px_28px_rgba(4,18,38,0.20),0_0_0_1px_rgba(255,255,255,0.10)] group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.14)] group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1260,7 +1260,7 @@ const AdDetails = () => {
 
           {/* Thumbnails strip */}
           {mediaItems.length > 1 && (
-            <div className="flex gap-2 mr-1 overflow-x-auto py-2">
+            <div className="connectboat-thumbnails flex gap-2 mr-1 overflow-x-auto py-2">
               {mediaItems.map((item, i) => (
                 <button
                   key={i}
@@ -1269,7 +1269,9 @@ const AdDetails = () => {
                     setCurrentImageIndex(i);
                   }}
                   className={`relative w-32 h-24 xl:w-36 xl:h-28 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500 ring-offset-2 ring-offset-white/40/30' : 'border-transparent opacity-75 hover:opacity-100'
+                    validMediaIndex === i
+                      ? 'border-indigo-600 opacity-100 shadow-[0_0_0_2px_rgba(255,255,255,0.95),0_5px_14px_rgba(79,70,229,0.35)] ring-2 ring-indigo-500 ring-offset-2 ring-offset-white/80'
+                      : 'border-white/80 opacity-90 shadow-[0_3px_10px_rgba(4,18,38,0.16)] hover:opacity-100 hover:border-white'
                   }`}
                 >
                   {item.type === 'video' ? (
@@ -1897,7 +1899,7 @@ const AdDetails = () => {
         {/* CAROUSEL FLOW */}
         <div className="space-y-3">
           <div 
-            className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden shadow-md group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.14)] group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1992,7 +1994,9 @@ const AdDetails = () => {
                     setCurrentImageIndex(i);
                   }}
                   className={`relative w-20 h-16 sm:w-24 sm:h-18 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500 ring-offset-2 ring-offset-white/40/30' : 'border-transparent opacity-75 hover:opacity-100'
+                    validMediaIndex === i
+                      ? 'border-indigo-600 opacity-100 shadow-[0_0_0_2px_rgba(255,255,255,0.95),0_5px_14px_rgba(79,70,229,0.35)] ring-2 ring-indigo-500 ring-offset-2 ring-offset-white/80'
+                      : 'border-white/80 opacity-90 shadow-[0_3px_10px_rgba(4,18,38,0.16)] hover:opacity-100 hover:border-white'
                   }`}
                 >
                   {item.type === 'video' ? (
