@@ -999,11 +999,6 @@ const AdDetails = () => {
 
   const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
 
-
-  const hasSellerRating =
-    Number(ad.ratingCount || 0) > 0 ||
-    Number(ad.ratingAverage || 0) > 0;
-
   const compactBoatSpecs = [
     { section: 'Vessel', tone: 'text-sky-800', label: 'Type', value: ad.boatType },
     { section: 'Vessel', tone: 'text-sky-800', label: 'Make', value: ad.manufacturer },
@@ -1878,9 +1873,7 @@ const AdDetails = () => {
                 </div>
               </div>
 
-                      {hasSellerRating && (
-          <>
-{/* Seção das avaliações do vendedor */}
+              {/* Seção das avaliações do vendedor */}
               {sellerReviews.length > 0 && (
                 <div className="pt-3 border-t border-slate-200/60 font-sans">
                   <button
@@ -2335,10 +2328,7 @@ const AdDetails = () => {
             <div className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
               <MapPin size={14} />
             </div>
-                      </>
-        )}
-
-<div>
+            <div>
               <h2 className="text-sm font-black text-slate-900 leading-none">📍 Approximate Location</h2>
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 font-sans">Reference region for the listing</p>
             </div>
@@ -2409,7 +2399,8 @@ const AdDetails = () => {
         </div>
 
         {/* SECTION CARD 3: Avaliações do Vendedor (Feedback) */}
-        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-3.5 text-left">
+        {sellerReviews.length > 0 && (
+          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-3.5 text-left">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
             <div className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
               <Star size={14} className="text-amber-500" />
@@ -2420,40 +2411,31 @@ const AdDetails = () => {
             </div>
           </div>
 
-          {sellerReviews.length > 0 ? (
-            <div className="space-y-2.5 max-h-60 overflow-y-auto pr-0.5 scrollbar-none">
-              {sellerReviews.map((rev) => (
-                <div key={rev.id} className="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 text-xs shadow-sm">
-                  <div className="flex justify-between items-start mb-1 gap-1.5">
-                    <span className="font-extrabold text-slate-800 text-[11px] truncate">{rev.buyerName}</span>
-                    <div className="flex gap-0.5 shrink-0">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} size={9} className={`${s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-100'}`} />
-                      ))}
-                    </div>
-                  </div>
-                  {rev.comment ? (
-                    <p className="text-slate-600 text-[11px] italic leading-relaxed">"{rev.comment}"</p>
-                  ) : (
-                    <p className="text-slate-400 text-[10px] italic">Rated without written comment.</p>
-                  )}
-                  <div className="text-[8px] text-slate-400 mt-2 flex justify-between items-center">
-                    <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
-                    <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
+          <div className="space-y-2.5 max-h-60 overflow-y-auto pr-0.5 scrollbar-none">
+            {sellerReviews.map((rev) => (
+              <div key={rev.id} className="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 text-xs shadow-sm">
+                <div className="flex justify-between items-start mb-1 gap-1.5">
+                  <span className="font-extrabold text-slate-800 text-[11px] truncate">{rev.buyerName}</span>
+                  <div className="flex gap-0.5 shrink-0">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Star key={s} size={9} className={`${s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-100'}`} />
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-5 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-3.5">
-              <span className="text-lg block mb-1">💬</span>
-              <h4 className="text-xs font-bold text-slate-800">No reviews yet</h4>
-              <p className="text-[9px] text-slate-400 mt-0.5 leading-normal">
-                Transact safely with the seller or hire operator and be the first to leave feedback!
-              </p>
-            </div>
-          )}
+                {rev.comment ? (
+                  <p className="text-slate-600 text-[11px] italic leading-relaxed">"{rev.comment}"</p>
+                ) : (
+                  <p className="text-slate-400 text-[10px] italic">Rated without written comment.</p>
+                )}
+                <div className="text-[8px] text-slate-400 mt-2 flex justify-between items-center">
+                  <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
+                  <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+        )}
 
       </div> {/* closes block lg:hidden */}
 
