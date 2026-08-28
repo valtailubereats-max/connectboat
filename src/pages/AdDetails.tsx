@@ -1078,10 +1078,10 @@ const AdDetails = () => {
 
       {/* Sponsored carousel — Back | advertising | AD */}
       <section className="relative mt-1 mb-1 bg-transparent lg:-mt-[36px]">
-        <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 overflow-hidden py-0">
+        <div className="flex items-center gap-1 lg:gap-3 overflow-hidden py-0 px-1 lg:px-0">
           <button
             onClick={() => navigate(-1)}
-            className="relative z-30 shrink-0 inline-flex h-[52px] sm:h-[62px] lg:h-[72px] min-w-[94px] sm:min-w-[112px] lg:min-w-[128px] items-center justify-center rounded-2xl border-[3px] sm:border-4 border-white bg-[#073b59]/75 px-4 sm:px-5 text-base sm:text-lg lg:text-xl font-black text-white shadow-[0_8px_24px_rgba(0,0,0,0.28)] backdrop-blur-sm transition-all hover:bg-[#073b59]/90 hover:scale-[1.02]"
+            className="relative z-30 hidden lg:inline-flex shrink-0 h-[38px] min-w-[68px] items-center justify-center rounded-xl border-2 border-white bg-[#073b59]/75 px-3 text-sm font-black text-white shadow-[0_6px_16px_rgba(0,0,0,0.24)] backdrop-blur-sm transition-all hover:bg-[#073b59]/90 hover:scale-[1.02]"
             aria-label="Back"
           >
             Back
@@ -1141,7 +1141,7 @@ const AdDetails = () => {
           </div>
 
           <div
-            className="relative z-30 shrink-0 inline-flex h-[40px] sm:h-[46px] lg:h-[52px] min-w-[46px] sm:min-w-[52px] lg:min-w-[58px] items-center justify-center border-[3px] sm:border-4 border-white bg-[#073b59]/65 px-1.5 text-lg sm:text-xl lg:text-2xl font-black uppercase leading-none text-white shadow-[0_8px_24px_rgba(0,0,0,0.25)] backdrop-blur-sm"
+            className="relative z-30 inline-flex shrink-0 h-[28px] min-w-[42px] sm:h-[32px] sm:min-w-[48px] lg:h-[38px] lg:min-w-[68px] items-center justify-center rounded-lg lg:rounded-xl border-2 border-white bg-[#073b59]/65 px-2 lg:px-3 text-[10px] sm:text-xs lg:text-sm font-black uppercase leading-none text-white shadow-[0_6px_16px_rgba(0,0,0,0.24)] backdrop-blur-sm"
             aria-label="Advertisement"
           >
             AD
