@@ -1077,7 +1077,7 @@ const AdDetails = () => {
       )}
 
       {/* Sponsored carousel — Back | advertising | AD */}
-      <section className="relative mb-1 bg-transparent lg:-mt-[44px]">
+      <section className="relative mt-1 mb-1 bg-transparent lg:-mt-[36px]">
         <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 overflow-hidden py-0">
           <button
             onClick={() => navigate(-1)}
@@ -1322,6 +1322,112 @@ const AdDetails = () => {
             </div>
           )}
 
+
+          {/* TITLE CARD — directly below thumbnails */}
+          <div className="bg-white rounded-[2rem] p-6 md:p-7 border border-slate-100 shadow-xl mt-4 text-left space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <span className="bg-indigo-50 text-indigo-600 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-indigo-100">
+                {ad.category}
+              </span>
+              <div className="flex items-center gap-3 text-slate-400 text-xs font-semibold">
+                <span className="flex items-center gap-1">
+                  <Eye size={14} /> {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock size={14} /> {timeStr}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {ad.externalListing && (
+                <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl p-4 flex items-start gap-3 mb-2">
+                  <div className="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5">
+                    <ExternalLink size={18} />
+                  </div>
+                  <div className="space-y-1 text-xs text-indigo-950">
+                    <span className="font-extrabold text-indigo-900 block text-sm">
+                      External Listing {ad.sourceSite ? `• ${ad.sourceSite}` : ''}
+                    </span>
+                    <p className="text-indigo-800 leading-relaxed font-medium">
+                      This listing originated from a partner marketplace ({ad.sourceSite || 'External Source'}). ConnectBoat is not the seller of this item. Click "View Original Listing" to visit the seller's source page.
+                    </p>
+                  </div>
+                </div>
+              )}
+              {ad.demoListing && (
+                <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3 mb-2">
+                  <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
+                    <Tag size={18} />
+                  </div>
+                  <div className="space-y-1 text-xs text-amber-950">
+                    <span className="font-extrabold text-amber-900 block text-sm">
+                      Example Listing (Demonstration)
+                    </span>
+                    <p className="text-amber-800 leading-relaxed font-medium">
+                      This is an example listing created for demonstration purposes and is not available for purchase.
+                    </p>
+                  </div>
+                </div>
+              )}
+              <h1 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
+                {ad.title}
+              </h1>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-1.5 text-slate-500 font-bold text-sm">
+                  {isService && ad.serviceCoverage === 'online' ? (
+                    <span>💻 Online Service</span>
+                  ) : isService && ad.serviceCoverage === 'uk' ? (
+                    <span>🌍 Entire UK</span>
+                  ) : isService && ad.serviceCoverage === 'portugal' ? (
+                    <span>🇵🇹 Entire Portugal</span>
+                  ) : (
+                    <>
+                      <MapPin size={16} className="text-indigo-600" />
+                      <span>{getAdLocationLabel(ad)}</span>
+                    </>
+                  )}
+                </div>
+                {ad.category === '💚 Doações & Solidariedade' ? (
+                  <div className="text-3.5xl font-black text-emerald-600 bg-emerald-50 py-1.5 px-4 rounded-2xl border border-emerald-200 flex items-center justify-center animate-pulse">
+                    Free 💚
+                  </div>
+                ) : hasPrice ? (
+                  <div className="text-3.5xl font-black text-indigo-600 bg-indigo-50/50 py-1.5 px-4 rounded-2xl border border-indigo-100/50 flex items-center justify-center">
+                    {formatPrice(ad.price, ad.country)}
+                  </div>
+                ) : (
+                  <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-100 flex items-center justify-center">
+                    Price on Request
+                  </span>
+                )}
+              </div>
+            </div>
+
+
+          </div>
+
+          {/* DESCRIPTION CARD — separate from title and seller */}
+          <div className="bg-white rounded-[2rem] p-6 md:p-7 border border-slate-100 shadow-xl mt-4 text-left">
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Detailed Description</h3>
+              <p className="text-slate-600 text-[15px] leading-relaxed whitespace-pre-line break-words overflow-hidden bg-slate-50/40 p-4 rounded-2xl border border-slate-50">
+                {normalizedDescription.length > 400 && !descriptionExpanded
+                  ? `${normalizedDescription.substring(0, 400).trim()}...`
+                  : normalizedDescription}
+              </p>
+              {normalizedDescription.length > 400 && (
+                <button
+                  onClick={() => setDescriptionExpanded(!descriptionExpanded)}
+                  className="text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+                >
+                  {descriptionExpanded ? 'Show Less' : 'Read Full Description'}
+                </button>
+              )}
+            </div>
+
+
+          </div>
+
           {/* ESPECIFICAÇÕES TÉCNICAS DO BARCO (GROUPED MARINE SPECS) */}
           {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.length || ad.beam || ad.draft || ad.hullMaterial || ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType || ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
             <div id="especificacoes-nauticas" className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6 mt-6 text-left">
@@ -1518,211 +1624,12 @@ const AdDetails = () => {
             </div>
           )}
 
-          {/* SECÇÃO DE LOCALIZAÇÃO */}
-          <div id="localizacao" className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6 mt-6 scroll-mt-24 text-left">
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
-                <MapPin size={22} />
-              </div>
-              <div>
-                <h2 className="text-xl font-black text-slate-900 leading-none">📍 Approximate Location</h2>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5 font-sans">Reference region for the listing</p>
-              </div>
-            </div>
 
-            <div className="flex flex-row items-center justify-between gap-4 bg-slate-50 p-4 md:p-5 rounded-2xl border border-slate-100 font-sans">
-              <div className="space-y-0.5">
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider text-left">
-                  {isService ? 'Service Area' : 'City'}
-                </span>
-                <span className="text-sm sm:text-lg font-extrabold text-slate-900 block text-left">
-                  {isService && ad.serviceCoverage === 'online' ? (
-                    '💻 Online Service'
-                  ) : isService && ad.serviceCoverage === 'uk' ? (
-                    '🌍 Entire UK'
-                  ) : isService && ad.serviceCoverage === 'portugal' ? (
-                    '🇵🇹 Entire Portugal'
-                  ) : (
-                    getAdLocationLabel(ad)
-                  )}
-                </span>
-              </div>
-              {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
-                <div className="space-y-0.5 text-right">
-                  <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Region</span>
-                  <span className="text-sm sm:text-lg font-extrabold text-slate-900 block">
-                    {ad.region || getRegionForCity(ad.city)}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {isService && ad.serviceCoverage === 'online' ? (
-              <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl text-center space-y-2">
-                <span className="text-4xl">💻</span>
-                <p className="text-base font-extrabold text-indigo-900">100% Online / Remote Service</p>
-                <p className="text-xs text-indigo-700/80 font-semibold max-w-md">This professional operates entirely digitally. No physical travel or map coordinates required.</p>
-              </div>
-            ) : isService && (ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal') ? (
-              <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-r from-teal-50 to-emerald-50 border border-emerald-100 rounded-2xl text-center space-y-2">
-                <span className="text-4xl">⚓</span>
-                <p className="text-base font-extrabold text-emerald-900">Active UK National Coverage</p>
-                <p className="text-xs text-emerald-700/80 font-semibold max-w-md">This professional provides services nationwide across the United Kingdom.</p>
-              </div>
-            ) : (
-              ad.city && ad.city.trim() !== '' && ad.city.toLowerCase() !== 'todas' && (
-                <div className="w-full h-64 md:h-80 rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-100 relative">
-                  <iframe
-                    title={`Map of ${ad.city}`}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    loading="lazy"
-                    allowFullScreen
-                    referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent(ad.city + ', United Kingdom')}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
-                  />
-                </div>
-              )
-            )}
-
-            <div className="flex items-start gap-2.5 text-slate-500 bg-amber-50/40 border border-amber-100 rounded-2xl p-4 text-xs font-semibold font-sans">
-              <span className="text-amber-500 text-lg leading-none mt-0.5">⚠️</span>
-              <div className="space-y-1">
-                <p className="leading-relaxed text-amber-900">
-                  The location shown is approximate and serves strictly as a reference point.
-                </p>
-                <p className="leading-relaxed text-amber-800/80">
-                  Approximate location based on the city provided by the seller.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* LADO DIREITO: Dados, Vendedor e WhatsApp */}
         <div className="lg:col-span-3 space-y-6">
           <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6">
-            
-            {/* Categoria & Visualizações / Tempo */}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
-              <span className="bg-indigo-50 text-indigo-600 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-indigo-100">
-                {ad.category}
-              </span>
-              <div className="flex items-center gap-3 text-slate-400 text-xs font-semibold">
-                <span className="flex items-center gap-1">
-                  <Eye size={14} /> {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock size={14} /> {timeStr}
-                </span>
-              </div>
-            </div>
-
-            {/* Selos de Negócio Reivindicável */}
-            {ad.isClaimableBusiness && (
-              <div className="flex flex-wrap gap-2 animate-fade-in">
-                {(ad.claimStatus === 'unclaimed' || !ad.claimStatus) && (
-                  <span className="bg-amber-50 text-amber-605 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-amber-200 flex items-center gap-1">
-                    <AlertCircle size={12} /> Awaiting owner activation
-                  </span>
-                )}
-                {ad.claimStatus === 'pending' && (
-                  <span className="bg-indigo-50 text-indigo-600 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-indigo-200 flex items-center gap-1 animate-pulse">
-                    <Clock size={12} /> Activation Pending Verification
-                  </span>
-                )}
-                {ad.claimStatus === 'claimed' && (
-                  <span className="bg-emerald-50 text-emerald-700 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-emerald-200 flex items-center gap-1">
-                    <Award size={12} /> Verified & Active Business
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Título & Preço */}
-            <div className="space-y-2">
-              {ad.externalListing && (
-                <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl p-4 flex items-start gap-3 mb-2">
-                  <div className="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5">
-                    <ExternalLink size={18} />
-                  </div>
-                  <div className="space-y-1 text-xs text-indigo-950">
-                    <span className="font-extrabold text-indigo-900 block text-sm">
-                      External Listing {ad.sourceSite ? `• ${ad.sourceSite}` : ''}
-                    </span>
-                    <p className="text-indigo-800 leading-relaxed font-medium">
-                      This listing originated from a partner marketplace ({ad.sourceSite || 'External Source'}). ConnectBoat is not the seller of this item. Click "View Original Listing" to visit the seller's source page.
-                    </p>
-                  </div>
-                </div>
-              )}
-              {ad.demoListing && (
-                <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3 mb-2">
-                  <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
-                    <Tag size={18} />
-                  </div>
-                  <div className="space-y-1 text-xs text-amber-950">
-                    <span className="font-extrabold text-amber-900 block text-sm">
-                      Example Listing (Demonstration)
-                    </span>
-                    <p className="text-amber-800 leading-relaxed font-medium">
-                      This is an example listing created for demonstration purposes and is not available for purchase.
-                    </p>
-                  </div>
-                </div>
-              )}
-              <h1 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
-                {ad.title}
-              </h1>
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-1.5 text-slate-500 font-bold text-sm">
-                  {isService && ad.serviceCoverage === 'online' ? (
-                    <span>💻 Online Service</span>
-                  ) : isService && ad.serviceCoverage === 'uk' ? (
-                    <span>🌍 Entire UK</span>
-                  ) : isService && ad.serviceCoverage === 'portugal' ? (
-                    <span>🇵🇹 Entire Portugal</span>
-                  ) : (
-                    <>
-                      <MapPin size={16} className="text-indigo-600" />
-                      <span>{getAdLocationLabel(ad)}</span>
-                    </>
-                  )}
-                </div>
-                {ad.category === '💚 Doações & Solidariedade' ? (
-                  <div className="text-3.5xl font-black text-emerald-600 bg-emerald-50 py-1.5 px-4 rounded-2xl border border-emerald-200 flex items-center justify-center animate-pulse">
-                    Free 💚
-                  </div>
-                ) : hasPrice ? (
-                  <div className="text-3.5xl font-black text-indigo-600 bg-indigo-50/50 py-1.5 px-4 rounded-2xl border border-indigo-100/50 flex items-center justify-center">
-                    {formatPrice(ad.price, ad.country)}
-                  </div>
-                ) : (
-                  <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-100 flex items-center justify-center">
-                    Price on Request
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Descrição */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Detailed Description</h3>
-              <p className="text-slate-600 text-[15px] leading-relaxed whitespace-pre-line break-words overflow-hidden bg-slate-50/40 p-4 rounded-2xl border border-slate-50">
-                {normalizedDescription.length > 400 && !descriptionExpanded
-                  ? `${normalizedDescription.substring(0, 400).trim()}...`
-                  : normalizedDescription}
-              </p>
-              {normalizedDescription.length > 400 && (
-                <button
-                  onClick={() => setDescriptionExpanded(!descriptionExpanded)}
-                  className="text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
-                >
-                  {descriptionExpanded ? 'Show Less' : 'Read Full Description'}
-                </button>
-              )}
-            </div>
 
             {/* Cartão do Vendedor e Avaliações */}
             <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 space-y-4 overflow-hidden">
@@ -1871,6 +1778,87 @@ const AdDetails = () => {
                   </AnimatePresence>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* SECÇÃO DE LOCALIZAÇÃO */}
+          <div id="localizacao" className="bg-white rounded-[2rem] p-5 border border-slate-100 shadow-xl space-y-4 scroll-mt-24 text-left">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                <MapPin size={22} />
+              </div>
+              <div>
+                <h2 className="text-lg font-black text-slate-900 leading-none">📍 Approximate Location</h2>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5 font-sans">Reference region for the listing</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-start gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 font-sans">
+              <div className="space-y-0.5">
+                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider text-left">
+                  {isService ? 'Service Area' : 'City'}
+                </span>
+                <span className="text-sm sm:text-lg font-extrabold text-slate-900 block text-left">
+                  {isService && ad.serviceCoverage === 'online' ? (
+                    '💻 Online Service'
+                  ) : isService && ad.serviceCoverage === 'uk' ? (
+                    '🌍 Entire UK'
+                  ) : isService && ad.serviceCoverage === 'portugal' ? (
+                    '🇵🇹 Entire Portugal'
+                  ) : (
+                    getAdLocationLabel(ad)
+                  )}
+                </span>
+              </div>
+              {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
+                <div className="space-y-0.5 text-left">
+                  <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Region</span>
+                  <span className="text-sm sm:text-lg font-extrabold text-slate-900 block">
+                    {ad.region || getRegionForCity(ad.city)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {isService && ad.serviceCoverage === 'online' ? (
+              <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl text-center space-y-2">
+                <span className="text-4xl">💻</span>
+                <p className="text-base font-extrabold text-indigo-900">100% Online / Remote Service</p>
+                <p className="text-xs text-indigo-700/80 font-semibold max-w-md">This professional operates entirely digitally. No physical travel or map coordinates required.</p>
+              </div>
+            ) : isService && (ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal') ? (
+              <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-r from-teal-50 to-emerald-50 border border-emerald-100 rounded-2xl text-center space-y-2">
+                <span className="text-4xl">⚓</span>
+                <p className="text-base font-extrabold text-emerald-900">Active UK National Coverage</p>
+                <p className="text-xs text-emerald-700/80 font-semibold max-w-md">This professional provides services nationwide across the United Kingdom.</p>
+              </div>
+            ) : (
+              ad.city && ad.city.trim() !== '' && ad.city.toLowerCase() !== 'todas' && (
+                <div className="w-full h-56 rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-100 relative">
+                  <iframe
+                    title={`Map of ${ad.city}`}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    allowFullScreen
+                    referrerPolicy="no-referrer-when-downgrade"
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(ad.city + ', United Kingdom')}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+                  />
+                </div>
+              )
+            )}
+
+            <div className="flex items-start gap-2.5 text-slate-500 bg-amber-50/40 border border-amber-100 rounded-2xl p-4 text-xs font-semibold font-sans">
+              <span className="text-amber-500 text-lg leading-none mt-0.5">⚠️</span>
+              <div className="space-y-1">
+                <p className="leading-relaxed text-amber-900">
+                  The location shown is approximate and serves strictly as a reference point.
+                </p>
+                <p className="leading-relaxed text-amber-800/80">
+                  Approximate location based on the city provided by the seller.
+                </p>
+              </div>
             </div>
           </div>
 
