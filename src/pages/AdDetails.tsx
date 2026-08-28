@@ -2027,7 +2027,7 @@ const AdDetails = () => {
         </div>
 
         {/* SECTION CARD 1: Descrição com valor, cidade e país + Dados e CTAs */}
-        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-4 text-left">
+        <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] rounded-3xl p-4 sm:p-5 space-y-4 text-left">
           
           {/* Categoria, views & time */}
           <div className="flex items-center justify-between gap-2 border-b border-slate-100/70 pb-2.5">
@@ -2121,7 +2121,7 @@ const AdDetails = () => {
 
           {/* ESPECIFICAÇÕES TÉCNICAS DO BARCO NO MOBILE */}
           {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.length || ad.beam || ad.draft || ad.hullMaterial || ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType || ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
-            <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-100 space-y-4 text-left">
+            <div className="bg-[rgba(226,238,245,0.72)] backdrop-blur-[12px] rounded-2xl p-4 border border-white/65 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] space-y-4 text-left">
               <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 bg-indigo-600/10 text-indigo-700 rounded-lg flex items-center justify-center font-bold">
@@ -2145,25 +2145,25 @@ const AdDetails = () => {
                   <span className="text-[10px] font-black uppercase text-sky-800 tracking-wider block">Vessel</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.boatType && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Type</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.boatType}</span>
                       </div>
                     )}
                     {ad.manufacturer && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Make</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.manufacturer}</span>
                       </div>
                     )}
                     {ad.model && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Model</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.model}</span>
                       </div>
                     )}
                     {ad.year && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Year</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.year}</span>
                       </div>
@@ -2178,25 +2178,25 @@ const AdDetails = () => {
                   <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider block">Dimensions</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.length && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Length</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.length}</span>
                       </div>
                     )}
                     {ad.beam && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Beam</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.beam}</span>
                       </div>
                     )}
                     {ad.draft && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Draft</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.draft}</span>
                       </div>
                     )}
                     {ad.hullMaterial && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Hull</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.hullMaterial}</span>
                       </div>
@@ -2211,25 +2211,25 @@ const AdDetails = () => {
                   <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider block">Engine</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.engineBrand && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Make</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.engineBrand}</span>
                       </div>
                     )}
                     {ad.horsepower && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Power</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.horsepower}</span>
                       </div>
                     )}
                     {ad.engineHours && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Hours</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.engineHours}</span>
                       </div>
                     )}
                     {ad.fuelType && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Fuel</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.fuelType}</span>
                       </div>
@@ -2244,25 +2244,25 @@ const AdDetails = () => {
                   <span className="text-[10px] font-black uppercase text-indigo-800 tracking-wider block">Accommodations & Extras</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.cabins && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Cabins</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.cabins}</span>
                       </div>
                     )}
                     {ad.berths && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Berths</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.berths}</span>
                       </div>
                     )}
                     {ad.bathrooms && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Toilets</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.bathrooms}</span>
                       </div>
                     )}
                     {ad.trailerIncluded && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Trailer</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.trailerIncluded === 'Yes' ? 'Yes' : ad.trailerIncluded === 'No' ? 'No' : ad.trailerIncluded}</span>
                       </div>
@@ -2396,7 +2396,7 @@ const AdDetails = () => {
         </div>
 
         {/* SECTION CARD 2: Localização aproximada */}
-        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-3.5 text-left">
+        <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] rounded-3xl p-4 sm:p-5 space-y-3.5 text-left">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
             <div className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
               <MapPin size={14} />
@@ -2472,7 +2472,7 @@ const AdDetails = () => {
         </div>
 
         {/* SECTION CARD 3: Avaliações do Vendedor (Feedback) */}
-        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-3.5 text-left">
+        <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] rounded-3xl p-4 sm:p-5 space-y-3.5 text-left">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
             <div className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
               <Star size={14} className="text-amber-500" />
