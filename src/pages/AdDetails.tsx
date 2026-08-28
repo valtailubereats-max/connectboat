@@ -999,6 +999,11 @@ const AdDetails = () => {
 
   const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
 
+
+  const hasSellerRating =
+    Number(ad.ratingCount || 0) > 0 ||
+    Number(ad.ratingAverage || 0) > 0;
+
   const compactBoatSpecs = [
     { section: 'Vessel', tone: 'text-sky-800', label: 'Type', value: ad.boatType },
     { section: 'Vessel', tone: 'text-sky-800', label: 'Make', value: ad.manufacturer },
@@ -1873,7 +1878,9 @@ const AdDetails = () => {
                 </div>
               </div>
 
-              {/* Seção das avaliações do vendedor */}
+                      {hasSellerRating && (
+          <>
+{/* Seção das avaliações do vendedor */}
               {sellerReviews.length > 0 && (
                 <div className="pt-3 border-t border-slate-200/60 font-sans">
                   <button
@@ -2328,7 +2335,10 @@ const AdDetails = () => {
             <div className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
               <MapPin size={14} />
             </div>
-            <div>
+                      </>
+        )}
+
+<div>
               <h2 className="text-sm font-black text-slate-900 leading-none">📍 Approximate Location</h2>
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 font-sans">Reference region for the listing</p>
             </div>
