@@ -1450,10 +1450,10 @@ const AdDetails = () => {
                 )}
               </div>
 
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Grupo 1: Embarcação / Vessel */}
                 {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.condition) && (
-                  <div className="space-y-3">
+                  <div className="space-y-3 lg:col-span-2">
                     <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-sky-800 bg-sky-50/70 p-2.5 rounded-xl border border-sky-100/60">
                       <Anchor size={16} className="text-sky-600" />
                       <span>Vessel Information</span>
@@ -1500,7 +1500,7 @@ const AdDetails = () => {
                       <Ruler size={16} className="text-teal-600" />
                       <span>Dimensões & Casco</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {ad.length && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Comprimento (LOA)</span>
@@ -1536,7 +1536,7 @@ const AdDetails = () => {
                       <Gauge size={16} className="text-amber-600" />
                       <span>Motorização & Performance</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {ad.engineBrand && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Marca do Motor</span>
@@ -1572,7 +1572,7 @@ const AdDetails = () => {
                       <Bed size={16} className="text-indigo-600" />
                       <span>Acomodações & Habitabilidade</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {ad.cabins && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cabines</span>
