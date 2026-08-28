@@ -14,7 +14,7 @@ html {
 
 @layer base {
   body {
-    background-color: #f1faf5;
+    background-color: #D6E6F0;
     background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2352b64d' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 30V15a1 1 0 0 0-1-1H1a1 1 0 0 0-1 1v15a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1zm-3 0H1V15h2v15zM10 0h18c1.1 0 2 .9 2 2v18c0 1.1-.9 2-2 2H10c-1.1 0-2-2-2-2V2c0-1.1.9-2 2-2zm0 2v18h18V2H10zm3 3h12v2H13V5zm0 4h12v2H13V9zm0 4h12v2H13v-2zm3 3h6v2h-6v-2zM45 20c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zM7 40c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zM54 0c-1.1 0-2 .9-2 2v4H48c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h4v4c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-4h4c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-4V2c0-1.1-.9-2-2-2h-4zM54 2v4h4V2h-4zM48 8v4h4V8h-4zm10 0v4h4V8h-4zM54 14v4h4v-4h-4zM31 12c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
