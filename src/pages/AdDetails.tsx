@@ -999,6 +999,11 @@ const AdDetails = () => {
 
   const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
 
+  const hasSellerRating =
+    sellerReviews.length > 0 ||
+    Number(sellerProfile?.ratingCount || 0) > 0 ||
+    Number(sellerProfile?.ratingAverage || 0) > 0;
+
   const compactBoatSpecs = [
     { section: 'Vessel', tone: 'text-sky-800', label: 'Type', value: ad.boatType },
     { section: 'Vessel', tone: 'text-sky-800', label: 'Make', value: ad.manufacturer },
@@ -2254,6 +2259,8 @@ const AdDetails = () => {
             </div>
           )}
 
+          {hasSellerRating && (
+            <>
           {/* Cartão do Vendedor Compacto */}
           <div className="bg-slate-50 rounded-2xl p-3 sm:p-4 border border-slate-100 space-y-3">
             <div className="flex items-center justify-between gap-2 border-b border-slate-200/50 pb-2.5">
@@ -2320,6 +2327,9 @@ const AdDetails = () => {
             )}
 
           </div>
+            </>
+          )}
+
         </div>
 
         {/* SECTION CARD 2: Localização aproximada */}
