@@ -836,8 +836,77 @@ const ScrollToTop = () => {
   return null;
 };
 
+
+const RouteAwareMain = ({ mainRef }: { mainRef: React.RefObject<HTMLElement | null> }) => {
+  const location = useLocation();
+  const pathname = location.pathname;
+
+  const isHome = pathname === '/';
+  const isAdDetails = pathname.startsWith('/anuncio/') || pathname.startsWith('/listing/');
+
+  const widthClass = isAdDetails
+    ? 'max-w-[1720px]'
+    : isHome
+      ? 'max-w-[1600px]'
+      : 'max-w-7xl';
+
+  return (
+    <main
+      ref={mainRef}
+      className={`${widthClass} w-full mx-auto px-1.5 xs:px-2 sm:px-6 lg:px-8 py-4 sm:py-8 cursor-grab active:cursor-grabbing`}
+    >
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/pricing" element={<Precos />} />
+        <Route path="/advertise" element={<Advertise />} />
+        <Route path="/precos" element={<Navigate to="/pricing" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
+        <Route path="/create-ad" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
+        <Route path="/edit-ad/:id" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
+        <Route path="/anuncio/:id" element={<AdDetails />} />
+        <Route path="/listing/:id" element={<AdDetails />} />
+        <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+        <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+        <Route path="/admin/health" element={<AdminLayout><AdminSystemHealth /></AdminLayout>} />
+        <Route path="/admin/import" element={<AdminLayout><AdminImport /></AdminLayout>} />
+        <Route path="/admin/bulk-import" element={<AdminLayout><AdminBulkImport /></AdminLayout>} />
+        <Route path="/admin/demo-content" element={<AdminLayout><AdminDemoListings /></AdminLayout>} />
+        <Route path="/admin/marketing" element={<AdminLayout><AdminMarketing /></AdminLayout>} />
+        <Route path="/admin/banner-editor" element={<AdminLayout><AdminBannerEditor /></AdminLayout>} />
+        <Route path="/admin/ads" element={<AdminLayout><AdminAds /></AdminLayout>} />
+        <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
+        <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
+        <Route path="/admin/claims" element={<AdminLayout><AdminClaims /></AdminLayout>} />
+        <Route path="/admin/team" element={<AdminLayout><AdminTeam /></AdminLayout>} />
+        <Route path="/photos" element={<Fotos />} />
+        <Route path="/fotos" element={<Navigate to="/photos" replace />} />
+        <Route path="/admin/fotos" element={<AdminLayout><AdminFotos /></AdminLayout>} />
+        <Route path="/boats-for-hire" element={<BoatsForHire />} />
+        <Route path="/barcos-aluguer" element={<Navigate to="/boats-for-hire" replace />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/cookie-policy" element={<Cookies />} />
+        <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
+        <Route path="/report" element={<Report />} />
+        <Route path="/denuncia" element={<Navigate to="/report" replace />} />
+        <Route path="/suggestions" element={<Suggestions />} />
+        <Route path="/sugestoes" element={<Navigate to="/suggestions" replace />} />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/links" element={<Links />} />
+        <Route path="/convite" element={<Convite />} />
+        <Route path="/admin/invitations" element={<AdminLayout><AdminInvitations /></AdminLayout>} />
+        <Route path="/admin/suggestions" element={<AdminLayout><AdminSuggestions /></AdminLayout>} />
+        <Route path="/admin/manual-tecnico" element={<AdminLayout><AdminManualTecnico /></AdminLayout>} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </main>
+  );
+};
+
 export default function App() {
-  const mainRef = React.useRef<HTMLDivElement>(null);
+  const mainRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     try {
@@ -928,54 +997,7 @@ export default function App() {
             <Navbar />
             <ShareModal />
 
-            <main ref={mainRef} className="max-w-7xl mx-auto px-1.5 xs:px-2 sm:px-6 lg:px-8 py-4 sm:py-8 cursor-grab active:cursor-grabbing">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/pricing" element={<Precos />} />
-                <Route path="/advertise" element={<Advertise />} />
-                <Route path="/precos" element={<Navigate to="/pricing" replace />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
-                <Route path="/create-ad" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
-                <Route path="/edit-ad/:id" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
-                <Route path="/anuncio/:id" element={<AdDetails />} />
-                <Route path="/listing/:id" element={<AdDetails />} />
-                <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-                <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-                <Route path="/admin/health" element={<AdminLayout><AdminSystemHealth /></AdminLayout>} />
-                <Route path="/admin/import" element={<AdminLayout><AdminImport /></AdminLayout>} />
-                <Route path="/admin/bulk-import" element={<AdminLayout><AdminBulkImport /></AdminLayout>} />
-                <Route path="/admin/demo-content" element={<AdminLayout><AdminDemoListings /></AdminLayout>} />
-                <Route path="/admin/marketing" element={<AdminLayout><AdminMarketing /></AdminLayout>} />
-                <Route path="/admin/banner-editor" element={<AdminLayout><AdminBannerEditor /></AdminLayout>} />
-                <Route path="/admin/ads" element={<AdminLayout><AdminAds /></AdminLayout>} />
-                <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
-                <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
-                <Route path="/admin/claims" element={<AdminLayout><AdminClaims /></AdminLayout>} />
-                <Route path="/admin/team" element={<AdminLayout><AdminTeam /></AdminLayout>} />
-                <Route path="/photos" element={<Fotos />} />
-                <Route path="/fotos" element={<Navigate to="/photos" replace />} />
-                <Route path="/admin/fotos" element={<AdminLayout><AdminFotos /></AdminLayout>} />
-                <Route path="/boats-for-hire" element={<BoatsForHire />} />
-                <Route path="/barcos-aluguer" element={<Navigate to="/boats-for-hire" replace />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/cookie-policy" element={<Cookies />} />
-                <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
-                <Route path="/report" element={<Report />} />
-                <Route path="/denuncia" element={<Navigate to="/report" replace />} />
-                <Route path="/suggestions" element={<Suggestions />} />
-                <Route path="/sugestoes" element={<Navigate to="/suggestions" replace />} />
-                <Route path="/faq" element={<FAQ />} />
-                <Route path="/links" element={<Links />} />
-                <Route path="/convite" element={<Convite />} />
-                <Route path="/admin/invitations" element={<AdminLayout><AdminInvitations /></AdminLayout>} />
-                <Route path="/admin/suggestions" element={<AdminLayout><AdminSuggestions /></AdminLayout>} />
-                <Route path="/admin/manual-tecnico" element={<AdminLayout><AdminManualTecnico /></AdminLayout>} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </main>
+            <RouteAwareMain mainRef={mainRef} />
             <footer className="bg-slate-50 border-t border-slate-200 pt-16 pb-12 mt-20 font-sans">
               <div className="max-w-7xl mx-auto px-6 md:px-8">
                 
