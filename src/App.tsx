@@ -298,7 +298,7 @@ const Navbar = () => {
 
   return (
     <nav ref={navRef} className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md text-white">
-      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
+      <div className="max-w-[1536px] mx-auto px-2.5 sm:px-6 lg:px-8">
         <div className="flex justify-between h-[70.4px] items-center gap-[8.8px]">
           <Link to="/" onClick={handleLogoClick} className="flex items-center gap-[6.6px] xs:gap-[8.8px] sm:gap-[13.2px] group shrink min-w-0 overflow-hidden">
             <ConnectBoatLogo className="h-[30.8px] xs:h-[35.2px] sm:h-[44px] w-auto shrink-0 text-white" />
@@ -914,7 +914,7 @@ export default function App() {
             <Navbar />
             <ShareModal />
 
-            <main ref={mainRef} className="max-w-7xl mx-auto px-1.5 xs:px-2 sm:px-6 lg:px-8 py-4 sm:py-8 cursor-grab active:cursor-grabbing">
+            <main ref={mainRef} className="max-w-[1536px] mx-auto px-1.5 xs:px-2 sm:px-6 lg:px-8 py-4 sm:py-8 cursor-grab active:cursor-grabbing">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/pricing" element={<Precos />} />
@@ -963,7 +963,7 @@ export default function App() {
               </Routes>
             </main>
             <footer className="bg-slate-50 border-t border-slate-200 pt-16 pb-12 mt-20 font-sans">
-              <div className="max-w-7xl mx-auto px-6 md:px-8">
+              <div className="max-w-[1536px] mx-auto px-6 md:px-8">
                 
                 {/* Main 4-column Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-12 text-left">
