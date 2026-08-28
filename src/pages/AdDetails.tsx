@@ -21,7 +21,6 @@ import AdCard from '../components/AdCard';
 import ImageLightboxModal from '../components/ImageLightboxModal';
 import { normalizeDescription } from '../utils/textFormatter';
 import { triggerShare } from '../utils/shareUtils';
-import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 
 export interface MediaItem {
   type: 'video' | 'image';
@@ -915,8 +914,7 @@ const AdDetails = () => {
   };
 
   if (loading) {
-  
-  return (
+    return (
       <div className="max-w-4xl mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[50vh]">
         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
         <span className="text-slate-500 font-medium">A carregar anúncio...</span>
@@ -998,81 +996,6 @@ const AdDetails = () => {
     : 'data indisponível';
 
   const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
-
-  const effectiveSellerRatingCount =
-    Number(sellerProfile?.ratingCount || 0) > 0
-      ? Number(sellerProfile?.ratingCount || 0)
-      : sellerReviews.length;
-
-  const effectiveSellerRatingAverage =
-    Number(sellerProfile?.ratingAverage || 0) > 0
-      ? Number(sellerProfile?.ratingAverage || 0)
-      : sellerReviews.length > 0
-        ? sellerReviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) / sellerReviews.length
-        : 0;
-
-  const hasSellerRating =
-    effectiveSellerRatingCount > 0 &&
-    effectiveSellerRatingAverage > 0;
-
-  const isAdminManagedListing =
-    Boolean((ad as any).importedBy) ||
-    ad.demoListing === true ||
-    ad.sellerId === 'admin' ||
-    ad.sellerId === 'connectboat-demo-seller' ||
-    /connectboat\s*admin/i.test(ad.sellerName || '');
-
-  const shouldShowSellerIdentity = !isAdminManagedListing;
-
-  const compactBoatSpecs = [
-    { section: 'Vessel', tone: 'text-sky-800', label: 'Type', value: ad.boatType },
-    { section: 'Vessel', tone: 'text-sky-800', label: 'Make', value: ad.manufacturer },
-    { section: 'Vessel', tone: 'text-sky-800', label: 'Model', value: ad.model },
-    { section: 'Vessel', tone: 'text-sky-800', label: 'Year', value: ad.year },
-
-    { section: 'Dimensions', tone: 'text-teal-800', label: 'Length', value: ad.length },
-    { section: 'Dimensions', tone: 'text-teal-800', label: 'Beam', value: ad.beam },
-    { section: 'Dimensions', tone: 'text-teal-800', label: 'Draft', value: ad.draft },
-    { section: 'Dimensions', tone: 'text-teal-800', label: 'Hull', value: ad.hullMaterial },
-
-    { section: 'Engine', tone: 'text-amber-800', label: 'Make', value: ad.engineBrand },
-    { section: 'Engine', tone: 'text-amber-800', label: 'Power', value: ad.horsepower },
-    { section: 'Engine', tone: 'text-amber-800', label: 'Hours', value: ad.engineHours },
-    { section: 'Engine', tone: 'text-amber-800', label: 'Fuel', value: ad.fuelType },
-
-    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Cabins', value: ad.cabins },
-    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Berths', value: ad.berths },
-    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Toilets', value: ad.bathrooms },
-    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Trailer', value: ad.trailerIncluded },
-  ].filter(
-    (item) =>
-      item.value !== undefined &&
-      item.value !== null &&
-      String(item.value).trim() !== ''
-  );
-
-  const compactBoatSpecRows: Array<{
-    section: string;
-    tone: string;
-    items: typeof compactBoatSpecs;
-  }> = [];
-
-  compactBoatSpecs.forEach((item) => {
-    const lastRow = compactBoatSpecRows[compactBoatSpecRows.length - 1];
-
-    if (!lastRow || lastRow.items.length === 2) {
-      compactBoatSpecRows.push({
-        section: item.section,
-        tone: item.tone,
-        items: [item],
-      });
-    } else {
-      // Always use the empty second column before creating another row.
-      // Example: HULL on the left + FUEL on the right instead of FUEL alone below.
-      lastRow.items.push(item);
-    }
-  });
-
 
   return (
     <>
@@ -1157,12 +1080,16 @@ const AdDetails = () => {
       <section className="relative mb-1 overflow-hidden bg-transparent">
         <button
           onClick={() => navigate(-1)}
-          className="absolute left-1 top-1 z-30 inline-flex items-center gap-1 text-slate-600 hover:text-indigo-600 font-bold transition-all px-2 py-1 rounded-lg bg-white/75 hover:bg-white/90 border border-white/70 shadow-sm backdrop-blur-sm text-[11px] sm:text-xs"
+          className="absolute left-3 sm:left-5 lg:left-6 top-1/2 -translate-y-1/2 z-30 inline-flex h-[52px] sm:h-[62px] lg:h-[72px] min-w-[94px] sm:min-w-[112px] lg:min-w-[128px] items-center justify-center rounded-2xl border-[3px] sm:border-4 border-white bg-[#073b59]/75 px-4 sm:px-5 text-base sm:text-lg lg:text-xl font-black text-white shadow-[0_8px_24px_rgba(0,0,0,0.28)] backdrop-blur-sm transition-all hover:bg-[#073b59]/90 hover:scale-[1.02]"
+          aria-label="Back"
         >
-          <ChevronLeft size={14} /> Back
+          Back
         </button>
 
-        <div className="absolute right-1 top-1 z-30 inline-flex items-center px-1 py-0.5 rounded-md bg-white/30 border border-white/25 shadow-[0_1px_3px_rgba(15,23,42,0.10)] backdrop-blur-[2px] text-[7px] sm:text-[8px] font-black uppercase tracking-[0.08em] text-slate-600">
+        <div
+          className="absolute right-3 sm:right-5 lg:right-6 top-1/2 -translate-y-1/2 z-30 inline-flex h-[40px] sm:h-[46px] lg:h-[52px] min-w-[46px] sm:min-w-[52px] lg:min-w-[58px] items-center justify-center border-[3px] sm:border-4 border-white bg-[#073b59]/65 px-1.5 text-lg sm:text-xl lg:text-2xl font-black uppercase leading-none text-white shadow-[0_8px_24px_rgba(0,0,0,0.25)] backdrop-blur-sm"
+          aria-label="Advertisement"
+        >
           AD
         </div>
 
@@ -1187,11 +1114,8 @@ const AdDetails = () => {
                       <img src={campaign.imageUrl} alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'} className="h-full w-full object-cover" loading={index < 4 ? 'eager' : 'lazy'} />
                     </div>
                   )}
-                  <div
-                    className="shrink-0 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-[#0b1930]/95 border border-white/70 shadow-md flex items-center justify-center p-1"
-                    aria-hidden="true"
-                  >
-                    <ConnectBoatLogo className="h-6 w-auto sm:h-7 shrink-0 text-white" />
+                  <div className="shrink-0 h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center" aria-hidden="true">
+                    <img src="/connectboat-exact-logo-hd.png" alt="ConnectBoat" className="h-full w-full object-contain drop-shadow-sm" />
                   </div>
                 </React.Fragment>
               ))}
@@ -1217,13 +1141,6 @@ const AdDetails = () => {
           .connectboat-ad-marquee:hover {
             animation-play-state: paused;
           }
-                    .connectboat-thumbnails {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-          }
-          .connectboat-thumbnails::-webkit-scrollbar {
-            display: none;
-          }
           .seller-more-card {
             flex-basis: calc((100% - 0.75rem) / 2);
             max-width: calc((100% - 0.75rem) / 2);
@@ -1245,7 +1162,7 @@ const AdDetails = () => {
         {/* LADO ESQUERDO: Imagens e Galeria */}
         <div className="lg:col-span-9 space-y-4">
           <div 
-            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1267,11 +1184,6 @@ const AdDetails = () => {
                   style={{ backgroundImage: `url(${currentMedia.url})` }}
                 />
                 {/* Main Carousel Image */}
-                <div
-                  className="absolute inset-0 bg-cover bg-center blur-2xl opacity-45 scale-110 pointer-events-none"
-                  style={{ backgroundImage: `url(${currentMedia.url})` }}
-                />
-                <div className="absolute inset-0 bg-slate-950/10 pointer-events-none" />
                 <img
                   src={currentMedia.url}
                   alt={ad.title}
@@ -1345,9 +1257,7 @@ const AdDetails = () => {
                     setCurrentImageIndex(i);
                   }}
                   className={`relative w-32 h-24 xl:w-36 xl:h-28 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    validMediaIndex === i
-                      ? 'border-violet-600 opacity-100 shadow-[0_0_0_2px_rgba(255,255,255,0.90),0_5px_14px_rgba(76,29,149,0.28)] ring-2 ring-violet-500'
-                      : 'border-white/80 opacity-90 shadow-[0_2px_8px_rgba(4,18,38,0.14)] hover:border-white hover:opacity-100'
+                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
                   }`}
                 >
                   {item.type === 'video' ? (
@@ -1396,7 +1306,7 @@ const AdDetails = () => {
 
           {/* ESPECIFICAÇÕES TÉCNICAS DO BARCO (GROUPED MARINE SPECS) */}
           {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.length || ad.beam || ad.draft || ad.hullMaterial || ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType || ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
-            <div id="especificacoes-nauticas" className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] p-6 md:p-8 border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] space-y-6 mt-6 text-left">
+            <div id="especificacoes-nauticas" className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6 mt-6 text-left">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-indigo-600/10 text-indigo-700 rounded-2xl flex items-center justify-center font-bold">
@@ -1418,7 +1328,7 @@ const AdDetails = () => {
                 {/* Grupo 1: Embarcação / Vessel */}
                 {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.condition) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-[0.08em] text-sky-900 px-0.5 py-1">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-sky-800 bg-sky-50/70 p-2.5 rounded-xl border border-sky-100/60">
                       <Anchor size={16} className="text-sky-600" />
                       <span>Vessel Information</span>
                     </div>
@@ -1460,7 +1370,7 @@ const AdDetails = () => {
                 {/* Grupo 2: Dimensões & Casco / Dimensions */}
                 {(ad.length || ad.beam || ad.draft || ad.hullMaterial) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-[0.08em] text-teal-900 px-0.5 py-1">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-teal-800 bg-teal-50/70 p-2.5 rounded-xl border border-teal-100/60">
                       <Ruler size={16} className="text-teal-600" />
                       <span>Dimensões & Casco</span>
                     </div>
@@ -1496,7 +1406,7 @@ const AdDetails = () => {
                 {/* Grupo 3: Motorização / Engine */}
                 {(ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-[0.08em] text-amber-900 px-0.5 py-1">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-800 bg-amber-50/70 p-2.5 rounded-xl border border-amber-100/60">
                       <Gauge size={16} className="text-amber-600" />
                       <span>Motorização & Performance</span>
                     </div>
@@ -1532,7 +1442,7 @@ const AdDetails = () => {
                 {/* Grupo 4: Acomodações & Habitabilidade / Accommodation */}
                 {(ad.cabins || ad.berths || ad.bathrooms) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-[0.08em] text-indigo-900 px-0.5 py-1">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-indigo-800 bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100/60">
                       <Bed size={16} className="text-indigo-600" />
                       <span>Acomodações & Habitabilidade</span>
                     </div>
@@ -1562,7 +1472,7 @@ const AdDetails = () => {
                 {/* Grupo 5: Conformidade & Extras */}
                 {(ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-[13px] font-black uppercase tracking-[0.08em] text-emerald-900 px-0.5 py-1">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-800 bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100/60">
                       <ShieldCheck size={16} className="text-emerald-600" />
                       <span>Conformidade & Equipamento</span>
                     </div>
@@ -1591,7 +1501,7 @@ const AdDetails = () => {
           )}
 
           {/* SECÇÃO DE LOCALIZAÇÃO */}
-          <div id="localizacao" className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] p-6 md:p-8 border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] space-y-6 mt-6 scroll-mt-24 text-left">
+          <div id="localizacao" className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6 mt-6 scroll-mt-24 text-left">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
                 <MapPin size={22} />
@@ -1674,7 +1584,7 @@ const AdDetails = () => {
 
         {/* LADO DIREITO: Dados, Vendedor e WhatsApp */}
         <div className="lg:col-span-3 space-y-6">
-          <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] p-6 md:p-8 border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] space-y-6">
+          <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6">
             
             {/* Categoria & Visualizações / Tempo */}
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
@@ -1797,54 +1707,53 @@ const AdDetails = () => {
             </div>
 
             {/* Cartão do Vendedor e Avaliações */}
-            <div className="bg-white/58 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/70 space-y-4 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.60)]">
-              {shouldShowSellerIdentity && (
-                <div className="flex flex-col gap-3 pb-3 border-b border-slate-200/60">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-12 h-12 bg-indigo-600/10 text-indigo-700 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0">
-                      {(ad.sellerName || 'Seller').slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-extrabold text-slate-900 leading-tight flex items-center gap-1 truncate">
-                        {ad.sellerName || 'Seller'}
-                        <Award size={14} className="text-indigo-500 flex-shrink-0" />
-                      </h4>
-
-                      {hasSellerRating && (
-                        <div className="flex items-center gap-0.5 mt-1" title={`${effectiveSellerRatingAverage} / 5`}>
-                          <div className="flex items-center gap-0.5">
-                            {[1, 2, 3, 4, 5].map((star) => {
-                              const isFilled = star <= Math.round(effectiveSellerRatingAverage);
-                              return (
-                                <Star
-                                  key={star}
-                                  size={12}
-                                  className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
-                                />
-                              );
-                            })}
-                          </div>
-                          <span className="text-[10px] text-slate-500 font-bold ml-1">
-                            ({effectiveSellerRatingCount} reviews)
-                          </span>
-                        </div>
-                      )}
+            <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 space-y-4 overflow-hidden">
+              <div className="flex flex-col gap-3 pb-3 border-b border-slate-200/60">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-12 h-12 bg-indigo-600/10 text-indigo-700 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0">
+                    {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-extrabold text-slate-900 leading-tight flex items-center gap-1 truncate">
+                      {hasSourceUrl ? 'Partner' : ad.sellerName}
+                      <Award size={14} className="text-indigo-500 flex-shrink-0" />
+                    </h4>
+                    
+                    {/* Estrelas */}
+                    <div className="flex items-center gap-0.5 mt-1" title={`${sellerProfile?.ratingAverage || 0} / 5`}>
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const ratingVal = sellerProfile?.ratingAverage || 0;
+                          const isFilled = star <= Math.round(ratingVal);
+                          return (
+                            <Star
+                              key={star}
+                              size={12}
+                              className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
+                            />
+                          );
+                        })}
+                      </div>
+                      <span className="text-[10px] text-slate-500 font-bold ml-1">
+                        ({sellerProfile?.ratingCount || 0} reviews)
+                      </span>
                     </div>
                   </div>
-
-                  {user && user.uid !== ad.sellerId && (
-                    <button
-                      onClick={() => setShowReviewModal(true)}
-                      className="w-full text-[11px] font-black bg-indigo-50 text-indigo-600 py-2 px-3 rounded-xl border border-indigo-100 hover:bg-indigo-100/80 hover:text-indigo-700 transition-all text-center"
-                    >
-                      Rate Seller
-                    </button>
-                  )}
                 </div>
-              )}
+
+                {/* Botão de Avaliar */}
+                {user && user.uid !== ad.sellerId && (
+                  <button
+                    onClick={() => setShowReviewModal(true)}
+                    className="w-full text-[11px] font-black bg-indigo-50 text-indigo-600 py-2 px-3 rounded-xl border border-indigo-100 hover:bg-indigo-100/80 hover:text-indigo-700 transition-all text-center"
+                  >
+                    Rate Seller
+                  </button>
+                )}
+              </div>
 
               {/* CTAs */}
-              <div className="hidden lg:flex flex-col gap-3">
+              <div className="flex flex-col gap-3">
                 {ad.externalListing || (hasSourceUrl && !ad.demoListing) ? (
                   <a
                     href={ad.sourceUrl}
@@ -1976,7 +1885,7 @@ const AdDetails = () => {
         {/* CAROUSEL FLOW */}
         <div className="space-y-3">
           <div 
-            className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden border-2 border-white/85 shadow-[0_10px_26px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden shadow-md group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1996,11 +1905,6 @@ const AdDetails = () => {
                   className="absolute inset-0 bg-cover bg-center blur-2xl opacity-25 select-none pointer-events-none scale-110"
                   style={{ backgroundImage: `url(${currentMedia.url})` }}
                 />
-                <div
-                  className="absolute inset-0 bg-cover bg-center blur-2xl opacity-45 scale-110 pointer-events-none"
-                  style={{ backgroundImage: `url(${currentMedia.url})` }}
-                />
-                <div className="absolute inset-0 bg-slate-950/10 pointer-events-none" />
                 <img
                   src={currentMedia.url}
                   alt={ad.title}
@@ -2062,7 +1966,7 @@ const AdDetails = () => {
 
           {/* Thumbnails list */}
           {mediaItems.length > 1 && (
-            <div className="connectboat-thumbnails flex gap-2 overflow-x-auto py-1 scrollbar-none">
+            <div className="flex gap-2 overflow-x-auto py-1 scrollbar-none">
               {mediaItems.map((item, i) => (
                 <button
                   key={i}
@@ -2071,9 +1975,7 @@ const AdDetails = () => {
                     setCurrentImageIndex(i);
                   }}
                   className={`relative w-20 h-16 sm:w-24 sm:h-18 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    validMediaIndex === i
-                      ? 'border-violet-600 opacity-100 shadow-[0_0_0_2px_rgba(255,255,255,0.90),0_5px_14px_rgba(76,29,149,0.28)] ring-2 ring-violet-500'
-                      : 'border-white/80 opacity-90 shadow-[0_2px_8px_rgba(4,18,38,0.14)] hover:border-white hover:opacity-100'
+                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
                   }`}
                 >
                   {item.type === 'video' ? (
@@ -2119,7 +2021,7 @@ const AdDetails = () => {
         </div>
 
         {/* SECTION CARD 1: Descrição com valor, cidade e país + Dados e CTAs */}
-        <div className="bg-[rgba(244,249,252,0.92)] backdrop-blur-[14px] rounded-3xl p-4 sm:p-5 border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] space-y-4 text-left">
+        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-4 text-left">
           
           {/* Categoria, views & time */}
           <div className="flex items-center justify-between gap-2 border-b border-slate-100/70 pb-2.5">
@@ -2196,7 +2098,7 @@ const AdDetails = () => {
           {/* Descrição detalhada compacta */}
           <div className="space-y-1">
             <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Detailed Description</h3>
-            <p className="text-slate-650 text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words bg-white/70 backdrop-blur-md p-3 rounded-xl border border-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
+            <p className="text-slate-650 text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words bg-slate-50/40 p-3 rounded-xl border border-slate-50">
               {normalizedDescription.length > 250 && !descriptionExpanded
                 ? `${normalizedDescription.substring(0, 250).trim()}...`
                 : normalizedDescription}
@@ -2213,7 +2115,7 @@ const AdDetails = () => {
 
           {/* ESPECIFICAÇÕES TÉCNICAS DO BARCO NO MOBILE */}
           {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.length || ad.beam || ad.draft || ad.hullMaterial || ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType || ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
-            <div className="bg-white/58 backdrop-blur-md rounded-2xl p-4 border border-white/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.60)] space-y-4 text-left">
+            <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-100 space-y-4 text-left">
               <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 bg-indigo-600/10 text-indigo-700 rounded-lg flex items-center justify-center font-bold">
@@ -2231,89 +2133,184 @@ const AdDetails = () => {
                 )}
               </div>
 
-              <div className="space-y-3">
-                {compactBoatSpecRows.map((row, rowIndex) => (
-                  <div key={`compact-spec-row-${rowIndex}`} className="space-y-1.5">
-                    <span className={`text-[10px] font-black uppercase tracking-wider block ${row.tone}`}>
-                      {row.section}
-                    </span>
+              {/* Embarcação */}
+              {(ad.boatType || ad.manufacturer || ad.model || ad.year) && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-black uppercase text-sky-800 tracking-wider block">Vessel</span>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {ad.boatType && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Type</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.boatType}</span>
+                      </div>
+                    )}
+                    {ad.manufacturer && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Make</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.manufacturer}</span>
+                      </div>
+                    )}
+                    {ad.model && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Model</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.model}</span>
+                      </div>
+                    )}
+                    {ad.year && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Year</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.year}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      {row.items.map((item, itemIndex) => (
-                        <div
-                          key={`${item.section}-${item.label}-${itemIndex}`}
-                          className="bg-white/72 backdrop-blur-sm p-2 rounded-xl border border-white/80 shadow-sm min-w-0"
-                        >
-                          <span className="text-[9px] font-bold text-slate-400 uppercase block">
-                            {item.label}
-                          </span>
-                          <span className="font-extrabold text-slate-900 block break-words">
-                            {item.label === 'Trailer'
-                              ? item.value === 'Yes'
-                                ? 'Yes'
-                                : item.value === 'No'
-                                  ? 'No'
-                                  : String(item.value)
-                              : String(item.value)}
-                          </span>
-                        </div>
-                      ))}
+              {/* Dimensões */}
+              {(ad.length || ad.beam || ad.draft || ad.hullMaterial) && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider block">Dimensions</span>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {ad.length && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Length</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.length}</span>
+                      </div>
+                    )}
+                    {ad.beam && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Beam</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.beam}</span>
+                      </div>
+                    )}
+                    {ad.draft && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Draft</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.draft}</span>
+                      </div>
+                    )}
+                    {ad.hullMaterial && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Hull</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.hullMaterial}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Motor */}
+              {(ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType) && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider block">Engine</span>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {ad.engineBrand && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Make</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.engineBrand}</span>
+                      </div>
+                    )}
+                    {ad.horsepower && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Power</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.horsepower}</span>
+                      </div>
+                    )}
+                    {ad.engineHours && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Hours</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.engineHours}</span>
+                      </div>
+                    )}
+                    {ad.fuelType && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Fuel</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.fuelType}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Acomodações e Conformidade */}
+              {(ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-black uppercase text-indigo-800 tracking-wider block">Accommodations & Extras</span>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {ad.cabins && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Cabins</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.cabins}</span>
+                      </div>
+                    )}
+                    {ad.berths && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Berths</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.berths}</span>
+                      </div>
+                    )}
+                    {ad.bathrooms && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Toilets</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.bathrooms}</span>
+                      </div>
+                    )}
+                    {ad.trailerIncluded && (
+                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase block">Trailer</span>
+                        <span className="font-extrabold text-slate-900 block truncate">{ad.trailerIncluded === 'Yes' ? 'Yes' : ad.trailerIncluded === 'No' ? 'No' : ad.trailerIncluded}</span>
+                      </div>
+                    )}
+                  </div>
+                  {(ad.vatPaid || ad.ceCertified) && (
+                    <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-200/60">
+                      {ad.vatPaid === 'Yes' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                          <ShieldCheck size={12} className="text-emerald-600" /> VAT Paid
+                        </span>
+                      )}
+                      {ad.ceCertified === 'Yes' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-800 text-[10px] font-bold border border-indigo-200">
+                          <Check size={12} className="text-indigo-600" /> CE Certified
+                        </span>
+                      )}
                     </div>
-                  </div>
-                ))}
-
-                {(ad.vatPaid || ad.ceCertified) && (
-                  <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-200/60">
-                    {ad.vatPaid === 'Yes' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                        <ShieldCheck size={12} className="text-emerald-600" /> VAT Paid
-                      </span>
-                    )}
-                    {ad.ceCertified === 'Yes' && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 text-indigo-800 text-[10px] font-bold border border-indigo-200">
-                        <Check size={12} className="text-indigo-600" /> CE Certified
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {shouldShowSellerIdentity && (
-            <>
           {/* Cartão do Vendedor Compacto */}
-          <div className="bg-white/58 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-white/70 space-y-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.60)]">
+          <div className="bg-slate-50 rounded-2xl p-3 sm:p-4 border border-slate-100 space-y-3">
             <div className="flex items-center justify-between gap-2 border-b border-slate-200/50 pb-2.5">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-9 h-9 bg-indigo-600/10 bg-indigo-50 text-indigo-700 rounded-lg flex items-center justify-center font-black text-xs shrink-0">
-                  {(ad.sellerName || 'Seller').slice(0, 2).toUpperCase()}
+                  {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm leading-tight flex items-center gap-1 truncate">
-                    {ad.sellerName || 'Seller'}
+                    {hasSourceUrl ? 'Partner' : ad.sellerName}
                     <Award size={11} className="text-indigo-500 shrink-0" />
                   </h4>
-                  {hasSellerRating && (
-                    <div className="flex items-center gap-0.5 mt-0.5" title={`${effectiveSellerRatingAverage} / 5`}>
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map((star) => {
-                          const ratingVal = effectiveSellerRatingAverage;
-                          const isFilled = star <= Math.round(ratingVal);
-                          return (
-                            <Star
-                              key={star}
-                              size={9}
-                              className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
-                            />
-                          );
-                        })}
-                      </div>
-                      <span className="text-[9px] text-slate-500 font-bold ml-1">
-                        ({effectiveSellerRatingCount} reviews)
-                      </span>
+                  <div className="flex items-center gap-0.5 mt-0.5" title={`${sellerProfile?.ratingAverage || 0} / 5`}>
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const ratingVal = sellerProfile?.ratingAverage || 0;
+                        const isFilled = star <= Math.round(ratingVal);
+                        return (
+                          <Star
+                            key={star}
+                            size={9}
+                            className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
+                          />
+                        );
+                      })}
                     </div>
-                  )}
+                    <span className="text-[9px] text-slate-500 font-bold ml-1">
+                      ({sellerProfile?.ratingCount || 0} reviews)
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -2349,10 +2346,47 @@ const AdDetails = () => {
               </div>
             )}
 
-          </div>
-            </>
-          )}
+            {/* CTAs */}
+            <div className="flex flex-col gap-2 pt-1">
+              {ad.adStatus === 'sold' || ad.status === 'sold' ? (
+                <div className="flex items-center justify-center gap-1 bg-slate-100 text-slate-500 py-2.5 px-4 rounded-xl font-black text-xs border border-slate-200">
+                  <Tag size={14} className="text-slate-400" />
+                  <span>Listing Sold</span>
+                </div>
+              ) : (
+                <button
+                  onClick={handleContactClick}
+                  className={`flex items-center justify-center gap-1.5 ${
+                    hasSourceUrl ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-500 hover:bg-emerald-600'
+                  } text-white py-2.5 px-4 rounded-xl font-black text-xs transition-all shadow-md active:scale-[0.98] w-full text-center`}
+                >
+                  {hasSourceUrl ? <ExternalLink size={14} /> : <MessageCircle size={14} />}
+                  <span>{hasSourceUrl ? 'Contact' : 'Contact via WhatsApp'}</span>
+                </button>
+              )}
 
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleShare}
+                  className={`flex items-center justify-center gap-1 border px-2 py-2 rounded-lg font-bold text-[9px] transition-all truncate ${
+                    shareCopied 
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
+                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  <Share2 size={13} className={shareCopied ? 'text-emerald-500' : ''} />
+                  <span>{shareCopied ? 'Copied!' : 'Share'}</span>
+                </button>
+
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="flex items-center justify-center gap-1 border border-rose-100 hover:border-rose-200 text-rose-500 bg-rose-50/50 hover:bg-rose-50 py-2 px-2 rounded-lg font-bold text-[9px] transition"
+                >
+                  <ShieldAlert size={13} /> Report
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* SECTION CARD 2: Localização aproximada */}
@@ -2432,8 +2466,7 @@ const AdDetails = () => {
         </div>
 
         {/* SECTION CARD 3: Avaliações do Vendedor (Feedback) */}
-        {sellerReviews.length > 0 && (
-          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-3.5 text-left">
+        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-3.5 text-left">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
             <div className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
               <Star size={14} className="text-amber-500" />
@@ -2444,31 +2477,40 @@ const AdDetails = () => {
             </div>
           </div>
 
-          <div className="space-y-2.5 max-h-60 overflow-y-auto pr-0.5 scrollbar-none">
-            {sellerReviews.map((rev) => (
-              <div key={rev.id} className="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 text-xs shadow-sm">
-                <div className="flex justify-between items-start mb-1 gap-1.5">
-                  <span className="font-extrabold text-slate-800 text-[11px] truncate">{rev.buyerName}</span>
-                  <div className="flex gap-0.5 shrink-0">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star key={s} size={9} className={`${s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-100'}`} />
-                    ))}
+          {sellerReviews.length > 0 ? (
+            <div className="space-y-2.5 max-h-60 overflow-y-auto pr-0.5 scrollbar-none">
+              {sellerReviews.map((rev) => (
+                <div key={rev.id} className="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 text-xs shadow-sm">
+                  <div className="flex justify-between items-start mb-1 gap-1.5">
+                    <span className="font-extrabold text-slate-800 text-[11px] truncate">{rev.buyerName}</span>
+                    <div className="flex gap-0.5 shrink-0">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star key={s} size={9} className={`${s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-100'}`} />
+                      ))}
+                    </div>
+                  </div>
+                  {rev.comment ? (
+                    <p className="text-slate-600 text-[11px] italic leading-relaxed">"{rev.comment}"</p>
+                  ) : (
+                    <p className="text-slate-400 text-[10px] italic">Rated without written comment.</p>
+                  )}
+                  <div className="text-[8px] text-slate-400 mt-2 flex justify-between items-center">
+                    <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
+                    <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
                   </div>
                 </div>
-                {rev.comment ? (
-                  <p className="text-slate-600 text-[11px] italic leading-relaxed">"{rev.comment}"</p>
-                ) : (
-                  <p className="text-slate-400 text-[10px] italic">Rated without written comment.</p>
-                )}
-                <div className="text-[8px] text-slate-400 mt-2 flex justify-between items-center">
-                  <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
-                  <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-5 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-3.5">
+              <span className="text-lg block mb-1">💬</span>
+              <h4 className="text-xs font-bold text-slate-800">No reviews yet</h4>
+              <p className="text-[9px] text-slate-400 mt-0.5 leading-normal">
+                Transact safely with the seller or hire operator and be the first to leave feedback!
+              </p>
+            </div>
+          )}
         </div>
-        )}
 
       </div> {/* closes block lg:hidden */}
 
@@ -2545,15 +2587,14 @@ const AdDetails = () => {
         </div>
       )}
 
-      {/* STICKY MOBILE ACTION BAR */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-3 py-2.5 shadow-2xl flex items-center gap-2">
-        <div className="flex flex-col shrink-0 min-w-[72px]">
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Price</span>
-          <span className="text-sm font-black text-indigo-600 leading-tight">
-            {hasPrice ? formatPrice(ad.price, ad.country) : 'On Request'}
+      {/* STICKY MOBILE CONTACT BAR */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 shadow-2xl flex items-center justify-between gap-3">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Price</span>
+          <span className="text-sm font-black text-indigo-600">
+            {hasPrice ? formatPrice(ad.price, ad.country) : 'Price on Request'}
           </span>
         </div>
-
         <button
           onClick={() => {
             if (isUnclaimed) {
@@ -2565,7 +2606,7 @@ const AdDetails = () => {
             }
           }}
           disabled={ad.adStatus === 'sold' || ad.status === 'sold'}
-          className={`flex-1 min-w-0 py-3 px-3 rounded-xl font-black text-xs text-white shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${
+          className={`flex-1 py-3 px-4 rounded-xl font-black text-xs text-white shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${
             ad.adStatus === 'sold' || ad.status === 'sold'
               ? 'bg-slate-400 cursor-not-allowed'
               : hasSourceUrl
@@ -2573,32 +2614,8 @@ const AdDetails = () => {
                 : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
           }`}
         >
-          <MessageCircle size={17} className="shrink-0" />
-          <span className="truncate">{hasSourceUrl ? 'Contact Seller' : 'Contact'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleShare}
-          aria-label="Share listing"
-          title={shareCopied ? 'Link copied!' : 'Share'}
-          className={`w-11 h-11 shrink-0 rounded-xl border flex items-center justify-center transition-all active:scale-95 ${
-            shareCopied
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-              : 'bg-white border-slate-200 text-slate-600'
-          }`}
-        >
-          <Share2 size={18} className={shareCopied ? 'animate-bounce' : ''} />
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowReportModal(true)}
-          aria-label="Report listing"
-          title="Report"
-          className="w-11 h-11 shrink-0 rounded-xl border border-rose-100 bg-rose-50/70 text-rose-500 flex items-center justify-center transition-all active:scale-95"
-        >
-          <ShieldAlert size={18} />
+          <MessageCircle size={16} />
+          <span>{hasSourceUrl ? 'Contact Seller' : 'Contact via WhatsApp'}</span>
         </button>
       </div>
 
