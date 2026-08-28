@@ -916,55 +916,6 @@ const AdDetails = () => {
 
   if (loading) {
   
-  const compactBoatSpecs = [
-    { section: 'Vessel', tone: 'text-sky-800', label: 'Type', value: ad.boatType },
-    { section: 'Vessel', tone: 'text-sky-800', label: 'Make', value: ad.manufacturer },
-    { section: 'Vessel', tone: 'text-sky-800', label: 'Model', value: ad.model },
-    { section: 'Vessel', tone: 'text-sky-800', label: 'Year', value: ad.year },
-
-    { section: 'Dimensions', tone: 'text-teal-800', label: 'Length', value: ad.length },
-    { section: 'Dimensions', tone: 'text-teal-800', label: 'Beam', value: ad.beam },
-    { section: 'Dimensions', tone: 'text-teal-800', label: 'Draft', value: ad.draft },
-    { section: 'Dimensions', tone: 'text-teal-800', label: 'Hull', value: ad.hullMaterial },
-
-    { section: 'Engine', tone: 'text-amber-800', label: 'Make', value: ad.engineBrand },
-    { section: 'Engine', tone: 'text-amber-800', label: 'Power', value: ad.horsepower },
-    { section: 'Engine', tone: 'text-amber-800', label: 'Hours', value: ad.engineHours },
-    { section: 'Engine', tone: 'text-amber-800', label: 'Fuel', value: ad.fuelType },
-
-    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Cabins', value: ad.cabins },
-    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Berths', value: ad.berths },
-    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Toilets', value: ad.bathrooms },
-    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Trailer', value: ad.trailerIncluded },
-  ].filter(
-    (item) =>
-      item.value !== undefined &&
-      item.value !== null &&
-      String(item.value).trim() !== ''
-  );
-
-  const compactBoatSpecRows: Array<{
-    section: string;
-    tone: string;
-    items: typeof compactBoatSpecs;
-  }> = [];
-
-  compactBoatSpecs.forEach((item) => {
-    const lastRow = compactBoatSpecRows[compactBoatSpecRows.length - 1];
-
-    if (!lastRow || lastRow.items.length === 2) {
-      compactBoatSpecRows.push({
-        section: item.section,
-        tone: item.tone,
-        items: [item],
-      });
-    } else {
-      // Always use the empty second column before creating another row.
-      // Example: HULL on the left + FUEL on the right instead of FUEL alone below.
-      lastRow.items.push(item);
-    }
-  });
-
   return (
       <div className="max-w-4xl mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[50vh]">
         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
@@ -1047,6 +998,56 @@ const AdDetails = () => {
     : 'data indisponível';
 
   const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
+
+  const compactBoatSpecs = [
+    { section: 'Vessel', tone: 'text-sky-800', label: 'Type', value: ad.boatType },
+    { section: 'Vessel', tone: 'text-sky-800', label: 'Make', value: ad.manufacturer },
+    { section: 'Vessel', tone: 'text-sky-800', label: 'Model', value: ad.model },
+    { section: 'Vessel', tone: 'text-sky-800', label: 'Year', value: ad.year },
+
+    { section: 'Dimensions', tone: 'text-teal-800', label: 'Length', value: ad.length },
+    { section: 'Dimensions', tone: 'text-teal-800', label: 'Beam', value: ad.beam },
+    { section: 'Dimensions', tone: 'text-teal-800', label: 'Draft', value: ad.draft },
+    { section: 'Dimensions', tone: 'text-teal-800', label: 'Hull', value: ad.hullMaterial },
+
+    { section: 'Engine', tone: 'text-amber-800', label: 'Make', value: ad.engineBrand },
+    { section: 'Engine', tone: 'text-amber-800', label: 'Power', value: ad.horsepower },
+    { section: 'Engine', tone: 'text-amber-800', label: 'Hours', value: ad.engineHours },
+    { section: 'Engine', tone: 'text-amber-800', label: 'Fuel', value: ad.fuelType },
+
+    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Cabins', value: ad.cabins },
+    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Berths', value: ad.berths },
+    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Toilets', value: ad.bathrooms },
+    { section: 'Accommodations & Extras', tone: 'text-indigo-800', label: 'Trailer', value: ad.trailerIncluded },
+  ].filter(
+    (item) =>
+      item.value !== undefined &&
+      item.value !== null &&
+      String(item.value).trim() !== ''
+  );
+
+  const compactBoatSpecRows: Array<{
+    section: string;
+    tone: string;
+    items: typeof compactBoatSpecs;
+  }> = [];
+
+  compactBoatSpecs.forEach((item) => {
+    const lastRow = compactBoatSpecRows[compactBoatSpecRows.length - 1];
+
+    if (!lastRow || lastRow.items.length === 2) {
+      compactBoatSpecRows.push({
+        section: item.section,
+        tone: item.tone,
+        items: [item],
+      });
+    } else {
+      // Always use the empty second column before creating another row.
+      // Example: HULL on the left + FUEL on the right instead of FUEL alone below.
+      lastRow.items.push(item);
+    }
+  });
+
 
   return (
     <>
