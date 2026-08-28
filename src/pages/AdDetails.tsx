@@ -1023,7 +1023,7 @@ const AdDetails = () => {
           />
         </div>
       )}
-      <div className="relative z-10 w-full max-w-[1880px] mx-auto px-2 sm:px-3 lg:px-4 xl:px-5 2xl:px-6 pt-0 pb-5 sm:py-5">
+      <div className="relative z-10 w-full max-w-[1880px] mx-auto px-2 sm:px-3 lg:px-4 xl:px-5 2xl:px-6 pt-0 pb-5 sm:pt-0 sm:pb-5">
       {ad && (
         <Helmet>
           <title>{ad.title} - {ad.city || 'United Kingdom'} | ConnectBoat</title>
