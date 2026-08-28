@@ -1180,7 +1180,7 @@ const AdDetails = () => {
         {/* LADO ESQUERDO: Imagens e Galeria */}
         <div className="lg:col-span-9 space-y-4">
           <div 
-            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1275,7 +1275,9 @@ const AdDetails = () => {
                     setCurrentImageIndex(i);
                   }}
                   className={`relative w-32 h-24 xl:w-36 xl:h-28 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
+                    validMediaIndex === i
+                      ? 'border-violet-600 opacity-100 shadow-[0_0_0_2px_rgba(255,255,255,0.90),0_5px_14px_rgba(76,29,149,0.28)] ring-2 ring-violet-500'
+                      : 'border-white/80 opacity-90 shadow-[0_2px_8px_rgba(4,18,38,0.14)] hover:border-white hover:opacity-100'
                   }`}
                 >
                   {item.type === 'video' ? (
@@ -1891,7 +1893,7 @@ const AdDetails = () => {
         {/* CAROUSEL FLOW */}
         <div className="space-y-3">
           <div 
-            className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden shadow-md group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden border-2 border-white/85 shadow-[0_10px_26px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1981,7 +1983,9 @@ const AdDetails = () => {
                     setCurrentImageIndex(i);
                   }}
                   className={`relative w-20 h-16 sm:w-24 sm:h-18 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
+                    validMediaIndex === i
+                      ? 'border-violet-600 opacity-100 shadow-[0_0_0_2px_rgba(255,255,255,0.90),0_5px_14px_rgba(76,29,149,0.28)] ring-2 ring-violet-500'
+                      : 'border-white/80 opacity-90 shadow-[0_2px_8px_rgba(4,18,38,0.14)] hover:border-white hover:opacity-100'
                   }`}
                 >
                   {item.type === 'video' ? (
