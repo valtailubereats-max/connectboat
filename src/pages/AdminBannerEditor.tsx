@@ -291,8 +291,15 @@ export default function AdminBannerEditor() {
       image.src = url;
     });
 
-    if (dimensions.width !== 1600 || dimensions.height !== 240) {
-      alert(`Admin proposal must be exactly 1600×240px. This file is ${dimensions.width}×${dimensions.height}px.`);
+    const ratio = dimensions.width / Math.max(1, dimensions.height);
+    const standardRatio = 16 / 9;
+    if (
+      dimensions.width <= dimensions.height ||
+      dimensions.width < 1280 || dimensions.height < 720 ||
+      dimensions.width > 3840 || dimensions.height > 2160 ||
+      Math.abs(ratio - standardRatio) > 0.025
+    ) {
+      alert(`Admin proposal must be horizontal 16:9, between 1280×720 and 3840×2160. This file is ${dimensions.width}×${dimensions.height}px.`);
       return;
     }
 
@@ -315,7 +322,7 @@ export default function AdminBannerEditor() {
     const proposalUrl = adminProposalUrls[order.id] || order.adminProposalUrl || '';
     const message = (adminMessages[order.id] || '').trim();
     if (!proposalUrl) {
-      alert('Upload a revised 1600×240 banner first.');
+      alert('Upload a revised 16:9 carousel image first.');
       return;
     }
     if (!message) {
@@ -621,6 +628,11 @@ export default function AdminBannerEditor() {
   };
 
   const handleSaveListingAdvertising = async () => {
+    if (!campaignId) {
+      alert('New carousel campaigns must originate from a paid Stripe advertising order.');
+      return;
+    }
+
     const displaySeconds = Number(listingAdDisplaySeconds);
     const amountPaid = Number(listingAdAmountPaid || 0);
 
@@ -664,17 +676,7 @@ export default function AdminBannerEditor() {
         updatedBy: user?.email || 'admin',
       };
 
-      if (campaignId) {
-        await updateDoc(doc(db, 'advertisingCampaigns', campaignId), payload);
-      } else {
-        await addDoc(collection(db, 'advertisingCampaigns'), {
-          ...payload,
-          impressions: 0,
-          clicks: 0,
-          createdAt: serverTimestamp(),
-          createdBy: user?.email || 'admin',
-        });
-      }
+      await updateDoc(doc(db, 'advertisingCampaigns', campaignId), payload);
 
       setListingAdSaved(true);
       setTimeout(() => setListingAdSaved(false), 3000);
@@ -1049,8 +1051,8 @@ export default function AdminBannerEditor() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <div className="text-[10px] uppercase tracking-[0.22em] font-black text-amber-600">Approval Queue</div>
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">Customer Advertising Banners</h2>
-            <p className="text-xs text-slate-500 mt-1">Paid banners never go live until you approve them.</p>
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">Paid Carousel Orders</h2>
+            <p className="text-xs text-slate-500 mt-1">Stripe-paid carousel orders stay here until you approve them for publication.</p>
           </div>
           <span className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-black text-amber-700">
             {pendingAdvertisingOrders.length} pending
@@ -1109,7 +1111,7 @@ export default function AdminBannerEditor() {
 
                     <label className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-dashed border-indigo-300 bg-indigo-50 text-indigo-700 text-xs font-black cursor-pointer">
                       <Upload size={15} />
-                      {adminProposalUploadingId === order.id ? 'Uploading revised banner...' : proposalUrl ? 'Replace admin version (1600×240)' : 'Upload revised banner (1600×240)'}
+                      {adminProposalUploadingId === order.id ? 'Uploading revised banner...' : proposalUrl ? 'Replace admin version (16:9)' : 'Upload revised carousel image (16:9)'}
                       <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={adminProposalUploadingId === order.id} onChange={(e) => uploadAdminProposal(order.id, e.target.files?.[0])} />
                     </label>
 
@@ -1134,23 +1136,24 @@ export default function AdminBannerEditor() {
               <Megaphone size={22} />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">Listing Page Advertising</h2>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">Carousel Campaigns</h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Multiple rotating banners. Each campaign has its own exposure time, dates and revenue.
+                Published 16:9 carousel campaigns. New campaigns are created only from paid customer orders; existing campaigns can still be edited or removed here.
               </p>
             </div>
           </div>
 
-          <button type="button" onClick={resetListingCampaignForm}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-700 dark:text-slate-300">
-            + New Campaign
-          </button>
+          <div className="px-4 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-black">
+            New campaigns: Stripe checkout only
+          </div>
         </div>
 
+        {campaignId && (
+          <>
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 space-y-4 bg-slate-50/50 dark:bg-slate-950/20">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-black text-slate-900 dark:text-white">{campaignId ? 'Edit Campaign' : 'Add Campaign'}</p>
+              <p className="text-sm font-black text-slate-900 dark:text-white">Edit Campaign</p>
               <p className="text-[10px] text-slate-500">Rotation respects each banner's individual display time.</p>
             </div>
             {campaignId && <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Editing</span>}
@@ -1265,10 +1268,13 @@ export default function AdminBannerEditor() {
             <button type="button" onClick={handleSaveListingAdvertising} disabled={listingAdSaving || listingAdUploading}
               className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black flex items-center justify-center gap-2 disabled:opacity-50">
               <Save size={15} />
-              {listingAdSaving ? 'Saving...' : listingAdSaved ? 'Saved!' : campaignId ? 'Update Campaign' : 'Add Campaign'}
+              {listingAdSaving ? 'Saving...' : listingAdSaved ? 'Saved!' : 'Update Campaign'}
             </button>
           </div>
         </div>
+
+          </>
+        )}
 
         <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
           <div className="px-4 py-3 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
