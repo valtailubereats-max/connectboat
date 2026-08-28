@@ -1076,59 +1076,77 @@ const AdDetails = () => {
         </div>
       )}
 
-      {/* Sponsored carousel — compact, transparent and secondary to the listing */}
-      <section className="relative mb-1 overflow-hidden bg-transparent">
-        <button
-          onClick={() => navigate(-1)}
-          className="absolute left-3 sm:left-5 lg:left-6 top-1/2 -translate-y-1/2 z-30 inline-flex h-[52px] sm:h-[62px] lg:h-[72px] min-w-[94px] sm:min-w-[112px] lg:min-w-[128px] items-center justify-center rounded-2xl border-[3px] sm:border-4 border-white bg-[#073b59]/75 px-4 sm:px-5 text-base sm:text-lg lg:text-xl font-black text-white shadow-[0_8px_24px_rgba(0,0,0,0.28)] backdrop-blur-sm transition-all hover:bg-[#073b59]/90 hover:scale-[1.02]"
-          aria-label="Back"
-        >
-          Back
-        </button>
+      {/* Sponsored carousel — Back | advertising | AD */}
+      <section className="relative mb-1 bg-transparent lg:-mt-[44px]">
+        <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 overflow-hidden py-0">
+          <button
+            onClick={() => navigate(-1)}
+            className="relative z-30 shrink-0 inline-flex h-[52px] sm:h-[62px] lg:h-[72px] min-w-[94px] sm:min-w-[112px] lg:min-w-[128px] items-center justify-center rounded-2xl border-[3px] sm:border-4 border-white bg-[#073b59]/75 px-4 sm:px-5 text-base sm:text-lg lg:text-xl font-black text-white shadow-[0_8px_24px_rgba(0,0,0,0.28)] backdrop-blur-sm transition-all hover:bg-[#073b59]/90 hover:scale-[1.02]"
+            aria-label="Back"
+          >
+            Back
+          </button>
 
-        <div
-          className="absolute right-3 sm:right-5 lg:right-6 top-1/2 -translate-y-1/2 z-30 inline-flex h-[40px] sm:h-[46px] lg:h-[52px] min-w-[46px] sm:min-w-[52px] lg:min-w-[58px] items-center justify-center border-[3px] sm:border-4 border-white bg-[#073b59]/65 px-1.5 text-lg sm:text-xl lg:text-2xl font-black uppercase leading-none text-white shadow-[0_8px_24px_rgba(0,0,0,0.25)] backdrop-blur-sm"
-          aria-label="Advertisement"
-        >
-          AD
+          <div className="relative z-10 min-w-0 flex-1 overflow-hidden">
+            {listingAdCampaigns.length > 0 ? (
+              <div className="flex items-center overflow-hidden py-0">
+                <div className="connectboat-ad-marquee flex w-max items-center gap-1.5 sm:gap-2 will-change-transform">
+                  {[...listingAdCampaigns, ...listingAdCampaigns].map((campaign, index) => (
+                    <React.Fragment key={`${campaign.id}-${index}`}>
+                      {campaign.targetUrl ? (
+                        <a
+                          href={campaign.targetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer sponsored"
+                          onClick={() => handleAdvertisingClick(campaign)}
+                          className="group block shrink-0 w-[42vw] max-w-[170px] sm:w-[200px] sm:max-w-none lg:w-[240px] aspect-video overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl"
+                          aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
+                        >
+                          <img
+                            src={campaign.imageUrl}
+                            alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                            loading={index < 4 ? 'eager' : 'lazy'}
+                          />
+                        </a>
+                      ) : (
+                        <div className="shrink-0 w-[42vw] max-w-[170px] sm:w-[200px] sm:max-w-none lg:w-[240px] aspect-video overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl">
+                          <img
+                            src={campaign.imageUrl}
+                            alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'}
+                            className="h-full w-full object-cover"
+                            loading={index < 4 ? 'eager' : 'lazy'}
+                          />
+                        </div>
+                      )}
+                      <div className="shrink-0 h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center" aria-hidden="true">
+                        <img
+                          src="/connectboat-exact-logo-hd.png"
+                          alt="ConnectBoat"
+                          className="h-full w-full object-contain drop-shadow-sm"
+                        />
+                      </div>
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="min-h-[92px] sm:min-h-[118px] lg:min-h-[135px] flex items-center justify-center px-6 text-center text-white">
+                <div className="rounded-2xl bg-transparent border border-white/20 px-6 py-5">
+                  <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-200">ConnectBoat Advertising</div>
+                  <div className="mt-2 text-xl sm:text-2xl font-black">Your marine brand could be here</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div
+            className="relative z-30 shrink-0 inline-flex h-[40px] sm:h-[46px] lg:h-[52px] min-w-[46px] sm:min-w-[52px] lg:min-w-[58px] items-center justify-center border-[3px] sm:border-4 border-white bg-[#073b59]/65 px-1.5 text-lg sm:text-xl lg:text-2xl font-black uppercase leading-none text-white shadow-[0_8px_24px_rgba(0,0,0,0.25)] backdrop-blur-sm"
+            aria-label="Advertisement"
+          >
+            AD
+          </div>
         </div>
-
-        {listingAdCampaigns.length > 0 ? (
-          <div className="relative z-10 flex items-center overflow-hidden py-1 sm:py-2">
-            <div className="connectboat-ad-marquee flex w-max items-center gap-1.5 sm:gap-2 px-0.5 sm:px-1 will-change-transform">
-              {[...listingAdCampaigns, ...listingAdCampaigns].map((campaign, index) => (
-                <React.Fragment key={`${campaign.id}-${index}`}>
-                  {campaign.targetUrl ? (
-                    <a
-                      href={campaign.targetUrl}
-                      target="_blank"
-                      rel="noopener noreferrer sponsored"
-                      onClick={() => handleAdvertisingClick(campaign)}
-                      className="group block shrink-0 w-[42vw] max-w-[170px] sm:w-[200px] sm:max-w-none lg:w-[240px] aspect-video overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl"
-                      aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
-                    >
-                      <img src={campaign.imageUrl} alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" loading={index < 4 ? 'eager' : 'lazy'} />
-                    </a>
-                  ) : (
-                    <div className="shrink-0 w-[42vw] max-w-[170px] sm:w-[200px] sm:max-w-none lg:w-[240px] aspect-video overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl">
-                      <img src={campaign.imageUrl} alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'} className="h-full w-full object-cover" loading={index < 4 ? 'eager' : 'lazy'} />
-                    </div>
-                  )}
-                  <div className="shrink-0 h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center" aria-hidden="true">
-                    <img src="/connectboat-exact-logo-hd.png" alt="ConnectBoat" className="h-full w-full object-contain drop-shadow-sm" />
-                  </div>
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="relative z-10 min-h-[92px] sm:min-h-[118px] lg:min-h-[142px] flex items-center justify-center px-6 text-center text-white">
-            <div className="rounded-2xl bg-transparent border border-white/20 px-6 py-5">
-              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-200">ConnectBoat Advertising</div>
-              <div className="mt-2 text-xl sm:text-2xl font-black">Your marine brand could be here</div>
-            </div>
-          </div>
-        )}
 
         <style>{`
           @keyframes connectboat-ad-marquee-right {
