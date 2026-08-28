@@ -299,38 +299,38 @@ const Navbar = () => {
   return (
     <nav ref={navRef} className="bg-slate-900 border-b border-slate-800 sticky top-0 z-50 shadow-md text-white">
       <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center gap-2">
-          <Link to="/" onClick={handleLogoClick} className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 group shrink min-w-0 overflow-hidden">
-            <ConnectBoatLogo className="h-7 xs:h-8 sm:h-10 w-auto shrink-0 text-white" />
-            <span className="text-[18px] xs:text-[22px] sm:text-[28px] font-black tracking-tight leading-none text-white select-none truncate">
+        <div className="flex justify-between h-[70.4px] items-center gap-[8.8px]">
+          <Link to="/" onClick={handleLogoClick} className="flex items-center gap-[6.6px] xs:gap-[8.8px] sm:gap-[13.2px] group shrink min-w-0 overflow-hidden">
+            <ConnectBoatLogo className="h-[30.8px] xs:h-[35.2px] sm:h-[44px] w-auto shrink-0 text-white" />
+            <span className="text-[19.8px] xs:text-[24.2px] sm:text-[30.8px] font-black tracking-tight leading-none text-white select-none truncate">
               ConnectBoat
             </span>
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-[26.4px]">
             {!user && (
-              <button onClick={handlePublishClick} className="text-slate-300 hover:text-sky-400 font-medium flex items-center gap-1 cursor-pointer transition-colors text-sm">
-                <Plus size={18} /> <span>List Boat / Item</span>
+              <button onClick={handlePublishClick} className="text-slate-300 hover:text-sky-400 font-medium flex items-center gap-[4.4px] cursor-pointer transition-colors text-[15.4px]">
+                <Plus size={19.8} /> <span>List Boat / Item</span>
               </button>
             )}
-            <button onClick={handleShare} className="text-slate-300 hover:text-sky-400 font-medium flex items-center gap-1 text-sm cursor-pointer transition-colors">
-              <Share2 size={18} /> <span>Share</span>
+            <button onClick={handleShare} className="text-slate-300 hover:text-sky-400 font-medium flex items-center gap-[4.4px] text-[15.4px] cursor-pointer transition-colors">
+              <Share2 size={19.8} /> <span>Share</span>
             </button>
 
             {user ? <>
-              <Link to="/create-ad" className="flex items-center gap-2 bg-gradient-to-r from-sky-500 to-blue-600 text-white px-4 py-2 rounded-xl hover:from-sky-400 hover:to-blue-500 transition-all shadow-md shadow-sky-500/20 font-bold text-sm">
-                <PlusCircle size={18} /> <span>List Boat / Item</span>
+              <Link to="/create-ad" className="flex items-center gap-[8.8px] bg-gradient-to-r from-sky-500 to-blue-600 text-white px-[17.6px] py-[8.8px] rounded-[13.2px] hover:from-sky-400 hover:to-blue-500 transition-all shadow-md shadow-sky-500/20 font-bold text-[15.4px]">
+                <PlusCircle size={19.8} /> <span>List Boat / Item</span>
               </Link>
 
-              <Link to="/profile" className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-sky-400 font-bold text-xs tracking-wider rounded-xl transition-all uppercase select-none cursor-pointer">
+              <Link to="/profile" className="flex items-center gap-[6.6px] px-[13.2px] py-[6.6px] bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-sky-400 font-bold text-[13.2px] tracking-wider rounded-[13.2px] transition-all uppercase select-none cursor-pointer">
                 <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
                 <span className="text-slate-200 font-extrabold">{getUserSignature()}</span>
               </Link>
 
               <div className="relative" ref={notificationsRef}>
-                <button onClick={() => setShowNotifications(!showNotifications)} className="relative text-slate-300 hover:text-sky-400 font-medium flex items-center gap-1 p-2 cursor-pointer transition-colors">
-                  <Bell size={20}/>
+                <button onClick={() => setShowNotifications(!showNotifications)} className="relative text-slate-300 hover:text-sky-400 font-medium flex items-center gap-[4.4px] p-[8.8px] cursor-pointer transition-colors">
+                  <Bell size={22}/>
                   {notifications.length > 0 && <span className="absolute top-1 right-1 bg-sky-500 text-white text-[10px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-slate-900">{notifications.length}</span>}
                 </button>
                 <AnimatePresence>
@@ -366,13 +366,13 @@ const Navbar = () => {
               <div className="relative" ref={userDropdownRef}>
                 <button
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
-                  className="relative text-slate-300 hover:text-sky-400 font-medium flex items-center gap-1.5 p-2 cursor-pointer outline-none transition-all"
+                  className="relative text-slate-300 hover:text-sky-400 font-medium flex items-center gap-[6.6px] p-[8.8px] cursor-pointer outline-none transition-all"
                   id="user-account-dropdown-toggle"
                 >
-                  <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sky-400 shrink-0 select-none shadow-sm">
-                    <UserIcon size={16} />
+                  <div className="w-[35.2px] h-[35.2px] rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sky-400 shrink-0 select-none shadow-sm">
+                    <UserIcon size={17.6} />
                   </div>
-                  <span className="hidden sm:inline text-sm">Account</span>
+                  <span className="hidden sm:inline text-[15.4px]">Account</span>
                   {userNotificationCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-sky-500 text-white text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border-2 border-slate-900 animate-pulse">
                       {userNotificationCount}
@@ -542,22 +542,16 @@ const Navbar = () => {
                 </AnimatePresence>
               </div>
             </> : (
-              <div className="flex items-center gap-3">
-                <Link
-                  to="/advertise"
-                  className="hidden lg:inline-flex items-center gap-1.5 border border-indigo-400/50 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500 hover:text-white px-4 py-2 rounded-xl transition-all font-black text-sm"
-                >
-                  📣 Advertise
-                </Link>
-                <Link to="/login" className="bg-sky-600 text-white px-5 py-2 rounded-xl hover:bg-sky-500 transition-all shadow-md font-bold text-sm">Sign In</Link>
+              <div className="flex items-center gap-[13.2px]">
+                <Link to="/login" className="bg-sky-600 text-white px-[22px] py-[8.8px] rounded-[13.2px] hover:bg-sky-500 transition-all shadow-md font-bold text-[15.4px]">Sign In</Link>
                 
                 <div className="relative" ref={userDropdownRef}>
                   <button
                     onClick={() => setShowUserDropdown(!showUserDropdown)}
-                    className="relative text-slate-300 hover:text-sky-400 font-medium flex items-center gap-1.5 p-2 cursor-pointer outline-none transition-all hover:bg-slate-800 rounded-xl text-sm"
+                    className="relative text-slate-300 hover:text-sky-400 font-medium flex items-center gap-[6.6px] p-[8.8px] cursor-pointer outline-none transition-all hover:bg-slate-800 rounded-[13.2px] text-[15.4px]"
                     id="guest-menu-toggle"
                   >
-                    <Menu size={20} />
+                    <Menu size={22} />
                     <span>Menu</span>
                   </button>
 
@@ -595,14 +589,6 @@ const Navbar = () => {
                         >
                           🏷️ Pricing Plans
                         </Link>
-                        <Link
-                          to="/advertise"
-                          onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-4 py-2 hover:bg-indigo-50 transition-colors text-sm font-black text-indigo-600"
-                          id="nav-advertise-link-guest"
-                        >
-                          📣 Advertise on ConnectBoat
-                        </Link>
 
                         <div className="border-t border-slate-100 my-2" />
 
@@ -624,30 +610,30 @@ const Navbar = () => {
           </div>
 
           {/* Mobile Menu */}
-          <div className="md:hidden flex items-center gap-1 xs:gap-2.5 shrink-0">
+          <div className="md:hidden flex items-center gap-[4.4px] xs:gap-[11px] shrink-0">
             <button 
               onClick={handlePublishClick} 
               title="List Boat / Item"
-              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-1 xs:p-1.5 cursor-pointer hover:bg-slate-800 rounded-xl"
+              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-[4.4px] xs:p-[6.6px] cursor-pointer hover:bg-slate-800 rounded-[13.2px]"
             >
-              <Plus size={18} className="xs:w-5 xs:h-5" />
-              <span className="text-[9px] font-bold tracking-tight mt-0.5 leading-none">List</span>
+              <Plus size={19.8} className="xs:w-[22px] xs:h-[22px]" />
+              <span className="text-[9.9px] font-bold tracking-tight mt-[2.2px] leading-none">List</span>
             </button>
             <button 
               onClick={handleShare} 
               title="Share"
-              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-1 xs:p-1.5 cursor-pointer hover:bg-slate-800 rounded-xl"
+              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-[4.4px] xs:p-[6.6px] cursor-pointer hover:bg-slate-800 rounded-[13.2px]"
             >
-              <Share2 size={18} className="xs:w-5 xs:h-5" />
-              <span className="text-[9px] font-bold tracking-tight mt-0.5 leading-none">Share</span>
+              <Share2 size={19.8} className="xs:w-[22px] xs:h-[22px]" />
+              <span className="text-[9.9px] font-bold tracking-tight mt-[2.2px] leading-none">Share</span>
             </button>
             <button 
               onClick={() => setIsOpen(!isOpen)} 
               title="Menu"
-              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-1 xs:p-1.5 cursor-pointer hover:bg-slate-800 rounded-xl"
+              className="text-slate-300 hover:text-sky-400 transition-colors flex flex-col items-center justify-center p-[4.4px] xs:p-[6.6px] cursor-pointer hover:bg-slate-800 rounded-[13.2px]"
             >
-              {isOpen ? <X size={18} className="xs:w-5 xs:h-5" /> : <Menu size={18} className="xs:w-5 xs:h-5" />}
-              <span className="text-[9px] font-bold tracking-tight mt-0.5 leading-none">Menu</span>
+              {isOpen ? <X size={19.8} className="xs:w-[22px] xs:h-[22px]" /> : <Menu size={19.8} className="xs:w-[22px] xs:h-[22px]" />}
+              <span className="text-[9.9px] font-bold tracking-tight mt-[2.2px] leading-none">Menu</span>
             </button>
           </div>
         </div>
@@ -836,77 +822,8 @@ const ScrollToTop = () => {
   return null;
 };
 
-
-const RouteAwareMain = ({ mainRef }: { mainRef: React.RefObject<HTMLElement | null> }) => {
-  const location = useLocation();
-  const pathname = location.pathname;
-
-  const isHome = pathname === '/';
-  const isAdDetails = pathname.startsWith('/anuncio/') || pathname.startsWith('/listing/');
-
-  const widthClass = isAdDetails
-    ? 'max-w-[1720px]'
-    : isHome
-      ? 'max-w-[1600px]'
-      : 'max-w-7xl';
-
-  return (
-    <main
-      ref={mainRef}
-      className={`${widthClass} w-full mx-auto px-1.5 xs:px-2 sm:px-6 lg:px-8 py-4 sm:py-8 cursor-grab active:cursor-grabbing`}
-    >
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/pricing" element={<Precos />} />
-        <Route path="/advertise" element={<Advertise />} />
-        <Route path="/precos" element={<Navigate to="/pricing" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-        <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
-        <Route path="/create-ad" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
-        <Route path="/edit-ad/:id" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
-        <Route path="/anuncio/:id" element={<AdDetails />} />
-        <Route path="/listing/:id" element={<AdDetails />} />
-        <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-        <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
-        <Route path="/admin/health" element={<AdminLayout><AdminSystemHealth /></AdminLayout>} />
-        <Route path="/admin/import" element={<AdminLayout><AdminImport /></AdminLayout>} />
-        <Route path="/admin/bulk-import" element={<AdminLayout><AdminBulkImport /></AdminLayout>} />
-        <Route path="/admin/demo-content" element={<AdminLayout><AdminDemoListings /></AdminLayout>} />
-        <Route path="/admin/marketing" element={<AdminLayout><AdminMarketing /></AdminLayout>} />
-        <Route path="/admin/banner-editor" element={<AdminLayout><AdminBannerEditor /></AdminLayout>} />
-        <Route path="/admin/ads" element={<AdminLayout><AdminAds /></AdminLayout>} />
-        <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
-        <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
-        <Route path="/admin/claims" element={<AdminLayout><AdminClaims /></AdminLayout>} />
-        <Route path="/admin/team" element={<AdminLayout><AdminTeam /></AdminLayout>} />
-        <Route path="/photos" element={<Fotos />} />
-        <Route path="/fotos" element={<Navigate to="/photos" replace />} />
-        <Route path="/admin/fotos" element={<AdminLayout><AdminFotos /></AdminLayout>} />
-        <Route path="/boats-for-hire" element={<BoatsForHire />} />
-        <Route path="/barcos-aluguer" element={<Navigate to="/boats-for-hire" replace />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/cookie-policy" element={<Cookies />} />
-        <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
-        <Route path="/report" element={<Report />} />
-        <Route path="/denuncia" element={<Navigate to="/report" replace />} />
-        <Route path="/suggestions" element={<Suggestions />} />
-        <Route path="/sugestoes" element={<Navigate to="/suggestions" replace />} />
-        <Route path="/faq" element={<FAQ />} />
-        <Route path="/links" element={<Links />} />
-        <Route path="/convite" element={<Convite />} />
-        <Route path="/admin/invitations" element={<AdminLayout><AdminInvitations /></AdminLayout>} />
-        <Route path="/admin/suggestions" element={<AdminLayout><AdminSuggestions /></AdminLayout>} />
-        <Route path="/admin/manual-tecnico" element={<AdminLayout><AdminManualTecnico /></AdminLayout>} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </main>
-  );
-};
-
 export default function App() {
-  const mainRef = React.useRef<HTMLElement | null>(null);
+  const mainRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     try {
@@ -997,7 +914,54 @@ export default function App() {
             <Navbar />
             <ShareModal />
 
-            <RouteAwareMain mainRef={mainRef} />
+            <main ref={mainRef} className="max-w-7xl mx-auto px-1.5 xs:px-2 sm:px-6 lg:px-8 py-4 sm:py-8 cursor-grab active:cursor-grabbing">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/pricing" element={<Precos />} />
+                <Route path="/advertise" element={<Advertise />} />
+                <Route path="/precos" element={<Navigate to="/pricing" replace />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
+                <Route path="/create-ad" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
+                <Route path="/edit-ad/:id" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
+                <Route path="/anuncio/:id" element={<AdDetails />} />
+                <Route path="/listing/:id" element={<AdDetails />} />
+                <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+                <Route path="/admin/dashboard" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+                <Route path="/admin/health" element={<AdminLayout><AdminSystemHealth /></AdminLayout>} />
+                <Route path="/admin/import" element={<AdminLayout><AdminImport /></AdminLayout>} />
+                <Route path="/admin/bulk-import" element={<AdminLayout><AdminBulkImport /></AdminLayout>} />
+                <Route path="/admin/demo-content" element={<AdminLayout><AdminDemoListings /></AdminLayout>} />
+                <Route path="/admin/marketing" element={<AdminLayout><AdminMarketing /></AdminLayout>} />
+                <Route path="/admin/banner-editor" element={<AdminLayout><AdminBannerEditor /></AdminLayout>} />
+                <Route path="/admin/ads" element={<AdminLayout><AdminAds /></AdminLayout>} />
+                <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
+                <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
+                <Route path="/admin/claims" element={<AdminLayout><AdminClaims /></AdminLayout>} />
+                <Route path="/admin/team" element={<AdminLayout><AdminTeam /></AdminLayout>} />
+                <Route path="/photos" element={<Fotos />} />
+                <Route path="/fotos" element={<Navigate to="/photos" replace />} />
+                <Route path="/admin/fotos" element={<AdminLayout><AdminFotos /></AdminLayout>} />
+                <Route path="/boats-for-hire" element={<BoatsForHire />} />
+                <Route path="/barcos-aluguer" element={<Navigate to="/boats-for-hire" replace />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/cookie-policy" element={<Cookies />} />
+                <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
+                <Route path="/report" element={<Report />} />
+                <Route path="/denuncia" element={<Navigate to="/report" replace />} />
+                <Route path="/suggestions" element={<Suggestions />} />
+                <Route path="/sugestoes" element={<Navigate to="/suggestions" replace />} />
+                <Route path="/faq" element={<FAQ />} />
+                <Route path="/links" element={<Links />} />
+                <Route path="/convite" element={<Convite />} />
+                <Route path="/admin/invitations" element={<AdminLayout><AdminInvitations /></AdminLayout>} />
+                <Route path="/admin/suggestions" element={<AdminLayout><AdminSuggestions /></AdminLayout>} />
+                <Route path="/admin/manual-tecnico" element={<AdminLayout><AdminManualTecnico /></AdminLayout>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </main>
             <footer className="bg-slate-50 border-t border-slate-200 pt-16 pb-12 mt-20 font-sans">
               <div className="max-w-7xl mx-auto px-6 md:px-8">
                 
