@@ -1015,6 +1015,15 @@ const AdDetails = () => {
     effectiveSellerRatingCount > 0 &&
     effectiveSellerRatingAverage > 0;
 
+  const isAdminManagedListing =
+    Boolean((ad as any).importedBy) ||
+    ad.demoListing === true ||
+    ad.sellerId === 'admin' ||
+    ad.sellerId === 'connectboat-demo-seller' ||
+    /connectboat\s*admin/i.test(ad.sellerName || '');
+
+  const shouldShowSellerIdentity = !isAdminManagedListing;
+
   const compactBoatSpecs = [
     { section: 'Vessel', tone: 'text-sky-800', label: 'Type', value: ad.boatType },
     { section: 'Vessel', tone: 'text-sky-800', label: 'Make', value: ad.manufacturer },
@@ -1387,7 +1396,7 @@ const AdDetails = () => {
 
           {/* ESPECIFICAÇÕES TÉCNICAS DO BARCO (GROUPED MARINE SPECS) */}
           {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.length || ad.beam || ad.draft || ad.hullMaterial || ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType || ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
-            <div id="especificacoes-nauticas" className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6 mt-6 text-left">
+            <div id="especificacoes-nauticas" className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] p-6 md:p-8 border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] space-y-6 mt-6 text-left">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-indigo-600/10 text-indigo-700 rounded-2xl flex items-center justify-center font-bold">
@@ -1582,7 +1591,7 @@ const AdDetails = () => {
           )}
 
           {/* SECÇÃO DE LOCALIZAÇÃO */}
-          <div id="localizacao" className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6 mt-6 scroll-mt-24 text-left">
+          <div id="localizacao" className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] p-6 md:p-8 border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] space-y-6 mt-6 scroll-mt-24 text-left">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
               <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
                 <MapPin size={22} />
@@ -1665,7 +1674,7 @@ const AdDetails = () => {
 
         {/* LADO DIREITO: Dados, Vendedor e WhatsApp */}
         <div className="lg:col-span-3 space-y-6">
-          <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6">
+          <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] p-6 md:p-8 border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] space-y-6">
             
             {/* Categoria & Visualizações / Tempo */}
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
@@ -1788,54 +1797,50 @@ const AdDetails = () => {
             </div>
 
             {/* Cartão do Vendedor e Avaliações */}
-            <div className="bg-slate-50 rounded-2xl p-4 md:p-5 border border-slate-100 space-y-4 overflow-hidden">
-              {hasSellerRating && (
-                <>
-              <div className="flex flex-col gap-3 pb-3 border-b border-slate-200/60">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-12 h-12 bg-indigo-600/10 text-indigo-700 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0">
-                    {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="font-extrabold text-slate-900 leading-tight flex items-center gap-1 truncate">
-                      {hasSourceUrl ? 'Partner' : ad.sellerName}
-                      <Award size={14} className="text-indigo-500 flex-shrink-0" />
-                    </h4>
-                    
-                    {/* Estrelas */}
-                    <div className="flex items-center gap-0.5 mt-1" title={`${effectiveSellerRatingAverage} / 5`}>
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map((star) => {
-                          const ratingVal = effectiveSellerRatingAverage;
-                          const isFilled = star <= Math.round(ratingVal);
-                          return (
-                            <Star
-                              key={star}
-                              size={12}
-                              className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
-                            />
-                          );
-                        })}
-                      </div>
-                      <span className="text-[10px] text-slate-500 font-bold ml-1">
-                        ({effectiveSellerRatingCount} reviews)
-                      </span>
+            <div className="bg-white/58 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/70 space-y-4 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.60)]">
+              {shouldShowSellerIdentity && (
+                <div className="flex flex-col gap-3 pb-3 border-b border-slate-200/60">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-12 h-12 bg-indigo-600/10 text-indigo-700 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0">
+                      {(ad.sellerName || 'Seller').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="font-extrabold text-slate-900 leading-tight flex items-center gap-1 truncate">
+                        {ad.sellerName || 'Seller'}
+                        <Award size={14} className="text-indigo-500 flex-shrink-0" />
+                      </h4>
+
+                      {hasSellerRating && (
+                        <div className="flex items-center gap-0.5 mt-1" title={`${effectiveSellerRatingAverage} / 5`}>
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((star) => {
+                              const isFilled = star <= Math.round(effectiveSellerRatingAverage);
+                              return (
+                                <Star
+                                  key={star}
+                                  size={12}
+                                  className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
+                                />
+                              );
+                            })}
+                          </div>
+                          <span className="text-[10px] text-slate-500 font-bold ml-1">
+                            ({effectiveSellerRatingCount} reviews)
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  {user && user.uid !== ad.sellerId && (
+                    <button
+                      onClick={() => setShowReviewModal(true)}
+                      className="w-full text-[11px] font-black bg-indigo-50 text-indigo-600 py-2 px-3 rounded-xl border border-indigo-100 hover:bg-indigo-100/80 hover:text-indigo-700 transition-all text-center"
+                    >
+                      Rate Seller
+                    </button>
+                  )}
                 </div>
-
-                {/* Botão de Avaliar */}
-                {user && user.uid !== ad.sellerId && (
-                  <button
-                    onClick={() => setShowReviewModal(true)}
-                    className="w-full text-[11px] font-black bg-indigo-50 text-indigo-600 py-2 px-3 rounded-xl border border-indigo-100 hover:bg-indigo-100/80 hover:text-indigo-700 transition-all text-center"
-                  >
-                    Rate Seller
-                  </button>
-                )}
-              </div>
-
-                </>
               )}
 
               {/* CTAs */}
@@ -2275,20 +2280,22 @@ const AdDetails = () => {
             </div>
           )}
 
-          {hasSellerRating && (
+          {shouldShowSellerIdentity && (
             <>
           {/* Cartão do Vendedor Compacto */}
-          <div className="bg-slate-50 rounded-2xl p-3 sm:p-4 border border-slate-100 space-y-3">
+          <div className="bg-white/58 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-white/70 space-y-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.60)]">
             <div className="flex items-center justify-between gap-2 border-b border-slate-200/50 pb-2.5">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-9 h-9 bg-indigo-600/10 bg-indigo-50 text-indigo-700 rounded-lg flex items-center justify-center font-black text-xs shrink-0">
-                  {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
+                  {(ad.sellerName || 'Seller').slice(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm leading-tight flex items-center gap-1 truncate">
-                    {hasSourceUrl ? 'Partner' : ad.sellerName}
+                    {ad.sellerName || 'Seller'}
                     <Award size={11} className="text-indigo-500 shrink-0" />
                   </h4>
+                  {hasSellerRating && (
+                    <>
                   <div className="flex items-center gap-0.5 mt-0.5" title={`${effectiveSellerRatingAverage} / 5`}>
                     <div className="flex items-center gap-0.5">
                       {[1, 2, 3, 4, 5].map((star) => {
@@ -2309,6 +2316,9 @@ const AdDetails = () => {
                   </div>
                 </div>
               </div>
+
+                    </>
+                  )}
 
               {/* Avaliar button */}
               {user && user.uid !== ad.sellerId && (
