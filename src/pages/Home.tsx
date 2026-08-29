@@ -1,2823 +1,2949 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Helmet } from 'react-helmet-async';
-import { collection, query, where, limit, getCountFromServer, orderBy } from 'firebase/firestore';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { db, withTimeout, getDocsWithCacheFallback } from '../firebase';
-import { Ad, CITIES, PORTUGAL_CITIES, UK_CITIES, UK_REGIONS, CITIES_BY_REGION, getRegionForCity, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS } from '../types';
-import { useSettings } from '../context/SettingsContext';
-import { useAuth } from '../context/AuthContext';
-import { 
-  getCachedAds, 
-  setCachedAds, 
-  getLastFetchTime, 
-  getCachedFeaturedAds, 
-  setCachedFeaturedAds, 
-  getLastFeaturedFetchTime,
-  clearHomeCache
-} from '../utils/cache';
-import { LocationDoc, subscribeToCustomLocations, combineAndSortCities } from '../utils/locationService';
-import AdCard from '../components/AdCard';
-import { 
-  Search, Tag, MapPin, ArrowRight, AlertCircle, RefreshCcw, ArrowUp, Store,
-  SlidersHorizontal, X, Filter, Check, ChevronDown, Anchor, Ship, Fuel, Compass, RotateCcw, ArrowUpDown, Globe
-} from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
+import { collection, query, orderBy, limit, updateDoc, doc, serverTimestamp, setDoc, deleteDoc, getDoc, getDocs, where } from 'firebase/firestore';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { db, handleFirestoreError, OperationType, getDocsWithCacheFallback } from '../firebase';
+import { Ad, UserProfile } from '../types';
+import { clearHomeCache } from '../utils/cache';
 import { motion, AnimatePresence } from 'motion/react';
-// @ts-ignore
-import lisbonAerial from '../assets/images/lisbon_aerial_1780755446715.png';
-// @ts-ignore
-import londonAerialOriginalStandby from '../assets/images/london_aerial_1780755464204.png';
-// Nova foto bem clara, nítida e com aspeto de dia radiante:
-const londonAerialSunny = "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=1600&q=80";
+import OptimizedImage from '../components/OptimizedImage';
+import { awardAdApprovalPoints } from '../utils/rewards';
+import { 
+  Clock, 
+  Archive, 
+  Trash2, 
+  Edit,
+  RefreshCcw,
+  CheckCircle, 
+  XCircle, 
+  Eye, 
+  EyeOff,
+  MessageSquare,
+  Search,
+  Filter,
+  AlertCircle,
+  X,
+  MapPin,
+  Tag,
+  Image as ImageIcon,
+  LayoutGrid,
+  List,
+  ShieldAlert,
+  ShieldCheck,
+  CreditCard,
+  Mail,
+  Phone,
+  UserRound,
+  ExternalLink,
+  Copy,
+  MessageCircle
+} from 'lucide-react';
+import { format, formatDistanceToNow, addDays } from 'date-fns';
+import { pt } from 'date-fns/locale';
+import { formatPrice } from '../utils';
+import { sendEmailGeneric, getSellerEmail } from '../utils/emailService';
+import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
+import { 
+  isPaidAd, 
+  getAdPlanLabel, 
+  formatUKDate, 
+  formatUKDateTime, 
+  getAdPaymentClassification 
+} from '../utils/paymentUtils';
 
-import { useClickOutside } from '../hooks/useClickOutside';
-import { parsePrice } from '../utils';
+export { 
+  isPaidAd, 
+  getAdPlanLabel, 
+  formatUKDate, 
+  formatUKDateTime, 
+  getAdPaymentClassification 
+};
 
-const PAGE_SIZE = 30; 
+interface ColumnOption {
+  id: string;
+  label: string;
+  mandatory?: boolean;
+}
 
-const Home = () => {
-  const { settings, bannerConfig, categories } = useSettings();
-  const resultsSectionRef = useRef<HTMLDivElement>(null);
-  const [londonBg, setLondonBg] = useState(londonAerialSunny);
+const ALL_COLUMNS: ColumnOption[] = [
+  { id: 'foto', label: 'Photo' },
+  { id: 'titulo', label: 'Title', mandatory: true },
+  { id: 'preco', label: 'Price' },
+  { id: 'status', label: 'Status' },
+  { id: 'pagamento', label: 'Payment' },
+  { id: 'vendedor', label: 'Seller' },
+  { id: 'pais', label: 'Country' },
+  { id: 'cidade', label: 'City' },
+  { id: 'criacao', label: 'Created' },
+  { id: 'expiracao', label: 'Expiry' },
+  { id: 'vistas', label: 'Views' },
+  { id: 'cliques', label: 'Clicks' },
+  { id: 'acoes', label: 'Quick actions', mandatory: true },
+];
 
-  const handleSearchFocus = () => {
-    setTimeout(() => {
-      if (resultsSectionRef.current) {
-        resultsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 150);
-  };
-  
-  const hexToRgba = (hex: string | undefined, opacity: number | undefined) => {
-    const color = hex || '#ffffff';
-    let alpha = 0.1;
-    if (opacity !== undefined) {
-      alpha = opacity > 1 ? opacity / 100 : opacity;
-    }
-    const cleanHex = color.replace('#', '');
-    let fullHex = cleanHex;
-    if (cleanHex.length === 3) fullHex = cleanHex.split('').map(x => x + x).join('');
-    const r = parseInt(fullHex.substring(0, 2), 16) || 0;
-    const g = parseInt(fullHex.substring(2, 4), 16) || 0;
-    const b = parseInt(fullHex.substring(4, 6), 16) || 0;
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  };
-
-  const isColorLight = (hex: string | undefined) => {
-    if (!hex) return false;
-    const cleanHex = hex.replace('#', '');
-    const r = parseInt(cleanHex.substring(0, 2), 16) || 255;
-    const g = parseInt(cleanHex.substring(2, 4), 16) || 255;
-    const b = parseInt(cleanHex.substring(4, 6), 16) || 255;
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-    return luminance > 0.6;
-  };
-
-  const getFeaturedSectionTheme = (hexColor: string | undefined, defaultHex: string) => {
-    const colorStr = (hexColor && hexColor.trim()) ? hexColor.trim() : defaultHex;
-    const cleanHex = colorStr.replace('#', '');
-    let fullHex = cleanHex;
-    if (cleanHex.length === 3) {
-      fullHex = cleanHex.split('').map(x => x + x).join('');
-    }
-    
-    let r = parseInt(fullHex.substring(0, 2), 16);
-    let g = parseInt(fullHex.substring(2, 4), 16);
-    let b = parseInt(fullHex.substring(4, 6), 16);
-
-    if (isNaN(r) || isNaN(g) || isNaN(b)) {
-      const fallbackClean = defaultHex.replace('#', '');
-      r = parseInt(fallbackClean.substring(0, 2), 16) || 16;
-      g = parseInt(fallbackClean.substring(2, 4), 16) || 183;
-      b = parseInt(fallbackClean.substring(4, 6), 16) || 199;
-    }
-
-    // Derive a deep dark version of the base color for outer edge vignette
-    const rDark = Math.max(0, Math.round(r * 0.55));
-    const gDark = Math.max(0, Math.round(g * 0.55));
-    const bDark = Math.max(0, Math.round(b * 0.55));
-
-    return {
-      hex: `#${fullHex}`,
-      // 4-edge vignette shadow strictly derived from selected color
-      boxShadow: `inset 0 0 38px 4px rgba(${rDark}, ${gDark}, ${bDark}, 0.22)`,
-      // Radial gradient background starting from pure white (#ffffff) at center and shading to the derived dark edge
-      radialBackground: `radial-gradient(ellipse at 50% 50%, #ffffff 30%, rgba(255, 255, 255, 0.96) 55%, rgba(${r}, ${g}, ${b}, 0.08) 78%, rgba(${rDark}, ${gDark}, ${bDark}, 0.18) 100%)`,
-      // Subtle radial glow behind listing cards
-      glowBackground: `radial-gradient(ellipse 80% 60% at 50% 65%, rgba(${r}, ${g}, ${b}, 0.08) 0%, rgba(${r}, ${g}, ${b}, 0.03) 55%, transparent 85%)`
-    };
-  };
-
-  const hasCustomStyles = settings?.searchGroupBgColor !== undefined || settings?.searchGroupOpacity !== undefined;
-  
-  const customBg = hasCustomStyles 
-    ? hexToRgba(settings?.searchGroupBgColor, settings?.searchGroupOpacity)
-    : undefined;
-
-  const customBorder = hasCustomStyles
-    ? hexToRgba(settings?.searchGroupBgColor, Math.max(50, Math.min(100, (settings?.searchGroupOpacity ?? 10) + 25)))
-    : undefined;
-
-  const isLightText = !(isColorLight(settings?.searchGroupBgColor) && (settings?.searchGroupOpacity || 10) > 40);
-  
-  const txtColorClass = isLightText ? 'text-white' : 'text-slate-900';
-  const txtMutedClass = isLightText ? 'text-white/75' : 'text-slate-900/75';
-  const placeholderClass = isLightText 
-    ? 'placeholder:text-white/80 placeholder:font-black placeholder:tracking-wide placeholder:uppercase placeholder:text-[10px] sm:placeholder:text-[11px]' 
-    : 'placeholder:text-slate-900/80 placeholder:font-black placeholder:tracking-wide placeholder:uppercase placeholder:text-[10px] sm:placeholder:text-[11px]';
-  const blurClass = settings?.searchGroupOpacity === 0 ? '' : 'backdrop-blur-3xl';
-
-  const getFlagSvgUrl = (currentCountry: string) => {
-    if (currentCountry === 'Portugal') {
-      return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400'%3E%3Crect width='240' height='400' fill='%23006600'/%3E%3Crect x='240' width='360' height='400' fill='%23ff0000'/%3E%3Ccircle cx='240' cy='200' r='65' fill='%23ffe600'/%3E%3Cpath d='M240,165 v70 M205,200 h70' stroke='%23ff0000' stroke-width='10'/%3E%3C/svg%3E`;
-    } else if (currentCountry === 'Reino Unido') {
-      return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 30'%3E%3Crect width='60' height='30' fill='%23012169'/%3E%3Cpath d='M0%2C0 L60%2C30 M60%2C0 L0%2C30' stroke='%23fff' stroke-width='6'/%3E%3Cpath d='M0%2C0 L60%2C30 M60%2C0 L0%2C30' stroke='%23c8102e' stroke-width='4'/%3E%3Cpath d='M0%2C15 H60 M30%2C0 V30' stroke='%23fff' stroke-width='10'/%3E%3Cpath d='M0%2C15 H60 M30%2C0 V30' stroke='%23c8102e' stroke-width='6'/%3E%3C/svg%3E`;
-    }
-    return '';
-  };
-
-  const { user, profile, isAdmin, loading: authLoading } = useAuth();
-  const isModeratorOrAdmin = isAdmin || profile?.role === 'admin' || profile?.role === 'moderator';
-  // Só consideramos administrador confirmado para consultas restritas de contagem de users.
-  const isConfirmedAdminOnly = !authLoading && profile?.role === 'admin';
-  const [searchParams, setSearchParams] = useSearchParams();
+const AdminAds = () => {
   const navigate = useNavigate();
-  const [assistedPaymentMessage, setAssistedPaymentMessage] = useState(false);
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const { settings, categories } = useSettings();
 
-  useEffect(() => {
-    const paymentResult = searchParams.get('assisted_payment');
+  // Synchronized horizontal scrollbars for the wide admin table.
+  const topTableScrollRef = useRef<HTMLDivElement>(null);
+  const mainTableScrollRef = useRef<HTMLDivElement>(null);
 
-    if (paymentResult === 'success') {
-      setAssistedPaymentMessage(true);
+  const syncTableScroll = (source: 'top' | 'main') => {
+    const top = topTableScrollRef.current;
+    const main = mainTableScrollRef.current;
+    if (!top || !main) return;
 
-      const params = new URLSearchParams(searchParams);
-      params.delete('assisted_payment');
-      params.delete('session_id');
-
-      setSearchParams(params, { replace: true });
-
-      const timer = setTimeout(() => {
-        setAssistedPaymentMessage(false);
-      }, 10000);
-
-      return () => clearTimeout(timer);
+    if (source === 'top') {
+      if (main.scrollLeft !== top.scrollLeft) main.scrollLeft = top.scrollLeft;
+    } else if (top.scrollLeft !== main.scrollLeft) {
+      top.scrollLeft = main.scrollLeft;
     }
-  }, []);
+  };
+  const assistedPlanPrices = {
+    standard: Number(settings?.planPrices?.standard ?? 4.99),
+    featured: Number(settings?.planPrices?.featured ?? 7.99),
+    premium: Number(settings?.planPrices?.premium ?? 12.99),
+  };
   const [ads, setAds] = useState<Ad[]>([]);
-  const [featuredAds, setFeaturedAds] = useState<Ad[]>([]);
-  // Sale and hire listings are fetched independently so older boat ads are not
-  // excluded by the 48-item general homepage discovery query.
-  const [saleSectionAds, setSaleSectionAds] = useState<Ad[]>([]);
-  const [hireSectionAds, setHireSectionAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [reloadCounter, setReloadCounter] = useState(0);
-  const [category, setCategory] = useState('Todas');
-  const [city, setCity] = useState('Todas');
-  const [customLocations, setCustomLocations] = useState<LocationDoc[]>([]);
+  const [adFilter, setAdFilter] = useState<string>(searchParams.get('status') || 'all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
+  const [sellerProfile, setSellerProfile] = useState<UserProfile | null>(null);
+  const [sellerProfileLoading, setSellerProfileLoading] = useState(false);
+  const [sellerProfileError, setSellerProfileError] = useState<string | null>(null);
+  const [sellerAdsCount, setSellerAdsCount] = useState<number | null>(null);
+
+  const [selectedAdIds, setSelectedAdIds] = useState<string[]>([]);
+  const [batchLoading, setBatchLoading] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = subscribeToCustomLocations((locs) => {
-      setCustomLocations(locs);
-    });
-    return () => unsubscribe();
-  }, []);
-  const [filterRegion, setFilterRegion] = useState(false);
-  const [filterNational, setFilterNational] = useState(false);
-  const [filterOnline, setFilterOnline] = useState(false);
-
-  // Advanced Marine Search & Filter States
-  const [filterBoatType, setFilterBoatType] = useState('Todas');
-  const [filterMinPrice, setFilterMinPrice] = useState('');
-  const [filterMaxPrice, setFilterMaxPrice] = useState('');
-  const [filterManufacturer, setFilterManufacturer] = useState('');
-  const [filterModel, setFilterModel] = useState('');
-  const [filterMinYear, setFilterMinYear] = useState('');
-  const [filterMaxYear, setFilterMaxYear] = useState('');
-  const [filterCondition, setFilterCondition] = useState('Todas');
-  const [filterMinLength, setFilterMinLength] = useState('');
-  const [filterMaxLength, setFilterMaxLength] = useState('');
-  const [filterFuelType, setFilterFuelType] = useState('Todas');
-  const [filterHullMaterial, setFilterHullMaterial] = useState('Todas');
-  const [filterLocationKeyword, setFilterLocationKeyword] = useState('');
-  const [filterMinCabins, setFilterMinCabins] = useState('');
-  const [filterTrailer, setFilterTrailer] = useState<'Any' | 'Yes' | 'No'>('Any');
-
-  const [sortBy, setSortBy] = useState<
-    | 'newest'
-    | 'oldest'
-    | 'price_asc'
-    | 'price_desc'
-    | 'year_desc'
-    | 'year_asc'
-    | 'length_asc'
-    | 'length_desc'
-  >('newest');
-
-  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
-
-  // Helper functions for marine filters
-  const parseLengthMeters = (lengthStr?: string | number): number | null => {
-    if (lengthStr === undefined || lengthStr === null || lengthStr === '') return null;
-    if (typeof lengthStr === 'number') return isNaN(lengthStr) ? null : lengthStr;
-    const match = String(lengthStr).replace(',', '.').match(/([0-9]+(?:\.[0-9]+)?)/);
-    if (match) {
-      const val = parseFloat(match[1]);
-      return isNaN(val) ? null : val;
+    const status = searchParams.get('status');
+    if (status) {
+      setAdFilter(status);
     }
-    return null;
-  };
-
-  const parseYearNum = (yearVal?: number | string): number | null => {
-    if (yearVal === undefined || yearVal === null || yearVal === '') return null;
-    const num = typeof yearVal === 'number' ? yearVal : parseInt(String(yearVal), 10);
-    return isNaN(num) ? null : num;
-  };
-
-  const matchesSearchText = (ad: Ad, queryStr: string) => {
-    if (!queryStr) return true;
-    const normalized = queryStr.toLowerCase().trim();
-    if (!normalized) return true;
-
-    const tokens = normalized.split(/\s+/).filter(Boolean);
-
-    const searchableFields = [
-      ad.title,
-      ad.description,
-      ad.boatType,
-      ad.manufacturer,
-      ad.model,
-      ad.year ? String(ad.year) : '',
-      ad.condition,
-      ad.city,
-      ad.location,
-      ad.country,
-      ad.fuelType,
-      ad.engineBrand,
-      ad.hullMaterial,
-    ].map(f => (f ? String(f).toLowerCase() : ''));
-
-    const combinedText = searchableFields.join(' ');
-    return tokens.every(token => combinedText.includes(token));
-  };
-
-  const activeMarineFilterCount = useMemo(() => {
-    let count = 0;
-    if (filterBoatType !== 'Todas') count++;
-    if (filterMinPrice.trim() !== '') count++;
-    if (filterMaxPrice.trim() !== '') count++;
-    if (filterManufacturer.trim() !== '') count++;
-    if (filterModel.trim() !== '') count++;
-    if (filterMinYear.trim() !== '') count++;
-    if (filterMaxYear.trim() !== '') count++;
-    if (filterCondition !== 'Todas') count++;
-    if (filterMinLength.trim() !== '') count++;
-    if (filterMaxLength.trim() !== '') count++;
-    if (filterFuelType !== 'Todas') count++;
-    if (filterHullMaterial !== 'Todas') count++;
-    if (filterLocationKeyword.trim() !== '') count++;
-    if (filterMinCabins.trim() !== '') count++;
-    if (filterTrailer !== 'Any') count++;
-    return count;
-  }, [
-    filterBoatType,
-    filterMinPrice,
-    filterMaxPrice,
-    filterManufacturer,
-    filterModel,
-    filterMinYear,
-    filterMaxYear,
-    filterCondition,
-    filterMinLength,
-    filterMaxLength,
-    filterFuelType,
-    filterHullMaterial,
-    filterLocationKeyword,
-    filterMinCabins,
-    filterTrailer,
-  ]);
-
-  const clearAllFilters = () => {
-    setSearchTerm('');
-    setCategory('Todas');
-    setCity('Todas');
-    setFilterBoatType('Todas');
-    setFilterMinPrice('');
-    setFilterMaxPrice('');
-    setFilterManufacturer('');
-    setFilterModel('');
-    setFilterMinYear('');
-    setFilterMaxYear('');
-    setFilterCondition('Todas');
-    setFilterMinLength('');
-    setFilterMaxLength('');
-    setFilterFuelType('Todas');
-    setFilterHullMaterial('Todas');
-    setFilterLocationKeyword('');
-    setFilterMinCabins('');
-    setFilterTrailer('Any');
-    setFilterRegion(false);
-    setFilterNational(false);
-    setFilterOnline(false);
-    setSelectedRegion('');
-  };
-
-  const availableManufacturers = useMemo(() => {
-    const setM = new Set<string>();
-    ads.forEach(ad => {
-      if (ad.manufacturer?.trim()) {
-        setM.add(ad.manufacturer.trim());
+    const selectAllParam = searchParams.get('selectAll') === 'true';
+    if (selectAllParam && ads.length > 0) {
+      const targetFilter = status || 'all';
+      const targetFiltered = ads.filter(ad => {
+        const matchesFilter = targetFilter === 'all' 
+          ? true 
+          : targetFilter === 'duplicates' 
+            ? ad.isDuplicate === true 
+            : targetFilter === 'paid'
+              ? isPaidAd(ad)
+              : (ad.status === targetFilter || ad.adStatus === targetFilter);
+        return matchesFilter;
+      });
+      if (targetFiltered.length > 0) {
+        setSelectedAdIds(targetFiltered.map(a => a.id));
       }
-    });
-    return Array.from(setM).sort();
-  }, [ads]);
-  
-  const [selectedRegion, setSelectedRegion] = useState<string>('');
-  const [country, setCountry] = useState<'Portugal' | 'Reino Unido'>(() => {
-    // 1. Check URL parameters first for explicit country selection
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const urlCountry = params.get('country') as 'Portugal' | 'Reino Unido' | null;
-      if (urlCountry === 'Reino Unido' || urlCountry === 'Portugal') {
-        return urlCountry;
-      }
-    } catch (e) {
-      console.warn("Could not determine country from URL parameters:", e);
     }
-    
-    // Default launch experience is strictly United Kingdom
-    return 'Reino Unido';
+  }, [searchParams, ads]);
+
+  // New States for ERP / Scalability TabelaMode
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>(() => {
+    return (localStorage.getItem('admin_ads_view_mode') as 'cards' | 'table') || 'cards';
+  });
+  const [countryFilter, setCountryFilter] = useState<'all' | 'Portugal' | 'Reino Unido'>('all');
+  const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'hire'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [batchCategorySelection, setBatchCategorySelection] = useState<string>('Boats for Sale');
+  const [periodFilter, setPeriodFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [fetchLimit, setFetchLimit] = useState(100);
+  const pageSize = 50;
+
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+    const saved = localStorage.getItem('admin_ads_visible_columns');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Garante que os campos obrigatorios estão sempre presentes
+          return Array.from(new Set([...parsed, 'titulo', 'acoes']));
+        }
+      } catch (e) {
+        console.error('Erro ao processar as colunas visíveis salvas:', e);
+      }
+    }
+    // Por padrão exibe todas as colunas
+    return ALL_COLUMNS.map(col => col.id);
   });
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [totalUsersCount, setTotalUsersCount] = useState<number | null>(null);
-
-  // Estados de paginação de 30 em 30 itens
-  const [limitAmount, setLimitAmount] = useState(PAGE_SIZE);
-  const [isFetchingMore, setIsFetchingMore] = useState(false);
-  const [dbLimit, setDbLimit] = useState(48);
-  const [allDbAdsFetched, setAllDbAdsFetched] = useState(false);
-
-  // State to pause marquee on hover
-  const [isHovered, setIsHovered] = useState(false);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [isSearchHovered, setIsSearchHovered] = useState(false);
-
-  const [isMobile, setIsMobile] = useState(true);
-
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    localStorage.setItem('admin_ads_visible_columns', JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
 
-  // Manter controle atualizado do país selecionado em uma ref mutável para o cleanup do useEffect
-  const countryRef = useRef(country);
-  useEffect(() => {
-    countryRef.current = country;
-  }, [country]);
+  const isColVisible = (id: string) => visibleColumns.includes(id);
 
-  // Controle de requisições de anúncios gerais
-  const inFlightAdsCountry = useRef<'Portugal' | 'Reino Unido' | null>(null);
-  const fetchedAdsCountry = useRef<'Portugal' | 'Reino Unido' | null>(null);
-  const fetchedLimit = useRef<number>(48);
+  const [adminImagePositionX, setAdminImagePositionX] = useState<number>(50);
+  const [adminImagePositionY, setAdminImagePositionY] = useState<number>(50);
+  const [adminImageZoom, setAdminImageZoom] = useState<number>(1);
+  const [savingPosition, setSavingPosition] = useState(false);
+  const [savedPositionSuccess, setSavedPositionSuccess] = useState(false);
+  const [claimActionLoading, setClaimActionLoading] = useState(false);
+  const [resendingEmailId, setResendingEmailId] = useState<string | null>(null);
+  const [assistedPaymentAd, setAssistedPaymentAd] = useState<Ad | null>(null);
+  const [assistedPaymentPlan, setAssistedPaymentPlan] = useState<'standard' | 'featured' | 'premium'>('standard');
+  const [assistedPaymentLoading, setAssistedPaymentLoading] = useState(false);
+  const [assistedPaymentUrl, setAssistedPaymentUrl] = useState('');
+  const [assistedPaymentError, setAssistedPaymentError] = useState<string | null>(null);
 
-  // Controle de requisições de anúncios destacados
-  const inFlightFeaturedCountry = useRef<'Portugal' | 'Reino Unido' | null>(null);
-  const fetchedFeaturedCountry = useRef<'Portugal' | 'Reino Unido' | null>(null);
-
-  // Available countries configuration for Filters panel
-  const AVAILABLE_COUNTRIES: Array<{ id: 'Reino Unido' | 'Portugal'; label: string; flagCode: 'Reino Unido' | 'Portugal' }> = React.useMemo(() => {
-    if (settings?.enablePortugalMarket === true) {
-      return [
-        { id: 'Reino Unido', label: 'United Kingdom', flagCode: 'Reino Unido' },
-        { id: 'Portugal', label: 'Portugal', flagCode: 'Portugal' },
-      ];
-    }
-    return [
-      { id: 'Reino Unido', label: 'United Kingdom', flagCode: 'Reino Unido' },
-    ];
-  }, [settings?.enablePortugalMarket]);
-
-  // Sync with Profile country if registered
-  useEffect(() => {
-    const enablePortugal = settings?.enablePortugalMarket === true;
-    if (enablePortugal && profile?.country && (profile.country === 'Portugal' || profile.country === 'Reino Unido')) {
-      setCountry(profile.country);
-      localStorage.setItem('selectedCountry', profile.country);
-    } else if (!enablePortugal && country !== 'Reino Unido') {
-      setCountry('Reino Unido');
-    }
-  }, [profile, settings?.enablePortugalMarket, country]);
-
-  // Handle Country Change
-  const handleCountryChange = (val: 'Portugal' | 'Reino Unido') => {
-    setCountry(val);
-    setCity('Todas');
-    localStorage.setItem('selectedCountry', val);
-
-    // Sync country URL parameter to prevent useSearchParams useEffect from reverting the value
-    const currentParams = new URLSearchParams(window.location.search);
-    currentParams.set('country', val);
-    setSearchParams(currentParams);
+  const openAssistedPayment = (ad: Ad) => {
+    setAssistedPaymentAd(ad);
+    setAssistedPaymentPlan('standard');
+    setAssistedPaymentUrl('');
+    setAssistedPaymentError(null);
   };
 
-  // Monitorar scroll para exibir/esconder o botão de "Voltar ao topo"
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 400) {
-        setShowScrollTop(true);
-      } else {
-        setShowScrollTop(false);
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const closeAssistedPayment = () => {
+    setAssistedPaymentAd(null);
+    setAssistedPaymentUrl('');
+    setAssistedPaymentError(null);
+    setAssistedPaymentLoading(false);
   };
 
-  // Resetar paginação ao alterar qualquer filtro principal ou avançado
-  useEffect(() => {
-    setLimitAmount(PAGE_SIZE);
-    setDbLimit(48);
-    setAllDbAdsFetched(false);
-  }, [
-    country,
-    category,
-    city,
-    searchTerm,
-    filterBoatType,
-    filterMinPrice,
-    filterMaxPrice,
-    filterManufacturer,
-    filterModel,
-    filterMinYear,
-    filterMaxYear,
-    filterCondition,
-    filterMinLength,
-    filterMaxLength,
-    filterFuelType,
-    filterHullMaterial,
-    filterLocationKeyword,
-    filterMinCabins,
-    filterTrailer,
-    sortBy,
-  ]);
+  const handleGenerateAssistedPayment = async () => {
+    if (!assistedPaymentAd || !user) return;
 
-  // Buscar total de utilizadores no banco de dados se permitido/configurado
-  useEffect(() => {
-    let active = true;
+    setAssistedPaymentLoading(true);
+    setAssistedPaymentError(null);
+    setAssistedPaymentUrl('');
 
-    // Log de diagnóstico temporário para confirmar quem e por que está executando a contagem de users
-    console.log('[ROLE DEBUG]', {
-      authLoading,
-      isAdmin,
-      profileRole: profile?.role,
-      uid: user?.uid,
-      email: user?.email,
-      isConfirmedAdminOnly
-    });
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/create-assisted-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          adId: assistedPaymentAd.id,
+          plan: assistedPaymentPlan,
+        }),
+      });
 
-    // Se ainda está carregando a autenticação ou perfil, não podemos confirmar se é admin/moderador
-    if (authLoading) {
-      console.log('[USERS COUNT] skipped for non-admin (auth loading incerteza)');
-      if (active) {
-        setTotalUsersCount(852); // Fallback estático seguro
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.errorMessage || data?.error || 'Could not create the assisted payment link.');
       }
-      return;
+
+      setAssistedPaymentUrl(data.url);
+    } catch (err: any) {
+      console.error('[AdminAds] Assisted payment error:', err);
+      setAssistedPaymentError(err?.message || 'Could not create the assisted payment link.');
+    } finally {
+      setAssistedPaymentLoading(false);
     }
+  };
 
-    // Se de fato não é admin confirmado, use o fallback estático e não execute a consulta
-    if (!isConfirmedAdminOnly) {
-      if (profile?.role === 'moderator') {
-        console.log('[USERS COUNT] skipped for moderator');
-      } else {
-        console.log('[USERS COUNT] skipped for non-admin');
-      }
-      if (active) {
-        setTotalUsersCount(852); // Fallback estático seguro
-      }
-      return;
+  const copyAssistedPaymentLink = async () => {
+    if (!assistedPaymentUrl) return;
+    try {
+      await navigator.clipboard.writeText(assistedPaymentUrl);
+      alert('Payment link copied!');
+    } catch (err) {
+      console.error('[AdminAds] Failed to copy payment link:', err);
+      alert('Could not copy the payment link.');
     }
+  };
 
-    const fetchUsersCount = async () => {
-      console.log('[USERS COUNT] running for admin');
-      try {
-        const q = query(collection(db, 'users'));
-        const snapshot = await getCountFromServer(q);
-        if (active) {
-          setTotalUsersCount(snapshot.data().count);
-        }
-      } catch (err) {
-        console.error('Erro ao buscar total de utilizadores:', err);
-      }
+  const shareAssistedPaymentWhatsApp = () => {
+    if (!assistedPaymentUrl || !assistedPaymentAd) return;
+    const planLabels = {
+      standard: `Standard Listing (£${assistedPlanPrices.standard.toFixed(2)})`,
+      featured: `Featured Listing (£${assistedPlanPrices.featured.toFixed(2)})`,
+      premium: `Premium Featured (£${assistedPlanPrices.premium.toFixed(2)})`,
     };
-    fetchUsersCount();
-    return () => { active = false; };
-  }, [settings?.showTotalUsersBadge, isConfirmedAdminOnly, authLoading]);
+    const message = `ConnectBoat payment for "${assistedPaymentAd.title}" - ${planLabels[assistedPaymentPlan]}: ${assistedPaymentUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  };
 
-  // Buscar anúncios destacados para carrossel no topo
+  const formatSellerDate = (value: any): string => {
+    if (!value) return 'Not available';
+    try {
+      const dateValue = typeof value?.toDate === 'function'
+        ? value.toDate()
+        : value instanceof Date
+          ? value
+          : value?.seconds
+            ? new Date(value.seconds * 1000)
+            : new Date(value);
+
+      if (Number.isNaN(dateValue.getTime())) return 'Not available';
+      return format(dateValue, 'dd MMM yyyy HH:mm');
+    } catch {
+      return 'Not available';
+    }
+  };
+
   useEffect(() => {
-    // Se ainda está carregando a autenticação e não temos país explícito definido pelo utilizador, 
-    // esperamos para não disparar consultas desnecessárias de Reino Unido (fallback) antes do perfil estar pronto
-    const hasExplicitCountry = localStorage.getItem('selectedCountry') || 
-      new URLSearchParams(window.location.search).get('country');
-    if (authLoading && !hasExplicitCountry) {
-      console.log('[FEATURED ADS] loading delayed until auth load complete');
-      return;
-    }
+    let cancelled = false;
 
-    // Se já foi buscado com sucesso para este país, evitamos chamar novamente
-    if (fetchedFeaturedCountry.current === country) {
-      console.log(`[FEATURED ADS] Já carregado com sucesso para o país: ${country}`);
-      return;
-    }
+    const loadSellerProfile = async () => {
+      const sellerId = selectedAd?.sellerId?.trim();
 
-    // Se já existe uma requisição em andamento para este mesmo país, não iniciamos outra
-    if (inFlightFeaturedCountry.current === country) {
-      console.log(`[FEATURED ADS] Fetch em andamento para o país: ${country}`);
-      return;
-    }
-    inFlightFeaturedCountry.current = country;
+      setSellerProfile(null);
+      setSellerAdsCount(null);
+      setSellerProfileError(null);
 
-    let active = true;
-    const fetchFeatured = async () => {
-      // Verificação de cache de sessão de 5 minutos
-      const now = Date.now();
-      const featuredFromCache = getCachedFeaturedAds(country);
-      const lastFeaturedFetch = getLastFeaturedFetchTime(country);
-      if (lastFeaturedFetch > 0 && (now - lastFeaturedFetch < 5 * 60 * 1000)) {
-        console.log(`[Cache HIT] Recuperou destacados da sessão (${country}). Total: ${featuredFromCache.length}`);
-        setFeaturedAds(featuredFromCache);
-        fetchedFeaturedCountry.current = country;
-        inFlightFeaturedCountry.current = null;
-        return;
-      }
+      if (!sellerId) return;
+
+      setSellerProfileLoading(true);
       try {
-        const targetCountries = (country === 'Reino Unido' || country === 'United Kingdom')
-          ? ['Reino Unido', 'United Kingdom', 'UK']
-          : ['Portugal'];
-
-        const qPaid = query(
-          collection(db, 'ads'),
-          where('status', '==', 'approved'),
-          where('isFeatured', '==', true),
-          where('country', 'in', targetCountries),
-          limit(20)
-        );
-        const qPerm = query(
-          collection(db, 'ads'),
-          where('status', '==', 'approved'),
-          where('isPermanentFeatured', '==', true)
-        );
-
-        const [paySnap, permSnap] = await Promise.all([
-          getDocsWithCacheFallback(qPaid, `home/featured-ads/${country}`),
-          getDocsWithCacheFallback(qPerm, `home/featured-permanent`)
+        const [profileSnap, sellerAdsSnap] = await Promise.all([
+          getDoc(doc(db, 'users', sellerId)),
+          getDocs(query(collection(db, 'ads'), where('sellerId', '==', sellerId)))
         ]);
 
-        if (!active) return;
+        if (cancelled) return;
 
-        const payDocs = paySnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
-        const permDocs = permSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
-
-        const allDocs = [...payDocs];
-        permDocs.forEach(pAd => {
-          if (!allDocs.some(f => f.id === pAd.id)) {
-            allDocs.push(pAd);
-          }
-        });
-        
-        setCachedFeaturedAds(allDocs, country);
-        setFeaturedAds(allDocs);
-        fetchedFeaturedCountry.current = country;
-      } catch (err) {
-        console.error('Erro ao buscar anúncios destacados:', err);
-        // Se der erro, limpamos as refs para permitir nova tentativa
-        fetchedFeaturedCountry.current = null;
-      } finally {
-        if (active) {
-          inFlightFeaturedCountry.current = null;
-        }
-      }
-    };
-    fetchFeatured();
-    return () => { 
-      // Apenas consideramos inativo se houver real mudança de país.
-      if (countryRef.current !== country) {
-        active = false;
-        inFlightFeaturedCountry.current = null;
-      }
-    };
-  }, [country, authLoading]);
-
-  useEffect(() => {
-    const search = searchParams.get('search');
-    if (search) setSearchTerm(search);
-    const cat = searchParams.get('category');
-    if (cat) setCategory(cat);
-    const cty = searchParams.get('city');
-    if (cty) setCity(cty);
-    const countr = searchParams.get('country') as 'Portugal' | 'Reino Unido' | null;
-    if (countr === 'Portugal' || countr === 'Reino Unido') {
-      setCountry(countr);
-      localStorage.setItem('selectedCountry', countr);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    // Se ainda está carregando a autenticação e não temos país explícito definido pelo utilizador, 
-    // esperamos para não disparar consultas desnecessárias de Reino Unido (fallback) antes do perfil estar pronto
-    const hasExplicitCountry = localStorage.getItem('selectedCountry') || 
-      new URLSearchParams(window.location.search).get('country');
-    if (authLoading && !hasExplicitCountry) {
-      console.log('[ADS] loading delayed until auth load complete');
-      return;
-    }
-
-    // Se já foi carregado com sucesso para este país E com o mesmo limite, evitamos chamar novamente
-    if (fetchedAdsCountry.current === country && fetchedLimit.current === dbLimit) {
-      console.log(`[ADS] Já carregado com sucesso para o país: ${country} com limite ${dbLimit}`);
-      return;
-    }
-
-    // Se já existe uma requisição em andamento para este mesmo país, não iniciamos outra
-    if (inFlightAdsCountry.current === country) {
-      if (fetchedLimit.current === dbLimit) {
-        console.log(`[ADS] Fetch em andamento para o país: ${country}`);
-        return;
-      }
-    }
-    inFlightAdsCountry.current = country;
-
-    let active = true;
-    const fetchAds = async () => {
-      // Verificação de cache de sessão de 5 minutos
-      const now = Date.now();
-      const adsFromCache = getCachedAds(country);
-      const lastFetch = getLastFetchTime(country);
-      if (adsFromCache && adsFromCache.length >= dbLimit && (now - lastFetch < 5 * 60 * 1000)) {
-        console.log(`[Cache HIT] Recuperou anúncios gerais da sessão (${country}). Total:`, adsFromCache.length);
-        setAds(adsFromCache);
-        setLoading(false);
-        setIsFetchingMore(false);
-        fetchedAdsCountry.current = country;
-        fetchedLimit.current = dbLimit;
-        inFlightAdsCountry.current = null;
-        return;
-      }
-
-      const isLoadMore = dbLimit > 48 || ads.length > 0;
-      if (!isLoadMore) {
-        setLoading(true);
-      } else {
-        setIsFetchingMore(true);
-      }
-      setErrorMsg(null);
-
-      // Delay visual rápido e subtil de carregamento inicial apenas se não for load-more
-      if (!isLoadMore) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-      }
-      if (!active) return;
-
-      try {
-        let snapshot;
-        const targetCountries = (country === 'Reino Unido' || country === 'United Kingdom')
-          ? ['Reino Unido', 'United Kingdom', 'UK']
-          : ['Portugal'];
-
-        // Primeira tentativa: Buscar anúncios ordenados pela criação (createdAt desc), limitando a dbLimit documentos (otimização de leituras)
-        try {
-          const q = query(
-            collection(db, 'ads'),
-            where('status', '==', 'approved'),
-            where('country', 'in', targetCountries),
-            // @ts-ignore
-            orderBy('createdAt', 'desc'),
-            limit(dbLimit)
-          );
-          snapshot = await withTimeout(getDocsWithCacheFallback(q, `home/approved-ads-${country}-ordered-${dbLimit}`), 20000);
-        } catch (idxErr) {
-          console.warn("[Home] Query ordenada falhou (falta de índice composto), recorrendo a query plana e ordenação em memória:", idxErr);
-          const q = query(
-            collection(db, 'ads'),
-            where('status', '==', 'approved'),
-            where('country', 'in', targetCountries),
-            limit(dbLimit)
-          );
-          snapshot = await withTimeout(getDocsWithCacheFallback(q, `home/approved-ads-${country}-flat-${dbLimit}`), 20000);
-        }
-
-        if (!active) return;
-
-        const docs = snapshot.docs;
-        const adsData = docs.map(doc => ({ id: doc.id, ...doc.data() } as Ad));
-
-        // Garantir ordenação por data de criação de forma estrita em memória para evitar variações não-determinísticas
-        adsData.sort((a, b) => {
-          const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-         const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
-          return (timeB || 0) - (timeA || 0);
-        });
-
-        if (adsData.length < dbLimit) {
-          setAllDbAdsFetched(true);
+        if (profileSnap.exists()) {
+          setSellerProfile({
+            id: profileSnap.id,
+            ...(profileSnap.data() as UserProfile)
+          });
         } else {
-          setAllDbAdsFetched(false);
+          setSellerProfileError('The user profile was not found in users/{uid}.');
         }
 
-        setCachedAds(adsData, country);
-        setAds(adsData);
-        fetchedAdsCountry.current = country;
-        fetchedLimit.current = dbLimit;
-      } catch (err: any) {
-        console.error("[Home] Erro ao carregar anúncios do Firestore:", err);
-        if (active) setErrorMsg("Erro ao carregar anúncios.");
-        // Se der erro, limpamos as refs para permitir nova tentativa
-        fetchedAdsCountry.current = null;
+        setSellerAdsCount(sellerAdsSnap.size);
+      } catch (err) {
+        console.error('[AdminAds] Failed to load seller profile:', err);
+        if (!cancelled) {
+          setSellerProfileError('Could not load the seller account details.');
+        }
       } finally {
-        if (active) {
-          setLoading(false);
-          setIsFetchingMore(false);
-          inFlightAdsCountry.current = null;
+        if (!cancelled) setSellerProfileLoading(false);
+      }
+    };
+
+    loadSellerProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAd?.id, selectedAd?.sellerId]);
+
+  useEffect(() => {
+    if (selectedAd) {
+      setAdminImagePositionX(selectedAd.imagePositionX !== undefined ? selectedAd.imagePositionX : 50);
+      setAdminImagePositionY(selectedAd.imagePositionY !== undefined ? selectedAd.imagePositionY : 50);
+      setAdminImageZoom(selectedAd.imageZoom !== undefined ? selectedAd.imageZoom : 1);
+    }
+  }, [selectedAd]);
+
+  const handleSaveEnquadramento = async () => {
+    if (!selectedAd) return;
+    setSavingPosition(true);
+    try {
+      const coverUrl = selectedAd.imageUrl || (selectedAd.images && selectedAd.images[0]) || '';
+      await updateDoc(doc(db, 'ads', selectedAd.id), {
+        imagePositionX: adminImagePositionX,
+        imagePositionY: adminImagePositionY,
+        imageZoom: adminImageZoom,
+        coverImageSettings: {
+          imageUrl: coverUrl,
+          x: adminImagePositionX,
+          y: adminImagePositionY,
+          zoom: adminImageZoom,
+        },
+        updatedAt: serverTimestamp()
+      });
+      clearHomeCache();
+      setAds(prevAds => prevAds.map(ad => ad.id === selectedAd.id ? { 
+        ...ad, 
+        imagePositionX: adminImagePositionX, 
+        imagePositionY: adminImagePositionY,
+        imageZoom: adminImageZoom,
+        coverImageSettings: {
+          imageUrl: coverUrl,
+          x: adminImagePositionX,
+          y: adminImagePositionY,
+          zoom: adminImageZoom,
         }
-      }
-    };
-
-    fetchAds();
-    return () => { 
-      // Apenas consideramos inativo se houver real mudança de país.
-      if (countryRef.current !== country) {
-        active = false;
-        inFlightAdsCountry.current = null;
-      }
-    };
-  }, [country, authLoading, reloadCounter, dbLimit]); // Recarrega sempre que mudar de país ou com dbLimit
-
-
-  // Dedicated query for the Boats for Sale homepage section.
-  // The general homepage discovery feed intentionally loads only the newest 48
-  // ads across all categories, so older sale listings must not depend on it.
-  useEffect(() => {
-    let active = true;
-
-    const loadSaleSectionAds = async () => {
-      if (authLoading) return;
-
-      try {
-        const qSale = query(
-          collection(db, 'ads'),
-          where('category', '==', 'Boats for Sale'),
-          limit(200)
-        );
-
-        const snapshot = await withTimeout(
-          getDocsWithCacheFallback(qSale, `home/sale-section-${country}`),
-          20000
-        );
-
-        if (!active) return;
-
-        const rows = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Ad))
-          .filter(ad => {
-            if (ad.isHidden) return false;
-
-            const isActive =
-              ad.status === 'approved' &&
-              (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
-
-            const adCountry = (ad.country || '').trim();
-            const selectedCountry = (country || '').trim();
-            const ukLabels = new Set(['Reino Unido', 'United Kingdom', 'UK']);
-            const matchesCountry =
-              !adCountry ||
-              adCountry === selectedCountry ||
-              (ukLabels.has(adCountry) && ukLabels.has(selectedCountry));
-
-            return isActive && matchesCountry;
-          })
-          .sort((a, b) => {
-            const timeA = a.createdAt?.seconds
-              ? a.createdAt.seconds * 1000
-              : (a.createdAt ? new Date(a.createdAt as any).getTime() : 0);
-            const timeB = b.createdAt?.seconds
-              ? b.createdAt.seconds * 1000
-              : (b.createdAt ? new Date(b.createdAt as any).getTime() : 0);
-            return (timeB || 0) - (timeA || 0);
-          });
-
-        setSaleSectionAds(rows);
-      } catch (err) {
-        console.error('[Home] Failed to load dedicated sale listings:', err);
-        if (active) setSaleSectionAds([]);
-      }
-    };
-
-    loadSaleSectionAds();
-    return () => {
-      active = false;
-    };
-  }, [country, authLoading, reloadCounter]);
-
-
-  // Dedicated query for the Boats for Hire & Charter homepage section.
-  // The general homepage feed intentionally loads only the newest 48 ads, so
-  // older hire listings must not depend on that limited result set.
-  useEffect(() => {
-    let active = true;
-
-    const loadHireSectionAds = async () => {
-      if (authLoading) return;
-
-      try {
-        const qHire = query(
-          collection(db, 'ads'),
-          where('category', '==', 'Boats for Hire'),
-          limit(20)
-        );
-
-        const snapshot = await withTimeout(
-          getDocsWithCacheFallback(qHire, `home/hire-section-${country}`),
-          20000
-        );
-
-        if (!active) return;
-
-        const rows = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Ad))
-          .filter(ad => {
-            const isActive =
-              ad.status === 'approved' &&
-              (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
-
-            const adCountry = (ad.country || '').trim();
-            const selectedCountry = (country || '').trim();
-            const ukLabels = new Set(['Reino Unido', 'United Kingdom', 'UK']);
-            const matchesCountry =
-              !adCountry ||
-              adCountry === selectedCountry ||
-              (ukLabels.has(adCountry) && ukLabels.has(selectedCountry));
-
-            return isActive && matchesCountry;
-          })
-          .sort((a, b) => {
-            const timeA = a.createdAt?.seconds
-              ? a.createdAt.seconds * 1000
-              : (a.createdAt ? new Date(a.createdAt as any).getTime() : 0);
-            const timeB = b.createdAt?.seconds
-              ? b.createdAt.seconds * 1000
-              : (b.createdAt ? new Date(b.createdAt as any).getTime() : 0);
-            return (timeB || 0) - (timeA || 0);
-          });
-
-        setHireSectionAds(rows);
-      } catch (err) {
-        console.error('[Home] Failed to load dedicated hire listings:', err);
-        if (active) setHireSectionAds([]);
-      }
-    };
-
-    loadHireSectionAds();
-    return () => {
-      active = false;
-    };
-  }, [country, authLoading, reloadCounter]);
-
-  const handleLoadMore = () => {
-    if (isFetchingMore) return;
-    
-    // Incrementa o limitAmount de anúncios mostrados na tela
-    const nextLimitAmount = limitAmount + PAGE_SIZE;
-    setLimitAmount(nextLimitAmount);
-    
-    // Se não tivermos anúncios suficientes carregados offline no estado ads
-    // E soubermos que ainda existem anúncios a buscar no Firestore
-    if (nextLimitAmount > ads.length && !allDbAdsFetched) {
-      setIsFetchingMore(true);
-      setDbLimit(prev => prev + 48);
+      } as Ad : ad));
+      setSelectedAd(prev => prev ? {
+        ...prev,
+        imagePositionX: adminImagePositionX,
+        imagePositionY: adminImagePositionY,
+        imageZoom: adminImageZoom,
+        coverImageSettings: {
+          imageUrl: coverUrl,
+          x: adminImagePositionX,
+          y: adminImagePositionY,
+          zoom: adminImageZoom,
+        }
+      } : null);
+      setSavedPositionSuccess(true);
+      setTimeout(() => {
+        setSavedPositionSuccess(false);
+      }, 2000);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao guardar enquadramento.');
+    } finally {
+      setSavingPosition(false);
     }
   };
 
-  const selectableCitiesOnHome = useMemo(() => {
-    const defaultCities = country === 'Portugal' ? PORTUGAL_CITIES : UK_CITIES;
-    return combineAndSortCities(defaultCities, customLocations);
-  }, [country, customLocations]);
+  useEffect(() => {
+    fetchAds();
+  }, []);
 
-  const filteredFeaturedAds = useMemo(() => {
-    const now = new Date();
-    
-    let result = featuredAds.filter(ad => {
-      if (ad.isHidden) return false;
-      if (ad.category === 'Trabalho/Empregos') return false;
-      // HOME RULE: Featured listings on the homepage are exclusively boats for sale.
-      // Hire listings have their own dedicated homepage section, and every other
-      // marine category remains available through search, filters and categories.
-      if (ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') return false;
-      if (ad.category !== 'Boats for Sale') return false;
-      
-      const search = searchTerm.toLowerCase().trim();
-      const matchesSearch = !search || ad.title?.toLowerCase().includes(search) || ad.description?.toLowerCase().includes(search);
-      const matchesStatus = ad.status === 'approved' && (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
-      if (!matchesSearch || !matchesStatus) return false;
+  const [renewingId, setRenewingId] = useState<string | null>(null);
 
-      // Allow country match or Ambos (for permanent)
-      const adCountry = ad.country || 'Reino Unido';
-      const isUkMatch = (country === 'Reino Unido' || country === 'United Kingdom') && (adCountry === 'Reino Unido' || adCountry === 'United Kingdom' || adCountry === 'UK');
-      const matchesCountry = isUkMatch || adCountry === country || (ad.isPermanentFeatured && adCountry === 'Ambos');
-      if (!matchesCountry) return false;
-
-      // Category filter
-      if (category !== 'Todas' && ad.category !== category) return false;
-
-      // Service coverage filter
-      const isServiceCategory = category === 'Serviços' || category?.startsWith('Serviços') || category?.includes('Serviços');
-      if (isServiceCategory && (filterRegion || filterNational || filterOnline)) {
-        const coverage = ad.serviceCoverage || 'city';
-        let matchesServiceFilter = false;
-        
-        if (filterRegion && (coverage === 'city' || coverage === 'radius20' || coverage === 'radius50' || coverage === 'county')) {
-          matchesServiceFilter = true;
-        }
-        if (filterNational) {
-          if (country === 'Reino Unido' && coverage === 'uk') matchesServiceFilter = true;
-          if (country === 'Portugal' && coverage === 'portugal') matchesServiceFilter = true;
-        }
-        if (filterOnline && coverage === 'online') {
-          matchesServiceFilter = true;
-        }
-        
-        if (!matchesServiceFilter) return false;
-      }
-
-      // City / Regional limits
-      // Current paid plans (Featured/Premium) are marketplace-wide highlights.
-      // Legacy local/national plans are still supported for older listings.
-      const isPremiumPlan = ad.featuredLevel === 'premium' || ad.plan === 'premium';
-      const isFeaturedPlan = ad.featuredLevel === 'featured' || ad.plan === 'featured';
-      const isNational =
-        isPremiumPlan ||
-        isFeaturedPlan ||
-        ad.featuredLevel === 'national' ||
-        ad.plan === 'national' ||
-        !ad.featuredLevel;
-
-      if (city !== 'Todas') {
-        const isLocal = ad.featuredLevel === 'local' || ad.plan === 'local' || ad.plan === 'highlight' || ad.plan === 'intermediate';
-        if (isLocal) {
-          if (ad.city?.toLowerCase().trim() !== city.toLowerCase().trim()) return false;
-        } else if (!isNational) {
-          return false;
-        }
-      } else {
-        // With no city selected, show current Featured/Premium plans and legacy national highlights.
-        if (!isNational) return false;
-      }
-
-      return true;
-    });
-
-    // Check expiration only for non-permanent ads
-    const filteredActivePaid = result.filter(ad => {
-      if (ad.isPermanentFeatured) return false;
-      if (!ad.isFeatured || !ad.featuredUntil) return false;
-      
-      const featuredUntilDate = ad.featuredUntil.seconds
-        ? ad.featuredUntil.toDate()
-        : new Date(ad.featuredUntil);
-      return featuredUntilDate > now;
-    });
-
-    const filteredActivePermanent = result.filter(ad => ad.isPermanentFeatured);
-
-    // Featured Marine Listings priority:
-    // 1. Premium paid listings
-    // 2. Featured paid listings
-    // 3. Legacy national highlights
-    // 4. Legacy local highlights
-    // 5. Permanent highlights
-    const paidPremium = filteredActivePaid.filter(ad => ad.featuredLevel === 'premium' || ad.plan === 'premium');
-    const paidFeatured = filteredActivePaid.filter(ad => ad.featuredLevel === 'featured' || ad.plan === 'featured');
-    const paidNational = filteredActivePaid.filter(ad =>
-      (ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel) &&
-      ad.featuredLevel !== 'premium' && ad.plan !== 'premium' &&
-      ad.featuredLevel !== 'featured' && ad.plan !== 'featured'
-    );
-    const paidLocal = filteredActivePaid.filter(ad => ad.featuredLevel === 'local' || ad.plan === 'local' || ad.plan === 'highlight' || ad.plan === 'intermediate');
-
-    const sortByFeaturedUntilDesc = (a: Ad, b: Ad) => {
-      const timeA = a.featuredUntil?.seconds ? a.featuredUntil.seconds * 1000 : new Date(a.featuredUntil).getTime();
-      const timeB = b.featuredUntil?.seconds ? b.featuredUntil.seconds * 1000 : new Date(b.featuredUntil).getTime();
-      return (timeB || 0) - (timeA || 0);
-    };
-
-    paidPremium.sort(sortByFeaturedUntilDesc);
-    paidFeatured.sort(sortByFeaturedUntilDesc);
-    paidNational.sort(sortByFeaturedUntilDesc);
-    paidLocal.sort(sortByFeaturedUntilDesc);
-
-    // Sort permanent highlights by creation date descending
-    filteredActivePermanent.sort((a, b) => {
-      const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : new Date(a.createdAt).getTime();
-      const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : new Date(b.createdAt).getTime();
-      return (timeB || 0) - (timeA || 0);
-    });
-
-    // Combine in commercial plan priority order.
-    let finalResult = [
-      ...paidPremium,
-      ...paidFeatured,
-      ...paidNational,
-      ...paidLocal,
-      ...filteredActivePermanent
-    ];
-
-    return finalResult.slice(0, 50);
-  }, [featuredAds, searchTerm, category, city, country, filterRegion, filterNational, filterOnline]);
-
-  const marqueeData = useMemo(() => {
-    if (filteredFeaturedAds.length === 0) return { items: [], duration: '35s' };
-    // Para um loop contínuo elegante e 100% livre de espaços vazios ou saltos,
-    // o conjunto base de itens (sem duplicação) precisa estender-se além do limite
-    // visual das maiores telas. Usamos no mínimo 12 itens no conjunto base.
-    const targetCount = 12;
-    const repetitions = Math.ceil(targetCount / filteredFeaturedAds.length);
-    const baseArray = [];
-    for (let i = 0; i < repetitions; i++) {
-      baseArray.push(...filteredFeaturedAds);
+  const fetchAds = async (customLimit?: number | null) => {
+    try {
+      setLoading(true);
+      const currentLimit = customLimit !== undefined && customLimit !== null ? customLimit : fetchLimit;
+      const q = query(collection(db, 'ads'), orderBy('createdAt', 'desc'), limit(currentLimit));
+      const querySnapshot = await getDocsWithCacheFallback(q, 'admin/ads');
+      const adsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Ad));
+      setAds(adsData);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.LIST, 'ads');
+    } finally {
+      setLoading(false);
     }
-    const items = [...baseArray, ...baseArray];
-    const speedMultiplier = settings?.highlightSpeed !== undefined ? settings.highlightSpeed : 6;
-    let duration = '35s';
-    if (speedMultiplier > 0) {
-      // Cada item no conjunto base demora ~2.8 segundos para deslocar em velocidade padrão
-      const seconds = (baseArray.length * 2.8) / speedMultiplier;
-      duration = `${seconds}s`;
-    }
-    return { items, duration };
-  }, [filteredFeaturedAds, settings?.highlightSpeed]);
+  };
 
+  const handleLoadMore = () => {
+    const newLimit = fetchLimit + 100;
+    setFetchLimit(newLimit);
+    fetchAds(newLimit);
+  };
 
+  const handleAdAction = async (adId: string, status: string) => {
+    try {
+      const adToUpdate = ads.find(a => a.id === adId) || (selectedAd?.id === adId ? selectedAd : null);
 
-  const filteredAds = useMemo(() => {
-    // On the untouched homepage, the main/latest grid is exclusively Boats for Sale.
-    // As soon as the visitor actively searches, selects a category or uses a filter,
-    // the marketplace opens back up so parts, engines, electronics, services, etc.
-    // can still be discovered normally.
-    const hasActiveDiscoveryFilter =
-      searchTerm.trim() !== '' ||
-      category !== 'Todas' ||
-      city !== 'Todas' ||
-      (selectedRegion !== '' && selectedRegion !== 'All Regions') ||
-      filterRegion ||
-      filterNational ||
-      filterOnline ||
-      filterBoatType !== 'Todas' ||
-      filterMinPrice.trim() !== '' ||
-      filterMaxPrice.trim() !== '' ||
-      filterManufacturer.trim() !== '' ||
-      filterModel.trim() !== '' ||
-      filterMinYear.trim() !== '' ||
-      filterMaxYear.trim() !== '' ||
-      filterCondition !== 'Todas' ||
-      filterMinLength.trim() !== '' ||
-      filterMaxLength.trim() !== '' ||
-      filterFuelType !== 'Todas' ||
-      filterHullMaterial !== 'Todas' ||
-      filterLocationKeyword.trim() !== '' ||
-      filterMinCabins.trim() !== '' ||
-      filterTrailer !== 'Any';
-
-    // On the untouched homepage, use the dedicated Boats for Sale query so
-    // older sale listings are not lost behind the 48-item mixed-category limit.
-    // Once the visitor searches or filters, keep using the general discovery feed.
-    const sourceAds = hasActiveDiscoveryFilter ? ads : saleSectionAds;
-
-    let result = sourceAds.filter(ad => {
-      if (ad.isHidden) return false;
-      if (ad.category === 'Trabalho/Empregos') return false;
-
-      // HOME RULE: without an active search/filter/category, only Boats for Sale
-      // may enter the main/latest homepage grid.
-      if (!hasActiveDiscoveryFilter && ad.category !== 'Boats for Sale') return false;
-
-      // Exclude rental/hire listings from "Latest Marine Listings"
-      if (
-        ad.listingIntent === 'hire' ||
-        ad.category === 'Boats for Hire' ||
-        ad.category === 'Aluguer de Barcos' ||
-        ad.category === 'Boat Hire & Charters' ||
-        ad.listingType === 'hire' ||
-        ad.listingType === 'rent'
-      ) {
-        return false;
-      }
-
-      // 1. Status & Active checks
-      const matchesStatus = ad.status === 'approved' && (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
-      if (!matchesStatus) return false;
-
-      // 2. Region check
-      if (selectedRegion && selectedRegion !== 'All Regions' && selectedRegion !== '') {
-        const adRegion = ad.region || getRegionForCity(ad.city);
-        if (adRegion !== selectedRegion) return false;
-      }
-
-      // 3. Main Search text
-      if (!matchesSearchText(ad, searchTerm)) return false;
-
-      // 4. Category filter
-      if (category !== 'Todas' && ad.category !== category) return false;
-
-      // 5. City / Location filter
-      if (city !== 'Todas' && ad.city?.toLowerCase().trim() !== city.toLowerCase().trim()) return false;
-
-      // 6. Service coverage filter
-      const isServiceCategory = category === 'Boat Services' || category === 'Serviços' || category?.includes('Services') || category?.includes('Serviços');
-      if (isServiceCategory && (filterRegion || filterNational || filterOnline)) {
-        const coverage = ad.serviceCoverage || 'city';
-        let matchesServiceFilter = false;
-        
-        if (filterRegion && (coverage === 'city' || coverage === 'radius20' || coverage === 'radius50' || coverage === 'county')) {
-          matchesServiceFilter = true;
-        }
-        if (filterNational) {
-          if (country === 'Reino Unido' && coverage === 'uk') matchesServiceFilter = true;
-          if (country === 'Portugal' && coverage === 'portugal') matchesServiceFilter = true;
-        }
-        if (filterOnline && coverage === 'online') {
-          matchesServiceFilter = true;
-        }
-        if (!matchesServiceFilter) return false;
-      }
-
-      // 7. Advanced Marine Filters
-
-      // Boat Type
-      if (filterBoatType !== 'Todas') {
-        const typeStr = (ad.boatType || '').toLowerCase();
-        const targetType = filterBoatType.toLowerCase();
-        if (!typeStr.includes(targetType) && !targetType.includes(typeStr)) return false;
-      }
-
-      // Min / Max Price
-      if (filterMinPrice.trim() !== '') {
-        const minP = parsePrice(filterMinPrice);
-        if (minP > 0 && (ad.price === undefined || ad.price < minP)) return false;
-      }
-      if (filterMaxPrice.trim() !== '') {
-        const maxP = parsePrice(filterMaxPrice);
-        if (maxP > 0 && (ad.price === undefined || ad.price > maxP)) return false;
-      }
-
-      // Manufacturer
-      if (filterManufacturer.trim() !== '') {
-        const mfg = (ad.manufacturer || '').toLowerCase();
-        if (!mfg.includes(filterManufacturer.toLowerCase().trim())) return false;
-      }
-
-      // Model
-      if (filterModel.trim() !== '') {
-        const mdl = (ad.model || '').toLowerCase();
-        if (!mdl.includes(filterModel.toLowerCase().trim())) return false;
-      }
-
-      // Year Min / Max
-      if (filterMinYear.trim() !== '') {
-        const minY = parseInt(filterMinYear, 10);
-        const adY = parseYearNum(ad.year);
-        if (!isNaN(minY) && (adY === null || adY < minY)) return false;
-      }
-      if (filterMaxYear.trim() !== '') {
-        const maxY = parseInt(filterMaxYear, 10);
-        const adY = parseYearNum(ad.year);
-        if (!isNaN(maxY) && (adY === null || adY > maxY)) return false;
-      }
-
-      // Condition
-      if (filterCondition !== 'Todas') {
-        const cond = (ad.condition || '').toLowerCase();
-        const targetCond = filterCondition.toLowerCase();
-        if (!cond.includes(targetCond) && !targetCond.includes(cond)) {
-          const token = targetCond.split('-')[0].trim();
-          if (!cond.includes(token)) return false;
-        }
-      }
-
-      // Length Min / Max
-      if (filterMinLength.trim() !== '') {
-        const minL = parseFloat(filterMinLength);
-        const adL = parseLengthMeters(ad.length);
-        if (!isNaN(minL) && (adL === null || adL < minL)) return false;
-      }
-      if (filterMaxLength.trim() !== '') {
-        const maxL = parseFloat(filterMaxLength);
-        const adL = parseLengthMeters(ad.length);
-        if (!isNaN(maxL) && (adL === null || adL > maxL)) return false;
-      }
-
-      // Fuel Type
-      if (filterFuelType !== 'Todas') {
-        const fuel = (ad.fuelType || '').toLowerCase();
-        const targetFuel = filterFuelType.toLowerCase().split('/')[0].trim();
-        if (!fuel.includes(targetFuel)) return false;
-      }
-
-      // Hull Material
-      if (filterHullMaterial !== 'Todas') {
-        const hull = (ad.hullMaterial || '').toLowerCase();
-        const targetHull = filterHullMaterial.toLowerCase().split('/')[0].trim();
-        if (!hull.includes(targetHull)) return false;
-      }
-
-      // Location Keyword Search
-      if (filterLocationKeyword.trim() !== '') {
-        const locStr = `${ad.city || ''} ${ad.location || ''} ${ad.country || ''}`.toLowerCase();
-        if (!locStr.includes(filterLocationKeyword.toLowerCase().trim())) return false;
-      }
-
-      // Min Cabins
-      if (filterMinCabins.trim() !== '') {
-        const minCab = parseInt(filterMinCabins, 10);
-        const adCab = ad.cabins ? parseInt(String(ad.cabins), 10) : 0;
-        if (!isNaN(minCab) && (isNaN(adCab) || adCab < minCab)) return false;
-      }
-
-      // Trailer Included
-      if (filterTrailer !== 'Any') {
-        const trailer = (ad.trailerIncluded || '').toLowerCase();
-        const isYes = trailer === 'yes' || trailer === 'sim' || trailer === 'yes / sim';
-        if (filterTrailer === 'Yes' && !isYes) return false;
-        if (filterTrailer === 'No' && isYes) return false;
-      }
-
-      return true;
-    });
-
-    // Sorting Options
-    return result.sort((a, b) => {
-      if (sortBy === 'price_asc') {
-        const priceA = a.price ?? Infinity;
-        const priceB = b.price ?? Infinity;
-        return priceA - priceB;
-      }
-      if (sortBy === 'price_desc') {
-        const priceA = a.price ?? -1;
-        const priceB = b.price ?? -1;
-        return priceB - priceA;
-      }
-      if (sortBy === 'year_desc') {
-        const yearA = parseYearNum(a.year) ?? -1;
-        const yearB = parseYearNum(b.year) ?? -1;
-        return yearB - yearA;
-      }
-      if (sortBy === 'year_asc') {
-        const yearA = parseYearNum(a.year) ?? Infinity;
-        const yearB = parseYearNum(b.year) ?? Infinity;
-        return yearA - yearB;
-      }
-      if (sortBy === 'length_desc') {
-        const lenA = parseLengthMeters(a.length) ?? -1;
-        const lenB = parseLengthMeters(b.length) ?? -1;
-        return lenB - lenA;
-      }
-      if (sortBy === 'length_asc') {
-        const lenA = parseLengthMeters(a.length) ?? Infinity;
-        const lenB = parseLengthMeters(b.length) ?? Infinity;
-        return lenA - lenB;
-      }
-      if (sortBy === 'oldest') {
-        const timeA = a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
-        const timeB = b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
-        return timeA - timeB;
-      }
-
-      // Default 'newest' (priority weighting)
-      const getPriority = (ad: any) => {
-        const isFeatured = ad.isFeatured && ad.featuredUntil && (
-          ad.isPermanentFeatured || (
-            ad.featuredUntil.seconds 
-              ? ad.featuredUntil.toDate() > new Date() 
-              : new Date(ad.featuredUntil) > new Date()
-          )
-        );
-
-        if (isFeatured) {
-          // Current ConnectBoat paid-plan hierarchy.
-          if (ad.featuredLevel === 'premium' || ad.plan === 'premium') return 5;
-          if (ad.featuredLevel === 'featured' || ad.plan === 'featured') return 4;
-
-          // Keep compatibility with older national/local featured records.
-          const isNational = ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel;
-          if (isNational) return 4;
-          const isDonation = ad.category === '💚 Doações & Solidariedade' || ad.donationBoost === true || ad.featuredReason === 'donation';
-          if (isDonation) return 2;
-          return 3;
-        }
-        
-        if (ad.category === '💚 Doações & Solidariedade' || ad.donationBoost === true) {
-          return 2;
-        }
-        
-        return 1;
+      const updatePayload: Record<string, any> = {
+        status,
+        updatedAt: serverTimestamp()
       };
 
-      const pA = getPriority(a);
-      const pB = getPriority(b);
-      
-      if (pA !== pB) {
-        return pB - pA;
+      const isPaidPendingApproval = Boolean(
+        status === 'approved' &&
+        adToUpdate &&
+        isPaidAd(adToUpdate) &&
+        adToUpdate.status === 'pending'
+      );
+
+      if (isPaidPendingApproval && adToUpdate) {
+        const plan = (adToUpdate.plan || 'standard').toLowerCase();
+        const isFeatured = plan === 'featured' || plan === 'premium';
+        const featuredLevel = plan === 'premium' ? 'premium' : plan === 'featured' ? 'featured' : 'standard';
+        const expiresAt = addDays(new Date(), 30);
+
+        // Both normal customer payments and admin-assisted payments start
+        // their 30-day listing period only after moderation approval.
+        updatePayload.awaitingAdminActivation = false;
+        updatePayload.awaitingAdminApproval = false;
+        updatePayload.adStatus = 'active';
+        updatePayload.activatedAt = serverTimestamp();
+        updatePayload.expirationDate = expiresAt;
+        updatePayload.featuredUntil = expiresAt;
+        updatePayload.featuredActivatedAt = serverTimestamp();
+        updatePayload.isFeatured = isFeatured;
+        updatePayload.featuredLevel = featuredLevel;
       }
 
-      const timeA = a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
-      const timeB = b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
-      return timeB - timeA;
+      await updateDoc(doc(db, 'ads', adId), updatePayload);
+      clearHomeCache();
+
+      if (adToUpdate && adToUpdate.sellerId) {
+        const isSelfOwned = user?.uid && (adToUpdate.sellerId.trim() === user.uid);
+
+        if (status === 'approved') {
+          try {
+            await awardAdApprovalPoints(adToUpdate.sellerId, adId);
+          } catch (pointsErr) {
+            console.error("Error awarding ad approved points:", pointsErr);
+          }
+
+          if (!isSelfOwned) {
+            try {
+              const notifId = `approval_${adId}_${Date.now()}`;
+              const notifData = {
+                userId: adToUpdate.sellerId.trim(),
+                title: 'Listing approved',
+                message: `Your listing "${adToUpdate.title}" has been approved and is now live.`,
+                createdAt: serverTimestamp(),
+                read: false,
+                adId: adId,
+                type: 'ad_approved'
+              };
+              await setDoc(doc(db, 'notifications', notifId), notifData);
+              console.log('[AdminAds] Approval notification saved!');
+            } catch (notifErr) {
+              console.warn('[AdminAds] Failed to create approval notification:', notifErr);
+            }
+
+            // Normal flow: resolve the seller account e-mail from sellerId.
+            getSellerEmail(adToUpdate.sellerId.trim()).then((email) => {
+              if (email) {
+                sendEmailGeneric('anuncio_aprovado', email, {
+                  sellerName: adToUpdate.sellerName || 'Advertiser',
+                  adTitle: adToUpdate.title,
+                  adId: adId
+                }).catch(err => console.warn('[AdminAds] Failed to send approval email:', err));
+              }
+            }).catch(err => console.warn('[AdminAds] Failed to get seller email:', err));
+          } else {
+            const isAdminAssisted = (adToUpdate as any).paymentFlow === 'admin_assisted';
+            const adminEmail = String(user?.email || (profile as any)?.email || '').trim().toLowerCase();
+            const customerEmailCandidates = [
+              (adToUpdate as any).contactEmail,
+              (adToUpdate as any).sellerEmail,
+              (adToUpdate as any).userEmail,
+            ]
+              .map(value => String(value || '').trim())
+              .filter(value => value.includes('@'));
+
+            const assistedCustomerEmail = customerEmailCandidates.find(
+              email => email.toLowerCase() !== adminEmail
+            );
+
+            if (isAdminAssisted && assistedCustomerEmail) {
+              sendEmailGeneric('anuncio_aprovado', assistedCustomerEmail, {
+                sellerName: adToUpdate.sellerName || 'Advertiser',
+                adTitle: adToUpdate.title,
+                adId: adId
+              })
+                .then(() => console.log(`[AdminAds] Assisted approval email sent to customer ${assistedCustomerEmail}`))
+                .catch(err => console.warn('[AdminAds] Failed to send assisted customer approval email:', err));
+            } else {
+              console.log('[AdminAds] Skipping approval email & notification for self-owned ad without a different customer email');
+            }
+          }
+
+        } else if (status === 'rejected') {
+          if (!isSelfOwned) {
+            try {
+              const notifId = `rejection_${adId}_${Date.now()}`;
+              const notifData = {
+                userId: adToUpdate.sellerId.trim(),
+                title: 'Listing rejected',
+                message: `Your listing "${adToUpdate.title}" could not be approved by the moderation team.`,
+                createdAt: serverTimestamp(),
+                read: false,
+                adId: adId,
+                type: 'ad_rejected'
+              };
+              await setDoc(doc(db, 'notifications', notifId), notifData);
+            } catch (notifErr) {
+              console.warn('[AdminAds] Failed to create rejection notification:', notifErr);
+            }
+
+            // Send rejection email (async)
+            getSellerEmail(adToUpdate.sellerId.trim()).then((email) => {
+              if (email) {
+                sendEmailGeneric('anuncio_rejeitado', email, {
+                  sellerName: adToUpdate.sellerName || 'Advertiser',
+                  adTitle: adToUpdate.title,
+                  reason: 'Description inadequacy, invalid price or content contrary to terms.'
+                }).catch(err => console.warn('[AdminAds] Failed to send rejection email:', err));
+              }
+            }).catch(err => console.warn('[AdminAds] Failed to get seller email:', err));
+          } else {
+            console.log('[AdminAds] Skipping rejection email & notification for self-owned ad');
+          }
+        }
+      }
+
+      setAds(prevAds => prevAds.map(ad => ad.id === adId ? {
+        ...ad,
+        status,
+        ...(isPaidAssistedAwaitingActivation ? {
+          awaitingAdminActivation: false,
+          activatedAt: new Date(),
+          expirationDate: addDays(new Date(), 30),
+          featuredUntil: addDays(new Date(), 30),
+          isFeatured: (ad.plan || '').toLowerCase() === 'featured' || (ad.plan || '').toLowerCase() === 'premium',
+          featuredLevel: (ad.plan || '').toLowerCase() === 'premium' ? 'premium' : (ad.plan || '').toLowerCase() === 'featured' ? 'featured' : 'standard'
+        } : {})
+      } as Ad : ad));
+      setSelectedAd(prev => prev && prev.id === adId ? {
+        ...prev,
+        status: status as any,
+        ...(isPaidAssistedAwaitingActivation ? {
+          awaitingAdminActivation: false,
+          activatedAt: new Date(),
+          expirationDate: addDays(new Date(), 30),
+          featuredUntil: addDays(new Date(), 30)
+        } : {})
+      } as Ad : prev);
+      return true;
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
+      return false;
+    }
+  };
+
+  const handleDeleteAd = async (adId: string) => {
+    if (!window.confirm('Are you sure you want to permanently delete this listing? This action is irreversible.')) return;
+    try {
+      await deleteDoc(doc(db, 'ads', adId));
+      clearHomeCache();
+      setAds(prevAds => prevAds.filter(ad => ad.id !== adId));
+      setSelectedAdIds(prev => prev.filter(id => id !== adId));
+      if (selectedAd?.id === adId) setSelectedAd(null);
+      alert('Listing permanently deleted successfully!');
+    } catch (err) {
+      console.error('Error deleting listing:', err);
+      handleFirestoreError(err, OperationType.DELETE, `ads/${adId}`);
+    }
+  };
+
+  const handleToggleHideAd = async (adId: string, currentIsHidden?: boolean) => {
+    const newIsHidden = !currentIsHidden;
+    try {
+      await updateDoc(doc(db, 'ads', adId), { 
+        isHidden: newIsHidden,
+        updatedAt: serverTimestamp()
+      });
+      clearHomeCache();
+      setAds(prevAds => prevAds.map(ad => ad.id === adId ? { ...ad, isHidden: newIsHidden } as Ad : ad));
+      if (selectedAd?.id === adId) {
+        setSelectedAd(prev => prev ? { ...prev, isHidden: newIsHidden } : null);
+      }
+    } catch (err) {
+      console.error('Error toggling hide status:', err);
+      handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
+    }
+  };
+
+  const handleBatchToggleHide = async (hideState: boolean) => {
+    if (selectedAdIds.length === 0) return;
+    const actionText = hideState ? 'colocar em Standby (ocultar)' : 'tornar visíveis';
+    if (!window.confirm(`Tem a certeza que deseja ${actionText} ${selectedAdIds.length} anúncio(s)?`)) return;
+
+    setBatchLoading(true);
+    try {
+      await Promise.all(selectedAdIds.map(id => 
+        updateDoc(doc(db, 'ads', id), { 
+          isHidden: hideState,
+          updatedAt: serverTimestamp() 
+        })
+      ));
+      clearHomeCache();
+      setAds(prev => prev.map(a => selectedAdIds.includes(a.id) ? { ...a, isHidden: hideState } : a));
+      setSelectedAdIds([]);
+      alert(`Operação concluída: ${selectedAdIds.length} anúncio(s) atualizado(s).`);
+    } catch (err) {
+      console.error('Error batch hiding ads:', err);
+      alert('Erro ao atualizar os anúncios selecionados.');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const handleBatchSetCategory = async (category: string) => {
+    if (selectedAdIds.length === 0) return;
+
+    const selectedAds = ads.filter(ad => selectedAdIds.includes(ad.id));
+    const currentCategories = Array.from(
+      new Set(selectedAds.map(ad => String((ad as any).category || '').trim() || '(empty)'))
+    );
+
+    const confirmMsg = `Change category to "${category}" for ${selectedAdIds.length} selected listing(s)?\n\nCurrent categor${currentCategories.length === 1 ? 'y' : 'ies'}: ${currentCategories.join(', ')}`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setBatchLoading(true);
+    try {
+      await Promise.all(selectedAdIds.map(id =>
+        updateDoc(doc(db, 'ads', id), {
+          category,
+          updatedAt: serverTimestamp(),
+        })
+      ));
+
+      clearHomeCache();
+      setAds(prev => prev.map(ad =>
+        selectedAdIds.includes(ad.id) ? ({ ...ad, category } as Ad) : ad
+      ));
+      if (selectedAd && selectedAdIds.includes(selectedAd.id)) {
+        setSelectedAd(prev => prev ? ({ ...prev, category } as Ad) : null);
+      }
+
+      const updatedCount = selectedAdIds.length;
+      setSelectedAdIds([]);
+      alert(`${updatedCount} listing(s) changed to ${category}.`);
+    } catch (err) {
+      console.error('Error changing category in batch:', err);
+      alert('Could not change the category of the selected listings.');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedAdIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to permanently delete the ${selectedAdIds.length} selected listings? This action is irreversible.`)) return;
+
+    setBatchLoading(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    const promises = selectedAdIds.map(async (id) => {
+      try {
+        await deleteDoc(doc(db, 'ads', id));
+        successCount++;
+      } catch (err) {
+        console.error(`Error deleting listing ${id}:`, err);
+        failCount++;
+      }
     });
-  }, [
-    ads,
-    saleSectionAds,
-    searchTerm,
-    category,
-    city,
-    country,
-    selectedRegion,
-    filterRegion,
-    filterNational,
-    filterOnline,
-    filterBoatType,
-    filterMinPrice,
-    filterMaxPrice,
-    filterManufacturer,
-    filterModel,
-    filterMinYear,
-    filterMaxYear,
-    filterCondition,
-    filterMinLength,
-    filterMaxLength,
-    filterFuelType,
-    filterHullMaterial,
-    filterLocationKeyword,
-    filterMinCabins,
-    filterTrailer,
-    sortBy,
-  ]);
 
-  // Contagem calculada de anúncios aprovados em tempo real de acordo com as diretrizes de contexto de país e expiração de anúncios
-  const totalApprovedCount = useMemo(() => {
-    return ads.filter(ad => {
-      const adCountry = ad.country || 'Reino Unido';
-      const isActive = ad.status === 'approved' && (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
-      const isUkMatch = (country === 'Reino Unido' || country === 'United Kingdom') && (adCountry === 'Reino Unido' || adCountry === 'United Kingdom' || adCountry === 'UK');
-      const matchesCountry = isUkMatch || adCountry === country;
-      return matchesCountry && isActive;
-    }).length;
-  }, [ads, country]);
+    await Promise.all(promises);
+    clearHomeCache();
+    setAds(prev => prev.filter(ad => !selectedAdIds.includes(ad.id)));
+    if (selectedAd && selectedAdIds.includes(selectedAd.id)) setSelectedAd(null);
+    setSelectedAdIds([]);
+    setBatchLoading(false);
+    alert(`Batch deletion completed: ${successCount} successfully deleted.${failCount > 0 ? ` Failures: ${failCount}` : ''}`);
+  };
 
-  // Paginação inteligente de anúncios filtrados em memória (carregamento instantâneo offline-first)
-  // Boats for Hire list comes from its own Firestore query and therefore does
-  // not disappear when hire listings are older than the 48 newest homepage ads.
-  const hireAds = useMemo(() => hireSectionAds, [hireSectionAds]);
+  const handleBatchAction = async (status: 'approved' | 'rejected') => {
+    if (selectedAdIds.length === 0) return;
+    const actionLabel = status === 'approved' ? 'approve' : 'reject';
+    const confirmMsg = `Are you sure you want to ${actionLabel} the ${selectedAdIds.length} selected listings in batch?`;
+    if (!window.confirm(confirmMsg)) return;
 
-  const displayedAds = useMemo(() => {
-    return filteredAds.slice(0, limitAmount);
-  }, [filteredAds, limitAmount]);
+    setBatchLoading(true);
+    let successCount = 0;
+    let failCount = 0;
 
-  const hasMore = useMemo(() => {
-    return filteredAds.length > limitAmount;
-  }, [filteredAds, limitAmount]);
+    const promises = selectedAdIds.map(async (id) => {
+      const res = await handleAdAction(id, status);
+      if (res) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    });
 
-  const flagItemsMarquee = [
-    { flag: '🇬🇧', name: 'The Solent', code: 'gb', border: 'border-sky-400/80' },
-    { flag: '🇬🇧', name: 'Cornwall Coast', code: 'gb', border: 'border-sky-400/80' },
-    { flag: '🇬🇧', name: 'Norfolk Broads', code: 'gb', border: 'border-sky-400/80' },
-    { flag: '🇬🇧', name: 'Scottish Lochs', code: 'gb', border: 'border-sky-400/80' },
-    { flag: '🇬🇧', name: 'River Thames', code: 'gb', border: 'border-sky-400/80' },
-    { flag: '🇬🇧', name: 'Plymouth Sound', code: 'gb', border: 'border-sky-400/80' },
-    { flag: '🇬🇧', name: 'Wales Coast', code: 'gb', border: 'border-sky-400/80' },
-    { flag: '🇬🇧', name: 'Northern Ireland', code: 'gb', border: 'border-sky-400/80' },
-    { flag: '🇬🇧', name: 'English Channel', code: 'gb', border: 'border-sky-400/80' },
+    await Promise.all(promises);
+    setBatchLoading(false);
+    setSelectedAdIds([]);
+    alert(`Batch operation completed: ${successCount} listings updated.${failCount > 0 ? ` Failures: ${failCount}` : ''}`);
+  };
+
+  const handleRenewAd = async (adId: string) => {
+    setRenewingId(adId);
+    try {
+      const newExpirationDate = addDays(new Date(), 30);
+      await updateDoc(doc(db, 'ads', adId), {
+        status: 'approved',
+        adStatus: 'active',
+        expirationDate: newExpirationDate,
+        updatedAt: serverTimestamp(),
+        userNotified: true
+      });
+      clearHomeCache();
+      
+      const mockTimestamp = { toDate: () => newExpirationDate };
+      
+      setAds(prevAds => prevAds.map(ad => ad.id === adId ? { 
+        ...ad, 
+        status: 'approved', 
+        adStatus: 'active',
+        expirationDate: mockTimestamp 
+      } as Ad : ad));
+      
+      alert('Listing successfully renewed for a further 30 days!');
+    } catch (err) {
+      console.error('Renew error:', err);
+      handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
+    } finally {
+      setRenewingId(null);
+    }
+  };
+
+  const handleMakeClaimable = async (adId: string) => {
+    if (!adId) return;
+    setClaimActionLoading(true);
+    try {
+      const adToUpdate = ads.find(a => a.id === adId) || (selectedAd?.id === adId ? selectedAd : null);
+      if (!adToUpdate) return;
+
+      const businessViews = adToUpdate.businessViews !== undefined ? adToUpdate.businessViews : 0;
+      const invitationStatus = adToUpdate.invitationStatus !== undefined ? adToUpdate.invitationStatus : "not_sent";
+      const invitationCount = adToUpdate.invitationCount !== undefined ? adToUpdate.invitationCount : 0;
+
+      const updates = {
+        isClaimableBusiness: true,
+        claimStatus: 'unclaimed',
+        businessViews,
+        invitationStatus,
+        invitationCount,
+        updatedAt: serverTimestamp()
+      };
+
+      await updateDoc(doc(db, 'ads', adId), updates);
+      clearHomeCache();
+
+      setAds(prevAds => prevAds.map(ad => ad.id === adId ? { ...ad, ...updates } as Ad : ad));
+      setSelectedAd(prev => prev && prev.id === adId ? { ...prev, ...updates } as any : prev);
+
+      alert('Listing successfully set as Claimable Business!');
+    } catch (err) {
+      console.error('Error making claimable:', err);
+      alert('Error updating listing: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setClaimActionLoading(false);
+    }
+  };
+
+  const handleRemoveClaimable = async (adId: string) => {
+    if (!adId) return;
+    setClaimActionLoading(true);
+    try {
+      const adToUpdate = ads.find(a => a.id === adId) || (selectedAd?.id === adId ? selectedAd : null);
+      if (!adToUpdate) return;
+
+      if (adToUpdate.claimStatus === 'claimed') {
+        alert('Cannot remove claim status from an already approved and claimed business listing.');
+        return;
+      }
+
+      const updates = {
+        isClaimableBusiness: false,
+        claimStatus: null,
+        updatedAt: serverTimestamp()
+      };
+
+      await updateDoc(doc(db, 'ads', adId), updates);
+      clearHomeCache();
+
+      setAds(prevAds => prevAds.map(ad => ad.id === adId ? { ...ad, ...updates } as Ad : ad));
+      setSelectedAd(prev => prev && prev.id === adId ? { ...prev, ...updates } as any : prev);
+
+      alert('Claim status removed successfully!');
+    } catch (err) {
+      console.error('Error removing claimable:', err);
+      alert('Error updating listing: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setClaimActionLoading(false);
+    }
+  };
+
+  const handleResendPaymentEmail = async (adId: string) => {
+    setResendingEmailId(adId);
+    try {
+      if (!user) {
+        throw new Error('Authentication required.');
+      }
+
+      const idToken = await user.getIdToken();
+
+      const res = await fetch('/api/admin/resend-payment-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({ adId })
+      });
+
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        alert(`Erro na resposta do servidor (HTTP ${res.status} ${res.statusText}). O servidor não retornou JSON válido.`);
+        return;
+      }
+
+      if (res.ok && data.success) {
+        alert(data.message || 'E-mail de confirmação de pagamento enviado com sucesso!');
+        setAds(prev => prev.map(a => a.id === adId ? {
+          ...a,
+          paymentConfirmationEmailSent: true,
+          paymentConfirmationEmailStatus: 'sent',
+          paymentConfirmationEmailError: null
+        } as any : a));
+        if (selectedAd?.id === adId) {
+          setSelectedAd(prev => prev ? {
+            ...prev,
+            paymentConfirmationEmailSent: true,
+            paymentConfirmationEmailStatus: 'sent',
+            paymentConfirmationEmailError: null
+          } as any : null);
+        }
+      } else {
+        const errorMsg = data.errorMessage || data.error || `HTTP ${res.status} - ${res.statusText}`;
+        alert(`Falha no envio do e-mail (HTTP ${res.status}): ${errorMsg}`);
+      }
+    } catch (err: any) {
+      console.error('Error resending payment email:', err);
+      alert(`Erro de ligação ao servidor: ${err?.message || 'Indisponibilidade de rede ou servidor'}`);
+    } finally {
+      setResendingEmailId(null);
+    }
+  };
+
+  const OFFICIAL_CONNECTBOAT_CATEGORIES = [
+    'Boats for Sale',
+    'Boats for Hire',
+    'Boat Parts',
+    'Boat Engines',
+    'Marine Electronics',
+    'Trailers',
+    'Marinas',
+    'Boat Services',
+    'Accessories',
+    'Wanted',
   ];
 
+  const categoryFilterOptions = Array.from(
+    new Set([
+      ...(categories || []),
+      ...ads.map(ad => ad.category).filter((category): category is string => Boolean(category?.trim()))
+    ])
+  );
+
+  // Imported/legacy listings can exist without a category field at all,
+  // or with null / an empty string. Keep a dedicated admin filter for them.
+  const adsWithoutCategoryCount = ads.filter(ad => !String(ad.category ?? '').trim()).length;
+
+  // Listings whose category exists but is not one of the 10 official ConnectBoat categories.
+  // This exposes old/imported values such as legacy marketplace categories so they can be corrected.
+  const adsInvalidLegacyCategoryCount = ads.filter(ad => {
+    const category = String(ad.category ?? '').trim();
+    return Boolean(category) && !OFFICIAL_CONNECTBOAT_CATEGORIES.includes(category);
+  }).length;
+
+  const filteredAds = ads.filter(ad => {
+    // 1. Status Filter
+    const matchesFilter = adFilter === 'all' 
+      ? true 
+      : adFilter === 'hidden'
+        ? ad.isHidden === true
+        : adFilter === 'duplicates' 
+          ? ad.isDuplicate === true 
+          : adFilter === 'paid'
+            ? isPaidAd(ad)
+            : adFilter === 'awaiting_activation'
+              ? (
+                  isPaidAd(ad) &&
+                  (ad as any).paymentFlow === 'admin_assisted' &&
+                  (ad as any).awaitingAdminActivation === true
+                )
+              : (ad.status === adFilter || ad.adStatus === adFilter);
+
+    // 2. Country Filter
+    const adCountry = ad.country || 'Portugal';
+    const matchesCountry = countryFilter === 'all'
+      ? true
+      : adCountry.toLowerCase() === countryFilter.toLowerCase();
+
+    // 3. Listing Type Filter
+    const isHireListing =
+      (ad as any).listingIntent === 'hire' ||
+      ad.category === 'Boats for Hire' ||
+      ad.category === 'Aluguer de Barcos' ||
+      ad.category === 'Boat Hire & Charters' ||
+      (ad as any).listingType === 'hire' ||
+      (ad as any).listingType === 'rent';
+
+    const matchesListingType =
+      listingTypeFilter === 'all'
+        ? true
+        : listingTypeFilter === 'hire'
+          ? isHireListing
+          : !isHireListing;
+
+    // 4. Category Filter
+    const normalizedCategory = String(ad.category ?? '').trim();
+    const matchesCategory = categoryFilter === 'all'
+      ? true
+      : categoryFilter === '__without_category__'
+        ? !normalizedCategory
+        : categoryFilter === '__invalid_legacy_category__'
+          ? Boolean(normalizedCategory) && !OFFICIAL_CONNECTBOAT_CATEGORIES.includes(normalizedCategory)
+          : normalizedCategory === categoryFilter;
+
+    // 5. Period Filter
+    let matchesPeriod = true;
+    if (periodFilter !== 'all') {
+      const createDate = ad.createdAt?.toDate ? ad.createdAt.toDate() : (ad.createdAt ? new Date(ad.createdAt) : null);
+      if (!createDate) {
+        matchesPeriod = false;
+      } else {
+        const createTime = createDate.getTime();
+        const nowTime = new Date().getTime();
+        const diffDays = (nowTime - createTime) / (1000 * 60 * 60 * 24);
+        if (periodFilter === 'today' && diffDays > 1) matchesPeriod = false;
+        else if (periodFilter === '7days' && diffDays > 7) matchesPeriod = false;
+        else if (periodFilter === '30days' && diffDays > 30) matchesPeriod = false;
+      }
+    }
+
+    // 6. Global Search Term matching: title, description, seller, city, country, or ad ID
+    let matchesSearch = true;
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      const title = (ad.title || '').toLowerCase();
+      const description = (ad.description || '').toLowerCase();
+      const seller = (ad.sellerName || '').toLowerCase();
+      const city = (ad.city || '').toLowerCase();
+      const country = (ad.country || '').toLowerCase();
+      const id = (ad.id || '').toLowerCase();
+
+      matchesSearch = title.includes(term) ||
+                      description.includes(term) ||
+                      seller.includes(term) ||
+                      city.includes(term) ||
+                      country.includes(term) ||
+                      id.includes(term);
+    }
+
+    return matchesFilter && matchesCountry && matchesListingType && matchesCategory && matchesPeriod && matchesSearch;
+  });
+
+  const totalPages = Math.ceil(filteredAds.length / pageSize) || 1;
+  const pagedAds = filteredAds.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const stats = {
+    total: ads.length,
+    pending: ads.filter(a => a.status === 'pending').length,
+    approved: ads.filter(a => a.status === 'approved' || a.adStatus === 'active').length,
+    paid: ads.filter(a => isPaidAd(a)).length,
+    awaitingActivation: ads.filter(
+      a =>
+        isPaidAd(a) &&
+        (a as any).paymentFlow === 'admin_assisted' &&
+        (a as any).awaitingAdminActivation === true
+    ).length,
+    expired: ads.filter(a => a.status === 'expired' || a.adStatus === 'expired').length,
+  };
+
   return (
-    <div className="w-full">
-      {assistedPaymentMessage && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-xl">
-          <div className="bg-emerald-600 text-white rounded-2xl shadow-2xl px-5 py-4 flex items-start gap-3 border border-emerald-400">
-            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold">
-              ✓
-            </div>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Manage Listings</h1>
+        <p className="text-slate-500 font-medium">Approve, reject or moderate platform listings.</p>
+      </div>
 
-            <div>
-              <p className="font-bold text-base">
-                Payment completed successfully
-              </p>
+      {/* Stats Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+        {[
+          { label: 'Total', value: stats.total, color: 'bg-slate-100 text-slate-600' },
+          { label: 'Pending', value: stats.pending, color: stats.pending > 0 ? 'animate-pending-highlight text-amber-950 border-amber-300' : 'bg-amber-50 text-amber-600' },
+          { label: 'Approved', value: stats.approved, color: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Paid', value: stats.paid, color: 'bg-emerald-100 text-emerald-800 border border-emerald-200' },
+          {
+            label: 'Awaiting Activation',
+            value: stats.awaitingActivation,
+            color: stats.awaitingActivation > 0
+              ? 'bg-cyan-100 text-cyan-900 border border-cyan-300'
+              : 'bg-cyan-50 text-cyan-600'
+          },
+          { label: 'Expired', value: stats.expired, color: 'bg-red-50 text-red-600' },
+        ].map((stat, idx) => (
+          <div key={idx} className={`p-4 rounded-2xl border border-slate-100 shadow-sm transition-all ${stat.color}`}>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{stat.label}</p>
+            <p className="text-2xl font-black mt-1">{stat.value}</p>
+          </div>
+        ))}
+      </div>
 
-              <p className="text-sm text-emerald-50 mt-1">
-                Your listing payment has been received. The listing is now awaiting admin approval.
-              </p>
-            </div>
+      {/* Advanced Filters & Search Toolbar */}
+      <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+        {/* Top Controls: Search Bar & View Mode Toggle */}
+        <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
+          {/* Expanded Global Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <input 
+              type="text"
+              placeholder="Search by listing title, description, seller, city or ID..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1); // reset to page 1 on active search
+              }}
+              className="w-full pl-11 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"
+            />
+          </div>
 
+          {/* View Mode Toggle Pill */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-2xl self-start lg:self-auto gap-1">
             <button
-              onClick={() => setAssistedPaymentMessage(false)}
-              className="ml-auto text-white/80 hover:text-white font-bold text-lg"
-              aria-label="Close"
+              onClick={() => {
+                setViewMode('cards');
+                localStorage.setItem('admin_ads_view_mode', 'cards');
+              }}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'cards'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
             >
-              ×
+              <LayoutGrid size={15} />
+              <span>Cards</span>
             </button>
+            <button
+              onClick={() => {
+                setViewMode('table');
+                localStorage.setItem('admin_ads_view_mode', 'table');
+              }}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <List size={15} />
+              <span>Table</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Filters Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-12 xl:grid-cols-[repeat(14,minmax(0,1fr))] gap-4 pt-2 border-t border-slate-100">
+          {/* Status Segmented Filter - 5 columns */}
+          <div className="md:col-span-5 flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Filter by Status</label>
+            <div className="flex gap-1 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'pending', label: 'Pending' },
+                { id: 'duplicates', label: 'Duplicates⚠️' },
+                { id: 'approved', label: 'Active' },
+                { id: 'hidden', label: 'Standby / Ocultos 👁️‍🗨️' },
+                { id: 'paid', label: 'Paid listings' },
+                { id: 'awaiting_activation', label: `Awaiting Activation (${stats.awaitingActivation})` },
+                { id: 'expired', label: 'Expired' },
+                { id: 'rejected', label: 'Rejected' },
+                { id: 'archived', label: 'Archived' }
+              ].map((filter) => (
+                <button
+                  key={filter.id}
+                  onClick={() => {
+                    setAdFilter(filter.id);
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wide whitespace-nowrap transition-all ${
+                    adFilter === filter.id 
+                      ? 'bg-indigo-600 text-white shadow-sm' 
+                      : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100'
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Country Select Filter - 2 columns */}
+          <div className="md:col-span-2 flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Country</label>
+            <select
+              value={countryFilter}
+              onChange={(e) => {
+                setCountryFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
+              className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-705 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
+            >
+              <option value="all">🌍 All Countries</option>
+              <option value="Portugal">🇵🇹 Portugal</option>
+              <option value="Reino Unido">🇬🇧 United Kingdom</option>
+            </select>
+          </div>
+
+          {/* Listing Type Select Filter - 2 columns */}
+          <div className="md:col-span-2 flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Listing Type</label>
+            <select
+              value={listingTypeFilter}
+              onChange={(e) => {
+                setListingTypeFilter(e.target.value as 'all' | 'sale' | 'hire');
+                setCurrentPage(1);
+              }}
+              className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-705 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
+            >
+              <option value="all">⛵ All Listings</option>
+              <option value="sale">🏷️ Boats for Sale</option>
+              <option value="hire">🛥️ Boats for Hire</option>
+            </select>
+          </div>
+
+          {/* Category Select Filter - 3 columns */}
+          <div className="md:col-span-3 flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Category</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-705 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
+            >
+              <option value="all">📂 All Categories</option>
+              <option value="__without_category__">⚠️ Without Category ({adsWithoutCategoryCount})</option>
+              <option value="__invalid_legacy_category__">⚠️ Invalid / Legacy Category ({adsInvalidLegacyCategoryCount})</option>
+              {categoryFilterOptions.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Period Select Filter - 2 columns */}
+          <div className="md:col-span-2 flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Creation Date</label>
+            <select
+              value={periodFilter}
+              onChange={(e) => {
+                setPeriodFilter(e.target.value as any);
+                setCurrentPage(1);
+              }}
+              className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-705 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
+            >
+              <option value="all">📅 All Time</option>
+              <option value="today">Today (last 24h)</option>
+              <option value="7days">Last 7 days</option>
+              <option value="30days">Last 30 days</option>
+            </select>
+          </div>
+         </div>
+        
+        {/* Visible Columns Selector */}
+        {viewMode === 'table' && (
+          <div className="pt-3.5 border-t border-slate-100 space-y-2">
+            <h4 className="text-[10px] font-black uppercase tracking-wider text-slate-400">Visible columns</h4>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 bg-slate-50 p-3 rounded-xl border border-slate-150">
+              {ALL_COLUMNS.map((col) => {
+                const isMandatory = col.mandatory;
+                const isChecked = isColVisible(col.id);
+                return (
+                  <label 
+                    key={col.id} 
+                    className={`flex items-center gap-2 text-xs font-semibold select-none transition-all ${
+                      isMandatory 
+                        ? 'text-indigo-600/70 cursor-not-allowed opacity-80' 
+                        : isChecked 
+                          ? 'text-slate-800 hover:text-indigo-600 cursor-pointer' 
+                          : 'text-slate-400 hover:text-slate-600 cursor-pointer'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      disabled={isMandatory}
+                      onChange={() => {
+                        if (isMandatory) return;
+                        if (isChecked) {
+                          setVisibleColumns(prev => prev.filter(id => id !== col.id));
+                        } else {
+                          setVisibleColumns(prev => [...prev, col.id]);
+                        }
+                      }}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 w-3.5 h-3.5 cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <span>
+                      {col.label} 
+                      {isMandatory && <span className="text-[8px] text-indigo-500 font-black tracking-wider uppercase ml-1">(Required)</span>}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Info label about scope */}
+        <div className="flex flex-wrap justify-between items-center gap-2 text-[10px] text-slate-400 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+          <span>Searching locally in {ads.length} loaded listings.</span>
+          <button 
+            onClick={handleLoadMore}
+            disabled={loading}
+            className="text-indigo-600 hover:text-indigo-800 font-black uppercase tracking-wider transition-colors flex items-center gap-1 cursor-pointer"
+          >
+            <span>Fetch more listings from server (+100)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Batch Actions Bar */}
+      <AnimatePresence>
+        {selectedAdIds.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0, y: -10 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -10 }}
+            className="overflow-hidden mb-4"
+          >
+            <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="text-xs font-black uppercase tracking-wider text-amber-900">
+                  {selectedAdIds.length} {selectedAdIds.length === 1 ? 'listing selected' : 'listings selected'}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <div className="flex items-center gap-2 h-9 px-2 bg-white rounded-xl border border-indigo-200 shadow-sm">
+                  <Tag size={14} className="text-indigo-600 shrink-0" />
+                  <select
+                    value={batchCategorySelection}
+                    onChange={(e) => setBatchCategorySelection(e.target.value)}
+                    disabled={batchLoading}
+                    className="h-7 min-w-[170px] bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer disabled:cursor-not-allowed"
+                    title="Choose the category for the selected listings"
+                  >
+                    {OFFICIAL_CONNECTBOAT_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => handleBatchSetCategory(batchCategorySelection)}
+                    disabled={batchLoading || !batchCategorySelection}
+                    className="h-7 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg text-[11px] font-black transition-all cursor-pointer disabled:cursor-not-allowed whitespace-nowrap"
+                    title={`Set selected listings to ${batchCategorySelection}`}
+                  >
+                    Apply category
+                  </button>
+                </div>
+                <button
+                  onClick={() => handleBatchToggleHide(true)}
+                  disabled={batchLoading}
+                  className="flex-1 sm:flex-initial h-9 px-4 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="Colocar anúncios selecionados em Standby (Ocultar)"
+                >
+                  <EyeOff size={14} />
+                  <span>Ocultar (Standby)</span>
+                </button>
+                <button
+                  onClick={() => handleBatchToggleHide(false)}
+                  disabled={batchLoading}
+                  className="flex-1 sm:flex-initial h-9 px-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
+                  title="Tornar anúncios selecionados visíveis no site"
+                >
+                  <Eye size={14} />
+                  <span>Tornar Visíveis</span>
+                </button>
+                <button
+                  onClick={() => handleBatchAction('approved')}
+                  disabled={batchLoading}
+                  className="flex-1 sm:flex-initial h-9 px-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-100 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle size={14} />
+                  <span>Approve Selected</span>
+                </button>
+                <button
+                  onClick={() => handleBatchAction('rejected')}
+                  disabled={batchLoading}
+                  className="flex-1 sm:flex-initial h-9 px-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-red-100"
+                >
+                  <XCircle size={14} />
+                  <span>Reject Selected</span>
+                </button>
+                <button
+                  onClick={handleBatchDelete}
+                  disabled={batchLoading}
+                  className="flex-1 sm:flex-initial h-9 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-red-100"
+                >
+                  <Trash2 size={14} />
+                  <span>Delete Selected</span>
+                </button>
+                <button
+                  onClick={() => setSelectedAdIds([])}
+                  disabled={batchLoading}
+                  className="h-9 px-3.5 bg-white border border-slate-200 text-slate-500 hover:text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center cursor-pointer"
+                >
+                  Deselect All
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {loading ? (
+        <div className="text-center py-20 text-slate-400 font-bold animate-pulse">Loading listings...</div>
+      ) : filteredAds.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-3xl border border-slate-200">
+          <AlertCircle className="mx-auto text-slate-300 mb-4" size={48} />
+          <p className="text-slate-500 font-bold">No listings found matching the selected filters.</p>
+        </div>
+      ) : viewMode === 'cards' ? (
+        /* --- VIEW MODE: CARDS --- */
+        <div className="grid grid-cols-1 gap-4">
+          {pagedAds.map((ad, idx) => (
+            <motion.div
+              key={`${ad.id}-${idx}`}
+              layout
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:border-indigo-200 transition-all flex flex-col"
+            >
+              {/* Card Header Info */}
+              <div className="p-4 sm:p-5 flex gap-4 items-start relative">
+                {/* Seleção Multipla Checkbox */}
+                <div className="pt-2 sm:pt-4 self-center shrink-0">
+                  <input 
+                    type="checkbox"
+                    checked={selectedAdIds.includes(ad.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedAdIds(prev => [...prev, ad.id]);
+                      } else {
+                        setSelectedAdIds(prev => prev.filter(id => id !== ad.id));
+                      }
+                    }}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 w-4.5 h-4.5 cursor-pointer"
+                  />
+                </div>
+                {/* Image Container */}
+                <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center">
+                  <OptimizedImage 
+                    src={ad.imageUrl} 
+                    alt={ad.title} 
+                    className="w-full h-full object-cover" 
+                    containerClassName="w-full h-full"
+                  />
+                  {ad.status === 'pending' && (
+                    <div className="absolute top-1 left-1 w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center border border-white animate-pulse z-10">
+                      <Clock size={10} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Primary Metadata */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1 bg-white">
+                    <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider ${
+                      ad.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 
+                      ad.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 
+                      'bg-red-50 text-red-600 border border-red-100'
+                    }`}>
+                      {ad.status}
+                    </span>
+                    {ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
+                      <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider ${
+                        ad.adStatus === 'active' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 
+                        ad.adStatus === 'expired' ? 'bg-red-50 text-red-600 border border-red-100' : 
+                        'bg-amber-50 text-amber-600 border border-amber-100'
+                      }`}>
+                        {ad.adStatus}
+                      </span>
+                    )}
+                    {ad.isHidden && (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-amber-500 text-white shadow-xs">
+                        🙈 Standby (Oculto)
+                      </span>
+                    )}
+                    {/* Paid Status & Plan Badges */}
+                    {(() => {
+                      const pInfo = getAdPaymentClassification(ad);
+                      if (pInfo.isPaid) {
+                        return (
+                          <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200" title={`Paid on ${pInfo.formattedDate || 'N/A'}`}>
+                            💳 Paid
+                          </span>
+                        );
+                      }
+                      if (pInfo.type === 'legacy_free') {
+                        return (
+                          <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-100 text-slate-600 border border-slate-200" title="Legacy / Free Listing">
+                            Legacy / Free Listing
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-100 text-slate-500 border border-slate-200" title="Payment data unavailable">
+                          Payment data unavailable
+                        </span>
+                      );
+                    })()}
+
+                    {(ad as any).paymentFlow === 'admin_assisted' && (ad as any).awaitingAdminActivation === true && isPaidAd(ad) && (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-cyan-50 text-cyan-700 border border-cyan-200">
+                        Paid / Awaiting Admin Activation
+                      </span>
+                    )}
+
+                    <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider border ${getAdPlanLabel(ad).color}`}>
+                      Plan: {getAdPlanLabel(ad).label}
+                    </span>
+
+                    {ad.mediaBoostEnabled && (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
+                        ⚡ Media Boost
+                      </span>
+                    )}
+
+                    {ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200" title="E-mail de recibo enviado ao anunciante">
+                        ✉️ Email: Sent
+                      </span>
+                    ) : ad.paymentConfirmationEmailStatus === 'failed' ? (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-red-50 text-red-700 border border-red-200" title={ad.paymentConfirmationEmailError || 'Falha ao enviar e-mail'}>
+                        ✉️ Email: Failed
+                      </span>
+                    ) : (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-100 text-slate-600 border border-slate-200" title="E-mail de confirmação não enviado">
+                        ✉️ Email: Not sent
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-2 break-all mb-1.5" title={ad.title}>
+                    {ad.title}
+                  </h3>
+
+                  {ad.isDuplicate && (
+                    <div className="mb-2 bg-amber-50 text-amber-800 border border-amber-100 rounded-lg p-2 text-[10px] font-semibold flex items-start gap-1">
+                      <AlertCircle size={12} className="shrink-0 text-amber-600 mt-0.5" />
+                      <div>
+                        <span>Suspected Duplicate: {ad.duplicateReason}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-sm sm:text-base font-black text-indigo-600">
+                      {ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}
+                    </span>
+                    <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                      • Seller: <span className="text-slate-600 font-semibold">{ad.sellerName || 'ValtailAdmin'}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Meta Row (Dates & Clicks) */}
+              <div className="px-4 pb-3 sm:px-5 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] font-medium text-slate-400 border-b border-dashed border-slate-100 bg-white">
+                <div className="flex items-center gap-1" title="Creation Date">
+                  <Clock size={13} className="text-indigo-400" />
+                  <span>Created: {ad.createdAt?.toDate ? format(ad.createdAt.toDate(), 'dd MMM yyyy') : 'Recently'}</span>
+                </div>
+                <div className="flex items-center gap-1" title="Payment Date">
+                  <CreditCard size={13} className="text-emerald-500" />
+                  <span>Payment Date: {isPaidAd(ad) && (formatUKDate(ad.paidAt) || formatUKDate((ad as any).paymentCompletedAt)) ? <strong className="text-emerald-700">{formatUKDate(ad.paidAt) || formatUKDate((ad as any).paymentCompletedAt)}</strong> : <span className="text-slate-400 italic">Payment data unavailable</span>}</span>
+                </div>
+                {ad.expirationDate && (
+                  <div className="flex items-center gap-1" title="Expiration Date">
+                    <AlertCircle size={13} className="text-amber-400" />
+                    <span>EXP: {ad.expirationDate.toDate ? format(ad.expirationDate.toDate(), 'dd MMM yyyy') : 'N/A'}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1">
+                  <Eye size={13} className="text-slate-400" />
+                  <span>{ad.views || 0} views</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <MessageSquare size={13} className="text-slate-400" />
+                  <span>{ad.whatsappClicks || 0} clicks</span>
+                </div>
+              </div>
+
+              {/* Card Actions Footer */}
+              <div className="bg-slate-50/50 p-3 sm:px-5 sm:py-3.5 flex flex-wrap gap-2 items-center justify-between">
+                {/* Secondary Navigation Tools */}
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  <button
+                    onClick={() => setSelectedAd(ad)}
+                    className="h-9 px-3 flex items-center gap-1.5 text-indigo-600 bg-white hover:bg-indigo-50 border border-indigo-100 rounded-xl transition-all font-bold text-[11px]"
+                    title="View Full Listing"
+                  >
+                    <Eye size={14} />
+                    <span>View</span>
+                  </button>
+
+                  <button
+                    onClick={() => navigate(`/edit-ad/${ad.id}`)}
+                    className="h-9 px-3 flex items-center gap-1.5 text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all font-bold text-[11px]"
+                    title="Edit Listing"
+                  >
+                    <Edit size={14} />
+                    <span>Edit</span>
+                  </button>
+
+                  {/* Standby / Ocultar Toggle Switch */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleHideAd(ad.id, ad.isHidden)}
+                    className={`h-9 px-3 flex items-center gap-2 rounded-xl border font-bold text-[11px] transition-all cursor-pointer ${
+                      ad.isHidden
+                        ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200 shadow-xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                    title={ad.isHidden ? 'Anúncio em Standby (Oculto). Clique para Tornar Visível' : 'Anúncio Visível. Clique para Ocultar (Colocar em Standby)'}
+                  >
+                    <div className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors ${
+                      ad.isHidden ? 'bg-amber-600' : 'bg-slate-300'
+                    }`}>
+                      <div className={`w-2.5 h-2.5 bg-white rounded-full shadow-md transform transition-transform ${
+                        ad.isHidden ? 'translate-x-2.5' : 'translate-x-0'
+                      }`} />
+                    </div>
+                    <span>{ad.isHidden ? 'Standby' : 'Ocultar'}</span>
+                  </button>
+
+                  {ad.isClaimableBusiness ? (
+                    ad.claimStatus === 'claimed' ? (
+                      <span className="h-9 px-3 flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl font-bold text-[11px]" title="Verified Owner">
+                        <ShieldCheck size={14} className="text-emerald-600" />
+                        <span>Verified Owner</span>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleRemoveClaimable(ad.id)}
+                        disabled={claimActionLoading}
+                        className="h-9 px-3 flex items-center gap-1.5 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all font-bold text-[11px] disabled:opacity-50"
+                        title="Remove Claim Status"
+                      >
+                        <ShieldAlert size={14} />
+                        <span>Remove Claim</span>
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      onClick={() => handleMakeClaimable(ad.id)}
+                      disabled={claimActionLoading}
+                      className="h-9 px-3 flex items-center gap-1.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-xl transition-all font-bold text-[11px] disabled:opacity-50"
+                      title="Make Claimable Business"
+                    >
+                      <ShieldCheck size={14} />
+                      <span>Make Claimable</span>
+                    </button>
+                  )}
+                </div>
+
+                {!isPaidAd(ad) && ad.status === 'pending' && (
+                  <button
+                    onClick={() => openAssistedPayment(ad)}
+                    className="h-9 px-3.5 flex items-center gap-1.5 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-xl transition-all font-bold text-[11px]"
+                    title="Generate assisted Stripe payment link and QR code"
+                  >
+                    <CreditCard size={14} />
+                    <span>Payment QR</span>
+                  </button>
+                )}
+
+                {/* Moderation / State Controls */}
+                <div className="flex gap-1.5 items-center ml-auto">
+                  {(ad.status === 'expired' || ad.adStatus === 'expired') && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Reactivate this listing for a further 30 days?')) {
+                          handleRenewAd(ad.id);
+                        }
+                      }}
+                      disabled={renewingId === ad.id}
+                      className={`h-9 px-3.5 flex items-center gap-1.5 rounded-xl transition-all font-bold text-[11px] ${
+                        renewingId === ad.id 
+                          ? 'bg-slate-100 text-slate-400' 
+                          : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm shadow-emerald-100'
+                      }`}
+                    >
+                      {renewingId === ad.id ? (
+                        <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <RefreshCcw size={13} />
+                      )}
+                      <span>Reactivate</span>
+                    </button>
+                  )}
+
+                  {ad.status === 'approved' && !ad.adStatus?.includes('expired') && (
+                    <div className="flex gap-1.5 items-center">
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Renew this listing for a further 30 days?')) {
+                            handleRenewAd(ad.id);
+                          }
+                        }}
+                        disabled={renewingId === ad.id}
+                        className={`h-9 px-3.5 flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl transition-all font-bold text-[11px] ${
+                          renewingId === ad.id ? 'opacity-50' : ''
+                        }`}
+                        title="Renew listing for 30 days"
+                      >
+                        {renewingId === ad.id ? (
+                          <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-emerald-600 rounded-full animate-spin" />
+                        ) : (
+                          <RefreshCcw size={13} />
+                        )}
+                        <span>Renew</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleAdAction(ad.id, 'archived')}
+                        className="h-9 px-3 flex items-center gap-1.5 text-slate-500 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all font-bold text-[11px]"
+                      >
+                        <Archive size={14} />
+                        <span>Archive</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {ad.status === 'pending' && (
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => handleAdAction(ad.id, 'approved')}
+                        className="h-9 px-3.5 bg-emerald-500 text-white hover:bg-emerald-600 rounded-xl transition-all font-bold flex items-center gap-1.5 text-[11px] shadow-sm shadow-emerald-100"
+                      >
+                        <CheckCircle size={14} />
+                        <span>Approve</span>
+                      </button>
+                      <button
+                        onClick={() => handleAdAction(ad.id, 'rejected')}
+                        className="h-9 px-3.5 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-xl transition-all font-bold flex items-center gap-1.5 text-[11px]"
+                      >
+                        <XCircle size={14} />
+                        <span>Reject</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => handleDeleteAd(ad.id)}
+                    className="h-9 w-9 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-100 rounded-xl transition-all shrink-0 animate-none"
+                    title="Permanently delete"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        /* --- VIEW MODE: TABLE --- */
+        <div className="space-y-4">
+          {/* Desktop/Tablet Table layout */}
+          <div className="hidden md:block">
+            {/* Real horizontal scrollbar above the table, synchronized with the table itself. */}
+            <div
+              ref={topTableScrollRef}
+              onScroll={() => syncTableScroll('top')}
+              className="sticky top-2 z-30 mb-2 overflow-x-auto overflow-y-hidden rounded-lg border border-slate-300 bg-white shadow-md"
+              style={{ height: '20px' }}
+              aria-label="Horizontal table scrollbar"
+              title="Drag the scrollbar left or right to view more columns"
+            >
+              <div
+                style={{
+                  width: `${Math.max(900, visibleColumns.length * 115)}px`,
+                  height: '1px'
+                }}
+              />
+            </div>
+
+            <div
+              ref={mainTableScrollRef}
+              onScroll={() => syncTableScroll('main')}
+              className="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm"
+            >
+              <table className="w-full text-left border-collapse transition-all" style={{ minWidth: `${Math.max(900, visibleColumns.length * 115)}px` }}>
+              <thead>
+                <tr className="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider">
+                  <th className="py-3 px-4 w-10 text-center">
+                    <input 
+                      type="checkbox"
+                      checked={pagedAds.length > 0 && pagedAds.every(ad => selectedAdIds.includes(ad.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const newSelected = Array.from(new Set([...selectedAdIds, ...pagedAds.map(ad => ad.id)]));
+                          setSelectedAdIds(newSelected);
+                        } else {
+                          setSelectedAdIds(selectedAdIds.filter(id => !pagedAds.map(a => a.id).includes(id)));
+                        }
+                      }}
+                      className="rounded border-slate-300 text-indigo-650 focus:ring-indigo-500/20 w-4 h-4 cursor-pointer"
+                    />
+                  </th>
+                  {isColVisible('foto') && <th className="py-3 px-4 w-16 text-center">Photo</th>}
+                  {isColVisible('titulo') && <th className="py-3 px-4">Listing</th>}
+                  {isColVisible('pais') && <th className="py-3 px-4 text-center">Country</th>}
+                  {isColVisible('cidade') && <th className="py-3 px-4">City / Location</th>}
+                  {isColVisible('preco') && <th className="py-3 px-4">Price</th>}
+                  {isColVisible('status') && <th className="py-3 px-4 text-center">Status</th>}
+                  {isColVisible('pagamento') && <th className="py-3 px-4 text-center">Payment</th>}
+                  {isColVisible('vendedor') && <th className="py-3 px-4">Seller</th>}
+                  {isColVisible('criacao') && <th className="py-3 px-4">Created</th>}
+                  {isColVisible('expiracao') && <th className="py-3 px-4">Expiry</th>}
+                  {isColVisible('vistas') && <th className="py-3 px-4 text-center">Views</th>}
+                  {isColVisible('cliques') && <th className="py-3 px-4 text-center">Clicks</th>}
+                  {isColVisible('acoes') && <th className="py-3 px-4 text-right pr-6">Quick Actions</th>}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pagedAds.map((ad, idx) => {
+                  const adCountryIcon = ad.country === 'Reino Unido' ? '🇬🇧' : '🇵🇹';
+                  return (
+                    <tr key={`${ad.id}-${idx}`} className="hover:bg-slate-50/50 transition-colors text-xs">
+                      <td className="py-3 px-4 border-none text-center">
+                        <input 
+                          type="checkbox"
+                          checked={selectedAdIds.includes(ad.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedAdIds(prev => [...prev, ad.id]);
+                            } else {
+                              setSelectedAdIds(prev => prev.filter(id => id !== ad.id));
+                            }
+                          }}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 w-4 h-4 cursor-pointer"
+                        />
+                      </td>
+                      {/* Photo column */}
+                      {isColVisible('foto') && (
+                        <td className="py-3 px-4 border-none text-center">
+                          <div 
+                            className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center cursor-pointer mx-auto relative group shadow-inner"
+                            onClick={() => setSelectedAd(ad)}
+                          >
+                            <img 
+                              src={ad.imageUrl} 
+                              alt={ad.title} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-all" 
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                        </td>
+                      )}
+
+                      {/* Title column */}
+                      {isColVisible('titulo') && (
+                        <td className="py-3 px-4 border-none font-medium">
+                          <div className="max-w-[200px]">
+                            <div className="flex items-center gap-1.5 flex-wrap max-w-full">
+                              <div 
+                                className="font-bold text-slate-900 truncate hover:text-indigo-600 transition-colors cursor-pointer"
+                                onClick={() => setSelectedAd(ad)}
+                                title={ad.title}
+                              >
+                                {ad.title}
+                              </div>
+                              {ad.isDuplicate && (
+                                <span className="bg-amber-100 text-amber-800 text-[8px] font-black uppercase tracking-wider px-1 rounded inline-block whitespace-nowrap shrink-0" title={ad.duplicateReason}>
+                                  Duplicate⚠️
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[9px] text-slate-400 font-semibold uppercase mt-0.5 tracking-wider">{ad.category}</div>
+                            <div className="text-[8px] text-slate-300 font-mono mt-0.5">ID: {ad.id}</div>
+                          </div>
+                        </td>
+                      )}
+
+                      {/* Country Column */}
+                      {isColVisible('pais') && (
+                        <td className="py-3 px-4 border-none text-center font-bold">
+                          <span className="text-base" title={ad.country || 'Portugal'}>{adCountryIcon}</span>
+                        </td>
+                      )}
+
+                      {/* City Column */}
+                      {isColVisible('cidade') && (
+                        <td className="py-3 px-4 border-none text-slate-700 font-semibold">
+                          {ad.city || 'N/A'}
+                        </td>
+                      )}
+
+                      {/* Price Column */}
+                      {isColVisible('preco') && (
+                        <td className="py-3 px-4 border-none text-indigo-650 font-black whitespace-nowrap">
+                          {ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}
+                        </td>
+                      )}
+
+                      {/* Status Column */}
+                      {isColVisible('status') && (
+                        <td className="py-3 px-4 border-none text-center">
+                          <div className="flex flex-col gap-0.5 items-center">
+                            <span className={`inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center ${
+                              ad.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 
+                              ad.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse' : 
+                              'bg-red-50 text-red-650 border border-red-100'
+                            }`}>
+                              {ad.status}
+                            </span>
+                            {ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
+                              <span className={`inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center ${
+                                ad.adStatus === 'active' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 
+                                ad.adStatus === 'expired' ? 'bg-red-50 text-red-650 border border-red-150' : 
+                                'bg-amber-50 text-amber-600 border border-amber-100'
+                              }`}>
+                                {ad.adStatus}
+                              </span>
+                            )}
+                            {ad.isHidden && (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-amber-500 text-white border border-amber-600 mt-0.5" title="Anúncio em Standby (Oculto)">
+                                🙈 Standby
+                              </span>
+                            )}
+                            {isPaidAd(ad) && !isColVisible('pagamento') && (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-emerald-100 text-emerald-800 border border-emerald-200 mt-0.5">
+                                💳 Paid ({getAdPlanLabel(ad).label})
+                              </span>
+                            )}
+                            {ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-emerald-50 text-emerald-700 border border-emerald-200 mt-0.5" title="E-mail de recibo enviado">
+                                ✉️ Sent
+                              </span>
+                            ) : ad.paymentConfirmationEmailStatus === 'failed' ? (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-red-50 text-red-700 border border-red-200 mt-0.5" title={ad.paymentConfirmationEmailError || 'Falha no e-mail'}>
+                                ✉️ Failed
+                              </span>
+                            ) : (
+                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-slate-100 text-slate-600 border border-slate-200 mt-0.5" title="E-mail não enviado">
+                                ✉️ Not sent
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      )}
+
+                      {/* Payment Column */}
+                      {isColVisible('pagamento') && (
+                        <td className="py-3 px-4 border-none text-center">
+                          <div className="flex flex-col gap-1 items-center">
+                            {(() => {
+                              const pInfo = getAdPaymentClassification(ad);
+                              if (pInfo.isPaid) {
+                                return (
+                                  <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    💳 Paid
+                                  </span>
+                                );
+                              }
+                              if (pInfo.type === 'legacy_free') {
+                                return (
+                                  <span className="inline-block text-[8px] font-semibold px-1 py-0.5 rounded uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
+                                    Legacy / Free
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="inline-block text-[8px] font-semibold px-1 py-0.5 rounded uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200" title="Payment data unavailable">
+                                  Data N/A
+                                </span>
+                              );
+                            })()}
+                            <span className={`inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border ${getAdPlanLabel(ad).color}`}>
+                              {getAdPlanLabel(ad).label}
+                            </span>
+                            <span className="text-[9px] text-slate-500 font-bold whitespace-nowrap">
+                              {isPaidAd(ad) && formatUKDate(ad.paidAt) ? formatUKDate(ad.paidAt) : <span className="text-slate-300 italic font-normal">N/A</span>}
+                            </span>
+                          </div>
+                        </td>
+                      )}
+
+                      {/* Seller Column */}
+                      {isColVisible('vendedor') && (
+                        <td className="py-3 px-4 border-none">
+                          <div>
+                            <div className="font-bold text-slate-800">{ad.sellerName || 'ValtailAdmin'}</div>
+                            <div className="text-[9px] text-slate-400 font-mono" title={ad.sellerId}>ID: {ad.sellerId ? `${ad.sellerId.substring(0, 6)}...` : 'N/A'}</div>
+                          </div>
+                        </td>
+                      )}
+
+                      {/* Creation Date */}
+                      {isColVisible('criacao') && (
+                        <td className="py-3 px-4 border-none text-slate-500 whitespace-nowrap">
+                          {ad.createdAt?.toDate ? format(ad.createdAt.toDate(), 'dd MMM yyyy') : 'Recently'}
+                        </td>
+                      )}
+
+                      {/* Expiration Date */}
+                      {isColVisible('expiracao') && (
+                        <td className="py-3 px-4 border-none text-slate-500 whitespace-nowrap">
+                          {ad.expirationDate?.toDate ? format(ad.expirationDate.toDate(), 'dd MMM yyyy') : 'N/A'}
+                        </td>
+                      )}
+
+                      {/* Views Column */}
+                      {isColVisible('vistas') && (
+                        <td className="py-3 px-4 border-none text-center font-bold text-slate-700">
+                          {ad.views || 0}
+                        </td>
+                      )}
+
+                      {/* Clicks Column */}
+                      {isColVisible('cliques') && (
+                        <td className="py-3 px-4 border-none text-center font-bold text-slate-705">
+                          {ad.whatsappClicks || 0}
+                        </td>
+                      )}
+
+                      {/* Actions Column */}
+                      {isColVisible('acoes') && (
+                        <td className="py-3 px-4 border-none text-right pr-6">
+                          <div className="flex gap-1 items-center justify-end">
+                            {/* View */}
+                            <button
+                              onClick={() => setSelectedAd(ad)}
+                              className="p-1 px-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-150 border border-indigo-100 rounded-lg transition-all text-[10px] font-bold"
+                              title="View Details"
+                            >
+                              View
+                            </button>
+
+                            {/* Edit */}
+                            <button
+                              onClick={() => navigate(`/edit-ad/${ad.id}`)}
+                              className="p-1 px-2 text-slate-600 bg-slate-50 hover:bg-slate-150 border border-slate-200 rounded-lg transition-all text-[10px] font-bold"
+                              title="Edit"
+                            >
+                              Edit
+                            </button>
+
+                            {/* Standby / Ocultar Toggle */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleHideAd(ad.id, ad.isHidden)}
+                              className={`p-1 px-2 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
+                                ad.isHidden
+                                  ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                              }`}
+                              title={ad.isHidden ? 'Standby (Oculto) - Clique para tornar visível' : 'Visível - Clique para ocultar (Standby)'}
+                            >
+                              <div className={`w-5 h-3 flex items-center rounded-full p-0.5 transition-colors ${ad.isHidden ? 'bg-amber-600' : 'bg-slate-300'}`}>
+                                <div className={`w-2 h-2 bg-white rounded-full shadow-md transform transition-transform ${ad.isHidden ? 'translate-x-2' : 'translate-x-0'}`} />
+                              </div>
+                              <span>{ad.isHidden ? 'Standby' : 'Ocultar'}</span>
+                            </button>
+
+                            {/* Claim Controls */}
+                            {ad.isClaimableBusiness ? (
+                              ad.claimStatus === 'claimed' ? (
+                                <span className="p-1 px-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-bold flex items-center gap-1" title="Verified Owner">
+                                  <ShieldCheck size={12} className="text-emerald-600" />
+                                  <span>Verified Owner</span>
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleRemoveClaimable(ad.id)}
+                                  disabled={claimActionLoading}
+                                  className="p-1 px-2 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-all text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
+                                  title="Remove Claim Status"
+                                >
+                                  <ShieldAlert size={12} />
+                                  <span>Remove Claim</span>
+                                </button>
+                              )
+                            ) : (
+                              <button
+                                onClick={() => handleMakeClaimable(ad.id)}
+                                disabled={claimActionLoading}
+                                className="p-1 px-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-lg transition-all text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
+                                title="Make Claimable Business"
+                              >
+                                <ShieldCheck size={12} />
+                                <span>Make Claimable</span>
+                              </button>
+                            )}
+
+                            {!isPaidAd(ad) && ad.status === 'pending' && (
+                              <button
+                                onClick={() => openAssistedPayment(ad)}
+                                className="p-1 px-2 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-lg transition-all text-[10px] font-bold flex items-center gap-1"
+                                title="Generate Payment QR"
+                              >
+                                <CreditCard size={12} />
+                                <span>Payment QR</span>
+                              </button>
+                            )}
+
+                            {/* Approve/Reject */}
+                            {ad.status === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => handleAdAction(ad.id, 'approved')}
+                                  className="p-1 text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-all"
+                                  title="Approve"
+                                >
+                                  <CheckCircle size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleAdAction(ad.id, 'rejected')}
+                                  className="p-1 text-red-650 bg-red-50 hover:bg-red-200 rounded-lg transition-all"
+                                  title="Reject"
+                                >
+                                  <XCircle size={14} />
+                                </button>
+                              </>
+                            )}
+
+                            {/* Reactivate / Renew */}
+                            {(ad.status === 'expired' || ad.adStatus === 'expired') && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('Reactivate this listing for a further 30 days?')) {
+                                    handleRenewAd(ad.id);
+                                  }
+                                }}
+                                disabled={renewingId === ad.id}
+                                className="p-1 px-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-lg transition-all text-[10px] font-extrabold"
+                              >
+                                Reactivate
+                              </button>
+                            )}
+
+                            {/* Renew (Active approved ads) */}
+                            {ad.status === 'approved' && !ad.adStatus?.includes('expired') && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('Renew this listing for a further 30 days?')) {
+                                    handleRenewAd(ad.id);
+                                  }
+                                }}
+                                disabled={renewingId === ad.id}
+                                className="p-1 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all"
+                                title="Renew (+30 days)"
+                              >
+                                <RefreshCcw size={13} className={renewingId === ad.id ? 'animate-spin' : ''} />
+                              </button>
+                            )}
+
+                            {/* Archive */}
+                            {ad.status === 'approved' && !ad.adStatus?.includes('expired') && (
+                              <button
+                                onClick={() => handleAdAction(ad.id, 'archived')}
+                                className="p-1 text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-all"
+                                title="Archive"
+                              >
+                                <Archive size={13} />
+                              </button>
+                            )}
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => handleDeleteAd(ad.id)}
+                              className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-100 rounded-lg transition-all"
+                              title="Permanently delete"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile representation under TabelaMode */}
+          <div className="block md:hidden bg-white p-2.5 rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100">
+            {pagedAds.map((ad, idx) => {
+              const countryIcon = ad.country === 'Reino Unido' ? '🇬🇧' : '🇵🇹';
+              return (
+                <div key={`${ad.id}-${idx}`} className="py-3 flex gap-3.5 items-center">
+                  <input 
+                    type="checkbox"
+                    checked={selectedAdIds.includes(ad.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedAdIds(prev => [...prev, ad.id]);
+                      } else {
+                        setSelectedAdIds(prev => prev.filter(id => id !== ad.id));
+                      }
+                    }}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 w-4 h-4 cursor-pointer shrink-0"
+                  />
+                  <img 
+                    src={ad.imageUrl} 
+                    alt={ad.title} 
+                    className="w-12 h-12 object-cover rounded-lg bg-slate-50 border border-slate-200 shrink-0 cursor-pointer" 
+                    onClick={() => setSelectedAd(ad)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h4 
+                      className="font-bold text-slate-900 text-xs truncate hover:text-indigo-600 cursor-pointer"
+                      onClick={() => setSelectedAd(ad)}
+                    >
+                      {ad.title}
+                    </h4>
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      {countryIcon} {ad.city} • <span className="font-extrabold text-indigo-600">{ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}</span>
+                    </p>
+                    <div className="flex gap-1 mt-1">
+                      <span className={`inline-block text-[8px] font-black px-1.5 py-0.2 rounded uppercase ${
+                        ad.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 
+                        ad.status === 'pending' ? 'bg-amber-50 text-amber-600 animate-pulse' : 
+                        'bg-red-50 text-red-650'
+                      }`}>
+                        {ad.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1 items-center shrink-0">
+                    <button
+                      onClick={() => setSelectedAd(ad)}
+                      className="p-1 px-1.5 bg-indigo-50 text-indigo-600 border border-indigo-100 transition-colors text-[9px] font-extrabold rounded-md"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => navigate(`/edit-ad/${ad.id}`)}
+                      className="p-1 px-1.5 bg-slate-50 text-slate-600 border border-slate-200 transition-colors text-[9px] font-bold rounded-md"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      <Helmet>
-        <title>ConnectBoat - Buy, Sell & Hire Boats Across the UK</title>
-        <meta name="description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, hire, and advertise boats, yachts, outboard engines, gear, and marine services." />
-        <link rel="canonical" href="https://connectboat.co.uk/" />
-        <meta property="og:url" content="https://connectboat.co.uk/" />
-        <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="ConnectBoat" />
-        <meta property="og:title" content="ConnectBoat - Buy, Sell & Hire Boats Across the UK" />
-        <meta property="og:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, hire, and advertise boats, yachts, outboard engines, gear, and marine services." />
-        <meta property="og:image" content="https://connectboat.co.uk/api/og-image" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="ConnectBoat - Buy, Sell & Hire Boats Across the UK" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="ConnectBoat - Buy, Sell & Hire Boats Across the UK" />
-        <meta name="twitter:description" content="ConnectBoat is the UK's premier boat and marine marketplace to buy, sell, hire, and advertise boats, yachts, outboard engines, gear, and marine services." />
-        <meta name="twitter:image" content="https://connectboat.co.uk/api/og-image" />
-      </Helmet>
-      {/* ============================================================== */}
-      {/* 💻 LAYOUT DESKTOP (Aparece apenas em ecrãs médios e superiores) */}
-      {/* ============================================================== */}
-      <div className="hidden md:flex flex-col gap-4 md:gap-5 max-w-full">
-        {/* 1. HERO BANNER LUXURY (Título no topo esquerdo, stats à direita e subtítulo flutuante abaixo do casco) */}
-        <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl transition-all duration-500 max-w-full bg-slate-950 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between" id="desktop-banner-section">
-          {/* Imagem de Fundo dinâmica */}
-          <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
-            <img 
-              src={londonBg} 
-              alt="ConnectBoat UK Marine" 
-              className="w-full h-full object-cover object-[center_20%] transition-all duration-700 ease-in-out"
-              onError={() => {
-                if (londonBg !== londonAerialOriginalStandby) {
-                  setLondonBg(londonAerialOriginalStandby);
-                }
-              }}
-            />
-            {/* Overlay em gradiente top-to-bottom para maximizar legibilidade no topo e no fundo sem cobrir o centro */}
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
-          </div>
+      {/* Pagination & Load More Controls Row */}
+      {filteredAds.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 bg-none">
+          {/* Page Info */}
+          <p className="text-xs text-slate-500 font-bold">
+            Showing <span className="text-slate-800">{(currentPage - 1) * pageSize + 1}</span> to{' '}
+            <span className="text-slate-800">
+              {Math.min(currentPage * pageSize, filteredAds.length)}
+            </span>{' '}
+            of <span className="text-slate-800">{filteredAds.length}</span> filtered results ({ads.length} loaded)
+          </p>
 
-          <div className="relative z-10 w-full h-full flex flex-col justify-between p-3.5 xs:p-4 sm:p-8 md:p-10 lg:p-12 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
-            {/* Topo do Banner: Título no Topo à Esquerda + Stats Badges à Direita */}
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-row items-start justify-between gap-3 sm:gap-4 w-full"
-            >
-              <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-white tracking-tight leading-[1.12] drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] max-w-[220px] xs:max-w-[280px] sm:max-w-md md:max-w-xl text-left">
-                Your Next Adventure Starts Here
-              </h1>
-
-              {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
-              <div className="flex flex-row items-center gap-1.5 sm:gap-3 shrink-0">
-                {/* Contador de Anúncios Slim (Apenas para Staff / Administradores) */}
-                {isModeratorOrAdmin && (
-                  <div 
-                    className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
-                  >
-                    <span className="text-white font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
-                      {totalApprovedCount !== null ? totalApprovedCount : filteredAds.length}
-                    </span>
-                    <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Active<br/>Listings</span>
-
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
-                      🔒 Hidden (Staff view)
-                    </span>
-                  </div>
-                )}
-
-                {/* Contador de Utilizadores Slim */}
-                {(settings?.showTotalUsersBadge || isModeratorOrAdmin) && totalUsersCount !== null && (
-                  <div 
-                    className="flex items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
-                  >
-                    <span className="text-amber-300 font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
-                      {totalUsersCount}
-                    </span>
-                    <span className="text-white/80 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">UK<br/>Members</span>
-
-                    {!settings?.showTotalUsersBadge && isModeratorOrAdmin && (
-                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
-                        🔒 Oculto (Visto por Staff)
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Base do Banner: Subtítulo Flutuante sem container na Parte Inferior (Lado Direito) em 2 linhas */}
-            {bannerConfig?.enabled !== false && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }} 
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-auto pt-2 sm:pt-4 w-full flex justify-end text-right"
-              >
-                <p 
-                  className="text-xs sm:text-sm md:text-base font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-w-[280px] xs:max-w-[340px] sm:max-w-[420px] md:max-w-[460px] text-right"
-                >
-                  Buy, sell and hire boats, yachts, marine gear & services across the United Kingdom.
-                </p>
-              </motion.div>
-            )}
-          </div>
-        </section>
-
-        {/* 2. BARRA DE PESQUISA E DROPDOWNS DESKTOP (Abaixo do Banner, estilo Mobile) */}
-        <section className="w-full flex flex-col gap-2 bg-transparent" id="desktop-search-section">
-          
-          {/* 3 Dropdowns na Primeira Linha */}
-          <div className="grid grid-cols-3 gap-2 w-full" id="desktop-filters-section">
-            {/* Categoria */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
-              <Tag size={14} className="text-slate-400 shrink-0 select-none" />
-              <select
-                value={category}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setCategory(val);
-                  setFilterRegion(false);
-                  setFilterNational(false);
-                  setFilterOnline(false);
-                }}
-                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
-              >
-                <option value="Todas" className="bg-white text-slate-900 font-medium">All Categories</option>
-                {categories.map((c, i) => (
-                  <option key={i} value={c} className="bg-white text-slate-900 font-medium">{c}</option>
-                ))}
-              </select>
-              <span className="text-[9px] text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
-            </div>
-
-            {/* Cidade / Localização */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
-              <MapPin size={14} className="text-slate-400 shrink-0 select-none" />
-              <select
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
-              >
-                <option value="Todas" className="bg-white text-slate-900 font-medium">All Locations</option>
-                {selectableCitiesOnHome.map((c, i) => (
-                  <option key={i} value={c} className="bg-white text-slate-900 font-medium">{c}</option>
-                ))}
-              </select>
-              <span className="text-[9px] text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
-            </div>
-
-            {/* Botão de Filtros */}
+          {/* Pagination Controls */}
+          <div className="flex gap-2">
             <button
-              type="button"
-              onClick={() => setFilterDrawerOpen(true)}
-              className={`h-11 flex items-center justify-center gap-1.5 px-3 sm:px-3.5 rounded-2xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer min-w-0 truncate ${
-                activeMarineFilterCount > 0
-                  ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl text-slate-600 disabled:opacity-40 disabled:pointer-events-none hover:bg-slate-50 transition-all cursor-pointer"
             >
-              <SlidersHorizontal size={14} className="shrink-0 text-slate-500" />
-              <span className="truncate">Filters</span>
-              {activeMarineFilterCount > 0 && (
-                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
-                  {activeMarineFilterCount}
-                </span>
-              )}
+              Previous
+            </button>
+            <span className="px-3.5 py-1.5 bg-slate-50 text-xs font-bold rounded-xl text-slate-700 border border-slate-150">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 text-xs font-bold rounded-xl text-slate-600 disabled:opacity-40 disabled:pointer-events-none hover:bg-slate-50 transition-all cursor-pointer"
+            >
+              Next
             </button>
           </div>
 
-          {/* Campo de Pesquisa Textual na Segunda Linha */}
-          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white rounded-2xl border border-slate-200 focus-within:border-sky-500 transition-all">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => {
-                handleSearchFocus();
-                setIsSearchFocused(true);
-              }}
-              onBlur={() => setIsSearchFocused(false)}
-              placeholder="Search boats, engines, parts, services..."
-              className="w-full bg-transparent text-slate-800 font-medium placeholder:text-slate-800 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm('')}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-1 font-semibold text-xs shrink-0"
-              >
-                ✕
-              </button>
+          {/* Database Load More Button */}
+          <button
+            onClick={handleLoadMore}
+            disabled={loading}
+            className="flex items-center gap-2 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:text-indigo-700 text-slate-700 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+          >
+            {loading ? (
+              <div className="w-4 h-4 border-2 border-indigo-700 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <RefreshCcw size={14} className="text-indigo-650" />
             )}
-            <button
-              type="button"
-              onClick={() => handleSearchFocus()}
-              className="w-9 h-9 sm:w-10 sm:h-10 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white rounded-xl flex items-center justify-center shrink-0 transition-all shadow-sm cursor-pointer"
-              aria-label="Search"
+            <span>Load More from Database</span>
+          </button>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      <AnimatePresence>
+        {selectedAd && (
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col"
             >
-              <Search size={18} />
-            </button>
-          </div>
-
-          {/* Chips de Filtros Ativos (Removíveis) */}
-          {(activeMarineFilterCount > 0 || searchTerm || category !== 'Todas' || city !== 'Todas') && (
-            <div className="flex flex-wrap items-center gap-1.5 mt-1 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-left px-1">
-              <span className="text-slate-400 font-extrabold uppercase text-[10px] tracking-wider flex items-center gap-1">
-                <Filter size={11} /> Filters ({filteredAds.length} found):
-              </span>
-
-              {searchTerm && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-[11px] border border-slate-300 dark:border-slate-700">
-                  Search: "{searchTerm}"
-                  <button onClick={() => setSearchTerm('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {category !== 'Todas' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 font-extrabold text-[11px] border border-indigo-200 dark:border-indigo-800">
-                  Cat: {category}
-                  <button onClick={() => setCategory('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {city !== 'Todas' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 font-extrabold text-[11px] border border-rose-200 dark:border-rose-800">
-                  Location: {city}
-                  <button onClick={() => setCity('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {filterBoatType !== 'Todas' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 font-extrabold text-[11px] border border-sky-200 dark:border-sky-800">
-                  Type: {filterBoatType}
-                  <button onClick={() => setFilterBoatType('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {(filterMinPrice || filterMaxPrice) && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-extrabold text-[11px] border border-emerald-200 dark:border-emerald-800">
-                  Price: {filterMinPrice ? `${country === 'Portugal' ? '€' : '£'}${filterMinPrice}` : '0'} - {filterMaxPrice ? `${country === 'Portugal' ? '€' : '£'}${filterMaxPrice}` : 'Any'}
-                  <button onClick={() => { setFilterMinPrice(''); setFilterMaxPrice(''); }} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {filterManufacturer && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 font-extrabold text-[11px] border border-indigo-200 dark:border-indigo-800">
-                  Make: {filterManufacturer}
-                  <button onClick={() => setFilterManufacturer('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {filterModel && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 font-extrabold text-[11px] border border-indigo-200 dark:border-indigo-800">
-                  Model: {filterModel}
-                  <button onClick={() => setFilterModel('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {(filterMinYear || filterMaxYear) && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-extrabold text-[11px] border border-amber-200 dark:border-amber-800">
-                  Year: {filterMinYear || 'Any'} - {filterMaxYear || 'Any'}
-                  <button onClick={() => { setFilterMinYear(''); setFilterMaxYear(''); }} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {filterCondition !== 'Todas' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 font-extrabold text-[11px] border border-purple-200 dark:border-purple-800">
-                  Cond: {filterCondition}
-                  <button onClick={() => setFilterCondition('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {(filterMinLength || filterMaxLength) && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 font-extrabold text-[11px] border border-teal-200 dark:border-teal-800">
-                  Length: {filterMinLength ? `${filterMinLength}m` : '0m'} - {filterMaxLength ? `${filterMaxLength}m` : 'Any'}
-                  <button onClick={() => { setFilterMinLength(''); setFilterMaxLength(''); }} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {filterFuelType !== 'Todas' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 font-extrabold text-[11px] border border-blue-200 dark:border-blue-800">
-                  Fuel: {filterFuelType}
-                  <button onClick={() => setFilterFuelType('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {filterHullMaterial !== 'Todas' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-[11px] border border-slate-300 dark:border-slate-700">
-                  Hull: {filterHullMaterial}
-                  <button onClick={() => setFilterHullMaterial('Todas')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {filterLocationKeyword && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 font-extrabold text-[11px] border border-rose-200 dark:border-rose-800">
-                  Region: {filterLocationKeyword}
-                  <button onClick={() => setFilterLocationKeyword('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {filterMinCabins && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-cyan-100 dark:bg-cyan-950/80 text-cyan-800 dark:text-cyan-300 font-extrabold text-[11px] border border-cyan-200 dark:border-cyan-800">
-                  Cabins: {filterMinCabins}+
-                  <button onClick={() => setFilterMinCabins('')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              {filterTrailer !== 'Any' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-100 dark:bg-orange-950/80 text-orange-800 dark:text-orange-300 font-extrabold text-[11px] border border-orange-200 dark:border-orange-800">
-                  Trailer: {filterTrailer}
-                  <button onClick={() => setFilterTrailer('Any')} className="hover:text-red-500 font-black ml-0.5">✕</button>
-                </span>
-              )}
-
-              <button
-                onClick={clearAllFilters}
-                className="text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 font-black text-[11px] underline underline-offset-2 ml-1 cursor-pointer transition-colors"
-              >
-                Clear All
-              </button>
-            </div>
-          )}
-
-          {/* Filtro de Área de Atendimento para Categoria Serviços */}
-          {(() => {
-            const isServiceCategory = category === 'Boat Services' || category === 'Serviços' || category?.includes('Services') || category?.includes('Serviços');
-            return isServiceCategory && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="w-full mt-2 border-t border-slate-100 dark:border-slate-800 pt-2.5"
-              >
-                <div className="text-left">
-                  <h3 className="text-xs font-black uppercase tracking-wider mb-2 text-slate-500 flex items-center gap-2">
-                    <span>📍</span> Service Coverage Filter
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <label className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800 select-none bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200">
-                      <input 
-                        type="checkbox" 
-                        checked={filterRegion} 
-                        onChange={(e) => setFilterRegion(e.target.checked)}
-                        className="w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-xs md:text-sm font-extrabold">Local Area Only</span>
-                        <span className="text-[10px] text-slate-400">Local harbour, marina or county</span>
-                      </div>
-                    </label>
-
-                    <label className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800 select-none bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200">
-                      <input 
-                        type="checkbox" 
-                        checked={filterNational} 
-                        onChange={(e) => setFilterNational(e.target.checked)}
-                        className="w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-xs md:text-sm font-extrabold">Nationwide Service</span>
-                        <span className="text-[10px] text-slate-400">Across the entire United Kingdom</span>
-                      </div>
-                    </label>
-
-                    <label className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-100 dark:border-slate-800 select-none bg-slate-50/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-200">
-                      <input 
-                        type="checkbox" 
-                        checked={filterOnline} 
-                        onChange={(e) => setFilterOnline(e.target.checked)}
-                        className="w-5 h-5 rounded-lg border-2 border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-xs md:text-sm font-extrabold">Online / Remote Service</span>
-                        <span className="text-[10px] text-slate-400">100% remote marine services</span>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })()}
-        </section>
-
-        {/* 3. ✨ ANÚNCIOS EM DESTAQUE */}
-        {filteredFeaturedAds.length > 0 && (() => {
-          const salesTheme = getFeaturedSectionTheme(settings?.featuredSalesColor, '#0c223f');
-          return (
-            <section className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 md:p-6 my-3 shadow-xs">
-              {/* Soft 4-Edge Vignette & Pure White Center Overlay */}
-              <div 
-                className="absolute inset-0 pointer-events-none z-0 rounded-2xl md:rounded-3xl"
-                style={{
-                  boxShadow: salesTheme.boxShadow,
-                  background: salesTheme.radialBackground
-                }}
-              />
-              {/* Subtle radial glow behind listing cards */}
-              <div 
-                className="absolute inset-0 pointer-events-none z-0"
-                style={{
-                  background: salesTheme.glowBackground
-                }}
-              />
-
-              <div className="relative z-10">
-                <div className="flex flex-col gap-0.5 mb-4 text-left">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-base sm:text-lg">✨</span>
-                    <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                      Featured Marine Listings
-                    </h2>
-                  </div>
-                  <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
-                    Promoted boats, engines, moorings and equipment across the UK
+              {/* Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 truncate max-w-[280px] sm:max-w-[450px]" title={selectedAd.title}>
+                    {selectedAd.title}
+                  </h2>
+                  <p className="text-xs text-slate-500 font-medium mt-1">
+                    Listing ID: <span className="font-mono">{selectedAd.id}</span>
                   </p>
                 </div>
-                
-                {/* Carrossel Horizontal Responsivo */}
-                <div className="relative w-full overflow-hidden py-1">
-                  <div 
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
-                    onTouchStart={() => setIsHovered(true)}
-                    onTouchEnd={() => setIsHovered(false)}
-                    className="carouselTrack flex gap-4 md:gap-6"
-                    style={{
-                      animationName: (settings?.highlightSpeed !== 0) ? 'scrollCarousel' : 'none',
-                      animationDuration: marqueeData.duration,
-                      animationTimingFunction: 'linear',
-                      animationIterationCount: 'infinite',
-                      animationPlayState: (isHovered || settings?.highlightSpeed === 0) ? 'paused' : 'running',
-                    }}
-                  >
-                    {marqueeData.items.map((ad, idx) => (
-                      <div key={`${ad.id}-${idx}`} className="w-[140px] sm:w-[165px] md:w-[195px] shrink-0">
-                        <AdCard ad={ad} variant="featured" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* 4. ⚓ BOATS FOR HIRE SECTION */}
-        {(() => {
-          const hireTheme = getFeaturedSectionTheme(settings?.featuredHireColor, '#10b7c7');
-          return (
-            <section className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 md:p-6 my-3 shadow-xs text-left" id="boats-for-hire-section">
-              {/* Soft 4-Edge Vignette & Pure White Center Overlay */}
-              <div 
-                className="absolute inset-0 pointer-events-none z-0 rounded-2xl md:rounded-3xl"
-                style={{
-                  boxShadow: hireTheme.boxShadow,
-                  background: hireTheme.radialBackground
-                }}
-              />
-              {/* Subtle radial glow behind content */}
-              <div 
-                className="absolute inset-0 pointer-events-none z-0"
-                style={{
-                  background: hireTheme.glowBackground
-                }}
-              />
-
-              <div className="relative z-10">
-                <div className="flex items-center justify-between gap-4 mb-4">
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <Anchor className="text-sky-600 dark:text-sky-400 shrink-0" size={18} />
-                      <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                        Boats for Hire & Charter
-                      </h2>
-                    </div>
-                    <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
-                      Explore luxury yachts, motorboats & RIBs available for hire across the UK
-                    </p>
-                  </div>
-
-                  <Link
-                    to="/boats-for-hire"
-                    className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-[11px] rounded-xl transition-all shadow-xs flex items-center gap-1 shrink-0 cursor-pointer"
-                  >
-                    <span>View All Boats for Hire</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </div>
-
-                {hireAds.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                    {hireAds.slice(0, 5).map((ad) => (
-                      <AdCard key={`hire-${ad.id}`} ad={ad} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-6 bg-white dark:bg-slate-900/80 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center gap-2 shadow-xs">
-                    <Anchor size={28} className="text-sky-500/60" />
-                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                      Are you a boat owner or charter operator?
-                    </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-md">
-                      List your yacht, powerboat or RIB for hire on ConnectBoat and connect directly with interested clients via WhatsApp.
-                    </p>
-                    <Link
-                      to="/criar-anuncio"
-                      className="mt-1 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5"
-                    >
-                      <span>List Boat for Hire</span>
-                      <ArrowRight size={14} />
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* 5. ⛵ GRID DE ANÚNCIOS (Últimos anúncios) */}
-        <section className="py-2 md:py-4 text-left">
-          <div className="flex flex-col gap-0.5 mb-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-base sm:text-lg">⛵</span>
-              <h2 className="text-xs sm:text-sm md:text-base font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                Latest Marine Listings
-              </h2>
-            </div>
-            <p className="text-[9px] md:text-[10px] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider uppercase">
-              Discover the newest boats, engines, electronics, parts and accessories in real-time
-            </p>
-          </div>
-
-          <div className="px-0">
-            {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="bg-slate-100 dark:bg-slate-800 rounded-2xl h-64 animate-pulse" />
-                ))}
-              </div>
-            ) : errorMsg ? (
-              <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-red-100 dark:border-red-950 shadow-md max-w-md mx-auto p-6 flex flex-col items-center">
-                <span className="text-3xl">⚠️</span>
-                <h3 className="text-md font-extrabold text-slate-850 dark:text-slate-100 mt-2">Connection Issue</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 leading-relaxed">
-                  Unable to connect to the database right now.
-                </p>
                 <button
-                  onClick={() => {
-                    setErrorMsg(null);
-                    setLoading(true);
-                    clearHomeCache();
-                    setReloadCounter(prev => prev + 1);
-                  }}
-                  className="mt-4 px-5 py-2 bg-slate-900 dark:bg-slate-850 text-white font-black text-xs rounded-lg hover:bg-slate-800 transition active:scale-95 shadow-md cursor-pointer flex items-center gap-1.5"
+                  onClick={() => setSelectedAd(null)}
+                  className="h-10 w-10 flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
+                  aria-label="Close"
                 >
-                  <RefreshCcw size={12} />
-                  Try Again
+                  <X size={20} />
                 </button>
               </div>
-            ) : filteredAds.length === 0 ? (
-              <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm">
-                <Anchor size={40} className="mx-auto text-slate-200 dark:text-slate-700 mb-3" />
-                <h3 className="text-md font-extrabold text-slate-400">No boating listings found</h3>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                {displayedAds.map((ad) => (
-                  <AdCard key={ad.id} ad={ad} hideCategory hideActions />
-                ))}
-              </div>
-            )}
 
-            {hasMore && !loading && (
-              <div className="flex justify-center mt-10 pb-6">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={isFetchingMore}
-                  className="flex items-center gap-2 px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-full shadow-md active:scale-95 disabled:opacity-50 transition-all duration-300 cursor-pointer"
-                >
-                  {isFetchingMore ? (
-                    <>
-                      <RefreshCcw className="animate-spin" size={14} />
-                      Loading more...
-                    </>
-                  ) : (
-                    <>
-                      View More Listings
-                      <ArrowRight size={14} />
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
-
-      {/* ============================================================== */}
-      {/* 📱 LAYOUT MOBILE (Aparece apenas em ecrãs menores que md) */}
-      {/* ============================================================== */}
-      <div className="flex md:hidden flex-col gap-4 w-full max-w-full overflow-hidden" id="mobile-home-root">
-        
-        {/* 1. HERO BANNER LUXURY (Primeiro elemento no topo) */}
-        <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl transition-all duration-500 w-full bg-slate-950 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between" id="mobile-banner-section">
-          {/* Imagem de Fundo dinâmica */}
-          <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
-            <img 
-              src={londonBg} 
-              alt="ConnectBoat UK Marine" 
-              className="w-full h-full object-cover object-[center_20%] transition-all duration-700 ease-in-out"
-              onError={() => {
-                if (londonBg !== londonAerialOriginalStandby) {
-                  setLondonBg(londonAerialOriginalStandby);
-                }
-              }}
-            />
-            {/* Overlay em gradiente top-to-bottom para maximizar legibilidade no topo e no fundo sem cobrir o centro */}
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
-          </div>
-
-          <div className="relative z-10 w-full h-full flex flex-col justify-between p-3.5 xs:p-4 sm:p-8 md:p-10 lg:p-12 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
-            {/* Topo do Banner: Título no Topo à Esquerda + Stats Badges à Direita */}
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-row items-start justify-between gap-2.5 sm:gap-4 w-full"
-            >
-              <h1 className="text-xl xs:text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-[1.12] drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] max-w-[200px] xs:max-w-[240px] sm:max-w-md text-left">
-                Your Next Adventure Starts Here
-              </h1>
-
-              {/* Estatísticas (Stats) do Marketplace como Cards Flutuantes de Vidro */}
-              <div className="flex flex-row items-center gap-1.5 sm:gap-3 shrink-0">
-                {/* Contador de Anúncios Slim (Apenas para Staff / Administradores) */}
-                {isModeratorOrAdmin && (
-                  <div 
-                    className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
-                  >
-                    <span className="text-white font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
-                      {totalApprovedCount !== null ? totalApprovedCount : filteredAds.length}
-                    </span>
-                    <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Active<br/>Listings</span>
-
-                    <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
-                      🔒 Hidden (Staff view)
-                    </span>
+              {/* Content */}
+              <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+                {/* Image Gallery */}
+                <div className="space-y-3">
+                  <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center">
+                    <OptimizedImage
+                      src={selectedAd.imageUrl}
+                      alt={selectedAd.title}
+                      className="max-h-[300px] w-full object-contain"
+                    />
                   </div>
-                )}
-
-                {/* Contador de Utilizadores Slim */}
-                {(settings?.showTotalUsersBadge || isModeratorOrAdmin) && totalUsersCount !== null && (
-                  <div 
-                    className="flex items-center bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
-                  >
-                    <span className="text-amber-300 font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
-                      {totalUsersCount}
-                    </span>
-                    <span className="text-white/80 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">UK<br/>Members</span>
-
-                    {!settings?.showTotalUsersBadge && isModeratorOrAdmin && (
-                      <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-950 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold px-3 py-1 rounded-xl shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap pointer-events-none z-10">
-                        🔒 Oculto (Visto por Staff)
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Base do Banner: Subtítulo Flutuante sem container na Parte Inferior (Lado Direito) em 2 linhas no Mobile */}
-            {bannerConfig?.enabled !== false && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }} 
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-auto pt-2 w-full flex justify-end text-right"
-              >
-                <p 
-                  className="text-[11px] xs:text-xs sm:text-sm font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-w-[215px] xs:max-w-[250px] sm:max-w-[300px] text-right"
-                >
-                  Buy, sell and hire boats, yachts, marine gear & services across the United Kingdom.
-                </p>
-              </motion.div>
-            )}
-          </div>
-        </section>
-
-        {/* 2. FILTROS DROPDOWNS E BARRA DE PESQUISA MOBILE */}
-        <section className="w-full flex flex-col gap-2 bg-transparent" id="mobile-search-section">
-          
-          {/* 3 Dropdowns na Mesma Linha */}
-          <div className="grid grid-cols-3 gap-1.5 xs:gap-2 w-full" id="mobile-filters-section">
-            {/* Categoria */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-2.5 transition-all min-w-0">
-              <Tag size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
-              <select
-                value={category}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setCategory(val);
-                  setFilterRegion(false);
-                  setFilterNational(false);
-                  setFilterOnline(false);
-                }}
-                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
-              >
-                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
-                {categories.map((c, i) => (
-                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
-                ))}
-              </select>
-              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-2.5 pointer-events-none select-none">▼</span>
-            </div>
-
-            {/* Cidade / Localização */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-2.5 transition-all min-w-0">
-              <MapPin size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
-              <select
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
-              >
-                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
-                {selectableCitiesOnHome.map((c, i) => (
-                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
-                ))}
-              </select>
-              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-2.5 pointer-events-none select-none">▼</span>
-            </div>
-
-            {/* Botão de Filtros */}
-            <button
-              type="button"
-              onClick={() => setFilterDrawerOpen(true)}
-              className={`h-11 flex items-center justify-center gap-1.5 px-2 xs:px-2.5 rounded-2xl border text-[11px] xs:text-xs font-semibold transition-all cursor-pointer min-w-0 truncate ${
-                activeMarineFilterCount > 0
-                  ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
-              }`}
-            >
-              <SlidersHorizontal size={14} className="shrink-0 text-slate-500 dark:text-slate-400" />
-              <span className="truncate">Filters</span>
-              {activeMarineFilterCount > 0 && (
-                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
-                  {activeMarineFilterCount}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Campo de Pesquisa Textual Mobile */}
-          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 focus-within:border-sky-500 transition-all">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => {
-                handleSearchFocus();
-                setIsSearchFocused(true);
-              }}
-              onBlur={() => setIsSearchFocused(false)}
-              placeholder="Search boats, engines, parts, services..."
-              className="w-full bg-transparent text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm('')}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-1 font-semibold text-xs shrink-0"
-              >
-                ✕
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => handleSearchFocus()}
-              className="w-9 h-9 sm:w-10 sm:h-10 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white rounded-xl flex items-center justify-center shrink-0 transition-all shadow-sm cursor-pointer"
-              aria-label="Search"
-            >
-              <Search size={18} />
-            </button>
-          </div>
-
-          {/* Filtros expandidos de serviços se categoria for Serviços */}
-          {(() => {
-            const isServiceCategory = category === 'Boat Services' || category === 'Serviços' || category?.includes('Services') || category?.includes('Serviços');
-            return isServiceCategory && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="w-full mt-1 bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-2.5 border border-slate-200/80 dark:border-slate-800"
-              >
-                <div className="flex flex-col gap-2 text-left">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Service Area:</span>
-                  <div className="flex flex-wrap gap-2">
-                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200">
-                      <input type="checkbox" checked={filterRegion} onChange={(e) => setFilterRegion(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                      <span>Local</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200">
-                      <input type="checkbox" checked={filterNational} onChange={(e) => setFilterNational(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                      <span>Nationwide</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200">
-                      <input type="checkbox" checked={filterOnline} onChange={(e) => setFilterOnline(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                      <span>Remote</span>
-                    </label>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })()}
-        </section>
-
-        {/* 4. ANÚNCIOS EM DESTAQUE (Carrossel Compacto) */}
-        {filteredFeaturedAds.length > 0 && (
-          <section className="relative w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 my-1 shadow-2xs overflow-hidden" id="mobile-featured-section">
-            {/* Soft 4-Edge Navy Vignette & Pure White Center Overlay */}
-            <div 
-              className="absolute inset-0 pointer-events-none z-0 rounded-2xl"
-              style={{
-                boxShadow: 'inset 0 0 28px 2px rgba(12, 34, 63, 0.12)',
-                background: 'radial-gradient(ellipse at 50% 50%, #ffffff 25%, rgba(255, 255, 255, 0.96) 50%, rgba(20, 50, 93, 0.05) 80%, rgba(12, 34, 63, 0.14) 100%)'
-              }}
-            />
-            {/* Subtle radial glow behind listing cards */}
-            <div 
-              className="absolute inset-0 pointer-events-none z-0"
-              style={{
-                background: 'radial-gradient(ellipse 85% 55% at 50% 60%, rgba(20, 50, 93, 0.04) 0%, rgba(12, 34, 63, 0.02) 55%, transparent 80%)'
-              }}
-            />
-
-            <div className="relative z-10">
-              <div className="flex items-center gap-1.5 mb-2.5 text-left">
-                <span className="text-base">✨</span>
-                <h2 className="text-xs font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                  Featured
-                </h2>
-              </div>
-              
-              {/* Esteira horizontal compacta */}
-              <div className="relative w-full overflow-hidden">
-                <div 
-                  className="carouselTrack flex gap-3"
-                  style={{
-                    animationName: (settings?.highlightSpeed !== 0) ? 'scrollCarousel' : 'none',
-                    animationDuration: marqueeData.duration,
-                    animationTimingFunction: 'linear',
-                    animationIterationCount: 'infinite',
-                  }}
-                >
-                  {marqueeData.items.map((ad, idx) => (
-                    <div key={`${ad.id}-${idx}`} className="w-[125px] shrink-0">
-                      <AdCard ad={ad} variant="featured" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* 5. ⚓ BOATS FOR HIRE SECTION MOBILE */}
-        {(() => {
-          const hireTheme = getFeaturedSectionTheme(settings?.featuredHireColor, '#10b7c7');
-          return (
-            <section 
-              className="relative w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 my-1 shadow-2xs overflow-hidden text-left" 
-              id="mobile-hire-section"
-            >
-              {/* Soft 4-Edge Vignette & Pure White Center Overlay */}
-              <div 
-                className="absolute inset-0 pointer-events-none z-0 rounded-2xl"
-                style={{
-                  boxShadow: hireTheme.boxShadow,
-                  background: hireTheme.radialBackground
-                }}
-              />
-              <div 
-                className="absolute inset-0 pointer-events-none z-0"
-                style={{
-                  background: hireTheme.glowBackground
-                }}
-              />
-
-              <div className="relative z-10">
-                <div className="flex items-center justify-between gap-2 mb-2.5 text-left">
-                  <div className="flex items-center gap-1.5">
-                    <Anchor className="text-sky-600 dark:text-sky-400 shrink-0" size={16} />
-                    <h2 className="text-xs font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                      Boats for Hire & Charter
-                    </h2>
-                  </div>
-                  
-                  <Link
-                    to="/boats-for-hire"
-                    className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-[10px] rounded-lg transition-all shadow-2xs flex items-center gap-1 shrink-0 cursor-pointer"
-                  >
-                    <span>View All</span>
-                    <ArrowRight size={11} />
-                  </Link>
-                </div>
-
-                {hireAds.length > 0 ? (
-                  /* Manual horizontal scrollable row with same proportion as featured cards */
-                  <div className="w-full overflow-x-auto scrollbar-none pb-1 pt-0.5">
-                    <div className="flex gap-3 min-w-min">
-                      {hireAds.map((ad) => (
-                        <div key={`mobile-hire-${ad.id}`} className="w-[125px] shrink-0">
-                          <AdCard ad={ad} variant="featured" />
+                  {selectedAd.images && selectedAd.images.length > 1 && (
+                    <div className="grid grid-cols-4 gap-2">
+                      {selectedAd.images.map((img, i) => (
+                        <div key={i} className="aspect-video bg-slate-50 rounded-xl overflow-hidden border border-slate-100 flex items-center justify-center">
+                          <img
+                            src={img}
+                            alt={`Image ${i + 1}`}
+                            className="max-h-full max-w-full object-contain"
+                          />
                         </div>
                       ))}
                     </div>
-                  </div>
-                ) : (
-                  <div className="p-3.5 bg-white/80 dark:bg-slate-900/80 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center flex flex-col items-center justify-center gap-1">
-                    <Anchor size={20} className="text-sky-500/60" />
-                    <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                      Are you a boat owner or charter operator?
-                    </p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 max-w-xs leading-tight">
-                      List your boat or yacht for hire on ConnectBoat.
-                    </p>
-                    <Link
-                      to="/criar-anuncio"
-                      className="mt-1 px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white font-bold text-[10px] rounded-lg transition-all shadow-2xs flex items-center gap-1"
-                    >
-                      <span>List Boat for Hire</span>
-                      <ArrowRight size={11} />
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </section>
-          );
-        })()}
-
-        {/* 6. ÚLTIMOS ANÚNCIOS (Grid Compacta de 2 Colunas) */}
-        <section className="w-full text-left" id="mobile-latest-section">
-          <div className="flex items-center gap-1.5 mb-3">
-            <span className="text-base">⛵</span>
-            <h2 className="text-xs font-brand font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-              Latest Listings
-            </h2>
-          </div>
-
-          <div ref={resultsSectionRef}>
-            {loading ? (
-              <div className="grid grid-cols-2 gap-2">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="bg-slate-100 dark:bg-slate-850 rounded-xl h-44 animate-pulse" />
-                ))}
-              </div>
-            ) : errorMsg ? (
-              <div className="text-center py-8 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-red-100 dark:border-red-950 p-4">
-                <span className="text-2xl">⚠️</span>
-                <p className="text-slate-600 dark:text-slate-400 text-xs mt-1 font-bold">Unable to load listings right now.</p>
-              </div>
-            ) : filteredAds.length === 0 ? (
-              <div className="text-center py-10 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <p className="text-xs font-black text-slate-400">No boating listings available.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {displayedAds.map((ad) => (
-                  <AdCard key={`mb-ad-${ad.id}`} ad={ad} hideCategory hideActions />
-                ))}
-              </div>
-            )}
-
-            {hasMore && !loading && (
-              <div className="flex justify-center mt-6 pb-4">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={isFetchingMore}
-                  className="flex items-center gap-1.5 px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-full shadow-md transition-all cursor-pointer"
-                >
-                  {isFetchingMore ? (
-                    <span>Loading...</span>
-                  ) : (
-                    <>
-                      <span>Load More</span>
-                      <ArrowRight size={12} />
-                    </>
                   )}
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-      </div>
+                </div>
 
-      {/* Voltar ao Topo (Comum a ambos os layouts) */}
-      <AnimatePresence>
-        {showScrollTop && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 15 }}
-            onClick={scrollToTop}
-            title="Voltar ao topo"
-            aria-label="Voltar ao topo"
-            className="fixed bottom-6 right-6 z-50 p-3.5 md:p-4 bg-white text-indigo-600 hover:text-indigo-700 border border-slate-150 rounded-full shadow-2xl transition-transform hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center"
-            id="back-to-top-btn"
-          >
-            <ArrowUp size={20} className="md:w-6 md:h-6" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+                {/* Image Framing Adjustment */}
+                <div className="p-4 bg-slate-50 border border-slate-200/60 rounded-2xl space-y-4">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5 pb-2 border-b border-slate-200">
+                    <ImageIcon size={14} className="text-indigo-500" />
+                    Image Framing (Admin Adjustment)
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    {/* Live Preview Box */}
+                    <div className="flex flex-col items-center">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Live Preview (Card/Cover)</p>
+                      <div className="w-28 h-28 bg-slate-200 rounded-xl overflow-hidden border border-slate-300 relative shadow-inner">
+                        <img 
+                          src={selectedAd.imageUrl} 
+                          alt="Framing preview" 
+                          className="w-full h-full object-cover transition-all duration-75"
+                          style={{
+                            objectPosition: `${adminImagePositionX}% ${adminImagePositionY}%`,
+                            transform: `scale(${adminImageZoom}) translate(${
+                              adminImageZoom > 1
+                                ? (adminImagePositionX - 50) * (adminImageZoom - 1) / adminImageZoom
+                                : 0
+                            }%, ${
+                              adminImageZoom > 1
+                                ? (adminImagePositionY - 50) * (adminImageZoom - 1) / adminImageZoom
+                                : 0
+                            }%)`
+                          }}
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    </div>
 
-      {/* ============================================================== */}
-      {/* ⚓ ADVANCED MARINE FILTER SLIDE-OVER DRAWER / MODAL */}
-      {/* ============================================================== */}
-      <AnimatePresence>
-        {filterDrawerOpen && (
-          <div className="fixed inset-0 z-[9999] flex justify-end bg-slate-950/70 backdrop-blur-sm transition-opacity">
-            <motion.div
-              initial={{ opacity: 0, x: '100%' }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="w-full max-w-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 h-full flex flex-col shadow-2xl border-l border-slate-200 dark:border-slate-800 overflow-hidden"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-sky-400">
-                    <Anchor size={20} />
+                    {/* Sliders and Action Buttons */}
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between text-[11px] font-bold text-slate-600 mb-0.5">
+                          <span>Horizontal</span>
+                          <span className="font-mono text-indigo-600">{adminImagePositionX}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={adminImagePositionX}
+                          onChange={(e) => setAdminImagePositionX(Number(e.target.value))}
+                          className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-ew-resize accent-indigo-600 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-[11px] font-bold text-slate-600 mb-0.5">
+                          <span>Vertical</span>
+                          <span className="font-mono text-indigo-600">{adminImagePositionY}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={adminImagePositionY}
+                          onChange={(e) => setAdminImagePositionY(Number(e.target.value))}
+                          className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-ns-resize accent-indigo-600 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between text-[11px] font-bold text-slate-600 mb-0.5">
+                          <span>Zoom</span>
+                          <span className="font-mono text-indigo-600">{adminImageZoom.toFixed(2)}x</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="1.8"
+                          step="0.05"
+                          value={adminImageZoom}
+                          onChange={(e) => setAdminImageZoom(Number(e.target.value))}
+                          className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-zoom-in accent-indigo-600 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdminImagePositionX(50);
+                            setAdminImagePositionY(50);
+                          }}
+                          className="flex-1 py-1.5 px-2 bg-indigo-50 border border-indigo-100/70 hover:bg-indigo-100/60 text-[10px] font-bold text-indigo-600 rounded-lg transition-colors cursor-pointer text-center"
+                        >
+                          Centre
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdminImagePositionX(50);
+                            setAdminImagePositionY(50);
+                            setAdminImageZoom(1);
+                          }}
+                          className="flex-1 py-1.5 px-2 bg-slate-100 border border-slate-200 hover:bg-slate-200/60 text-[10px] font-bold text-slate-600 rounded-lg transition-colors cursor-pointer text-center"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-base font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-                      Marine Filters
-                      {activeMarineFilterCount > 0 && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-black bg-sky-600 text-white">
-                          {activeMarineFilterCount}
-                        </span>
-                      )}
-                    </h2>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">
-                      Narrow down boats, engines, gear and services
-                    </p>
+
+                  <div className="flex justify-end pt-1 bg-none">
+                    <button
+                      type="button"
+                      disabled={savingPosition || savedPositionSuccess}
+                      onClick={handleSaveEnquadramento}
+                      className={`w-full font-black text-xs py-2 px-3 rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1 ${
+                        savedPositionSuccess 
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-100' 
+                          : 'bg-slate-900 hover:bg-indigo-600 text-white'
+                      }`}
+                    >
+                      {savingPosition ? 'Saving...' : savedPositionSuccess ? '✓ Saved Successfully!' : 'Save Framing'}
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {activeMarineFilterCount > 0 && (
+                {/* Badges Info */}
+                <div className="flex flex-wrap gap-2">
+                  <span className={`inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap ${
+                    selectedAd.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 
+                    selectedAd.status === 'pending' ? 'bg-amber-50 text-amber-600' : 
+                    'bg-red-50 text-red-600'
+                  }`}>
+                    Status: {selectedAd.status}
+                  </span>
+                  {selectedAd.adStatus && selectedAd.adStatus !== selectedAd.status && !(selectedAd.status === 'pending' && selectedAd.adStatus === 'active') && (
+                    <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-indigo-50 text-indigo-600 font-sans">
+                      Cycle: {selectedAd.adStatus}
+                    </span>
+                  )}
+                  {selectedAd.isHidden && (
+                    <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-amber-500 text-white font-sans shadow-xs">
+                      🙈 Standby (Oculto)
+                    </span>
+                  )}
+                  {selectedAd.plan && (
+                    <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-purple-50 text-purple-600 font-sans">
+                      Plan: {selectedAd.plan}
+                    </span>
+                  )}
+                  {/* Payment Email Status Badge */}
+                  {selectedAd.paymentConfirmationEmailStatus === 'sent' || selectedAd.paymentConfirmationEmailSent ? (
+                    <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-emerald-50 text-emerald-700 border border-emerald-200" title="E-mail de recibo enviado ao anunciante">
+                      ✉️ Email: Sent
+                    </span>
+                  ) : selectedAd.paymentConfirmationEmailStatus === 'failed' ? (
+                    <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-red-50 text-red-700 border border-red-200" title={selectedAd.paymentConfirmationEmailError || 'Falha ao enviar e-mail'}>
+                      ✉️ Email: Failed
+                    </span>
+                  ) : (
+                    <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-slate-100 text-slate-600 border border-slate-200">
+                      ✉️ Email: Not sent
+                    </span>
+                  )}
+                </div>
+
+                {/* Primary Details Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
+                    <p className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">Price</p>
+                    <p className="text-2xl font-black text-slate-950 mt-1">
+                      {selectedAd.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(selectedAd.price, selectedAd.country)}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Location & Category</p>
+                    <div className="space-y-1.5 mt-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                        <MapPin size={14} className="text-red-500 shrink-0" />
+                        <span>{selectedAd.country === 'Reino Unido' ? '🇬🇧' : '🇵🇹'} {selectedAd.city}, {selectedAd.country || 'Portugal'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                        <Tag size={14} className="text-indigo-500 shrink-0" />
+                        <span>{selectedAd.category}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Information Card */}
+                <div className="bg-emerald-50/40 p-4 rounded-2xl border border-emerald-100/80 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <CreditCard size={15} className="text-emerald-600" />
+                      <span>Payment & Plan Information</span>
+                    </h4>
+                    {(() => {
+                      const pInfo = getAdPaymentClassification(selectedAd);
+                      if (pInfo.isPaid) {
+                        return (
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase rounded-md border border-emerald-200">
+                            💳 Paid
+                          </span>
+                        );
+                      }
+                      if (pInfo.type === 'legacy_free') {
+                        return (
+                          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-semibold uppercase rounded-md border border-slate-200">
+                            Legacy / Free Listing
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-semibold uppercase rounded-md border border-slate-200">
+                          Payment data unavailable
+                        </span>
+                      );
+                    })()}
+                    {(selectedAd as any).paymentFlow === 'admin_assisted' && (selectedAd as any).awaitingAdminActivation === true && isPaidAd(selectedAd) && (
+                      <span className="px-2 py-0.5 bg-cyan-50 text-cyan-700 text-[10px] font-black uppercase rounded-md border border-cyan-200">
+                        Awaiting Admin Activation
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-1">
+                    <div>
+                      <span className="text-slate-500 font-medium">Acquired Plan:</span>{' '}
+                      <span className="font-bold text-slate-900">{getAdPlanLabel(selectedAd).label}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-medium">Payment Date (UK):</span>{' '}
+                      <span className="font-bold text-slate-900">
+                        {isPaidAd(selectedAd) && (formatUKDateTime(selectedAd.paidAt) || formatUKDate(selectedAd.paidAt)) ? (
+                          formatUKDateTime(selectedAd.paidAt) || formatUKDate(selectedAd.paidAt)
+                        ) : (
+                          <span className="text-slate-400 italic font-normal">Payment data unavailable</span>
+                        )}
+                      </span>
+                    </div>
+                    {selectedAd.stripeCheckoutSessionId && (
+                      <div className="sm:col-span-2">
+                        <span className="text-slate-500 font-medium">Stripe Session ID:</span>{' '}
+                        <span className="font-mono text-[11px] text-slate-800 bg-emerald-100/50 px-1.5 py-0.5 rounded select-all break-all">
+                          {selectedAd.stripeCheckoutSessionId}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {selectedAd.isDuplicate && (
+                  <div className="bg-amber-50 text-amber-900 border-2 border-amber-200 rounded-2xl p-4 text-xs font-semibold space-y-2">
+                    <div className="flex items-center justify-between font-bold text-amber-800">
+                      <div className="flex items-center gap-1.5">
+                        <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                        <span>
+                          {selectedAd.duplicateLevel === 'confirmed' ? 'EXACT DUPLICATE LISTING ALERT' : 'POSSIBLE DUPLICATE ALERT'}
+                        </span>
+                      </div>
+                      {selectedAd.duplicateScore !== undefined && (
+                        <span className="px-2 py-0.5 bg-amber-200 text-amber-900 rounded-full text-[10px] font-black">
+                          {selectedAd.duplicateScore}% Confidence
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-slate-700 leading-relaxed font-medium">
+                      The system identified similarity with an existing listing from the seller.
+                    </p>
+                    <p className="text-slate-900 font-black bg-amber-100/50 p-2.5 rounded-xl select-text">
+                      Reason: {selectedAd.duplicateReason}
+                    </p>
+                    {selectedAd.duplicateMatchedFields && selectedAd.duplicateMatchedFields.length > 0 && (
+                      <div className="flex flex-wrap gap-1 items-center pt-1">
+                        <span className="text-[10px] text-slate-500 font-bold uppercase mr-1">Matched Fields:</span>
+                        {selectedAd.duplicateMatchedFields.map(f => (
+                          <span key={f} className="px-2 py-0.5 bg-amber-200/60 text-amber-900 text-[10px] font-extrabold rounded-md uppercase">
+                            {f.replace(/_/g, ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {selectedAd.duplicateUserChoice && (
+                      <div className="text-[11px] font-bold text-indigo-700 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
+                        User Decision: {selectedAd.duplicateUserChoice === 'continued_different_boat' ? 'User confirmed this is a different boat and proceeded' : selectedAd.duplicateUserChoice}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Full Description</h4>
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-sm text-slate-700 font-medium whitespace-pre-wrap break-words overflow-hidden leading-relaxed">
+                    {selectedAd.description || 'No description provided.'}
+                  </div>
+                </div>
+
+                {/* Seller / Account Info */}
+                <div className="p-4 rounded-2xl border border-indigo-100 bg-indigo-50/40 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <h4 className="text-xs font-black text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <UserRound size={15} />
+                        Seller / Account Information
+                      </h4>
+                      <p className="text-[11px] text-slate-500 font-medium mt-1">Private support information visible in the Admin panel only.</p>
+                    </div>
+                    {selectedAd.sellerId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const sellerId = selectedAd.sellerId.trim();
+                          setSelectedAd(null);
+                          navigate(`/admin/users?seller=${encodeURIComponent(sellerId)}`);
+                        }}
+                        className="h-9 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[11px] rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap"
+                      >
+                        <ExternalLink size={14} />
+                        Open User Profile
+                      </button>
+                    )}
+                  </div>
+
+                  {sellerProfileLoading ? (
+                    <div className="flex items-center gap-2 text-xs font-bold text-indigo-700 py-2">
+                      <div className="w-4 h-4 border-2 border-indigo-300 border-t-indigo-700 rounded-full animate-spin" />
+                      Loading account details...
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Name</span>
+                          <p className="text-slate-900 font-bold mt-1">{sellerProfile?.name || selectedAd.sellerName || 'Not available'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><Mail size={11} /> Email</span>
+                          <p className="text-slate-900 font-bold mt-1 break-all select-all">{sellerProfile?.email || selectedAd.contactEmail || 'Not available'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1"><Phone size={11} /> Phone / WhatsApp</span>
+                          <p className="text-slate-900 font-bold mt-1 select-all">{sellerProfile?.phone || selectedAd.sellerPhone || 'Not available'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Location</span>
+                          <p className="text-slate-900 font-bold mt-1">
+                            {[sellerProfile?.city, sellerProfile?.country].filter(Boolean).join(', ') || selectedAd.city || 'Not available'}
+                          </p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Account role</span>
+                          <p className="text-slate-900 font-bold mt-1 capitalize">{sellerProfile?.role || 'user'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Listings by this user</span>
+                          <p className="text-slate-900 font-bold mt-1">{sellerAdsCount ?? 'Not available'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Account created / terms accepted</span>
+                          <p className="text-slate-900 font-bold mt-1">{formatSellerDate(sellerProfile?.acceptedTermsAt)}</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                          <span className="text-[10px] font-black uppercase text-slate-400">Last login</span>
+                          <p className="text-slate-900 font-bold mt-1">{formatSellerDate(sellerProfile?.lastLoginAt)}</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white rounded-xl border border-indigo-100 p-3">
+                        <span className="text-[10px] font-black uppercase text-slate-400">User UID</span>
+                        <p className="text-slate-950 font-mono text-[11px] mt-1 select-all break-all">{selectedAd.sellerId || 'Not available'}</p>
+                      </div>
+
+                      {sellerProfileError && (
+                        <div className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                          {sellerProfileError} The listing-level seller information above remains available.
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="p-6 border-t border-slate-100 bg-slate-50/80 flex flex-wrap gap-3 items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400">Created on</p>
+                  <p className="text-xs font-bold text-slate-700 mt-1 flex items-center gap-1">
+                    <Clock size={12} />
+                    {selectedAd.createdAt?.toDate ? format(selectedAd.createdAt.toDate(), 'dd MMM yyyy HH:mm') : 'Recently'}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleResendPaymentEmail(selectedAd.id)}
+                    disabled={resendingEmailId === selectedAd.id}
+                    className="h-10 px-4 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-sm shadow-sky-100 disabled:opacity-50"
+                    title="Reenviar E-mail de Recibo/Pagamento ao Anunciante"
+                  >
+                    {resendingEmailId === selectedAd.id ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <MessageSquare size={16} />
+                    )}
+                    <span>Reenviar E-mail Pagamento</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedAd(null);
+                      navigate(`/edit-ad/${selectedAd.id}`);
+                    }}
+                    className="h-10 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-xl transition-all flex items-center gap-2"
+                    title="Edit Listing"
+                  >
+                    <Edit size={16} />
+                    <span>Edit</span>
+                  </button>
+                  {!isPaidAd(selectedAd) && selectedAd.status === 'pending' && (
                     <button
-                      type="button"
-                      onClick={clearAllFilters}
-                      className="text-xs font-extrabold text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      onClick={() => openAssistedPayment(selectedAd)}
+                      className="h-10 px-4 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border border-cyan-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2"
+                      title="Generate assisted Stripe payment link and QR code"
                     >
-                      Clear All
+                      <CreditCard size={16} />
+                      <span>Payment QR</span>
+                    </button>
+                  )}
+                  {selectedAd.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={async () => {
+                          const success = await handleAdAction(selectedAd.id, 'approved');
+                          if (success) {
+                            setSelectedAd(null);
+                            alert('Listing approved successfully!');
+                          }
+                        }}
+                        className="h-10 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-sm shadow-emerald-100"
+                      >
+                        <CheckCircle size={16} />
+                        <span>Approve</span>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const success = await handleAdAction(selectedAd.id, 'rejected');
+                          if (success) {
+                            setSelectedAd(null);
+                            alert('Listing rejected successfully!');
+                          }
+                        }}
+                        className="h-10 px-4 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
+                      >
+                        <XCircle size={16} />
+                        <span>Reject</span>
+                      </button>
+                    </>
+                  )}
+                  {selectedAd.isClaimableBusiness ? (
+                    selectedAd.claimStatus === 'claimed' ? (
+                      <span className="h-10 px-4 bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl flex items-center gap-2" title="Verified Owner">
+                        <ShieldCheck size={16} className="text-emerald-600" />
+                        <span>Verified Owner</span>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleRemoveClaimable(selectedAd.id)}
+                        disabled={claimActionLoading}
+                        className="h-10 px-4 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-xs rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                        title="Remove Claim Status"
+                      >
+                        <ShieldAlert size={16} />
+                        <span>Remove Claim</span>
+                      </button>
+                    )
+                  ) : (
+                    <button
+                      onClick={() => handleMakeClaimable(selectedAd.id)}
+                      disabled={claimActionLoading}
+                      className="h-10 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold text-xs rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                      title="Make Claimable Business"
+                    >
+                      <ShieldCheck size={16} />
+                      <span>Make Claimable</span>
                     </button>
                   )}
                   <button
                     type="button"
-                    onClick={() => setFilterDrawerOpen(false)}
-                    className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    onClick={() => handleToggleHideAd(selectedAd.id, selectedAd.isHidden)}
+                    className={`h-10 px-4 font-bold text-xs rounded-xl transition-all flex items-center gap-2 border cursor-pointer ${
+                      selectedAd.isHidden
+                        ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 shadow-xs'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                    }`}
+                    title={selectedAd.isHidden ? 'Anúncio em Standby (Oculto). Clique para tornar visível' : 'Anúncio Visível. Clique para colocar em Standby'}
                   >
-                    <X size={20} />
+                    <div className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors ${selectedAd.isHidden ? 'bg-amber-600' : 'bg-slate-300'}`}>
+                      <div className={`w-3 h-3 bg-white rounded-full shadow-md transform transition-transform ${selectedAd.isHidden ? 'translate-x-3' : 'translate-x-0'}`} />
+                    </div>
+                    <span>{selectedAd.isHidden ? 'Standby (Oculto)' : 'Ocultar (Standby)'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteAd(selectedAd.id)}
+                    className="h-10 px-4 bg-red-50 hover:bg-red-600 hover:text-white text-red-600 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5"
+                    title="Permanently delete"
+                  >
+                    <Trash2 size={16} />
+                    <span>Delete</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedAd(null)}
+                    className="h-10 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-all"
+                  >
+                    Close
                   </button>
                 </div>
               </div>
-
-              {/* Modal Body - Scrollable Form Controls */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-6 text-left">
-                
-                {/* Section 0: Region Selection */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <MapPin size={14} className="text-sky-500" />
-                    <span>Region</span>
-                  </label>
-                  <select
-                    value={selectedRegion}
-                    onChange={(e) => setSelectedRegion(e.target.value)}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-extrabold text-slate-800 dark:text-slate-100 outline-none cursor-pointer"
-                  >
-                    <option value="">All Regions</option>
-                    {UK_REGIONS.map(reg => (
-                      <option key={reg} value={reg}>{reg}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Section 1: Boat Type */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <Ship size={14} className="text-sky-500" />
-                    <span>Boat Type</span>
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFilterBoatType('Todas')}
-                      className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition-all text-center ${
-                        filterBoatType === 'Todas'
-                          ? 'bg-sky-600 text-white border-sky-600 shadow-md shadow-sky-600/20'
-                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
-                      }`}
-                    >
-                      All Types
-                    </button>
-                    {BOAT_TYPES.map((bt) => (
-                      <button
-                        key={bt}
-                        type="button"
-                        onClick={() => setFilterBoatType(filterBoatType === bt ? 'Todas' : bt)}
-                        className={`px-3 py-2 rounded-xl text-xs font-extrabold border transition-all text-center truncate ${
-                          filterBoatType === bt
-                            ? 'bg-sky-600 text-white border-sky-600 shadow-md shadow-sky-600/20'
-                            : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
-                        }`}
-                      >
-                        {bt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Section 2: Price Range */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                    <span>Price Range ({country === 'Portugal' ? '€' : '£'})</span>
-                    {(filterMinPrice || filterMaxPrice) && (
-                      <button
-                        type="button"
-                        onClick={() => { setFilterMinPrice(''); setFilterMaxPrice(''); }}
-                        className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline"
-                      >
-                        Reset Price
-                      </button>
-                    )}
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 mb-1 block">Min Price</span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="Min (£/€)"
-                        value={filterMinPrice}
-                        onChange={(e) => setFilterMinPrice(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 mb-1 block">Max Price</span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="Max (£/€)"
-                        value={filterMaxPrice}
-                        onChange={(e) => setFilterMaxPrice(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 3: Make & Model */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Manufacturer & Model
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 mb-1 block">Manufacturer / Builder</span>
-                      <input
-                        type="text"
-                        list="mfg-suggestions"
-                        placeholder="e.g. Beneteau, Sunseeker..."
-                        value={filterManufacturer}
-                        onChange={(e) => setFilterManufacturer(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                      />
-                      <datalist id="mfg-suggestions">
-                        {availableManufacturers.map((m) => (
-                          <option key={m} value={m} />
-                        ))}
-                      </datalist>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 mb-1 block">Model Name</span>
-                      <input
-                        type="text"
-                        placeholder="e.g. Antares, Predator..."
-                        value={filterModel}
-                        onChange={(e) => setFilterModel(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 4: Year Range */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Year Built
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 mb-1 block">Min Year</span>
-                      <input
-                        type="number"
-                        placeholder="e.g. 2010"
-                        value={filterMinYear}
-                        onChange={(e) => setFilterMinYear(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 mb-1 block">Max Year</span>
-                      <input
-                        type="number"
-                        placeholder="e.g. 2024"
-                        value={filterMaxYear}
-                        onChange={(e) => setFilterMaxYear(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 5: Condition */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Vessel Condition
-                  </label>
-                  <select
-                    value={filterCondition}
-                    onChange={(e) => setFilterCondition(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                  >
-                    <option value="Todas">Any Condition</option>
-                    {BOAT_CONDITIONS.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Section 6: Length (Meters) */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Length (Metres)
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 mb-1 block">Min Length (m)</span>
-                      <input
-                        type="number"
-                        step="0.1"
-                        placeholder="e.g. 6"
-                        value={filterMinLength}
-                        onChange={(e) => setFilterMinLength(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 mb-1 block">Max Length (m)</span>
-                      <input
-                        type="number"
-                        step="0.1"
-                        placeholder="e.g. 15"
-                        value={filterMaxLength}
-                        onChange={(e) => setFilterMaxLength(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 7: Fuel & Hull */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2.5">
-                    <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                      <Fuel size={14} className="text-amber-500" />
-                      <span>Fuel Type</span>
-                    </label>
-                    <select
-                      value={filterFuelType}
-                      onChange={(e) => setFilterFuelType(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                    >
-                      <option value="Todas">Any Fuel</option>
-                      {BOAT_FUEL_TYPES.map((f) => (
-                        <option key={f} value={f}>{f}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Hull Material
-                    </label>
-                    <select
-                      value={filterHullMaterial}
-                      onChange={(e) => setFilterHullMaterial(e.target.value)}
-                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                    >
-                      <option value="Todas">Any Hull Material</option>
-                      {BOAT_HULL_MATERIALS.map((h) => (
-                        <option key={h} value={h}>{h}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Section 8: Location / Region Text */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                    <Compass size={14} className="text-emerald-500" />
-                    <span>Location / Boating Region</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Solent, Faro, Plymouth, Hampshire..."
-                    value={filterLocationKeyword}
-                    onChange={(e) => setFilterLocationKeyword(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                  />
-                </div>
-
-                {/* Section 9: Cabins & Trailer */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2.5">
-                    <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Minimum Cabins
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g. 1"
-                      value={filterMinCabins}
-                      onChange={(e) => setFilterMinCabins(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-900 dark:text-white"
-                    />
-                  </div>
-
-                  <div className="space-y-2.5">
-                    <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Trailer Included
-                    </label>
-                    <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 p-1 bg-slate-50 dark:bg-slate-800">
-                      {(['Any', 'Yes', 'No'] as const).map((t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => setFilterTrailer(t)}
-                          className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all ${
-                            filterTrailer === t
-                              ? 'bg-sky-600 text-white shadow'
-                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                          }`}
-                        >
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Modal Footer */}
-              <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex items-center justify-between gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={clearAllFilters}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-extrabold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  Reset
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFilterDrawerOpen(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs transition-all shadow-md shadow-sky-600/20 text-center"
-                >
-                  Show {filteredAds.length} {filteredAds.length === 1 ? 'Listing' : 'Listings'}
-                </button>
-              </div>
-
             </motion.div>
+          </div>
+        )}
+        {assistedPaymentAd && (
+          <div className="fixed inset-0 z-[100] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+              <div className="p-5 border-b border-slate-100 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">Generate Payment QR</h3>
+                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">{assistedPaymentAd.title}</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-1">{assistedPaymentAd.id}</p>
+                </div>
+                <button
+                  onClick={closeAssistedPayment}
+                  className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center"
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {!assistedPaymentUrl ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-2">Choose plan</label>
+                      <div className="grid grid-cols-1 gap-2">
+                        {([
+                          ['standard', 'Standard Listing', `£${assistedPlanPrices.standard.toFixed(2)}`],
+                          ['featured', 'Featured Listing', `£${assistedPlanPrices.featured.toFixed(2)}`],
+                          ['premium', 'Premium Featured', `£${assistedPlanPrices.premium.toFixed(2)}`],
+                        ] as const).map(([value, label, price]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setAssistedPaymentPlan(value)}
+                            className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
+                              assistedPaymentPlan === value
+                                ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-100'
+                                : 'border-slate-200 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span className="font-bold text-sm text-slate-800">{label}</span>
+                            <span className="font-black text-sm text-slate-900">{price}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {assistedPaymentError && (
+                      <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                        {assistedPaymentError}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleGenerateAssistedPayment}
+                      disabled={assistedPaymentLoading}
+                      className="w-full h-11 rounded-xl bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white font-black text-sm flex items-center justify-center gap-2"
+                    >
+                      {assistedPaymentLoading ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <CreditCard size={17} />
+                      )}
+                      <span>{assistedPaymentLoading ? 'Generating...' : 'Generate Stripe Payment'}</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-center py-2">
+                      <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                        <QRCodeSVG value={assistedPaymentUrl} size={210} level="M" includeMargin />
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl break-all text-[11px] text-slate-600 font-mono select-all">
+                      {assistedPaymentUrl}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <button
+                        onClick={copyAssistedPaymentLink}
+                        className="h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-2"
+                      >
+                        <Copy size={15} />
+                        Copy Payment Link
+                      </button>
+                      <button
+                        onClick={() => window.open(assistedPaymentUrl, '_blank', 'noopener,noreferrer')}
+                        className="h-10 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center gap-2"
+                      >
+                        <ExternalLink size={15} />
+                        Open Checkout
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={shareAssistedPaymentWhatsApp}
+                      className="w-full h-11 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm flex items-center justify-center gap-2"
+                    >
+                      <MessageCircle size={17} />
+                      Share via WhatsApp
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setAssistedPaymentUrl('');
+                        setAssistedPaymentError(null);
+                      }}
+                      className="w-full h-9 rounded-xl text-slate-500 hover:bg-slate-50 font-bold text-xs"
+                    >
+                      Generate another link
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </AnimatePresence>
@@ -2825,4 +2951,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default AdminAds;
