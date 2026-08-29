@@ -1785,46 +1785,30 @@ const AdDetails = () => {
 
           {/* SECÇÃO DE LOCALIZAÇÃO */}
           <div id="localizacao" className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-5 space-y-4 scroll-mt-24 text-left">
-            <div className="flex items-start justify-between gap-5 border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
-                  <MapPin size={22} />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-lg font-black text-slate-900 leading-none">📍 Approximate Location</h2>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5 font-sans">Reference region for the listing</p>
-                </div>
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                <MapPin size={22} />
               </div>
-
-              <div className="flex items-start justify-end gap-7 font-sans shrink-0 max-w-[58%]">
-                <div className="space-y-0.5 text-right min-w-0">
-                  <span className="block text-[9px] text-slate-400 uppercase font-black tracking-wider">
-                    {isService ? 'Service Area' : 'City'}
-                  </span>
-                  <span className="text-sm font-extrabold text-slate-900 block truncate max-w-[220px]">
-                    {isService && ad.serviceCoverage === 'online' ? (
-                      '💻 Online Service'
-                    ) : isService && ad.serviceCoverage === 'uk' ? (
-                      '🌍 Entire UK'
-                    ) : isService && ad.serviceCoverage === 'portugal' ? (
-                      '🇵🇹 Entire Portugal'
-                    ) : (
-                      getAdLocationLabel(ad)
-                    )}
-                  </span>
-                </div>
-
-                {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
-                  <div className="space-y-0.5 text-right min-w-0">
-                    <span className="block text-[9px] text-slate-400 uppercase font-black tracking-wider">Country</span>
-                    <span className="text-sm font-extrabold text-slate-900 block truncate max-w-[150px]">
-                      {ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country || 'United Kingdom'}
-                    </span>
-                  </div>
-                )}
+              <div className="min-w-0">
+                <h2 className="text-lg font-black text-slate-900 leading-none">📍 Approximate Location</h2>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5 font-sans">Reference region for the listing</p>
               </div>
             </div>
 
+            {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
+              <div className="grid grid-cols-2 gap-4 rounded-2xl bg-white/90 border border-white shadow-sm px-4 py-3.5 font-sans">
+                <div className="min-w-0 text-left">
+                  <span className="block text-[9px] text-slate-400 uppercase font-black tracking-wider">City</span>
+                  <span className="mt-1 block truncate text-sm font-extrabold text-slate-900">{getAdLocationLabel(ad)}</span>
+                </div>
+                <div className="min-w-0 text-right">
+                  <span className="block text-[9px] text-slate-400 uppercase font-black tracking-wider">Country</span>
+                  <span className="mt-1 block truncate text-sm font-extrabold text-slate-900">
+                    {ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country || 'United Kingdom'}
+                  </span>
+                </div>
+              </div>
+            )}
             {isService && ad.serviceCoverage === 'online' ? (
               <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl text-center space-y-2">
                 <span className="text-4xl">💻</span>
