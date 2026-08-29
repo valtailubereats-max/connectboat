@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { collection, query, orderBy, limit, updateDoc, doc, serverTimestamp, setDoc, deleteDoc, getDoc, getDocs, where } from 'firebase/firestore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -87,6 +87,22 @@ const AdminAds = () => {
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { settings, categories } = useSettings();
+
+  // Synchronized horizontal scrollbars for the wide admin table.
+  const topTableScrollRef = useRef<HTMLDivElement>(null);
+  const mainTableScrollRef = useRef<HTMLDivElement>(null);
+
+  const syncTableScroll = (source: 'top' | 'main') => {
+    const top = topTableScrollRef.current;
+    const main = mainTableScrollRef.current;
+    if (!top || !main) return;
+
+    if (source === 'top') {
+      if (main.scrollLeft !== top.scrollLeft) main.scrollLeft = top.scrollLeft;
+    } else if (top.scrollLeft !== main.scrollLeft) {
+      top.scrollLeft = main.scrollLeft;
+    }
+  };
   const assistedPlanPrices = {
     standard: Number(settings?.planPrices?.standard ?? 4.99),
     featured: Number(settings?.planPrices?.featured ?? 7.99),
@@ -1702,8 +1718,32 @@ const AdminAds = () => {
         /* --- VIEW MODE: TABLE --- */
         <div className="space-y-4">
           {/* Desktop/Tablet Table layout */}
-          <div className="hidden md:block overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm">
-            <table className="w-full text-left border-collapse transition-all" style={{ minWidth: `${Math.max(600, visibleColumns.length * 90)}px` }}>
+          <div className="hidden md:block">
+            {/* Top horizontal scrollbar: mirrors the table scrollbar so admins do not need to scroll to the bottom first. */}
+            <div className="mb-2 rounded-xl border border-slate-200 bg-white px-3 pt-2 pb-1 shadow-sm">
+              <div className="mb-1 flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                <span>↔ Drag to view more columns</span>
+                <span className="normal-case font-semibold text-slate-400">Horizontal table scroll</span>
+              </div>
+              <div
+                ref={topTableScrollRef}
+                onScroll={() => syncTableScroll('top')}
+                className="overflow-x-auto overflow-y-hidden"
+                aria-label="Horizontal table scroll"
+              >
+                <div
+                  className="h-1"
+                  style={{ width: `${Math.max(600, visibleColumns.length * 90)}px` }}
+                />
+              </div>
+            </div>
+
+            <div
+              ref={mainTableScrollRef}
+              onScroll={() => syncTableScroll('main')}
+              className="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm"
+            >
+              <table className="w-full text-left border-collapse transition-all" style={{ minWidth: `${Math.max(600, visibleColumns.length * 90)}px` }}>
               <thead>
                 <tr className="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider">
                   <th className="py-3 px-4 w-10 text-center">
@@ -2095,7 +2135,8 @@ const AdminAds = () => {
                   );
                 })}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
 
           {/* Mobile representation under TabelaMode */}
