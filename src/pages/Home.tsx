@@ -783,8 +783,11 @@ const Home = () => {
     let result = featuredAds.filter(ad => {
       if (ad.isHidden) return false;
       if (ad.category === 'Trabalho/Empregos') return false;
-      // EXCLUSIVE FOR SALE LISTINGS: Boats for Hire are strictly forbidden from Featured Marine Listings
+      // HOME RULE: Featured listings on the homepage are exclusively boats for sale.
+      // Hire listings have their own dedicated homepage section, and every other
+      // marine category remains available through search, filters and categories.
       if (ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') return false;
+      if (ad.category !== 'Boats for Sale') return false;
       
       const search = searchTerm.toLowerCase().trim();
       const matchesSearch = !search || ad.title?.toLowerCase().includes(search) || ad.description?.toLowerCase().includes(search);
@@ -930,9 +933,41 @@ const Home = () => {
 
 
   const filteredAds = useMemo(() => {
+    // On the untouched homepage, the main/latest grid is exclusively Boats for Sale.
+    // As soon as the visitor actively searches, selects a category or uses a filter,
+    // the marketplace opens back up so parts, engines, electronics, services, etc.
+    // can still be discovered normally.
+    const hasActiveDiscoveryFilter =
+      searchTerm.trim() !== '' ||
+      category !== 'Todas' ||
+      city !== 'Todas' ||
+      (selectedRegion !== '' && selectedRegion !== 'All Regions') ||
+      filterRegion ||
+      filterNational ||
+      filterOnline ||
+      filterBoatType !== 'Todas' ||
+      filterMinPrice.trim() !== '' ||
+      filterMaxPrice.trim() !== '' ||
+      filterManufacturer.trim() !== '' ||
+      filterModel.trim() !== '' ||
+      filterMinYear.trim() !== '' ||
+      filterMaxYear.trim() !== '' ||
+      filterCondition !== 'Todas' ||
+      filterMinLength.trim() !== '' ||
+      filterMaxLength.trim() !== '' ||
+      filterFuelType !== 'Todas' ||
+      filterHullMaterial !== 'Todas' ||
+      filterLocationKeyword.trim() !== '' ||
+      filterMinCabins.trim() !== '' ||
+      filterTrailer !== 'Any';
+
     let result = ads.filter(ad => {
       if (ad.isHidden) return false;
       if (ad.category === 'Trabalho/Empregos') return false;
+
+      // HOME RULE: without an active search/filter/category, only Boats for Sale
+      // may enter the main/latest homepage grid.
+      if (!hasActiveDiscoveryFilter && ad.category !== 'Boats for Sale') return false;
 
       // Exclude rental/hire listings from "Latest Marine Listings"
       if (
@@ -1172,6 +1207,7 @@ const Home = () => {
     category,
     city,
     country,
+    selectedRegion,
     filterRegion,
     filterNational,
     filterOnline,
