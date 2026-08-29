@@ -164,6 +164,9 @@ const Home = () => {
   }, []);
   const [ads, setAds] = useState<Ad[]>([]);
   const [featuredAds, setFeaturedAds] = useState<Ad[]>([]);
+  // Hire listings are fetched independently so older hire ads are not excluded
+  // by the 48-item general homepage query.
+  const [hireSectionAds, setHireSectionAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reloadCounter, setReloadCounter] = useState(0);
@@ -757,6 +760,70 @@ const Home = () => {
     };
   }, [country, authLoading, reloadCounter, dbLimit]); // Recarrega sempre que mudar de país ou com dbLimit
 
+
+  // Dedicated query for the Boats for Hire & Charter homepage section.
+  // The general homepage feed intentionally loads only the newest 48 ads, so
+  // older hire listings must not depend on that limited result set.
+  useEffect(() => {
+    let active = true;
+
+    const loadHireSectionAds = async () => {
+      if (authLoading) return;
+
+      try {
+        const qHire = query(
+          collection(db, 'ads'),
+          where('category', '==', 'Boats for Hire'),
+          limit(20)
+        );
+
+        const snapshot = await withTimeout(
+          getDocsWithCacheFallback(qHire, `home/hire-section-${country}`),
+          20000
+        );
+
+        if (!active) return;
+
+        const rows = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Ad))
+          .filter(ad => {
+            const isActive =
+              ad.status === 'approved' &&
+              (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
+
+            const adCountry = (ad.country || '').trim();
+            const selectedCountry = (country || '').trim();
+            const ukLabels = new Set(['Reino Unido', 'United Kingdom', 'UK']);
+            const matchesCountry =
+              !adCountry ||
+              adCountry === selectedCountry ||
+              (ukLabels.has(adCountry) && ukLabels.has(selectedCountry));
+
+            return isActive && matchesCountry;
+          })
+          .sort((a, b) => {
+            const timeA = a.createdAt?.seconds
+              ? a.createdAt.seconds * 1000
+              : (a.createdAt ? new Date(a.createdAt as any).getTime() : 0);
+            const timeB = b.createdAt?.seconds
+              ? b.createdAt.seconds * 1000
+              : (b.createdAt ? new Date(b.createdAt as any).getTime() : 0);
+            return (timeB || 0) - (timeA || 0);
+          });
+
+        setHireSectionAds(rows);
+      } catch (err) {
+        console.error('[Home] Failed to load dedicated hire listings:', err);
+        if (active) setHireSectionAds([]);
+      }
+    };
+
+    loadHireSectionAds();
+    return () => {
+      active = false;
+    };
+  }, [country, authLoading, reloadCounter]);
+
   const handleLoadMore = () => {
     if (isFetchingMore) return;
     
@@ -1241,33 +1308,9 @@ const Home = () => {
   }, [ads, country]);
 
   // Paginação inteligente de anúncios filtrados em memória (carregamento instantâneo offline-first)
-  // Boats for Hire list
-  const hireAds = useMemo(() => {
-    return ads.filter(ad => {
-      const isActive =
-        ad.status === 'approved' &&
-        (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
-
-      const isHire =
-        ad.listingIntent === 'hire' ||
-        ad.category === 'Boats for Hire' ||
-        ad.category === 'Aluguer de Barcos' ||
-        ad.category === 'Boat Hire & Charters' ||
-        ad.listingType === 'hire' ||
-        ad.listingType === 'rent';
-
-      // Treat the UK country labels used by old and current listings as equivalent.
-      const adCountry = (ad.country || '').trim();
-      const selectedCountry = (country || '').trim();
-      const ukLabels = new Set(['Reino Unido', 'United Kingdom', 'UK']);
-      const matchesCountry =
-        !adCountry ||
-        adCountry === selectedCountry ||
-        (ukLabels.has(adCountry) && ukLabels.has(selectedCountry));
-
-      return isActive && isHire && matchesCountry;
-    });
-  }, [ads, country]);
+  // Boats for Hire list comes from its own Firestore query and therefore does
+  // not disappear when hire listings are older than the 48 newest homepage ads.
+  const hireAds = useMemo(() => hireSectionAds, [hireSectionAds]);
 
   const displayedAds = useMemo(() => {
     return filteredAds.slice(0, limitAmount);
