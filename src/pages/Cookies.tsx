@@ -14,11 +14,35 @@ import {
   X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import {
+  clearAnalyticsCookies,
+  hasAnalyticsConsent,
+  initGA,
+  saveCookieConsent,
+} from '../utils/analytics';
 
 const Cookies = () => {
+  const [analyticsEnabled, setAnalyticsEnabled] = React.useState(false);
+  const [preferenceMessage, setPreferenceMessage] = React.useState('');
+
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
+    setAnalyticsEnabled(hasAnalyticsConsent());
   }, []);
+
+  const enableAnalytics = () => {
+    saveCookieConsent('analytics');
+    initGA();
+    setAnalyticsEnabled(true);
+    setPreferenceMessage('Analytics cookies are now enabled.');
+  };
+
+  const useEssentialOnly = () => {
+    saveCookieConsent('essential');
+    clearAnalyticsCookies();
+    setAnalyticsEnabled(false);
+    setPreferenceMessage('Your preference is now Essential Only. Google Analytics cookies have been removed where accessible to ConnectBoat.');
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
@@ -68,7 +92,7 @@ const Cookies = () => {
 
         <div className="prose prose-slate max-w-none space-y-8">
           <p className="text-sm font-semibold text-emerald-600">
-            Last updated: 27 August 2026
+            Last updated: 29 August 2026
           </p>
 
           <section>
@@ -89,8 +113,7 @@ const Cookies = () => {
               ConnectBoat may also use browser storage and similar technologies, including local
               storage or session storage. These technologies are not always technically cookies,
               but they may perform similar functions, such as remembering preferences or supporting
-              platform functionality. In this policy, references to cookies may also include these
-              similar technologies where appropriate.
+              platform functionality. For simplicity, this policy uses the term cookies to include cookies and other storage or access technologies where appropriate. These technologies are covered by the Privacy and Electronic Communications Regulations (PECR) where they store information on, or access information from, a user's device.
             </p>
           </section>
 
@@ -165,10 +188,7 @@ const Cookies = () => {
             </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">
-              Where applicable law requires consent before optional analytics technologies are
-              stored or accessed on your device, ConnectBoat will treat those technologies as
-              non-essential and they should be used in accordance with the cookie choices made
-              available to you.
+              ConnectBoat treats Google Analytics as optional. GA4 is not loaded by ConnectBoat unless you have expressly selected Accept Analytics. If you select Essential Only, ConnectBoat does not intentionally enable GA4 and removes accessible Google Analytics cookies set for this site. If an applicable legal exemption permits a storage or access technology to be used without consent, ConnectBoat may rely on that exemption only where its legal conditions are met.
             </p>
           </section>
 
@@ -186,8 +206,7 @@ const Cookies = () => {
             </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">
-              Technologies that are genuinely required to provide a service requested by the user
-              are treated separately from optional analytics technologies.
+              Technologies that are genuinely necessary to provide a service requested by you, or that fall within another applicable PECR exemption, are treated separately from optional analytics technologies. Their use is limited to the purpose for which the relevant exemption applies.
             </p>
           </section>
 
@@ -251,27 +270,104 @@ const Cookies = () => {
             </div>
 
             <p className="text-slate-600 leading-relaxed">
-              You can control or delete cookies through your browser settings. Most modern browsers
-              allow you to view stored cookies, remove them, block particular websites or restrict
-              cookies more generally.
+              When the ConnectBoat cookie banner is shown, you can choose <strong>Accept Analytics</strong>
+              or <strong>Essential Only</strong>. Optional Google Analytics is disabled unless you
+              expressly choose to enable it.
             </p>
 
-            <p className="text-slate-600 leading-relaxed mt-3">
-              Blocking strictly necessary technologies may affect authentication, saved settings,
-              listing management or other important ConnectBoat functions.
-            </p>
+            <div className="mt-5 p-5 bg-emerald-50/60 rounded-2xl border border-emerald-100">
+              <p className="font-extrabold text-slate-900 text-sm">Manage your preference</p>
+              <p className="text-slate-600 text-sm mt-1 leading-relaxed">
+                Your current ConnectBoat analytics preference is:
+                <strong className="ml-1">{analyticsEnabled ? 'Analytics enabled' : 'Essential only'}</strong>.
+                You can change or withdraw your analytics consent at any time using the buttons below.
+              </p>
 
-            <p className="text-slate-600 leading-relaxed mt-3">
-              Where ConnectBoat provides a cookie consent or preference control for optional
-              technologies, you can use that control to make or update the choices available to you.
-              Browser-level controls may also remain available independently.
+              <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={enableAnalytics}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#52b64d] hover:bg-[#459d41] text-white text-xs font-extrabold transition-all"
+                >
+                  <BarChart3 size={15} />
+                  Accept Analytics
+                </button>
+
+                <button
+                  type="button"
+                  onClick={useEssentialOnly}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-extrabold transition-all"
+                >
+                  <Shield size={15} />
+                  Essential Only
+                </button>
+              </div>
+
+              {preferenceMessage && (
+                <p className="text-xs font-semibold text-emerald-700 mt-3" role="status">
+                  {preferenceMessage}
+                </p>
+              )}
+            </div>
+
+            <p className="text-slate-600 leading-relaxed mt-4">
+              You can also control or delete cookies through your browser settings. Most modern
+              browsers allow you to view stored cookies, remove them, block particular websites or
+              restrict cookies more generally. Blocking strictly necessary technologies may affect
+              authentication, saved settings, listing management or other important ConnectBoat functions.
+            </p>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-2 text-emerald-600 mb-3">
+              <Database size={20} />
+              <h2 className="text-xl font-bold m-0">7. Technologies We Currently Use</h2>
+            </div>
+
+            <div className="overflow-x-auto border border-slate-100 rounded-2xl">
+              <table className="min-w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-800">
+                  <tr>
+                    <th className="px-4 py-3 font-extrabold">Technology</th>
+                    <th className="px-4 py-3 font-extrabold">Purpose</th>
+                    <th className="px-4 py-3 font-extrabold">Type / duration</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-600">
+                  <tr>
+                    <td className="px-4 py-3 font-semibold text-slate-800">connectboat_cookie_consent</td>
+                    <td className="px-4 py-3">Stores your Analytics or Essential Only choice.</td>
+                    <td className="px-4 py-3">Local browser storage; remains until changed or cleared.</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 font-semibold text-slate-800">_ga and _ga_*</td>
+                    <td className="px-4 py-3">Google Analytics 4 measurement after you accept Analytics.</td>
+                    <td className="px-4 py-3">Optional analytics cookies; Google commonly sets these for up to 2 years, subject to configuration and browser controls.</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 font-semibold text-slate-800">Firebase / browser storage</td>
+                    <td className="px-4 py-3">Authentication, security, data synchronisation and core platform operation.</td>
+                    <td className="px-4 py-3">Essential storage where required for the requested service; duration varies by function and session state.</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 font-semibold text-slate-800">ConnectBoat functional storage</td>
+                    <td className="px-4 py-3">Remembers selected market, favourites, safety acknowledgements, interface state and other requested functionality.</td>
+                    <td className="px-4 py-3">Local or session storage; retained until expiry, replacement, logout where applicable, or browser/site data is cleared.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p className="text-slate-500 text-xs leading-relaxed mt-3">
+              Browser and third-party implementations can change the exact technical identifier or
+              duration. We update this policy when material changes affect how ConnectBoat uses these technologies.
             </p>
           </section>
 
           <section>
             <div className="flex items-center gap-2 text-emerald-600 mb-3">
               <Shield size={20} />
-              <h2 className="text-xl font-bold m-0">7. Cookies and Personal Data</h2>
+              <h2 className="text-xl font-bold m-0">8. Cookies and Personal Data</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -291,7 +387,7 @@ const Cookies = () => {
           <section>
             <div className="flex items-center gap-2 text-emerald-600 mb-3">
               <Info size={20} />
-              <h2 className="text-xl font-bold m-0">8. Changes to this Cookie Policy</h2>
+              <h2 className="text-xl font-bold m-0">9. Changes to this Cookie Policy</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -304,7 +400,7 @@ const Cookies = () => {
           <section>
             <div className="flex items-center gap-2 text-emerald-600 mb-3">
               <Mail size={20} />
-              <h2 className="text-xl font-bold m-0">9. Contact</h2>
+              <h2 className="text-xl font-bold m-0">10. Contact</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
