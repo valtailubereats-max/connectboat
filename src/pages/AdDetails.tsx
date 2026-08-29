@@ -1785,41 +1785,44 @@ const AdDetails = () => {
 
           {/* SECÇÃO DE LOCALIZAÇÃO */}
           <div id="localizacao" className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-5 space-y-4 scroll-mt-24 text-left">
-            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
-                <MapPin size={22} />
+            <div className="flex items-start justify-between gap-5 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                  <MapPin size={22} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-black text-slate-900 leading-none">📍 Approximate Location</h2>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5 font-sans">Reference region for the listing</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-black text-slate-900 leading-none">📍 Approximate Location</h2>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5 font-sans">Reference region for the listing</p>
-              </div>
-            </div>
 
-            <div className="flex flex-col items-start gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-100 font-sans">
-              <div className="space-y-0.5">
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider text-left">
-                  {isService ? 'Service Area' : 'City'}
-                </span>
-                <span className="text-sm sm:text-lg font-extrabold text-slate-900 block text-left">
-                  {isService && ad.serviceCoverage === 'online' ? (
-                    '💻 Online Service'
-                  ) : isService && ad.serviceCoverage === 'uk' ? (
-                    '🌍 Entire UK'
-                  ) : isService && ad.serviceCoverage === 'portugal' ? (
-                    '🇵🇹 Entire Portugal'
-                  ) : (
-                    getAdLocationLabel(ad)
-                  )}
-                </span>
-              </div>
-              {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
-                <div className="space-y-0.5 text-left">
-                  <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Region</span>
-                  <span className="text-sm sm:text-lg font-extrabold text-slate-900 block">
-                    {ad.region || getRegionForCity(ad.city)}
+              <div className="flex items-start justify-end gap-7 font-sans shrink-0 max-w-[58%]">
+                <div className="space-y-0.5 text-right min-w-0">
+                  <span className="block text-[9px] text-slate-400 uppercase font-black tracking-wider">
+                    {isService ? 'Service Area' : 'City'}
+                  </span>
+                  <span className="text-sm font-extrabold text-slate-900 block truncate max-w-[220px]">
+                    {isService && ad.serviceCoverage === 'online' ? (
+                      '💻 Online Service'
+                    ) : isService && ad.serviceCoverage === 'uk' ? (
+                      '🌍 Entire UK'
+                    ) : isService && ad.serviceCoverage === 'portugal' ? (
+                      '🇵🇹 Entire Portugal'
+                    ) : (
+                      getAdLocationLabel(ad)
+                    )}
                   </span>
                 </div>
-              )}
+
+                {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
+                  <div className="space-y-0.5 text-right min-w-0">
+                    <span className="block text-[9px] text-slate-400 uppercase font-black tracking-wider">Country</span>
+                    <span className="text-sm font-extrabold text-slate-900 block truncate max-w-[150px]">
+                      {ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country || 'United Kingdom'}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {isService && ad.serviceCoverage === 'online' ? (
@@ -1836,7 +1839,7 @@ const AdDetails = () => {
               </div>
             ) : (
               ad.city && ad.city.trim() !== '' && ad.city.toLowerCase() !== 'todas' && (
-                <div className="w-full h-56 rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-100 relative">
+                <div className="w-full h-72 rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-100 relative">
                   <iframe
                     title={`Map of ${ad.city}`}
                     width="100%"
