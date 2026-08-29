@@ -71,7 +71,7 @@ const Privacy = () => {
 
         <div className="prose prose-slate max-w-none space-y-8">
           <p className="text-sm font-semibold text-indigo-600">
-            Last updated: 27 August 2026
+            Last updated: 29 August 2026
           </p>
 
           <section>
@@ -91,6 +91,19 @@ const Privacy = () => {
               This policy applies to visitors, registered users, advertisers, boat owners,
               buyers, sellers, hire and charter operators, marine businesses, service providers
               and other people who interact with ConnectBoat.
+            </p>
+
+            <p className="text-slate-600 leading-relaxed mt-3">
+              For the purposes of applicable UK data protection law, ConnectBoat is the controller
+              of the personal data described in this Privacy Policy. Privacy questions and requests
+              may be sent to{' '}
+              <a
+                href="mailto:contato@connectboat.co.uk"
+                className="font-bold text-indigo-600 hover:underline"
+              >
+                contato@connectboat.co.uk
+              </a>
+              .
             </p>
           </section>
 
@@ -218,9 +231,11 @@ const Privacy = () => {
                 listing, paid plan, Media Boost or another service you request.
               </li>
               <li>
-                <strong>Legitimate interests:</strong> where reasonably necessary to operate,
-                secure, moderate, improve and protect the marketplace, prevent fraud and understand
-                how the service is used, provided those interests are not overridden by your rights.
+                <strong>Legitimate interests:</strong> where reasonably necessary for our
+                legitimate interests in operating and improving the marketplace, protecting users
+                and the platform from fraud and abuse, maintaining security, enforcing platform
+                rules, moderating content and measuring service performance, provided those
+                interests are not overridden by your rights and freedoms.
               </li>
               <li>
                 <strong>Legal obligation:</strong> where information must be retained, processed or
@@ -321,8 +336,8 @@ const Privacy = () => {
 
             <p className="text-slate-600 leading-relaxed mt-3">
               Where applicable law requires consent for optional analytics or similar technologies,
-              those technologies should be used in accordance with the user's applicable cookie
-              choices. More information is available in our{' '}
+              those technologies will be used in accordance with the user's applicable cookie
+              choices and applicable law. More information is available in our{' '}
               <Link
                 to="/cookie-policy"
                 className="font-bold text-indigo-600 hover:underline"
@@ -355,8 +370,30 @@ const Privacy = () => {
 
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
+              <Target size={20} />
+              <h2 className="text-xl font-bold m-0">10. Advertising and Sponsored Content</h2>
+            </div>
+
+            <p className="text-slate-600 leading-relaxed">
+              ConnectBoat may display clearly identified sponsored advertising from third-party
+              advertisers. We may process information such as advertising impressions, clicks and
+              general interaction data to operate, measure, protect and improve advertising features.
+            </p>
+
+            <p className="text-slate-600 leading-relaxed mt-3">
+              Purchasing advertising on ConnectBoat does not give an advertiser unrestricted access
+              to users' personal data. We do not disclose personal data to advertisers merely because
+              they advertise on the platform, unless a disclosure is explained to you, is necessary
+              for a service you request, or is otherwise permitted or required by law. If you choose
+              to click an advertisement or visit an advertiser's external website or service, that
+              third party may collect information under its own privacy terms.
+            </p>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <Globe2 size={20} />
-              <h2 className="text-xl font-bold m-0">10. Service Providers and International Transfers</h2>
+              <h2 className="text-xl font-bold m-0">11. Service Providers and International Transfers</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -376,7 +413,7 @@ const Privacy = () => {
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <Clock3 size={20} />
-              <h2 className="text-xl font-bold m-0">11. How Long We Keep Personal Data</h2>
+              <h2 className="text-xl font-bold m-0">12. How Long We Keep Personal Data</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -398,7 +435,7 @@ const Privacy = () => {
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <Scale size={20} />
-              <h2 className="text-xl font-bold m-0">12. Your Data Protection Rights</h2>
+              <h2 className="text-xl font-bold m-0">13. Your Data Protection Rights</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed mb-3">
@@ -441,7 +478,7 @@ const Privacy = () => {
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <Shield size={20} />
-              <h2 className="text-xl font-bold m-0">13. Complaints</h2>
+              <h2 className="text-xl font-bold m-0">14. Complaints</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -459,22 +496,37 @@ const Privacy = () => {
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <Info size={20} />
-              <h2 className="text-xl font-bold m-0">14. Children</h2>
+              <h2 className="text-xl font-bold m-0">15. Children</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
-              ConnectBoat is a marine marketplace intended for people capable of entering into
-              relevant marketplace and service arrangements. The platform is not designed as a
-              service directed specifically at children. If we become aware that personal data has
-              been submitted inappropriately by or about a child, we may take reasonable steps to
-              review or remove it where appropriate.
+              ConnectBoat is intended for users aged 18 or over and is not directed at children.
+              Users must be at least 18 years old to create an account or use services that require
+              legal capacity to enter into marketplace or service arrangements. If we become aware
+              that personal data has been submitted inappropriately by or about a child, we may take
+              reasonable steps to review, restrict or remove it where appropriate.
+            </p>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-2 text-indigo-600 mb-3">
+              <UserCheck size={20} />
+              <h2 className="text-xl font-bold m-0">16. Automated Decision-Making</h2>
+            </div>
+
+            <p className="text-slate-600 leading-relaxed">
+              ConnectBoat does not currently use personal data to make decisions that produce legal
+              effects or similarly significant effects based solely on automated processing. We may
+              use automated tools to support security, fraud prevention, spam detection, analytics
+              or moderation, but significant account or listing decisions may be reviewed by an
+              authorised administrator or moderator where appropriate.
             </p>
           </section>
 
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <Info size={20} />
-              <h2 className="text-xl font-bold m-0">15. Changes to this Privacy Policy</h2>
+              <h2 className="text-xl font-bold m-0">17. Changes to this Privacy Policy</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -488,7 +540,7 @@ const Privacy = () => {
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <Mail size={20} />
-              <h2 className="text-xl font-bold m-0">16. Contact</h2>
+              <h2 className="text-xl font-bold m-0">18. Contact</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
