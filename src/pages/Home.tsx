@@ -1243,12 +1243,30 @@ const Home = () => {
   // Paginação inteligente de anúncios filtrados em memória (carregamento instantâneo offline-first)
   // Boats for Hire list
   const hireAds = useMemo(() => {
-    return ads.filter(ad => (
-      ad.status === 'approved' &&
-      (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus) &&
-      (ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') &&
-      (ad.country ? ad.country === country : true)
-    ));
+    return ads.filter(ad => {
+      const isActive =
+        ad.status === 'approved' &&
+        (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
+
+      const isHire =
+        ad.listingIntent === 'hire' ||
+        ad.category === 'Boats for Hire' ||
+        ad.category === 'Aluguer de Barcos' ||
+        ad.category === 'Boat Hire & Charters' ||
+        ad.listingType === 'hire' ||
+        ad.listingType === 'rent';
+
+      // Treat the UK country labels used by old and current listings as equivalent.
+      const adCountry = (ad.country || '').trim();
+      const selectedCountry = (country || '').trim();
+      const ukLabels = new Set(['Reino Unido', 'United Kingdom', 'UK']);
+      const matchesCountry =
+        !adCountry ||
+        adCountry === selectedCountry ||
+        (ukLabels.has(adCountry) && ukLabels.has(selectedCountry));
+
+      return isActive && isHire && matchesCountry;
+    });
   }, [ads, country]);
 
   const displayedAds = useMemo(() => {
