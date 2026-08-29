@@ -20,6 +20,11 @@ import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../util
 import { evaluateListingDuplicates, DuplicateCheckResult } from '../utils/duplicateDetector';
 import { saveCustomCity } from '../utils/locationService';
 
+const PAID_BOAT_LISTING_CATEGORIES = new Set(['Boats for Sale', 'Boats for Hire']);
+
+const isPaidBoatListingCategory = (category?: string): boolean =>
+  PAID_BOAT_LISTING_CATEGORIES.has((category || '').trim());
+
 const CreateAd = () => {
   const { categories, settings: globalSettings } = useSettings();
   const { id } = useParams();
@@ -350,29 +355,30 @@ const CreateAd = () => {
     if (isStaff) return false;
     if (formData.isPermanentFeatured) return false;
 
+    const isPaidBoatListing = isPaidBoatListingCategory(formData.category);
     const isEditing = Boolean(id && originalAd);
+    const isNewMediaBoost = formData.mediaBoostEnabled && !originalAd?.videoPaid;
 
     if (!isEditing) {
-      const activePlan = (formData.plan || 'standard').toLowerCase();
-      const isFree = activePlan === 'free';
-      const mediaBoostNew = formData.mediaBoostEnabled;
-      return !isFree || mediaBoostNew;
+      // Only Boats for Sale and Boats for Hire pay for the listing itself.
+      // Every other category is free and only goes to Stripe when a paid extra is selected.
+      return isPaidBoatListing || formData.mediaBoostEnabled;
     }
 
     // When editing an existing ad:
     const isExpired = originalAd?.status === 'expired' || originalAd?.adStatus === 'expired';
-    if (isExpired) return true;
+    if (isExpired) return isPaidBoatListing || isNewMediaBoost;
 
     const oldTier = getPlanTier(originalAd?.plan);
     const newTier = getPlanTier(formData.plan);
-    const isPlanUpgrade = newTier > oldTier;
-
-    const isNewMediaBoost = formData.mediaBoostEnabled && !originalAd?.videoPaid;
+    const isPlanUpgrade = isPaidBoatListing && newTier > oldTier;
 
     return isPlanUpgrade || isNewMediaBoost;
   };
 
   const getMaxPhotosForPlan = (planKey: string): number => {
+    if (!isPaidBoatListingCategory(formData.category)) return 3;
+
     if (settings?.maxImages) {
       const val = settings.maxImages[planKey as keyof typeof settings.maxImages];
       if (val) return val;
@@ -409,7 +415,7 @@ const CreateAd = () => {
   const getCheckoutTotalAmountFormatted = () => {
     if (!checkRequiresPayment()) return '0.00';
     const activePlan = (formData.plan || 'standard').toLowerCase();
-    const planBase = getPlanPrice(activePlan);
+    const planBase = isPaidBoatListingCategory(formData.category) ? getPlanPrice(activePlan) : 0;
     const mediaBoostExtra = (formData.mediaBoostEnabled && !originalAd?.videoPaid) ? 2.00 : 0;
     return (planBase + mediaBoostExtra).toFixed(2);
   };
@@ -903,7 +909,18 @@ const CreateAd = () => {
 
   const maxAllowed = React.useMemo(() => {
     return getMaxPhotosForPlan(formData.plan);
-  }, [formData.plan, settings]);
+  }, [formData.plan, formData.category, settings]);
+
+  useEffect(() => {
+    if (!formData.category || isPaidBoatListingCategory(formData.category)) return;
+    if (formData.plan !== 'free' || formData.images.length > 3) {
+      setFormData(prev => ({
+        ...prev,
+        plan: 'free',
+        images: prev.images.slice(0, 3)
+      }));
+    }
+  }, [formData.category]);
 
   // Compatibility guard for legacy plan values loaded from older listings.
   useEffect(() => {
@@ -914,7 +931,7 @@ const CreateAd = () => {
         images: prev.images.slice(0, allowed)
       }));
     }
-  }, [formData.plan, settings]);
+  }, [formData.plan, formData.category, settings]);
 
   const processFiles = async (files: File[]) => {
     if (uploadRef.current) return;
@@ -923,6 +940,13 @@ const CreateAd = () => {
     const remainingSlots = maxAllowed - currentImagesCount;
 
     if (remainingSlots <= 0) {
+      if (!isPaidBoatListingCategory(formData.category)) {
+        alert('Photo limit reached. Free category listings allow up to 3 photos.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
+        return;
+      }
+
       const currentPlan = normalizeListingPlan(formData.plan);
       const nextPlan =
         currentPlan === 'standard' ? 'featured' :
@@ -1302,7 +1326,10 @@ const CreateAd = () => {
       return;
     }
 
-    const cleanFormImages = normalizeAndLimitImages(formData.images, 6);
+    const cleanFormImages = normalizeAndLimitImages(
+      formData.images,
+      isPaidBoatListingCategory(formData.category) ? 6 : 3
+    );
     if (cleanFormImages.length === 0) {
       showValidationError('Please upload at least one valid image for your listing.', 'sec-images-upload');
       return;
@@ -1368,7 +1395,7 @@ const CreateAd = () => {
         sellerName: id && originalAd ? (originalAd.sellerName || profile.name || 'ConnectBoat') : (profile.name || 'ConnectBoat'),
         status: isStaff && id ? (originalAd?.status || 'approved') : 'pending',
         adStatus: id && originalAd ? originalAd.adStatus : 'active',
-        plan: formData.category === '💚 Doações & Solidariedade' ? 'local' : formData.plan,
+        plan: isPaidBoatListingCategory(formData.category) ? formData.plan : 'free',
         expirationDate: id && originalAd ? (originalAd.expirationDate || expirationDate) : expirationDate,
         userNotified: id && originalAd
           ? (Object.prototype.hasOwnProperty.call(originalAd, 'userNotified') ? originalAd.userNotified : false)
@@ -1597,7 +1624,9 @@ const CreateAd = () => {
     try {
       // 1. Guardar o anúncio base primeiro no Firestore para termos um ID válido
       const finalizedId = pendingAdData.id || `ad_${user?.uid?.substring(0, 5) || 'user'}_${Date.now()}`;
-      const activePlan = (formData.plan || 'standard').toLowerCase();
+      const activePlan = isPaidBoatListingCategory(formData.category)
+        ? (formData.plan || 'standard').toLowerCase()
+        : 'free';
       const payloadToSave = { ...pendingAdData, id: finalizedId, plan: activePlan, status: 'pending' };
       
       await executeSaveAd(payloadToSave, finalizedId);
@@ -1619,6 +1648,7 @@ const CreateAd = () => {
           itemType: 'ad_listing',
           plan: activePlan,
           country: formData.country,
+          category: formData.category,
           adId: finalizedId,
           mediaBoostEnabled: !!formData.mediaBoostEnabled && (!originalAd || !originalAd.videoPaid),
           successUrl: `${window.location.origin}/create-ad?stripe_success=true&ad_id=${finalizedId}&plan=${activePlan}`,
@@ -2066,7 +2096,8 @@ const CreateAd = () => {
                     onClick={() => setFormData(prev => ({
                       ...prev,
                       listingIntent: 'sale',
-                      category: prev.category === 'Boats for Hire' ? 'Motorboats & Powerboats' : prev.category
+                      category: 'Boats for Sale',
+                      plan: prev.plan === 'free' ? 'standard' : prev.plan
                     }))}
                     className={`p-2.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
                       formData.listingIntent === 'sale'
@@ -2083,7 +2114,8 @@ const CreateAd = () => {
                     onClick={() => setFormData(prev => ({
                       ...prev,
                       listingIntent: 'hire',
-                      category: 'Boats for Hire'
+                      category: 'Boats for Hire',
+                      plan: prev.plan === 'free' ? 'standard' : prev.plan
                     }))}
                     className={`p-2.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
                       formData.listingIntent === 'hire'
@@ -2096,7 +2128,16 @@ const CreateAd = () => {
                   </button>
                 </div>
               </div>
-              {/* Compact Plan Selector - plan chosen here is the same plan used in Step 3 and Stripe Checkout */}
+              {/* Listing plan: paid only for Boats for Sale / Boats for Hire */}
+              {!isPaidBoatListingCategory(formData.category) ? (
+                <div className="p-3.5 rounded-2xl border-2 border-emerald-200 bg-emerald-50/70 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wider text-emerald-800">Free Marketplace Listing</p>
+                    <p className="text-[10px] sm:text-xs text-emerald-700 mt-0.5">This category is free and allows up to 3 photos. Paid extras remain optional.</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-black text-emerald-700">£0.00</span>
+                </div>
+              ) : (
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
@@ -2208,6 +2249,8 @@ const CreateAd = () => {
                   </span>
                 </div>
               </div>
+
+              )}
 
               {/* 1. Photos */}
               <div className="space-y-3">
@@ -2571,12 +2614,16 @@ const CreateAd = () => {
                   disabled={!isAdmin && isEditLocked}
                   onChange={(e) => {
                     const cat = e.target.value;
-                    const updatedData = { ...formData, category: cat };
-                    if (cat === '💚 Doações & Solidariedade') {
-                      updatedData.plan = 'local';
-                      updatedData.price = '0';
-                    }
-                    setFormData(updatedData);
+                    const paidBoatListing = isPaidBoatListingCategory(cat);
+                    const nextPlan: typeof formData.plan = paidBoatListing
+                      ? (formData.plan === 'free' ? 'standard' : formData.plan)
+                      : 'free';
+                    setFormData(prev => ({
+                      ...prev,
+                      category: cat,
+                      plan: nextPlan,
+                      images: paidBoatListing ? prev.images : prev.images.slice(0, 3)
+                    }));
                   }}
                   className="w-full px-3 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-medium"
                 >
@@ -3239,7 +3286,18 @@ const CreateAd = () => {
                 </div>
               </div>
 
-              {/* Select Plan (prices controlled by Admin settings) */}
+              {/* Listing plan: paid only for Boats for Sale / Boats for Hire */}
+              {!isPaidBoatListingCategory(formData.category) ? (
+                <div className="p-5 rounded-3xl border-2 border-emerald-200 bg-emerald-50/70">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-sm font-black text-emerald-900 uppercase tracking-wider">Free Listing</h3>
+                      <p className="text-xs text-emerald-700 mt-1">No listing fee for this category. Maximum 3 photos.</p>
+                    </div>
+                    <span className="text-xl font-black text-emerald-700">£0.00</span>
+                  </div>
+                </div>
+              ) : (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -3363,6 +3421,8 @@ const CreateAd = () => {
                 )}
               </div>
 
+              )}
+
               {/* Order Summary Breakdown */}
               <div className="p-6 bg-slate-50/80 border-2 border-slate-200/80 rounded-3xl space-y-3">
                 <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -3372,10 +3432,12 @@ const CreateAd = () => {
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center justify-between font-medium text-slate-700">
                     <span>
-                      {formData.plan === 'premium' ? 'Premium Featured Listing' : formData.plan === 'featured' ? 'Featured Listing' : 'Standard Listing'} (30 Days)
+                      {isPaidBoatListingCategory(formData.category)
+                        ? `${formData.plan === 'premium' ? 'Premium Featured Listing' : formData.plan === 'featured' ? 'Featured Listing' : 'Standard Listing'} (30 Days)`
+                        : 'Free Marketplace Listing'}
                     </span>
                     <span className="font-bold text-slate-900">
-                      £{getPlanPrice(formData.plan).toFixed(2)}
+                      {isPaidBoatListingCategory(formData.category) ? `£${getPlanPrice(formData.plan).toFixed(2)}` : '£0.00'}
                     </span>
                   </div>
 
@@ -3569,10 +3631,12 @@ const CreateAd = () => {
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
                   <div className="flex justify-between text-xs text-slate-600">
                     <span>
-                      {formData.plan === 'premium' ? 'Premium Featured Listing (30 days)' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? 'Featured Listing (30 days)' : 'Standard Listing (30 days)'}
+                      {isPaidBoatListingCategory(formData.category)
+                        ? (formData.plan === 'premium' ? 'Premium Featured Listing (30 days)' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? 'Featured Listing (30 days)' : 'Standard Listing (30 days)')
+                        : 'Free Marketplace Listing'}
                     </span>
                     <span className="font-bold text-slate-900">
-                      £{getPlanPrice(formData.plan).toFixed(2)}
+                      {isPaidBoatListingCategory(formData.category) ? `£${getPlanPrice(formData.plan).toFixed(2)}` : '£0.00'}
                     </span>
                   </div>
                   {formData.mediaBoostEnabled && (
