@@ -86,7 +86,7 @@ const AdminAds = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { settings } = useSettings();
+  const { settings, categories } = useSettings();
   const assistedPlanPrices = {
     standard: Number(settings?.planPrices?.standard ?? 4.99),
     featured: Number(settings?.planPrices?.featured ?? 7.99),
@@ -135,6 +135,7 @@ const AdminAds = () => {
   });
   const [countryFilter, setCountryFilter] = useState<'all' | 'Portugal' | 'Reino Unido'>('all');
   const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'hire'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [periodFilter, setPeriodFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [fetchLimit, setFetchLimit] = useState(100);
@@ -833,6 +834,13 @@ const AdminAds = () => {
     }
   };
 
+  const categoryFilterOptions = Array.from(
+    new Set([
+      ...(categories || []),
+      ...ads.map(ad => ad.category).filter((category): category is string => Boolean(category?.trim()))
+    ])
+  );
+
   const filteredAds = ads.filter(ad => {
     // 1. Status Filter
     const matchesFilter = adFilter === 'all' 
@@ -873,7 +881,12 @@ const AdminAds = () => {
           ? isHireListing
           : !isHireListing;
 
-    // 4. Period Filter
+    // 4. Category Filter
+    const matchesCategory = categoryFilter === 'all'
+      ? true
+      : ad.category === categoryFilter;
+
+    // 5. Period Filter
     let matchesPeriod = true;
     if (periodFilter !== 'all') {
       const createDate = ad.createdAt?.toDate ? ad.createdAt.toDate() : (ad.createdAt ? new Date(ad.createdAt) : null);
@@ -889,7 +902,7 @@ const AdminAds = () => {
       }
     }
 
-    // 5. Global Search Term matching: title, description, seller, city, country, or ad ID
+    // 6. Global Search Term matching: title, description, seller, city, country, or ad ID
     let matchesSearch = true;
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase().trim();
@@ -908,7 +921,7 @@ const AdminAds = () => {
                       id.includes(term);
     }
 
-    return matchesFilter && matchesCountry && matchesListingType && matchesPeriod && matchesSearch;
+    return matchesFilter && matchesCountry && matchesListingType && matchesCategory && matchesPeriod && matchesSearch;
   });
 
   const totalPages = Math.ceil(filteredAds.length / pageSize) || 1;
@@ -1011,7 +1024,7 @@ const AdminAds = () => {
         </div>
 
         {/* Filters Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-2 border-t border-slate-100">
+        <div className="grid grid-cols-1 md:grid-cols-12 xl:grid-cols-[repeat(14,minmax(0,1fr))] gap-4 pt-2 border-t border-slate-100">
           {/* Status Segmented Filter - 5 columns */}
           <div className="md:col-span-5 flex flex-col gap-1.5">
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Filter by Status</label>
@@ -1063,8 +1076,8 @@ const AdminAds = () => {
             </select>
           </div>
 
-          {/* Listing Type Select Filter - 3 columns */}
-          <div className="md:col-span-3 flex flex-col gap-1.5">
+          {/* Listing Type Select Filter - 2 columns */}
+          <div className="md:col-span-2 flex flex-col gap-1.5">
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Listing Type</label>
             <select
               value={listingTypeFilter}
@@ -1077,6 +1090,24 @@ const AdminAds = () => {
               <option value="all">⛵ All Listings</option>
               <option value="sale">🏷️ Boats for Sale</option>
               <option value="hire">🛥️ Boats for Hire</option>
+            </select>
+          </div>
+
+          {/* Category Select Filter - 3 columns */}
+          <div className="md:col-span-3 flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Category</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-705 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
+            >
+              <option value="all">📂 All Categories</option>
+              {categoryFilterOptions.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
             </select>
           </div>
 
