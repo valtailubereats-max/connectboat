@@ -152,6 +152,7 @@ const AdminAds = () => {
   const [countryFilter, setCountryFilter] = useState<'all' | 'Portugal' | 'Reino Unido'>('all');
   const [listingTypeFilter, setListingTypeFilter] = useState<'all' | 'sale' | 'hire'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [batchCategorySelection, setBatchCategorySelection] = useState<string>('Boats for Sale');
   const [periodFilter, setPeriodFilter] = useState<'all' | 'today' | '7days' | '30days'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [fetchLimit, setFetchLimit] = useState(100);
@@ -1290,24 +1291,28 @@ const AdminAds = () => {
                 </span>
               </div>
               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                <button
-                  onClick={() => handleBatchSetCategory('Boats for Sale')}
-                  disabled={batchLoading}
-                  className="flex-1 sm:flex-initial h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-                  title="Change the selected listings to Boats for Sale"
-                >
-                  <Tag size={14} />
-                  <span>Set → Boats for Sale</span>
-                </button>
-                <button
-                  onClick={() => handleBatchSetCategory('Boats for Hire')}
-                  disabled={batchLoading}
-                  className="flex-1 sm:flex-initial h-9 px-4 bg-white hover:bg-slate-50 text-indigo-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-indigo-200"
-                  title="Change the selected listings to Boats for Hire"
-                >
-                  <Tag size={14} />
-                  <span>Set → Boats for Hire</span>
-                </button>
+                <div className="flex items-center gap-2 h-9 px-2 bg-white rounded-xl border border-indigo-200 shadow-sm">
+                  <Tag size={14} className="text-indigo-600 shrink-0" />
+                  <select
+                    value={batchCategorySelection}
+                    onChange={(e) => setBatchCategorySelection(e.target.value)}
+                    disabled={batchLoading}
+                    className="h-7 min-w-[170px] bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer disabled:cursor-not-allowed"
+                    title="Choose the category for the selected listings"
+                  >
+                    {OFFICIAL_CONNECTBOAT_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => handleBatchSetCategory(batchCategorySelection)}
+                    disabled={batchLoading || !batchCategorySelection}
+                    className="h-7 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg text-[11px] font-black transition-all cursor-pointer disabled:cursor-not-allowed whitespace-nowrap"
+                    title={`Set selected listings to ${batchCategorySelection}`}
+                  >
+                    Apply category
+                  </button>
+                </div>
                 <button
                   onClick={() => handleBatchToggleHide(true)}
                   disabled={batchLoading}
@@ -1719,23 +1724,21 @@ const AdminAds = () => {
         <div className="space-y-4">
           {/* Desktop/Tablet Table layout */}
           <div className="hidden md:block">
-            {/* Top horizontal scrollbar: mirrors the table scrollbar so admins do not need to scroll to the bottom first. */}
-            <div className="mb-2 rounded-xl border border-slate-200 bg-white px-3 pt-2 pb-1 shadow-sm">
-              <div className="mb-1 flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                <span>↔ Drag to view more columns</span>
-                <span className="normal-case font-semibold text-slate-400">Horizontal table scroll</span>
-              </div>
+            {/* Real horizontal scrollbar above the table, synchronized with the table itself. */}
+            <div
+              ref={topTableScrollRef}
+              onScroll={() => syncTableScroll('top')}
+              className="mb-2 overflow-x-auto overflow-y-hidden rounded-lg border border-slate-200 bg-slate-50"
+              style={{ height: '18px' }}
+              aria-label="Horizontal table scrollbar"
+              title="Drag the scrollbar left or right to view more columns"
+            >
               <div
-                ref={topTableScrollRef}
-                onScroll={() => syncTableScroll('top')}
-                className="overflow-x-auto overflow-y-hidden"
-                aria-label="Horizontal table scroll"
-              >
-                <div
-                  className="h-1"
-                  style={{ width: `${Math.max(600, visibleColumns.length * 90)}px` }}
-                />
-              </div>
+                style={{
+                  width: `${Math.max(900, visibleColumns.length * 115)}px`,
+                  height: '1px'
+                }}
+              />
             </div>
 
             <div
@@ -1743,7 +1746,7 @@ const AdminAds = () => {
               onScroll={() => syncTableScroll('main')}
               className="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm"
             >
-              <table className="w-full text-left border-collapse transition-all" style={{ minWidth: `${Math.max(600, visibleColumns.length * 90)}px` }}>
+              <table className="w-full text-left border-collapse transition-all" style={{ minWidth: `${Math.max(900, visibleColumns.length * 115)}px` }}>
               <thead>
                 <tr className="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider">
                   <th className="py-3 px-4 w-10 text-center">
