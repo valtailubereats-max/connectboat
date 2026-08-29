@@ -47,9 +47,7 @@ const Terms = () => {
           </div>
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-slate-900">Terms of Use</h1>
-            <p className="text-sm text-slate-500 mt-1">
-              ConnectBoat Marine Marketplace
-            </p>
+            <p className="text-sm text-slate-500 mt-1">ConnectBoat Marine Marketplace</p>
           </div>
         </div>
 
@@ -60,18 +58,19 @@ const Terms = () => {
               <h2 className="text-xl font-bold m-0">1. Nature of the Platform</h2>
             </div>
             <p className="text-slate-600 leading-relaxed">
-              ConnectBoat is an online marine marketplace designed to connect buyers, sellers,
-              boat owners, boat hire and charter operators, brokers, dealers, marine businesses
-              and service providers. Listings may include boats and yachts for sale or hire,
-              engines, parts, marine electronics, trailers, accessories, marina-related services
-              and other marine products or services.
+              ConnectBoat is an online marine marketplace designed to connect buyers, sellers, boat
+              owners, boat hire and charter operators, brokers, dealers, marine businesses and service
+              providers. Listings may include boats and yachts for sale or hire, engines, parts, marine
+              electronics, trailers, accessories, marina-related services and other marine products or
+              services.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
-              Unless expressly stated otherwise, ConnectBoat is not the owner, seller, buyer,
-              manufacturer, broker, charter operator, insurer, surveyor, lender, escrow agent or
-              delivery provider for items or services advertised by users. ConnectBoat provides
-              advertising, discovery and related platform services and is not a party to the
-              underlying sale, hire, charter or service agreement made between users.
+              ConnectBoat provides advertising, discovery and contact-facilitation services only. Unless
+              we expressly confirm otherwise in writing, ConnectBoat is not the owner, seller, buyer,
+              manufacturer, broker, charter operator, insurer, surveyor, lender, escrow agent, payment
+              intermediary, carrier or delivery provider for items or services advertised by users. We
+              are not a party to, and do not negotiate, arrange, control or guarantee, any sale, hire,
+              charter or service agreement made between users.
             </p>
           </section>
 
@@ -87,7 +86,8 @@ const Terms = () => {
               create an account for fraudulent purposes or use the platform in breach of applicable law.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
-              ConnectBoat may be accessed by users internationally, while the geographic markets in
+              You must be at least 18 years old and have the legal capacity to enter into relevant
+              contracts. ConnectBoat may be accessed internationally, while the geographic markets in
               which listings may be published are determined by the availability and location options
               offered on the platform from time to time.
             </p>
@@ -96,14 +96,22 @@ const Terms = () => {
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <Info size={20} />
-              <h2 className="text-xl font-bold m-0">3. Listings and Paid Platform Services</h2>
+              <h2 className="text-xl font-bold m-0">3. Listings, Free Categories and Paid Platform Services</h2>
             </div>
             <p className="text-slate-600 leading-relaxed">
-              ConnectBoat may offer paid listing plans, including Standard, Featured and Premium
-              options, together with optional extras such as Media Boost. The features, photo limits,
-              duration and price applicable to each plan are shown on the Pricing page and during the
+              ConnectBoat may charge for listing plans relating to Boats for Sale and Boats for Hire,
+              including Standard, Featured and Premium options, together with optional extras such as
+              Media Boost or other visibility and media features. The features, photo limits, duration
+              and price applicable to each paid service are shown on the Pricing page and during the
               listing and checkout process. The information displayed at the point of purchase forms
               part of the service you order.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              Other listing categories may be offered free of charge and may have different limits,
+              including limits on the number of photographs or other media that can be uploaded.
+              ConnectBoat may change which categories are free or paid, and may change applicable
+              features or limits, from time to time. Any price or material restriction applying to a
+              paid service will be shown before purchase.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               Payment for a listing does not automatically guarantee publication. Paid listings may
@@ -117,11 +125,18 @@ const Terms = () => {
               clicks, leads, a sale, a hire booking or any particular commercial result.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
+              Each advertiser must accurately state whether they are acting as a private seller or as a
+              trader. Traders are responsible for providing all information, pricing, consumer rights,
+              cancellation terms, tax information and other disclosures required by law for their
+              listings. ConnectBoat may display that status and request supporting information where
+              reasonably necessary.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
               ConnectBoat may also display clearly identified sponsored advertising from third-party
               advertisers within or around listing pages. Sponsored advertising is separate from the
-              listing being viewed and does not imply that ConnectBoat endorses the advertiser,
-              product or service. Clicking sponsored advertising may take you to an external website
-              or service operated by a third party.
+              listing being viewed and does not imply that ConnectBoat endorses the advertiser, product
+              or service. Clicking sponsored advertising may take you to an external website or service
+              operated by a third party.
             </p>
           </section>
 
@@ -132,15 +147,15 @@ const Terms = () => {
             </div>
             <p className="text-slate-600 leading-relaxed">
               Payments made to ConnectBoat are payments for ConnectBoat platform services, such as
-              listing plans, enhanced visibility or optional media features. Payment processing may
-              be provided by a third-party payment processor such as Stripe and is subject to the
-              payment information and conditions shown at checkout.
+              listing plans, enhanced visibility, advertising or optional media features. Payment
+              processing may be provided by a third-party payment processor such as Stripe and is
+              subject to the payment information and conditions shown at checkout.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               These platform-service payments are separate from any payment between users for a boat,
-              yacht, hire, charter, deposit, marine product, delivery or third-party service.
-              ConnectBoat does not hold purchase money or charter deposits on behalf of users unless
-              a specific ConnectBoat service expressly states otherwise.
+              yacht, hire, charter, deposit, marine product, delivery or third-party service. ConnectBoat
+              does not hold purchase money or charter deposits on behalf of users unless a specific
+              ConnectBoat service expressly states otherwise.
             </p>
           </section>
 
@@ -151,15 +166,21 @@ const Terms = () => {
             </div>
             <p className="text-slate-600 leading-relaxed">
               Negotiations and transactions relating to advertised boats, products, hire, charter or
-              marine services take place directly between the relevant users or businesses. Communication
-              may take place outside ConnectBoat, including through WhatsApp, telephone, email or
-              in-person meetings.
+              marine services take place directly between the relevant users or businesses.
+              Communication may take place outside ConnectBoat, including through WhatsApp, telephone,
+              email or in-person meetings.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
-              ConnectBoat does not set or guarantee the transaction price, deposit, delivery terms,
-              hire conditions, cancellation terms, warranty, insurance arrangements or payment method
-              agreed between users. Each party is responsible for understanding and documenting the
-              terms of its own transaction.
+              ConnectBoat does not set or guarantee the transaction price, deposit, delivery terms, hire
+              conditions, cancellation terms, warranty, insurance arrangements or payment method agreed
+              between users. Each party is responsible for understanding and documenting the terms of
+              its own transaction.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              A listing appearing on ConnectBoat is not a verification, recommendation, endorsement or
+              certification of the advertiser, vessel, product or service. Users are responsible for
+              carrying out appropriate checks before sending money, agreeing a contract or taking
+              delivery.
             </p>
           </section>
 
@@ -196,11 +217,11 @@ const Terms = () => {
               other legal or regulatory obligations that apply to the service.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
-              Hirers and charter customers are responsible for reviewing the provider's terms before
+              Hirers and charter customers are responsible for reviewing the provider&apos;s terms before
               booking, including deposits, cancellation terms, minimum hire periods, skipper
               requirements, fuel arrangements, weather policies and any licence or experience
-              requirements. ConnectBoat is not responsible for weather disruption or for the
-              performance of a hire or charter supplied by a third party.
+              requirements. ConnectBoat is not responsible for weather disruption or for the performance
+              of a hire or charter supplied by a third party.
             </p>
           </section>
 
@@ -209,9 +230,7 @@ const Terms = () => {
               <CheckCircle size={20} />
               <h2 className="text-xl font-bold m-0">8. User and Advertiser Responsibilities</h2>
             </div>
-            <p className="text-slate-600 leading-relaxed">
-              Users and advertisers are responsible for:
-            </p>
+            <p className="text-slate-600 leading-relaxed">Users and advertisers are responsible for:</p>
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
               <li>Providing accurate, lawful and non-misleading information.</li>
               <li>Keeping prices, availability, location and contact details reasonably up to date.</li>
@@ -249,8 +268,14 @@ const Terms = () => {
             <p className="text-slate-600 leading-relaxed mt-3">
               We may also restrict or suspend an account where there is a reasonable basis to suspect
               fraud, abuse, repeated policy breaches, security risks or unlawful activity. Where
-              appropriate, we may ask a user to provide information needed to verify an account,
-              listing or business.
+              appropriate, we may ask a user to provide information needed to verify an account, listing
+              or business.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              Where appropriate and lawful, we will give an affected user the principal reason for a
+              removal, restriction or suspension and a reasonable opportunity to request a review. We
+              may act without prior notice where this is reasonably necessary for safety, security,
+              fraud prevention or legal compliance.
             </p>
           </section>
 
@@ -276,8 +301,16 @@ const Terms = () => {
             <h2 className="text-xl font-bold text-slate-900 mb-3">12. Cancellations, Refunds and Consumer Rights</h2>
             <p className="text-slate-600 leading-relaxed">
               Nothing in these Terms removes or limits any statutory rights that apply to you as a
-              consumer. Where applicable law gives you a right to cancel a ConnectBoat platform service,
-              that right will apply in accordance with the law.
+              consumer. If you are a consumer and buy a ConnectBoat platform service at a distance, you
+              may have a statutory right to cancel the contract within 14 days after it is made, subject
+              to applicable exceptions and legal requirements.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              If you expressly ask us to begin providing a service during the cancellation period, we
+              may begin the service and, where permitted by law, you may have to pay an amount
+              proportionate to the service supplied up to the time you cancel. Where the law permits the
+              cancellation right to be lost after full performance, this will only apply where the
+              required consent and acknowledgement have been obtained.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               Requests relating to cancellation, duplicate payment, billing errors or refunds for
@@ -288,10 +321,12 @@ const Terms = () => {
               >
                 contato@connectboat.co.uk
               </a>
-              . Any entitlement to a refund will depend on the circumstances, the service supplied and
-              applicable consumer law. This section concerns fees paid to ConnectBoat and does not govern
-              refunds, deposits or cancellations agreed directly between users for a boat sale, hire,
-              charter or third-party service.
+              . To cancel, please send a clear statement of your decision together with your name and,
+              where available, your order or listing reference. Where a refund is legally due, it will
+              be made without undue delay and within the period required by applicable law, normally
+              using the original payment method unless otherwise agreed. This section concerns fees paid
+              to ConnectBoat only; it does not govern refunds, deposits or cancellations agreed directly
+              between users.
             </p>
           </section>
 
@@ -300,13 +335,13 @@ const Terms = () => {
             <p className="text-slate-600 leading-relaxed">
               ConnectBoat and its branding, software, interface and original platform content are
               protected by applicable intellectual property laws. Users retain ownership of content
-              they submit, subject to the rights required for ConnectBoat to host, display, resize,
-              reproduce and promote that content for the purpose of operating and marketing the
-              relevant listing and the platform.
+              they submit. By uploading content, you grant ConnectBoat a non-exclusive, worldwide,
+              royalty-free licence to host, reproduce, resize, display and promote that content as
+              reasonably necessary to operate and market the relevant listing and the platform.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               By uploading content, you confirm that you have the necessary rights and permissions to
-              use it and to allow ConnectBoat to display it for these purposes.
+              use it and to allow ConnectBoat to display and process it for these purposes.
             </p>
           </section>
 
@@ -322,61 +357,87 @@ const Terms = () => {
               To the fullest extent permitted by applicable law, ConnectBoat is not responsible for
               losses caused by the acts, omissions, misrepresentations or contractual failures of
               independent users or third-party businesses, or for the condition, ownership, legality,
-              availability or performance of items and services supplied by them.
+              availability or performance of items and services supplied by them. We remain responsible
+              for foreseeable loss or damage caused by our breach of these Terms or our failure to use
+              reasonable care and skill in providing our platform services where applicable law requires
+              us to be responsible.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               Nothing in these Terms excludes or limits liability where it would be unlawful to do so,
-              including liability that cannot lawfully be excluded under applicable consumer law.
+              including liability for death or personal injury caused by negligence, fraud or fraudulent
+              misrepresentation, or liability that cannot lawfully be excluded under applicable consumer
+              law.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              If you use ConnectBoat in the course of a business, our total liability to you in connection
+              with these Terms or our platform services is limited to the fees you paid to ConnectBoat in
+              the 12 months before the event giving rise to the claim. This cap does not apply where it
+              would be unlawful to limit liability.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">15. Privacy, Cookies and Platform Compliance</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-3">15. Third-Party Services and Force Majeure</h2>
+            <p className="text-slate-600 leading-relaxed">
+              The platform may contain links or contact options for third-party services, including
+              WhatsApp, telephone networks, email providers, payment providers and external websites.
+              Your use of those services is subject to the relevant third party&apos;s terms and privacy
+              policy. ConnectBoat does not control or endorse their content, availability or performance.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              We are not liable for delay or failure to perform caused by events beyond our reasonable
+              control, including internet or power failures, strikes, natural disasters, government
+              action or failures of third-party infrastructure.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-bold text-slate-900 mb-3">16. Privacy, Cookies and Platform Compliance</h2>
             <p className="text-slate-600 leading-relaxed">
               Personal information is handled in accordance with our{' '}
               <Link to="/privacy" className="font-bold text-indigo-600 hover:underline">
                 Privacy Policy
               </Link>{' '}
               and information about cookies and similar technologies is provided in our{' '}
-              <Link to="/cookies" className="font-bold text-indigo-600 hover:underline">
+              <Link to="/cookie-policy" className="font-bold text-indigo-600 hover:underline">
                 Cookie Policy
               </Link>
               .
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
-              ConnectBoat may request or retain information where reasonably required for security,
-              fraud prevention, legal compliance, payment administration or obligations that may apply
-              to operators of digital platforms. Where a legal reporting obligation applies, relevant
-              information may be processed or disclosed as required by law.
+              ConnectBoat may request, verify or retain information where reasonably required for
+              security, fraud prevention, legal compliance, payment administration or obligations that
+              may apply to operators of digital platforms. Where a legal reporting obligation applies,
+              relevant information may be processed or disclosed as required by law.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">16. Changes to these Terms</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-3">17. Changes to these Terms</h2>
             <p className="text-slate-600 leading-relaxed">
               We may update these Terms to reflect changes to the platform, our services or applicable
               legal requirements. Material changes will apply from the date stated in the updated
               version and, where required, we will provide appropriate notice. Continued use of the
-              platform after an updated version takes effect constitutes acceptance of the updated
-              Terms to the extent permitted by law.
+              platform after an updated version takes effect constitutes acceptance of the updated Terms
+              to the extent permitted by law.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">17. Governing Law and Jurisdiction</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-3">18. Governing Law and Jurisdiction</h2>
             <p className="text-slate-600 leading-relaxed">
               These Terms and ConnectBoat platform services are governed by the laws of England and
               Wales, except where mandatory consumer law provides you with additional rights or
-              protections that cannot lawfully be excluded. Nothing in this section prevents a
-              consumer from relying on mandatory rights available under the law applicable to them.
+              protections that cannot lawfully be excluded. Nothing in this section prevents a consumer
+              from relying on mandatory rights available under the law applicable to them.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-3">18. Contact</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-3">19. Contact</h2>
             <p className="text-slate-600 leading-relaxed">
-              Questions about these Terms, platform-service payments, complaints or legal matters may
-              be sent to{' '}
+              Questions about these Terms, platform-service payments, complaints or legal matters may be
+              sent to{' '}
               <a
                 href="mailto:contato@connectboat.co.uk"
                 className="font-bold text-indigo-600 hover:underline"
@@ -393,9 +454,7 @@ const Terms = () => {
               terms agreed directly between buyers, sellers, owners, charter operators or service
               providers remain the responsibility of those parties.
             </p>
-            <p className="text-sm text-slate-400 mt-2">
-              Last updated: 27 August 2026.
-            </p>
+            <p className="text-sm text-slate-400 mt-2">Last updated: 29 August 2026.</p>
           </section>
 
           <div className="pt-6 border-t border-slate-100 flex justify-center">
