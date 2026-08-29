@@ -955,6 +955,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       itemType,
       plan,
       country,
+      category,
       currency: requestedCurrency,
       adId,
       showcaseData,
@@ -981,6 +982,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
     let authenticatedUserId = '';
     let authenticatedUserEmail = '';
+    let authenticatedAdData: Record<string, any> | null = null;
 
     if (itemType === 'ad_listing') {
       const authHeader = req.headers.authorization || '';
@@ -1029,6 +1031,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       }
 
       const adData = adSnapshot.data() || {};
+      authenticatedAdData = adData;
       if (adData.sellerId !== authenticatedUserId) {
         return res.status(403).json({
           success: false,
@@ -1063,6 +1066,10 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
     // Calculate base plan price using the trusted Firestore settings.
     const activePlan = (plan || 'standard').toLowerCase();
+    const savedListingCategory = String(authenticatedAdData?.category || category || '').trim();
+    const isPaidBoatListing =
+      itemType === 'ad_listing' &&
+      (savedListingCategory === 'Boats for Sale' || savedListingCategory === 'Boats for Hire');
 
     if (activePlan === 'premium') {
       amountCents = Math.round(premiumPrice * 100);
@@ -1087,8 +1094,12 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       productDescription = `30-day active listing (${currencySymbol}${standardPrice.toFixed(2)})`;
     }
 
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
-      {
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+
+    // The listing fee is charged only for Boats for Sale and Boats for Hire.
+    // Other categories remain free; Stripe is used only when a paid extra is selected.
+    if (itemType !== 'ad_listing' || isPaidBoatListing) {
+      lineItems.push({
         price_data: {
           currency,
           product_data: {
@@ -1098,8 +1109,8 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
           unit_amount: amountCents,
         },
         quantity: 1,
-      },
-    ];
+      });
+    }
 
     const hasMediaBoost = !!mediaBoostEnabled;
     if (hasMediaBoost) {
@@ -1116,12 +1127,21 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       });
     }
 
+    if (lineItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'NO_PAYMENT_REQUIRED',
+        errorMessage: 'This listing category is free and no paid extra was selected.'
+      });
+    }
+
     const metadata: Record<string, string> = {
       itemType: String(itemType),
       userId: String(itemType === 'ad_listing' ? authenticatedUserId : ''),
       adId: String(adId || ''),
       plan: String(activePlan),
       country: String(country || ''),
+      category: savedListingCategory,
       mediaBoostEnabled: hasMediaBoost ? 'true' : 'false',
     };
 
