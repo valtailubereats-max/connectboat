@@ -164,8 +164,9 @@ const Home = () => {
   }, []);
   const [ads, setAds] = useState<Ad[]>([]);
   const [featuredAds, setFeaturedAds] = useState<Ad[]>([]);
-  // Hire listings are fetched independently so older hire ads are not excluded
-  // by the 48-item general homepage query.
+  // Sale and hire listings are fetched independently so older boat ads are not
+  // excluded by the 48-item general homepage discovery query.
+  const [saleSectionAds, setSaleSectionAds] = useState<Ad[]>([]);
   const [hireSectionAds, setHireSectionAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -761,6 +762,72 @@ const Home = () => {
   }, [country, authLoading, reloadCounter, dbLimit]); // Recarrega sempre que mudar de país ou com dbLimit
 
 
+  // Dedicated query for the Boats for Sale homepage section.
+  // The general homepage discovery feed intentionally loads only the newest 48
+  // ads across all categories, so older sale listings must not depend on it.
+  useEffect(() => {
+    let active = true;
+
+    const loadSaleSectionAds = async () => {
+      if (authLoading) return;
+
+      try {
+        const qSale = query(
+          collection(db, 'ads'),
+          where('category', '==', 'Boats for Sale'),
+          limit(200)
+        );
+
+        const snapshot = await withTimeout(
+          getDocsWithCacheFallback(qSale, `home/sale-section-${country}`),
+          20000
+        );
+
+        if (!active) return;
+
+        const rows = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Ad))
+          .filter(ad => {
+            if (ad.isHidden) return false;
+
+            const isActive =
+              ad.status === 'approved' &&
+              (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
+
+            const adCountry = (ad.country || '').trim();
+            const selectedCountry = (country || '').trim();
+            const ukLabels = new Set(['Reino Unido', 'United Kingdom', 'UK']);
+            const matchesCountry =
+              !adCountry ||
+              adCountry === selectedCountry ||
+              (ukLabels.has(adCountry) && ukLabels.has(selectedCountry));
+
+            return isActive && matchesCountry;
+          })
+          .sort((a, b) => {
+            const timeA = a.createdAt?.seconds
+              ? a.createdAt.seconds * 1000
+              : (a.createdAt ? new Date(a.createdAt as any).getTime() : 0);
+            const timeB = b.createdAt?.seconds
+              ? b.createdAt.seconds * 1000
+              : (b.createdAt ? new Date(b.createdAt as any).getTime() : 0);
+            return (timeB || 0) - (timeA || 0);
+          });
+
+        setSaleSectionAds(rows);
+      } catch (err) {
+        console.error('[Home] Failed to load dedicated sale listings:', err);
+        if (active) setSaleSectionAds([]);
+      }
+    };
+
+    loadSaleSectionAds();
+    return () => {
+      active = false;
+    };
+  }, [country, authLoading, reloadCounter]);
+
+
   // Dedicated query for the Boats for Hire & Charter homepage section.
   // The general homepage feed intentionally loads only the newest 48 ads, so
   // older hire listings must not depend on that limited result set.
@@ -1028,7 +1095,12 @@ const Home = () => {
       filterMinCabins.trim() !== '' ||
       filterTrailer !== 'Any';
 
-    let result = ads.filter(ad => {
+    // On the untouched homepage, use the dedicated Boats for Sale query so
+    // older sale listings are not lost behind the 48-item mixed-category limit.
+    // Once the visitor searches or filters, keep using the general discovery feed.
+    const sourceAds = hasActiveDiscoveryFilter ? ads : saleSectionAds;
+
+    let result = sourceAds.filter(ad => {
       if (ad.isHidden) return false;
       if (ad.category === 'Trabalho/Empregos') return false;
 
@@ -1270,6 +1342,7 @@ const Home = () => {
     });
   }, [
     ads,
+    saleSectionAds,
     searchTerm,
     category,
     city,
