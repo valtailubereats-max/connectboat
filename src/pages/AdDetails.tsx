@@ -2474,8 +2474,8 @@ const AdDetails = () => {
 
       {/* MORE FROM THIS SELLER */}
       {sellerAds.length > 0 && (
-        <section className="mt-10 sm:mt-12 rounded-[1.75rem] sm:rounded-[2rem] border border-slate-200 bg-white shadow-sm overflow-hidden text-left">
-          <div className="px-4 sm:px-6 lg:px-7 py-5 sm:py-6 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-indigo-50/50">
+        <section className="mt-10 sm:mt-12 rounded-[1.75rem] sm:rounded-[2rem] border border-white/70 bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] shadow-[0_12px_32px_rgba(3,24,46,0.18)] overflow-hidden text-left">
+          <div className="px-4 sm:px-6 lg:px-7 py-5 sm:py-6 border-b border-white/60 bg-white/10">
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-indigo-600 mb-1">
