@@ -1411,7 +1411,7 @@ const AdDetails = () => {
           {/* DESCRIPTION CARD — separate from title and seller */}
           <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-7 mt-4 text-left">
             <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Detailed Description</h3>
+              <h3 className="text-sm font-black text-slate-700 uppercase tracking-[0.08em]">Detailed Description</h3>
               <p className="text-slate-700 text-[15px] leading-relaxed whitespace-pre-line break-words overflow-hidden bg-white/38 backdrop-blur-sm p-4 rounded-2xl border border-white/55">
                 {normalizedDescription.length > 400 && !descriptionExpanded
                   ? `${normalizedDescription.substring(0, 400).trim()}...`
@@ -1454,7 +1454,7 @@ const AdDetails = () => {
                 {/* Grupo 1: Embarcação / Vessel */}
                 {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.condition) && (
                   <div className="space-y-3 lg:col-span-2">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-sky-800 bg-sky-50/70 p-2.5 rounded-xl border border-sky-100/60">
+                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.08em] text-slate-800">
                       <Anchor size={16} className="text-sky-600" />
                       <span>Vessel Information</span>
                     </div>
@@ -1496,7 +1496,7 @@ const AdDetails = () => {
                 {/* Grupo 2: Dimensões & Casco / Dimensions */}
                 {(ad.length || ad.beam || ad.draft || ad.hullMaterial) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-teal-800 bg-teal-50/70 p-2.5 rounded-xl border border-teal-100/60">
+                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.08em] text-slate-800">
                       <Ruler size={16} className="text-teal-600" />
                       <span>Dimensões & Casco</span>
                     </div>
@@ -1532,7 +1532,7 @@ const AdDetails = () => {
                 {/* Grupo 3: Motorização / Engine */}
                 {(ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-800 bg-amber-50/70 p-2.5 rounded-xl border border-amber-100/60">
+                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.08em] text-slate-800">
                       <Gauge size={16} className="text-amber-600" />
                       <span>Motorização & Performance</span>
                     </div>
@@ -1568,7 +1568,7 @@ const AdDetails = () => {
                 {/* Grupo 4: Acomodações & Habitabilidade / Accommodation */}
                 {(ad.cabins || ad.berths || ad.bathrooms) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-indigo-800 bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100/60">
+                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.08em] text-slate-800">
                       <Bed size={16} className="text-indigo-600" />
                       <span>Acomodações & Habitabilidade</span>
                     </div>
@@ -1598,7 +1598,7 @@ const AdDetails = () => {
                 {/* Grupo 5: Conformidade & Extras */}
                 {(ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-800 bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100/60">
+                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.08em] text-slate-800">
                       <ShieldCheck size={16} className="text-emerald-600" />
                       <span>Conformidade & Equipamento</span>
                     </div>
@@ -2094,7 +2094,7 @@ const AdDetails = () => {
 
           {/* Descrição detalhada compacta */}
           <div className="space-y-1">
-            <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Detailed Description</h3>
+            <h3 className="text-xs font-black text-slate-700 uppercase tracking-[0.08em]">Detailed Description</h3>
             <p className="text-slate-650 text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words bg-slate-50/40 p-3 rounded-xl border border-slate-50">
               {normalizedDescription.length > 250 && !descriptionExpanded
                 ? `${normalizedDescription.substring(0, 250).trim()}...`
@@ -2133,7 +2133,7 @@ const AdDetails = () => {
               {/* Embarcação */}
               {(ad.boatType || ad.manufacturer || ad.model || ad.year) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-sky-800 tracking-wider block">Vessel</span>
+                  <span className="text-xs font-black uppercase text-slate-800 tracking-[0.08em] block">Vessel</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.boatType && (
                       <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
@@ -2166,7 +2166,7 @@ const AdDetails = () => {
               {/* Dimensões */}
               {(ad.length || ad.beam || ad.draft || ad.hullMaterial) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider block">Dimensions</span>
+                  <span className="text-xs font-black uppercase text-slate-800 tracking-[0.08em] block">Dimensions</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.length && (
                       <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
@@ -2199,7 +2199,7 @@ const AdDetails = () => {
               {/* Motor */}
               {(ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider block">Engine</span>
+                  <span className="text-xs font-black uppercase text-slate-800 tracking-[0.08em] block">Engine</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.engineBrand && (
                       <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
@@ -2232,7 +2232,7 @@ const AdDetails = () => {
               {/* Acomodações e Conformidade */}
               {(ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-indigo-800 tracking-wider block">Accommodations & Extras</span>
+                  <span className="text-xs font-black uppercase text-slate-800 tracking-[0.08em] block">Accommodations & Extras</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.cabins && (
                       <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
