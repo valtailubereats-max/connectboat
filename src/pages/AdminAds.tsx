@@ -629,6 +629,45 @@ const AdminAds = () => {
     }
   };
 
+  const handleBatchSetCategory = async (category: string) => {
+    if (selectedAdIds.length === 0) return;
+
+    const selectedAds = ads.filter(ad => selectedAdIds.includes(ad.id));
+    const currentCategories = Array.from(
+      new Set(selectedAds.map(ad => String((ad as any).category || '').trim() || '(empty)'))
+    );
+
+    const confirmMsg = `Change category to "${category}" for ${selectedAdIds.length} selected listing(s)?\n\nCurrent categor${currentCategories.length === 1 ? 'y' : 'ies'}: ${currentCategories.join(', ')}`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setBatchLoading(true);
+    try {
+      await Promise.all(selectedAdIds.map(id =>
+        updateDoc(doc(db, 'ads', id), {
+          category,
+          updatedAt: serverTimestamp(),
+        })
+      ));
+
+      clearHomeCache();
+      setAds(prev => prev.map(ad =>
+        selectedAdIds.includes(ad.id) ? ({ ...ad, category } as Ad) : ad
+      ));
+      if (selectedAd && selectedAdIds.includes(selectedAd.id)) {
+        setSelectedAd(prev => prev ? ({ ...prev, category } as Ad) : null);
+      }
+
+      const updatedCount = selectedAdIds.length;
+      setSelectedAdIds([]);
+      alert(`${updatedCount} listing(s) changed to ${category}.`);
+    } catch (err) {
+      console.error('Error changing category in batch:', err);
+      alert('Could not change the category of the selected listings.');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
   const handleBatchDelete = async () => {
     if (selectedAdIds.length === 0) return;
     if (!window.confirm(`Are you sure you want to permanently delete the ${selectedAdIds.length} selected listings? This action is irreversible.`)) return;
@@ -1235,6 +1274,24 @@ const AdminAds = () => {
                 </span>
               </div>
               <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => handleBatchSetCategory('Boats for Sale')}
+                  disabled={batchLoading}
+                  className="flex-1 sm:flex-initial h-9 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="Change the selected listings to Boats for Sale"
+                >
+                  <Tag size={14} />
+                  <span>Set → Boats for Sale</span>
+                </button>
+                <button
+                  onClick={() => handleBatchSetCategory('Boats for Hire')}
+                  disabled={batchLoading}
+                  className="flex-1 sm:flex-initial h-9 px-4 bg-white hover:bg-slate-50 text-indigo-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-indigo-200"
+                  title="Change the selected listings to Boats for Hire"
+                >
+                  <Tag size={14} />
+                  <span>Set → Boats for Hire</span>
+                </button>
                 <button
                   onClick={() => handleBatchToggleHide(true)}
                   disabled={batchLoading}
