@@ -1722,41 +1722,30 @@ const AdminAds = () => {
       ) : (
         /* --- VIEW MODE: TABLE --- */
         <div className="space-y-4">
-          {/* Desktop/Tablet Table layout */}
-          <div className="hidden md:block">
-            {/* Real horizontal scrollbar above the table, synchronized with the table itself. */}
-            <div
-              ref={topTableScrollRef}
-              onScroll={() => syncTableScroll('top')}
-              className="sticky top-2 z-30 mb-2 overflow-x-auto overflow-y-hidden rounded-lg border border-slate-300 bg-white shadow-md"
-              style={{ height: '20px' }}
-              aria-label="Horizontal table scrollbar"
-              title="Drag the scrollbar left or right to view more columns"
-            >
-              <div
-                style={{
-                  width: `${Math.max(900, visibleColumns.length * 115)}px`,
-                  height: '1px'
-                }}
-              />
-            </div>
-
-            <div
-              ref={mainTableScrollRef}
-              onScroll={() => syncTableScroll('main')}
-              className="overflow-x-auto bg-white rounded-2xl border border-slate-200 shadow-sm"
-            >
-              <table className="w-full text-left border-collapse transition-all" style={{ minWidth: `${Math.max(900, visibleColumns.length * 115)}px` }}>
+          {/* Desktop/Tablet compact table: all information fits without horizontal scrolling */}
+          <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <table className="w-full table-fixed text-left border-collapse">
+              <colgroup>
+                <col style={{ width: '3%' }} />
+                <col style={{ width: isColVisible('acoes') ? '22%' : '27%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '11%' }} />
+                {isColVisible('pagamento') && <col style={{ width: '10%' }} />}
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '7%' }} />
+                {isColVisible('acoes') && <col style={{ width: '15%' }} />}
+              </colgroup>
               <thead>
-                <tr className="bg-slate-50/70 border-b border-slate-200 text-slate-400 text-[10px] font-black uppercase tracking-wider">
-                  <th className="py-3 px-4 w-10 text-center">
-                    <input 
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-400 text-[9px] font-black uppercase tracking-wide">
+                  <th className="py-2.5 px-2 text-center">
+                    <input
                       type="checkbox"
                       checked={pagedAds.length > 0 && pagedAds.every(ad => selectedAdIds.includes(ad.id))}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          const newSelected = Array.from(new Set([...selectedAdIds, ...pagedAds.map(ad => ad.id)]));
-                          setSelectedAdIds(newSelected);
+                          setSelectedAdIds(Array.from(new Set([...selectedAdIds, ...pagedAds.map(ad => ad.id)])));
                         } else {
                           setSelectedAdIds(selectedAdIds.filter(id => !pagedAds.map(a => a.id).includes(id)));
                         }
@@ -1764,373 +1753,166 @@ const AdminAds = () => {
                       className="rounded border-slate-300 text-indigo-650 focus:ring-indigo-500/20 w-4 h-4 cursor-pointer"
                     />
                   </th>
-                  {isColVisible('foto') && <th className="py-3 px-4 w-16 text-center">Photo</th>}
-                  {isColVisible('titulo') && <th className="py-3 px-4">Listing</th>}
-                  {isColVisible('pais') && <th className="py-3 px-4 text-center">Country</th>}
-                  {isColVisible('cidade') && <th className="py-3 px-4">City / Location</th>}
-                  {isColVisible('preco') && <th className="py-3 px-4">Price</th>}
-                  {isColVisible('status') && <th className="py-3 px-4 text-center">Status</th>}
-                  {isColVisible('pagamento') && <th className="py-3 px-4 text-center">Payment</th>}
-                  {isColVisible('vendedor') && <th className="py-3 px-4">Seller</th>}
-                  {isColVisible('criacao') && <th className="py-3 px-4">Created</th>}
-                  {isColVisible('expiracao') && <th className="py-3 px-4">Expiry</th>}
-                  {isColVisible('vistas') && <th className="py-3 px-4 text-center">Views</th>}
-                  {isColVisible('cliques') && <th className="py-3 px-4 text-center">Clicks</th>}
-                  {isColVisible('acoes') && <th className="py-3 px-4 text-right pr-6">Quick Actions</th>}
+                  <th className="py-2.5 px-2">Listing</th>
+                  <th className="py-2.5 px-2">Location</th>
+                  <th className="py-2.5 px-2">Price</th>
+                  <th className="py-2.5 px-2 text-center">Status</th>
+                  {isColVisible('pagamento') && <th className="py-2.5 px-2 text-center">Payment</th>}
+                  <th className="py-2.5 px-2">Seller</th>
+                  <th className="py-2.5 px-2">Dates</th>
+                  <th className="py-2.5 px-2 text-center">Activity</th>
+                  {isColVisible('acoes') && <th className="py-2.5 px-2 text-center">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {pagedAds.map((ad, idx) => {
-                  const adCountryIcon = ad.country === 'Reino Unido' ? '🇬🇧' : '🇵🇹';
+                  const adCountryIcon = ['Reino Unido', 'United Kingdom', 'UK', 'GB'].includes(ad.country || '') ? '🇬🇧' : '🌍';
                   return (
-                    <tr key={`${ad.id}-${idx}`} className="hover:bg-slate-50/50 transition-colors text-xs">
-                      <td className="py-3 px-4 border-none text-center">
-                        <input 
+                    <tr key={`${ad.id}-${idx}`} className="hover:bg-slate-50/60 transition-colors align-middle text-[11px]">
+                      <td className="py-2.5 px-2 text-center">
+                        <input
                           type="checkbox"
                           checked={selectedAdIds.includes(ad.id)}
                           onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedAdIds(prev => [...prev, ad.id]);
-                            } else {
-                              setSelectedAdIds(prev => prev.filter(id => id !== ad.id));
-                            }
+                            if (e.target.checked) setSelectedAdIds(prev => [...prev, ad.id]);
+                            else setSelectedAdIds(prev => prev.filter(id => id !== ad.id));
                           }}
                           className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500/20 w-4 h-4 cursor-pointer"
                         />
                       </td>
-                      {/* Photo column */}
-                      {isColVisible('foto') && (
-                        <td className="py-3 px-4 border-none text-center">
-                          <div 
-                            className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center cursor-pointer mx-auto relative group shadow-inner"
-                            onClick={() => setSelectedAd(ad)}
-                          >
-                            <img 
-                              src={ad.imageUrl} 
-                              alt={ad.title} 
-                              className="w-full h-full object-cover group-hover:scale-105 transition-all" 
-                              referrerPolicy="no-referrer"
-                            />
-                          </div>
-                        </td>
-                      )}
 
-                      {/* Title column */}
-                      {isColVisible('titulo') && (
-                        <td className="py-3 px-4 border-none font-medium">
-                          <div className="max-w-[200px]">
-                            <div className="flex items-center gap-1.5 flex-wrap max-w-full">
-                              <div 
-                                className="font-bold text-slate-900 truncate hover:text-indigo-600 transition-colors cursor-pointer"
+                      {/* Listing: photo + title + category + ID */}
+                      <td className="py-2.5 px-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {isColVisible('foto') && (
+                            <div
+                              className="w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer shadow-inner"
+                              onClick={() => setSelectedAd(ad)}
+                            >
+                              <img src={ad.imageUrl} alt={ad.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            </div>
+                          )}
+                          <div className="min-w-0 leading-tight">
+                            {isColVisible('titulo') && (
+                              <button
+                                type="button"
                                 onClick={() => setSelectedAd(ad)}
+                                className="block w-full text-left font-extrabold text-slate-900 hover:text-indigo-600 leading-snug line-clamp-2"
                                 title={ad.title}
                               >
                                 {ad.title}
-                              </div>
-                              {ad.isDuplicate && (
-                                <span className="bg-amber-100 text-amber-800 text-[8px] font-black uppercase tracking-wider px-1 rounded inline-block whitespace-nowrap shrink-0" title={ad.duplicateReason}>
-                                  Duplicate⚠️
-                                </span>
-                              )}
+                              </button>
+                            )}
+                            <div className="mt-1 flex flex-wrap items-center gap-1">
+                              <span className="text-[8px] font-black uppercase tracking-wide text-indigo-500 leading-none">{ad.category || 'No category'}</span>
+                              {ad.isDuplicate && <span className="text-[8px] font-black text-amber-700">⚠ Duplicate</span>}
                             </div>
-                            <div className="text-[9px] text-slate-400 font-semibold uppercase mt-0.5 tracking-wider">{ad.category}</div>
-                            <div className="text-[8px] text-slate-300 font-mono mt-0.5">ID: {ad.id}</div>
+                            <div className="mt-1 text-[7px] text-slate-300 font-mono truncate" title={ad.id}>ID: {ad.id}</div>
                           </div>
-                        </td>
-                      )}
+                        </div>
+                      </td>
 
-                      {/* Country Column */}
-                      {isColVisible('pais') && (
-                        <td className="py-3 px-4 border-none text-center font-bold">
-                          <span className="text-base" title={ad.country || 'Portugal'}>{adCountryIcon}</span>
-                        </td>
-                      )}
+                      {/* Location: country + city */}
+                      <td className="py-2.5 px-2 text-slate-700 font-semibold leading-tight break-words">
+                        {isColVisible('pais') && <div className="text-[10px] font-black text-slate-500">{adCountryIcon} {ad.country || 'N/A'}</div>}
+                        {isColVisible('cidade') && <div className="mt-1">{ad.city || 'N/A'}</div>}
+                      </td>
 
-                      {/* City Column */}
-                      {isColVisible('cidade') && (
-                        <td className="py-3 px-4 border-none text-slate-700 font-semibold">
-                          {ad.city || 'N/A'}
-                        </td>
-                      )}
+                      <td className="py-2.5 px-2 text-indigo-650 font-black leading-tight break-words">
+                        {isColVisible('preco') ? (ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)) : '—'}
+                      </td>
 
-                      {/* Price Column */}
-                      {isColVisible('preco') && (
-                        <td className="py-3 px-4 border-none text-indigo-650 font-black whitespace-nowrap">
-                          {ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}
-                        </td>
-                      )}
-
-                      {/* Status Column */}
-                      {isColVisible('status') && (
-                        <td className="py-3 px-4 border-none text-center">
+                      {/* Status is deliberately compact */}
+                      <td className="py-2.5 px-1 text-center">
+                        {isColVisible('status') ? (
                           <div className="flex flex-col gap-0.5 items-center">
-                            <span className={`inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center ${
-                              ad.status === 'approved' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 
-                              ad.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100 animate-pulse' : 
-                              'bg-red-50 text-red-650 border border-red-100'
-                            }`}>
-                              {ad.status}
-                            </span>
+                            <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase leading-none ${
+                              ad.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                              ad.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                              'bg-red-50 text-red-700 border border-red-100'
+                            }`}>{ad.status}</span>
                             {ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
-                              <span className={`inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center ${
-                                ad.adStatus === 'active' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 
-                                ad.adStatus === 'expired' ? 'bg-red-50 text-red-650 border border-red-150' : 
-                                'bg-amber-50 text-amber-600 border border-amber-100'
-                              }`}>
-                                {ad.adStatus}
-                              </span>
+                              <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase bg-indigo-50 text-indigo-600 border border-indigo-100">{ad.adStatus}</span>
                             )}
-                            {ad.isHidden && (
-                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-amber-500 text-white border border-amber-600 mt-0.5" title="Anúncio em Standby (Oculto)">
-                                🙈 Standby
-                              </span>
-                            )}
-                            {isPaidAd(ad) && !isColVisible('pagamento') && (
-                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-emerald-100 text-emerald-800 border border-emerald-200 mt-0.5">
-                                💳 Paid ({getAdPlanLabel(ad).label})
-                              </span>
-                            )}
-                            {ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? (
-                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-emerald-50 text-emerald-700 border border-emerald-200 mt-0.5" title="E-mail de recibo enviado">
-                                ✉️ Sent
-                              </span>
-                            ) : ad.paymentConfirmationEmailStatus === 'failed' ? (
-                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-red-50 text-red-700 border border-red-200 mt-0.5" title={ad.paymentConfirmationEmailError || 'Falha no e-mail'}>
-                                ✉️ Failed
-                              </span>
-                            ) : (
-                              <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider min-w-[70px] text-center bg-slate-100 text-slate-600 border border-slate-200 mt-0.5" title="E-mail não enviado">
-                                ✉️ Not sent
-                              </span>
-                            )}
+                            {ad.isHidden && <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase bg-amber-100 text-amber-800">Standby</span>}
+                            <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${
+                              ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : ad.paymentConfirmationEmailStatus === 'failed'
+                                  ? 'bg-red-50 text-red-700'
+                                  : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              ✉ {ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? 'Sent' : ad.paymentConfirmationEmailStatus === 'failed' ? 'Failed' : 'Not sent'}
+                            </span>
                           </div>
-                        </td>
-                      )}
+                        ) : '—'}
+                      </td>
 
-                      {/* Payment Column */}
                       {isColVisible('pagamento') && (
-                        <td className="py-3 px-4 border-none text-center">
-                          <div className="flex flex-col gap-1 items-center">
-                            {(() => {
-                              const pInfo = getAdPaymentClassification(ad);
-                              if (pInfo.isPaid) {
-                                return (
-                                  <span className="inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                    💳 Paid
-                                  </span>
-                                );
-                              }
-                              if (pInfo.type === 'legacy_free') {
-                                return (
-                                  <span className="inline-block text-[8px] font-semibold px-1 py-0.5 rounded uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
-                                    Legacy / Free
-                                  </span>
-                                );
-                              }
-                              return (
-                                <span className="inline-block text-[8px] font-semibold px-1 py-0.5 rounded uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200" title="Payment data unavailable">
-                                  Data N/A
+                        <td className="py-2.5 px-1 text-center leading-tight">
+                          {(() => {
+                            const pInfo = getAdPaymentClassification(ad);
+                            return (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase border ${pInfo.isPaid ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                  {pInfo.isPaid ? 'Paid' : pInfo.type === 'legacy_free' ? 'Legacy / Free' : 'Data N/A'}
                                 </span>
-                              );
-                            })()}
-                            <span className={`inline-block text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider border ${getAdPlanLabel(ad).color}`}>
-                              {getAdPlanLabel(ad).label}
-                            </span>
-                            <span className="text-[9px] text-slate-500 font-bold whitespace-nowrap">
-                              {isPaidAd(ad) && formatUKDate(ad.paidAt) ? formatUKDate(ad.paidAt) : <span className="text-slate-300 italic font-normal">N/A</span>}
-                            </span>
-                          </div>
+                                <span className={`text-[7px] font-black px-1 py-0.5 rounded uppercase border ${getAdPlanLabel(ad).color}`}>{getAdPlanLabel(ad).label}</span>
+                                <span className="text-[7px] text-slate-400">{isPaidAd(ad) && formatUKDate(ad.paidAt) ? formatUKDate(ad.paidAt) : 'N/A'}</span>
+                              </div>
+                            );
+                          })()}
                         </td>
                       )}
 
-                      {/* Seller Column */}
-                      {isColVisible('vendedor') && (
-                        <td className="py-3 px-4 border-none">
-                          <div>
-                            <div className="font-bold text-slate-800">{ad.sellerName || 'ValtailAdmin'}</div>
-                            <div className="text-[9px] text-slate-400 font-mono" title={ad.sellerId}>ID: {ad.sellerId ? `${ad.sellerId.substring(0, 6)}...` : 'N/A'}</div>
-                          </div>
-                        </td>
-                      )}
+                      <td className="py-2.5 px-2 leading-tight break-words">
+                        {isColVisible('vendedor') ? (
+                          <>
+                            <div className="font-bold text-slate-800 line-clamp-2">{ad.sellerName || 'ValtailAdmin'}</div>
+                            <div className="text-[7px] mt-1 text-slate-400 font-mono truncate" title={ad.sellerId}>ID: {ad.sellerId ? `${ad.sellerId.substring(0, 6)}...` : 'N/A'}</div>
+                          </>
+                        ) : '—'}
+                      </td>
 
-                      {/* Creation Date */}
-                      {isColVisible('criacao') && (
-                        <td className="py-3 px-4 border-none text-slate-500 whitespace-nowrap">
-                          {ad.createdAt?.toDate ? format(ad.createdAt.toDate(), 'dd MMM yyyy') : 'Recently'}
-                        </td>
-                      )}
+                      {/* Dates: creation and expiration together */}
+                      <td className="py-2.5 px-2 leading-tight text-slate-500">
+                        {isColVisible('criacao') && (
+                          <div><span className="text-[7px] font-black uppercase text-slate-400">Created</span><br />{ad.createdAt?.toDate ? format(ad.createdAt.toDate(), 'dd MMM yy') : 'Recently'}</div>
+                        )}
+                        {isColVisible('expiracao') && (
+                          <div className="mt-1"><span className="text-[7px] font-black uppercase text-slate-400">Expiry</span><br />{ad.expirationDate?.toDate ? format(ad.expirationDate.toDate(), 'dd MMM yy') : 'N/A'}</div>
+                        )}
+                      </td>
 
-                      {/* Expiration Date */}
-                      {isColVisible('expiracao') && (
-                        <td className="py-3 px-4 border-none text-slate-500 whitespace-nowrap">
-                          {ad.expirationDate?.toDate ? format(ad.expirationDate.toDate(), 'dd MMM yyyy') : 'N/A'}
-                        </td>
-                      )}
+                      {/* Activity: views and clicks together */}
+                      <td className="py-2.5 px-1 text-center leading-tight">
+                        {isColVisible('vistas') && <div><span className="text-[7px] font-black text-slate-400 uppercase">Views</span><div className="font-black text-slate-800">{ad.views || 0}</div></div>}
+                        {isColVisible('cliques') && <div className="mt-1"><span className="text-[7px] font-black text-slate-400 uppercase">Clicks</span><div className="font-black text-slate-800">{ad.whatsappClicks || 0}</div></div>}
+                      </td>
 
-                      {/* Views Column */}
-                      {isColVisible('vistas') && (
-                        <td className="py-3 px-4 border-none text-center font-bold text-slate-700">
-                          {ad.views || 0}
-                        </td>
-                      )}
-
-                      {/* Clicks Column */}
-                      {isColVisible('cliques') && (
-                        <td className="py-3 px-4 border-none text-center font-bold text-slate-705">
-                          {ad.whatsappClicks || 0}
-                        </td>
-                      )}
-
-                      {/* Actions Column */}
                       {isColVisible('acoes') && (
-                        <td className="py-3 px-4 border-none text-right pr-6">
-                          <div className="flex gap-1 items-center justify-end">
-                            {/* View */}
-                            <button
-                              onClick={() => setSelectedAd(ad)}
-                              className="p-1 px-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-150 border border-indigo-100 rounded-lg transition-all text-[10px] font-bold"
-                              title="View Details"
-                            >
-                              View
-                            </button>
-
-                            {/* Edit */}
-                            <button
-                              onClick={() => navigate(`/edit-ad/${ad.id}`)}
-                              className="p-1 px-2 text-slate-600 bg-slate-50 hover:bg-slate-150 border border-slate-200 rounded-lg transition-all text-[10px] font-bold"
-                              title="Edit"
-                            >
-                              Edit
-                            </button>
-
-                            {/* Standby / Ocultar Toggle */}
+                        <td className="py-2.5 px-1 text-center">
+                          <div className="flex flex-wrap gap-1 justify-center">
+                            <button onClick={() => setSelectedAd(ad)} className="px-1.5 py-1 text-[8px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-md">View</button>
+                            <button onClick={() => navigate(`/edit-ad/${ad.id}`)} className="px-1.5 py-1 text-[8px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-md">Edit</button>
                             <button
                               type="button"
                               onClick={() => handleToggleHideAd(ad.id, ad.isHidden)}
-                              className={`p-1 px-2 rounded-lg text-[10px] font-bold border transition-all flex items-center gap-1 cursor-pointer ${
-                                ad.isHidden
-                                  ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
-                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                              }`}
-                              title={ad.isHidden ? 'Standby (Oculto) - Clique para tornar visível' : 'Visível - Clique para ocultar (Standby)'}
-                            >
-                              <div className={`w-5 h-3 flex items-center rounded-full p-0.5 transition-colors ${ad.isHidden ? 'bg-amber-600' : 'bg-slate-300'}`}>
-                                <div className={`w-2 h-2 bg-white rounded-full shadow-md transform transition-transform ${ad.isHidden ? 'translate-x-2' : 'translate-x-0'}`} />
-                              </div>
-                              <span>{ad.isHidden ? 'Standby' : 'Ocultar'}</span>
-                            </button>
-
-                            {/* Claim Controls */}
-                            {ad.isClaimableBusiness ? (
-                              ad.claimStatus === 'claimed' ? (
-                                <span className="p-1 px-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg text-[10px] font-bold flex items-center gap-1" title="Verified Owner">
-                                  <ShieldCheck size={12} className="text-emerald-600" />
-                                  <span>Verified Owner</span>
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => handleRemoveClaimable(ad.id)}
-                                  disabled={claimActionLoading}
-                                  className="p-1 px-2 text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-all text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
-                                  title="Remove Claim Status"
-                                >
-                                  <ShieldAlert size={12} />
-                                  <span>Remove Claim</span>
-                                </button>
-                              )
-                            ) : (
-                              <button
-                                onClick={() => handleMakeClaimable(ad.id)}
-                                disabled={claimActionLoading}
-                                className="p-1 px-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-lg transition-all text-[10px] font-bold flex items-center gap-1 disabled:opacity-50"
-                                title="Make Claimable Business"
-                              >
-                                <ShieldCheck size={12} />
-                                <span>Make Claimable</span>
-                              </button>
-                            )}
-
-                            {!isPaidAd(ad) && ad.status === 'pending' && (
-                              <button
-                                onClick={() => openAssistedPayment(ad)}
-                                className="p-1 px-2 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-lg transition-all text-[10px] font-bold flex items-center gap-1"
-                                title="Generate Payment QR"
-                              >
-                                <CreditCard size={12} />
-                                <span>Payment QR</span>
-                              </button>
-                            )}
-
-                            {/* Approve/Reject */}
+                              className={`px-1.5 py-1 text-[8px] font-bold rounded-md border ${ad.isHidden ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
+                            >{ad.isHidden ? 'Show' : 'Hide'}</button>
                             {ad.status === 'pending' && (
                               <>
-                                <button
-                                  onClick={() => handleAdAction(ad.id, 'approved')}
-                                  className="p-1 text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-all"
-                                  title="Approve"
-                                >
-                                  <CheckCircle size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handleAdAction(ad.id, 'rejected')}
-                                  className="p-1 text-red-650 bg-red-50 hover:bg-red-200 rounded-lg transition-all"
-                                  title="Reject"
-                                >
-                                  <XCircle size={14} />
-                                </button>
+                                <button onClick={() => handleAdAction(ad.id, 'approved')} className="p-1 text-white bg-emerald-500 rounded-md" title="Approve"><CheckCircle size={12} /></button>
+                                <button onClick={() => handleAdAction(ad.id, 'rejected')} className="p-1 text-red-650 bg-red-50 rounded-md" title="Reject"><XCircle size={12} /></button>
                               </>
                             )}
-
-                            {/* Reactivate / Renew */}
                             {(ad.status === 'expired' || ad.adStatus === 'expired') && (
-                              <button
-                                onClick={() => {
-                                  if (window.confirm('Reactivate this listing for a further 30 days?')) {
-                                    handleRenewAd(ad.id);
-                                  }
-                                }}
-                                disabled={renewingId === ad.id}
-                                className="p-1 px-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-lg transition-all text-[10px] font-extrabold"
-                              >
-                                Reactivate
-                              </button>
+                              <button onClick={() => window.confirm('Reactivate this listing for a further 30 days?') && handleRenewAd(ad.id)} disabled={renewingId === ad.id} className="px-1.5 py-1 text-[8px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-md">Reactivate</button>
                             )}
-
-                            {/* Renew (Active approved ads) */}
                             {ad.status === 'approved' && !ad.adStatus?.includes('expired') && (
-                              <button
-                                onClick={() => {
-                                  if (window.confirm('Renew this listing for a further 30 days?')) {
-                                    handleRenewAd(ad.id);
-                                  }
-                                }}
-                                disabled={renewingId === ad.id}
-                                className="p-1 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-all"
-                                title="Renew (+30 days)"
-                              >
-                                <RefreshCcw size={13} className={renewingId === ad.id ? 'animate-spin' : ''} />
-                              </button>
+                              <button onClick={() => window.confirm('Renew this listing for a further 30 days?') && handleRenewAd(ad.id)} disabled={renewingId === ad.id} className="p-1 text-emerald-600 bg-emerald-50 rounded-md" title="Renew (+30 days)"><RefreshCcw size={11} className={renewingId === ad.id ? 'animate-spin' : ''} /></button>
                             )}
-
-                            {/* Archive */}
-                            {ad.status === 'approved' && !ad.adStatus?.includes('expired') && (
-                              <button
-                                onClick={() => handleAdAction(ad.id, 'archived')}
-                                className="p-1 text-slate-500 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-all"
-                                title="Archive"
-                              >
-                                <Archive size={13} />
-                              </button>
-                            )}
-
-                            {/* Delete */}
-                            <button
-                              onClick={() => handleDeleteAd(ad.id)}
-                              className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 hover:border-red-100 rounded-lg transition-all"
-                              title="Permanently delete"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            <button onClick={() => handleDeleteAd(ad.id)} className="p-1 text-slate-400 hover:text-red-600 bg-slate-50 border border-slate-200 rounded-md" title="Permanently delete"><Trash2 size={11} /></button>
                           </div>
                         </td>
                       )}
@@ -2138,8 +1920,7 @@ const AdminAds = () => {
                   );
                 })}
               </tbody>
-              </table>
-            </div>
+            </table>
           </div>
 
           {/* Mobile representation under TabelaMode */}
