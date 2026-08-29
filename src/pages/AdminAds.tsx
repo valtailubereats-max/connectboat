@@ -1728,8 +1728,8 @@ const AdminAds = () => {
             <div
               ref={topTableScrollRef}
               onScroll={() => syncTableScroll('top')}
-              className="mb-2 overflow-x-auto overflow-y-hidden rounded-lg border border-slate-200 bg-slate-50"
-              style={{ height: '18px' }}
+              className="sticky top-2 z-30 mb-2 overflow-x-auto overflow-y-hidden rounded-lg border border-slate-300 bg-white shadow-md"
+              style={{ height: '20px' }}
               aria-label="Horizontal table scrollbar"
               title="Drag the scrollbar left or right to view more columns"
             >
