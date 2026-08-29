@@ -834,6 +834,19 @@ const AdminAds = () => {
     }
   };
 
+  const OFFICIAL_CONNECTBOAT_CATEGORIES = [
+    'Boats for Sale',
+    'Boats for Hire',
+    'Boat Parts',
+    'Boat Engines',
+    'Marine Electronics',
+    'Trailers',
+    'Marinas',
+    'Boat Services',
+    'Accessories',
+    'Wanted',
+  ];
+
   const categoryFilterOptions = Array.from(
     new Set([
       ...(categories || []),
@@ -844,6 +857,13 @@ const AdminAds = () => {
   // Imported/legacy listings can exist without a category field at all,
   // or with null / an empty string. Keep a dedicated admin filter for them.
   const adsWithoutCategoryCount = ads.filter(ad => !String(ad.category ?? '').trim()).length;
+
+  // Listings whose category exists but is not one of the 10 official ConnectBoat categories.
+  // This exposes old/imported values such as legacy marketplace categories so they can be corrected.
+  const adsInvalidLegacyCategoryCount = ads.filter(ad => {
+    const category = String(ad.category ?? '').trim();
+    return Boolean(category) && !OFFICIAL_CONNECTBOAT_CATEGORIES.includes(category);
+  }).length;
 
   const filteredAds = ads.filter(ad => {
     // 1. Status Filter
@@ -886,11 +906,14 @@ const AdminAds = () => {
           : !isHireListing;
 
     // 4. Category Filter
+    const normalizedCategory = String(ad.category ?? '').trim();
     const matchesCategory = categoryFilter === 'all'
       ? true
       : categoryFilter === '__without_category__'
-        ? !String(ad.category ?? '').trim()
-        : ad.category === categoryFilter;
+        ? !normalizedCategory
+        : categoryFilter === '__invalid_legacy_category__'
+          ? Boolean(normalizedCategory) && !OFFICIAL_CONNECTBOAT_CATEGORIES.includes(normalizedCategory)
+          : normalizedCategory === categoryFilter;
 
     // 5. Period Filter
     let matchesPeriod = true;
@@ -1112,6 +1135,7 @@ const AdminAds = () => {
             >
               <option value="all">📂 All Categories</option>
               <option value="__without_category__">⚠️ Without Category ({adsWithoutCategoryCount})</option>
+              <option value="__invalid_legacy_category__">⚠️ Invalid / Legacy Category ({adsInvalidLegacyCategoryCount})</option>
               {categoryFilterOptions.map((category) => (
                 <option key={category} value={category}>{category}</option>
               ))}
