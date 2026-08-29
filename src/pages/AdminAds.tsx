@@ -841,6 +841,10 @@ const AdminAds = () => {
     ])
   );
 
+  // Imported/legacy listings can exist without a category field at all,
+  // or with null / an empty string. Keep a dedicated admin filter for them.
+  const adsWithoutCategoryCount = ads.filter(ad => !String(ad.category ?? '').trim()).length;
+
   const filteredAds = ads.filter(ad => {
     // 1. Status Filter
     const matchesFilter = adFilter === 'all' 
@@ -884,7 +888,9 @@ const AdminAds = () => {
     // 4. Category Filter
     const matchesCategory = categoryFilter === 'all'
       ? true
-      : ad.category === categoryFilter;
+      : categoryFilter === '__without_category__'
+        ? !String(ad.category ?? '').trim()
+        : ad.category === categoryFilter;
 
     // 5. Period Filter
     let matchesPeriod = true;
@@ -1105,6 +1111,7 @@ const AdminAds = () => {
               className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-705 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all cursor-pointer"
             >
               <option value="all">📂 All Categories</option>
+              <option value="__without_category__">⚠️ Without Category ({adsWithoutCategoryCount})</option>
               {categoryFilterOptions.map((category) => (
                 <option key={category} value={category}>{category}</option>
               ))}
