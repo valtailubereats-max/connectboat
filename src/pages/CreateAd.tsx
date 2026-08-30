@@ -437,8 +437,11 @@ const CreateAd = () => {
   const getMarketplaceAdditionalPrice = (): number =>
     Number(globalSettings?.planPrices?.marketplaceAdditional ?? 1.99);
 
+  const hasMarketplaceFreeBenefit = (): boolean =>
+    !id && profile?.marketplaceFreeListingUsed !== true;
+
   const isFirstMarketplaceListingFree = (): boolean =>
-    !id && isMarketplaceListingCategory(formData.category) && profile?.marketplaceFreeListingUsed !== true;
+    isMarketplaceListingCategory(formData.category) && hasMarketplaceFreeBenefit();
 
   const getCheckoutTotalAmountFormatted = () => {
     if (!checkRequiresPayment()) return '0.00';
@@ -1487,7 +1490,7 @@ const CreateAd = () => {
         serviceCoverage: (formData.category === 'Serviços' || formData.category?.startsWith('Serviços') || formData.category?.includes('Serviços')) ? (formData.serviceCoverage || 'city') : 'city',
         // Rental / Hire Fields
         listingIntent: formData.listingIntent,
-        pricingUnit: formData.listingIntent === 'hire' ? formData.pricingUnit : '',
+        pricingUnit: formData.category === 'Boats for Hire' ? formData.pricingUnit : '',
         rentalPrice: formData.listingIntent === 'hire' ? (formData.rentalPrice ? parsePrice(formData.rentalPrice) : (formData.price ? parsePrice(formData.price) : 0)) : 0,
         departureLocation: formData.listingIntent === 'hire' ? formData.departureLocation.trim() : '',
         passengerCapacity: formData.listingIntent === 'hire' ? (formData.passengerCapacity ? parseInt(formData.passengerCapacity.toString()) || formData.passengerCapacity : '') : '',
@@ -2164,7 +2167,7 @@ const CreateAd = () => {
                       plan: prev.plan === 'free' ? 'standard' : prev.plan
                     }))}
                     className={`p-2.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
-                      formData.listingIntent === 'sale'
+                      formData.category === 'Boats for Sale'
                         ? 'bg-sky-600 text-white border-sky-600 shadow-md'
                         : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400'
                     }`}
@@ -2199,7 +2202,7 @@ const CreateAd = () => {
                     Choose Listing Plan
                   </label>
                   <span className="text-[10px] font-semibold text-slate-400">
-                    Marketplace is not available for Boats for Sale or Hire
+                    Boat plans and Marketplace are separate listing types
                   </span>
                 </div>
 
@@ -2299,15 +2302,21 @@ const CreateAd = () => {
 
                   <button
                     type="button"
-                    disabled={isPaidBoatListingCategory(formData.category) || (!isAdmin && isEditLocked)}
+                    disabled={!isAdmin && isEditLocked}
                     onClick={() => {
-                      if (!isMarketplaceListingCategory(formData.category)) return;
-                      setFormData(prev => ({ ...prev, plan: 'free', images: prev.images.slice(0, 3) }));
+                      if (!isAdmin && isEditLocked) return;
+                      setFormData(prev => ({
+                        ...prev,
+                        category: isMarketplaceListingCategory(prev.category) ? prev.category : '',
+                        plan: 'free',
+                        images: prev.images.slice(0, 3)
+                      }));
+                      setTimeout(() => document.getElementById('listing-category')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
                     }}
-                    className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
-                      isPaidBoatListingCategory(formData.category)
-                        ? 'border-rose-200 bg-rose-50/60 opacity-70 cursor-not-allowed'
-                        : 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
+                    className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                      !isPaidBoatListingCategory(formData.category) && formData.plan === 'free'
+                        ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
+                        : 'border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
                     }`}
                   >
                     <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[7px] sm:text-[8px] font-black px-2 py-0.5 rounded-full uppercase whitespace-nowrap">
@@ -2315,22 +2324,20 @@ const CreateAd = () => {
                     </div>
                     <div className="flex items-start justify-between gap-1">
                       <span className="text-base">🧰</span>
-                      {!isPaidBoatListingCategory(formData.category) && (
+                      {!isPaidBoatListingCategory(formData.category) && formData.plan === 'free' && (
                         <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center">✓</span>
                       )}
                     </div>
                     <div className="mt-1">
                       <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">
-                        {isFirstMarketplaceListingFree() ? 'Free Marketplace' : 'Marketplace'}
+                        {hasMarketplaceFreeBenefit() ? 'Free Marketplace' : 'Marketplace'}
                       </p>
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">Up to 3 photos</p>
                     </div>
-                    <p className={`font-black text-xs sm:text-sm mt-1 ${isPaidBoatListingCategory(formData.category) ? 'text-rose-600' : 'text-emerald-700'}`}>
-                      {isPaidBoatListingCategory(formData.category)
-                        ? 'NOT FOR BOATS'
-                        : isFirstMarketplaceListingFree()
-                          ? 'FREE'
-                          : `£${getMarketplaceAdditionalPrice().toFixed(2)}`}
+                    <p className="font-black text-xs sm:text-sm mt-1 text-emerald-700">
+                      {hasMarketplaceFreeBenefit()
+                        ? 'FREE — FIRST LISTING'
+                        : `£${getMarketplaceAdditionalPrice().toFixed(2)} PER LISTING`}
                     </p>
                     <p className="text-[8px] font-semibold text-slate-500 mt-1 leading-tight">
                       Parts, engines, electronics, trailers, accessories, marinas, services & wanted only
@@ -2339,17 +2346,17 @@ const CreateAd = () => {
                 </div>
 
                 {isPaidBoatListingCategory(formData.category) ? (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-                    <p className="text-[10px] sm:text-xs font-bold text-rose-700">
-                      🚫 Free Marketplace is not valid for Boats for Sale or Boats for Hire. Please choose Standard, Featured or Premium.
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-indigo-800">
+                      🧰 Marketplace is for Parts, Engines, Electronics, Trailers, Accessories, Marinas, Services and Wanted only. Click the Marketplace card to switch, then choose the correct Marketplace category. Boats for Sale or Hire must use Standard, Featured or Premium.
                     </p>
                   </div>
                 ) : (
                   <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
                     <p className="text-[10px] sm:text-xs font-bold text-emerald-800">
-                      {isFirstMarketplaceListingFree()
+                      {hasMarketplaceFreeBenefit()
                         ? '✓ Your first Marketplace listing is FREE and includes up to 3 photos.'
-                        : `✓ Your free Marketplace listing has already been used. This listing is £${getMarketplaceAdditionalPrice().toFixed(2)} and includes up to 3 photos.`}
+                        : `✓ Your free Marketplace listing has already been used. Marketplace listings are £${getMarketplaceAdditionalPrice().toFixed(2)} each and include up to 3 photos.`}
                     </p>
                     <p className="text-[9px] sm:text-[10px] text-emerald-700 mt-0.5">
                       Marketplace applies only to Parts, Engines, Electronics, Trailers, Accessories, Marinas, Services and Wanted listings — never to Boats for Sale or Hire.
@@ -2366,7 +2373,7 @@ const CreateAd = () => {
                             : normalizeListingPlan(formData.plan) === 'featured'
                               ? 'Featured Listing'
                               : 'Standard Listing')
-                        : (isFirstMarketplaceListingFree() ? 'Free Marketplace' : 'Marketplace £1.99')}
+                        : (hasMarketplaceFreeBenefit() ? 'Free Marketplace' : `Marketplace £${getMarketplaceAdditionalPrice().toFixed(2)}`)}
                     </strong>
                   </span>
                   <span className="text-[10px] font-bold text-indigo-600">
@@ -2742,6 +2749,7 @@ const CreateAd = () => {
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Category *</label>
                 <select
+                  id="listing-category"
                   value={formData.category}
                   disabled={!isAdmin && isEditLocked}
                   onChange={(e) => {
@@ -2771,13 +2779,20 @@ const CreateAd = () => {
                     .map((c, index) => <option key={`category-${c}-${index}`} value={c}>{c}</option>)}
                 </select>
 
-                {formData.category && !isPaidBoatListingCategory(formData.category) && (
+                {formData.category && isMarketplaceListingCategory(formData.category) && (
                   <div className="mt-2.5 rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shrink-0">£0</div>
+                    <div className="w-12 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shrink-0 text-xs">
+                      {hasMarketplaceFreeBenefit() ? 'FREE' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`}
+                    </div>
                     <div>
-                      <p className="text-sm font-black text-emerald-900">FREE TO LIST</p>
+                      <p className="text-sm font-black text-emerald-900">
+                        {hasMarketplaceFreeBenefit() ? 'FIRST MARKETPLACE LISTING FREE' : 'MARKETPLACE LISTING'}
+                      </p>
                       <p className="text-xs font-semibold text-emerald-700 mt-0.5">
-                        {formData.category} listings have no listing fee and include up to 3 photos. Paid listing plans apply only to Boats for Sale and Boats for Hire.
+                        {hasMarketplaceFreeBenefit()
+                          ? `${formData.category} is eligible for your one-time free Marketplace listing and includes up to 3 photos.`
+                          : `${formData.category} costs £${getMarketplaceAdditionalPrice().toFixed(2)} per listing and includes up to 3 photos.`}
+                        {' '}Boats for Sale and Boats for Hire always require a boat listing plan.
                       </p>
                     </div>
                   </div>
@@ -3435,10 +3450,16 @@ const CreateAd = () => {
                 <div className="p-5 rounded-3xl border-2 border-emerald-200 bg-emerald-50/70">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <h3 className="text-sm font-black text-emerald-900 uppercase tracking-wider">✓ Free Marketplace Listing</h3>
-                      <p className="text-xs text-emerald-700 mt-1 font-semibold">No listing fee • Up to 3 photos • Only Boats for Sale and Boats for Hire require a paid listing plan.</p>
+                      <h3 className="text-sm font-black text-emerald-900 uppercase tracking-wider">
+                        ✓ {hasMarketplaceFreeBenefit() ? 'Free Marketplace Listing' : 'Marketplace Listing'}
+                      </h3>
+                      <p className="text-xs text-emerald-700 mt-1 font-semibold">
+                        Up to 3 photos • Marketplace categories only • Not valid for Boats for Sale or Hire.
+                      </p>
                     </div>
-                    <span className="text-xl font-black text-emerald-700">£0.00</span>
+                    <span className="text-xl font-black text-emerald-700">
+                      {hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`}
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -3578,10 +3599,12 @@ const CreateAd = () => {
                     <span>
                       {isPaidBoatListingCategory(formData.category)
                         ? `${formData.plan === 'premium' ? 'Premium Featured Listing' : formData.plan === 'featured' ? 'Featured Listing' : 'Standard Listing'} (30 Days)`
-                        : 'Free Marketplace Listing'}
+                        : (hasMarketplaceFreeBenefit() ? 'Free Marketplace Listing' : 'Marketplace Listing')}
                     </span>
                     <span className="font-bold text-slate-900">
-                      {isPaidBoatListingCategory(formData.category) ? `£${getPlanPrice(formData.plan).toFixed(2)}` : '£0.00'}
+                      {isPaidBoatListingCategory(formData.category)
+                        ? `£${getPlanPrice(formData.plan).toFixed(2)}`
+                        : (hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`)}
                     </span>
                   </div>
 
@@ -3777,10 +3800,12 @@ const CreateAd = () => {
                     <span>
                       {isPaidBoatListingCategory(formData.category)
                         ? (formData.plan === 'premium' ? 'Premium Featured Listing (30 days)' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? 'Featured Listing (30 days)' : 'Standard Listing (30 days)')
-                        : 'Free Marketplace Listing'}
+                        : (hasMarketplaceFreeBenefit() ? 'Free Marketplace Listing' : 'Marketplace Listing')}
                     </span>
                     <span className="font-bold text-slate-900">
-                      {isPaidBoatListingCategory(formData.category) ? `£${getPlanPrice(formData.plan).toFixed(2)}` : '£0.00'}
+                      {isPaidBoatListingCategory(formData.category)
+                        ? `£${getPlanPrice(formData.plan).toFixed(2)}`
+                        : (hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`)}
                     </span>
                   </div>
                   {formData.mediaBoostEnabled && (
