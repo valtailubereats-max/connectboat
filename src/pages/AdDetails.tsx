@@ -1675,7 +1675,7 @@ const AdDetails = () => {
                     className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center"
                   >
                     <ExternalLink size={20} className="flex-shrink-0" />
-                    <span className="leading-tight">Ver Mais</span>
+                    <span className="leading-tight">Learn More</span>
                   </a>
                 )}
 
