@@ -2503,13 +2503,21 @@ const AdDetails = () => {
 
               <div className="pr-11">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-500">Seller profile</p>
-                <div className="flex items-center gap-3 mt-3">
-                  <div className="w-14 h-14 bg-indigo-50 text-indigo-700 rounded-2xl flex items-center justify-center font-black text-lg shrink-0">
-                    {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
+                <div className="flex items-start gap-3 mt-3">
+                  <div className="w-16 h-16 bg-indigo-50 text-indigo-700 rounded-2xl overflow-hidden flex items-center justify-center font-black text-lg shrink-0 border border-indigo-100">
+                    {sellerProfile?.profileImageUrl ? (
+                      <img
+                        src={sellerProfile.profileImageUrl}
+                        alt={sellerProfile?.displayName || ad.sellerName || 'Seller'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (sellerProfile?.displayName || (hasSourceUrl ? 'Partner' : ad.sellerName) || 'Seller').slice(0, 2).toUpperCase()
+                    )}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <h3 className="text-lg font-black text-slate-950 flex items-center gap-1.5 truncate">
-                      {hasSourceUrl ? 'Partner' : ad.sellerName}
+                      {sellerProfile?.displayName || (hasSourceUrl ? 'Partner' : ad.sellerName)}
                       <Award size={15} className="text-indigo-500 shrink-0" />
                     </h3>
                     <div className="flex items-center gap-1 mt-1">
@@ -2527,8 +2535,21 @@ const AdDetails = () => {
                       </div>
                       <span className="text-[11px] text-slate-500 font-bold">({sellerProfile?.ratingCount || 0} reviews)</span>
                     </div>
+                    {(sellerProfile?.city || sellerProfile?.country) && (
+                      <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                        <MapPin size={12} className="shrink-0" />
+                        <span>{[sellerProfile?.city, sellerProfile?.country].filter(Boolean).join(', ')}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {sellerProfile?.publicDescription && (
+                  <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">About seller</p>
+                    <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-line">{sellerProfile.publicDescription}</p>
+                  </div>
+                )}
                 {user && user.uid !== ad.sellerId && (
                   <button
                     onClick={() => {
