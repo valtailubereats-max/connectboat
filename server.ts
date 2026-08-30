@@ -17,6 +17,7 @@ import sitemapHandler from './api/sitemap.ts';
 import createCheckoutSessionHandler from './api/stripe/create-checkout-session.ts';
 import stripeWebhookHandler from './api/stripe/webhook.ts';
 import resendPaymentEmailHandler from './api/admin/resend-payment-email.ts';
+import saveListingHandler from './api/listings/save.ts';
 
 async function startServer() {
   const app = express();
@@ -101,6 +102,18 @@ async function startServer() {
       await emailSendHandler(req, res);
     } catch (err: any) {
       console.error('[Server Error /api/email/send]:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: err.message || 'Erro interno no servidor' });
+      }
+    }
+  });
+
+  app.post('/api/listings/save', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      await saveListingHandler(req, res);
+    } catch (err: any) {
+      console.error('[Server Error /api/listings/save]:', err);
       if (!res.headersSent) {
         res.status(500).json({ success: false, error: err.message || 'Erro interno no servidor' });
       }
