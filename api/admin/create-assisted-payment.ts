@@ -654,7 +654,9 @@ export default async function createAssistedPaymentHandler(
     if (
       action === 'listFinanceExpenses' ||
       action === 'addFinanceExpense' ||
-      action === 'deleteFinanceExpense'
+      action === 'deleteFinanceExpense' ||
+      action === 'getFinancePeriod' ||
+      action === 'startNewFinancePeriod'
     ) {
       const configuredPassword = process.env.FINANCE_ACCESS_PASSWORD;
 
@@ -712,6 +714,28 @@ export default async function createAssistedPaymentHandler(
       }
 
       const expensesCollection = db.collection('financeExpenses');
+
+      const financeConfigRef = db.collection('systemSettings').doc('finance');
+
+      if (action === 'getFinancePeriod') {
+        const configSnapshot = await financeConfigRef.get();
+        const config = configSnapshot.exists ? (configSnapshot.data() || {}) : {};
+        return res.status(200).json({
+          success: true,
+          periodStart: typeof config.periodStart === 'string' ? config.periodStart : '',
+        });
+      }
+
+      if (action === 'startNewFinancePeriod') {
+        const periodStart = new Date().toISOString();
+        await financeConfigRef.set({
+          periodStart,
+          periodStartedAt: new Date(),
+          periodStartedByUid: adminCheck.uid,
+          periodStartedByEmail: adminCheck.email || '',
+        }, { merge: true });
+        return res.status(200).json({ success: true, periodStart });
+      }
 
       if (action === 'listFinanceExpenses') {
         const snapshot = await expensesCollection.get();
