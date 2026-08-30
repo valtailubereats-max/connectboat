@@ -177,6 +177,10 @@ export interface UserProfile {
   showcaseFacebook?: string;
   showcaseInstagram?: string;
   showcasePlan?: 'basic' | 'premium';
+  displayName?: string;
+  publicDescription?: string;
+  profileImageUrl?: string;
+  createdAt?: any;
 }
 
 export interface ShowcaseProduct {
