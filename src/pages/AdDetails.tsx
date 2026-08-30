@@ -503,10 +503,41 @@ const AdDetails = () => {
         city: ad?.city || '',
         country: ad?.country || 'Reino Unido',
         ratingAverage,
-        ratingCount
+        ratingCount,
+        publicDescription: '',
+        profileImageUrl: ''
       };
 
-      console.log(`[AdDetails] Evitando fetch de sellerPublicProfiles para o vendedor ${sellerId} para poupar leituras Firestore.`);
+      // Public seller profile: photo/logo, description, public name and member information.
+      // Keep ad data as fallback so older/imported listings continue to work.
+      try {
+        const publicProfileRef = doc(db, 'sellerPublicProfiles', sellerId);
+        const publicProfileSnap = await getDoc(publicProfileRef);
+
+        if (publicProfileSnap.exists()) {
+          const publicData: any = publicProfileSnap.data();
+          profileData.displayName = publicData.displayName || profileData.displayName;
+          profileData.city = publicData.city || profileData.city;
+          profileData.country = publicData.country || profileData.country;
+          profileData.publicDescription = publicData.publicDescription || '';
+          profileData.profileImageUrl = publicData.profileImageUrl || '';
+          profileData.createdAt = publicData.createdAt || publicData.updatedAt || undefined;
+        } else {
+          // Fallback for profiles created before sellerPublicProfiles existed.
+          const userProfileSnap = await getDoc(doc(db, 'users', sellerId));
+          if (userProfileSnap.exists()) {
+            const userData: any = userProfileSnap.data();
+            profileData.displayName = userData.displayName || userData.name || profileData.displayName;
+            profileData.city = userData.city || profileData.city;
+            profileData.country = userData.country || profileData.country;
+            profileData.publicDescription = userData.publicDescription || '';
+            profileData.profileImageUrl = userData.profileImageUrl || '';
+            profileData.createdAt = userData.createdAt || userData.acceptedTermsAt || undefined;
+          }
+        }
+      } catch (profileErr) {
+        console.warn('[AdDetails] Unable to load public seller profile; using listing fallback.', profileErr);
+      }
 
       // Carregar reviews enviadas a este vendedor se o utilizador estiver autenticado
       let reviewsData: Review[] = [];
