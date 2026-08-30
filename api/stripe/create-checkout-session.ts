@@ -453,7 +453,7 @@ Premium, commercial, realistic, clean and suitable for the ConnectBoat UK marine
       </svg>
     `);
 
-    const overlays: sharp.OverlayOptions[] = [
+    const overlays = [
       { input: overlaySvg, top: 0, left: 0 },
     ];
 
@@ -959,6 +959,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       currency: requestedCurrency,
       adId,
       showcaseData,
+      marketplaceListingType,
       mediaBoostEnabled,
       successUrl,
       cancelUrl
@@ -983,6 +984,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     let authenticatedUserId = '';
     let authenticatedUserEmail = '';
     let authenticatedAdData: Record<string, any> | null = null;
+    let authenticatedUserData: Record<string, any> | null = null;
 
     if (itemType === 'ad_listing') {
       const authHeader = req.headers.authorization || '';
@@ -1032,6 +1034,8 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
       const adData = adSnapshot.data() || {};
       authenticatedAdData = adData;
+      const userSnapshot = await db.collection('users').doc(authenticatedUserId).get();
+      authenticatedUserData = userSnapshot.exists ? (userSnapshot.data() || {}) : {};
       if (adData.sellerId !== authenticatedUserId) {
         return res.status(403).json({
           success: false,
@@ -1059,6 +1063,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const standardPrice = getValidConfiguredPrice(configuredPlanPrices.standard, 4.99);
     const featuredPrice = getValidConfiguredPrice(configuredPlanPrices.featured, 7.99);
     const premiumPrice = getValidConfiguredPrice(configuredPlanPrices.premium, 12.99);
+    const marketplaceAdditionalPrice = getValidConfiguredPrice(configuredPlanPrices.marketplaceAdditional, 1.99);
 
     let productName = '';
     let productDescription = '';
@@ -1070,6 +1075,47 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const isPaidBoatListing =
       itemType === 'ad_listing' &&
       (savedListingCategory === 'Boats for Sale' || savedListingCategory === 'Boats for Hire');
+    const marketplaceCategories = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Boat Services', 'Accessories', 'Wanted']);
+    const isMarketplaceListing = itemType === 'ad_listing' && marketplaceCategories.has(savedListingCategory);
+    const savedImages = Array.isArray(authenticatedAdData?.images) ? authenticatedAdData.images : [];
+    const marketplaceFreeBenefitConsumed = authenticatedAdData?.marketplaceFreeBenefitConsumed === true;
+    const accountFreeBenefitUsed = authenticatedUserData?.marketplaceFreeListingUsed === true;
+    const trustedMarketplaceListingType = isMarketplaceListing
+      ? (marketplaceFreeBenefitConsumed ? 'free_first' : (accountFreeBenefitUsed ? 'paid_additional' : ''))
+      : '';
+
+    if (isMarketplaceListing && savedImages.length > 3) {
+      return res.status(400).json({ success: false, error: 'MARKETPLACE_PHOTO_LIMIT', errorMessage: 'Marketplace listings allow a maximum of 3 photos.' });
+    }
+
+    if (isPaidBoatListing) {
+      const normalizedPlan = activePlan === 'premium' || activePlan === 'national'
+        ? 'premium'
+        : (['featured', 'local', 'highlight', 'intermediate'].includes(activePlan) ? 'featured' : 'standard');
+      const configuredMax = Number(settingsData?.maxImages?.[normalizedPlan]);
+      const maxPhotos = Number.isFinite(configuredMax) && configuredMax > 0
+        ? configuredMax
+        : (normalizedPlan === 'premium' ? 25 : normalizedPlan === 'featured' ? 15 : 8);
+      if (savedImages.length > maxPhotos) {
+        return res.status(400).json({ success: false, error: 'BOAT_PHOTO_LIMIT', errorMessage: `This plan allows a maximum of ${maxPhotos} photos.` });
+      }
+    }
+
+    if (isMarketplaceListing) {
+      const text = `${String(authenticatedAdData?.title || '')} ${String(authenticatedAdData?.description || '')}`.toLowerCase();
+      const explicitBoatOffer = /\bboat\s+(for\s+sale|for\s+hire|for\s+rent)\b/.test(text);
+      const vesselWords = /\b(yacht|motorboat|speedboat|sailboat|catamaran|cruiser|narrowboat|houseboat|jet\s*ski|rib)\b/.test(text);
+      const offerWords = /\b(for\s+sale|for\s+hire|for\s+rent|selling|charter)\b/.test(text);
+      if (savedListingCategory !== 'Wanted' && (explicitBoatOffer || (vesselWords && offerWords))) {
+        return res.status(400).json({ success: false, error: 'BOAT_MISCATEGORISED', errorMessage: 'Complete boats or yachts for sale/hire must use Boats for Sale or Boats for Hire.' });
+      }
+      if (!trustedMarketplaceListingType) {
+        return res.status(409).json({ success: false, error: 'MARKETPLACE_BENEFIT_STATE_INVALID', errorMessage: 'Your first Marketplace listing must be registered as the one-time free listing before checkout.' });
+      }
+      if (marketplaceListingType && String(marketplaceListingType) !== trustedMarketplaceListingType) {
+        console.warn('[Stripe Session] Ignoring untrusted Marketplace listing type from browser.');
+      }
+    }
 
     if (activePlan === 'premium') {
       amountCents = Math.round(premiumPrice * 100);
@@ -1096,9 +1142,19 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
-    // The listing fee is charged only for Boats for Sale and Boats for Hire.
-    // Other categories remain free; Stripe is used only when a paid extra is selected.
-    if (itemType !== 'ad_listing' || isPaidBoatListing) {
+    if (isMarketplaceListing && trustedMarketplaceListingType === 'paid_additional') {
+      lineItems.push({
+        price_data: {
+          currency: 'gbp',
+          product_data: {
+            name: 'ConnectBoat - Additional Marketplace Listing',
+            description: `Additional Marketplace listing with up to 3 photos (£${marketplaceAdditionalPrice.toFixed(2)})`,
+          },
+          unit_amount: Math.round(marketplaceAdditionalPrice * 100),
+        },
+        quantity: 1,
+      });
+    } else if (itemType !== 'ad_listing' || isPaidBoatListing) {
       lineItems.push({
         price_data: {
           currency,
@@ -1142,6 +1198,8 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       plan: String(activePlan),
       country: String(country || ''),
       category: savedListingCategory,
+      marketplaceListingType: trustedMarketplaceListingType,
+      paymentProductType: isMarketplaceListing ? (trustedMarketplaceListingType === 'paid_additional' ? 'marketplace_additional' : 'marketplace_free') : (isPaidBoatListing ? 'boat_listing' : String(itemType)),
       mediaBoostEnabled: hasMediaBoost ? 'true' : 'false',
     };
 
