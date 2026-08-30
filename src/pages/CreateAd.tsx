@@ -739,6 +739,29 @@ const CreateAd = () => {
     });
   };
 
+  const guideToCategory = (message: string) => {
+    setPlanCategoryHint(message);
+    setCategoryAttention(true);
+
+    setTimeout(() => {
+      const el = document.getElementById('listing-category');
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => (el as HTMLSelectElement | null)?.focus(), 450);
+    }, 80);
+
+    window.setTimeout(() => setCategoryAttention(false), 3500);
+  };
+
+  const handleBoatPlanCardClick = (plan: 'standard' | 'featured' | 'premium') => {
+    if (!isAdmin && isEditLocked) return;
+    if (!isPaidBoatListingCategory(formData.category)) {
+      guideToCategory('To use Standard, Featured or Premium, change Category to Boats for Sale or Boats for Hire. We highlighted the Category field below.');
+      return;
+    }
+    setPlanCategoryHint(null);
+    handlePlanChange(plan);
+  };
+
   const handleUseProfilePhoneChange = (checked: boolean) => {
     setFormData(prev => {
       const updated = {
@@ -760,6 +783,8 @@ const CreateAd = () => {
   const enablePortugal = (globalSettings?.enablePortugalMarket ?? settings?.enablePortugalMarket) === true;
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [categoryAttention, setCategoryAttention] = useState(false);
+  const [planCategoryHint, setPlanCategoryHint] = useState<string | null>(null);
   const uploadRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -2209,11 +2234,11 @@ const CreateAd = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button
                     type="button"
-                    disabled={(!isAdmin && isEditLocked) || !isPaidBoatListingCategory(formData.category)}
-                    onClick={() => handlePlanChange('standard')}
+                    disabled={!isAdmin && isEditLocked}
+                    onClick={() => handleBoatPlanCardClick('standard')}
                     className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
                       !isPaidBoatListingCategory(formData.category)
-                        ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
+                        ? 'border-slate-200 bg-slate-50 opacity-70 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/40'
                         : normalizeListingPlan(formData.plan) === 'standard'
                           ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
                           : 'border-slate-200 bg-white hover:border-emerald-300'
@@ -2239,11 +2264,11 @@ const CreateAd = () => {
 
                   <button
                     type="button"
-                    disabled={(!isAdmin && isEditLocked) || !isPaidBoatListingCategory(formData.category)}
-                    onClick={() => handlePlanChange('featured')}
+                    disabled={!isAdmin && isEditLocked}
+                    onClick={() => handleBoatPlanCardClick('featured')}
                     className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
                       !isPaidBoatListingCategory(formData.category)
-                        ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
+                        ? 'border-slate-200 bg-slate-50 opacity-70 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/40'
                         : normalizeListingPlan(formData.plan) === 'featured'
                           ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100'
                           : 'border-slate-200 bg-white hover:border-amber-300'
@@ -2272,11 +2297,11 @@ const CreateAd = () => {
 
                   <button
                     type="button"
-                    disabled={(!isAdmin && isEditLocked) || !isPaidBoatListingCategory(formData.category)}
-                    onClick={() => handlePlanChange('premium')}
+                    disabled={!isAdmin && isEditLocked}
+                    onClick={() => handleBoatPlanCardClick('premium')}
                     className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
                       !isPaidBoatListingCategory(formData.category)
-                        ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
+                        ? 'border-slate-200 bg-slate-50 opacity-70 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/40'
                         : normalizeListingPlan(formData.plan) === 'premium'
                           ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100'
                           : 'border-slate-200 bg-white hover:border-indigo-300'
@@ -2305,13 +2330,20 @@ const CreateAd = () => {
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => {
                       if (!isAdmin && isEditLocked) return;
+                      const alreadyMarketplace = isMarketplaceListingCategory(formData.category);
                       setFormData(prev => ({
                         ...prev,
-                        category: isMarketplaceListingCategory(prev.category) ? prev.category : '',
+                        category: alreadyMarketplace ? prev.category : '',
                         plan: 'free',
                         images: prev.images.slice(0, 3)
                       }));
-                      setTimeout(() => document.getElementById('listing-category')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+                      if (!alreadyMarketplace) {
+                        guideToCategory(
+                          hasMarketplaceFreeBenefit()
+                            ? 'Free Marketplace is only for Parts, Engines, Electronics, Trailers, Accessories, Marinas, Services and Wanted. Choose one of these categories below.'
+                            : `Marketplace listings are £${getMarketplaceAdditionalPrice().toFixed(2)} and are only for Marketplace categories. Choose the correct category below.`
+                        );
+                      }
                     }}
                     className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
                       !isPaidBoatListingCategory(formData.category) && formData.plan === 'free'
@@ -2344,6 +2376,13 @@ const CreateAd = () => {
                     </p>
                   </button>
                 </div>
+
+                {planCategoryHint && (
+                  <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-3 py-2.5 flex items-start gap-2">
+                    <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[10px] sm:text-xs font-bold text-amber-900 leading-relaxed">{planCategoryHint}</p>
+                  </div>
+                )}
 
                 {isPaidBoatListingCategory(formData.category) ? (
                   <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2">
@@ -2754,6 +2793,8 @@ const CreateAd = () => {
                   disabled={!isAdmin && isEditLocked}
                   onChange={(e) => {
                     const cat = e.target.value;
+                    setPlanCategoryHint(null);
+                    setCategoryAttention(false);
                     const paidBoatListing = isPaidBoatListingCategory(cat);
                     const nextPlan: typeof formData.plan = paidBoatListing
                       ? (formData.plan === 'free' ? 'standard' : formData.plan)
@@ -2765,7 +2806,11 @@ const CreateAd = () => {
                       images: paidBoatListing ? prev.images : prev.images.slice(0, 3)
                     }));
                   }}
-                  className="w-full px-3 py-2.5 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-medium"
+                  className={`w-full px-3 py-2.5 bg-slate-50 border-2 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-medium ${
+                    categoryAttention
+                      ? 'border-amber-500 ring-4 ring-amber-200 animate-pulse bg-amber-50'
+                      : 'border-slate-100'
+                  }`}
                 >
                   <option value="">Select a category...</option>
                   {categories
