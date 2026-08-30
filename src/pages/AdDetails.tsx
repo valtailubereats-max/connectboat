@@ -462,6 +462,10 @@ const AdDetails = () => {
           console.error('Erro ao incrementar visualizações:', vErr);
         }
 
+        // Carregar vendedor e avaliações
+        if (adData.sellerId) {
+          fetchSellerDetails(adData.sellerId);
+        }
       } catch (err) {
         console.error('Erro ao carregar anúncio:', err);
         setErrorMsg('Erro de rede ao conectar à base de dados. Tente novamente.');
@@ -493,38 +497,34 @@ const AdDetails = () => {
       const ratingAverage = (ad as any)?.sellerRating !== undefined ? (ad as any).sellerRating : ((ad as any)?.rating !== undefined ? (ad as any).rating : 0);
       const ratingCount = (ad as any)?.sellerReviewCount !== undefined ? (ad as any).sellerReviewCount : ((ad as any)?.reviewCount !== undefined ? (ad as any).reviewCount : 0);
 
-      let profileData: any = {
+      const profileData: any = {
         uid: sellerId,
-        displayName: (ad && ad.sourceUrl && /^https?:\/\//i.test(ad.sourceUrl)) ? 'Partner' : (ad?.sellerName || 'Seller'),
+        displayName: (ad && ad.sourceUrl && /^https?:\/\//i.test(ad.sourceUrl)) ? 'Parceiro' : (ad?.sellerName || 'Vendedor'),
         city: ad?.city || '',
         country: ad?.country || 'Reino Unido',
         ratingAverage,
         ratingCount
       };
 
-      // The public seller profile is loaded only when the profile popup is opened.
-      // This keeps the listing page focused on the boat and avoids an extra Firestore read on every visit.
-      try {
-        const publicSnap = await getDoc(doc(db, 'sellerPublicProfiles', sellerId));
-        if (publicSnap.exists()) {
-          profileData = { ...profileData, ...publicSnap.data(), uid: sellerId };
-        }
-      } catch (profileErr) {
-        console.warn('Unable to load the public seller profile:', profileErr);
-      }
+      console.log(`[AdDetails] Evitando fetch de sellerPublicProfiles para o vendedor ${sellerId} para poupar leituras Firestore.`);
 
+      // Carregar reviews enviadas a este vendedor se o utilizador estiver autenticado
       let reviewsData: Review[] = [];
-      try {
-        const q = query(collection(db, 'reviews'), where('sellerId', '==', sellerId), limit(8));
-        const snap = await getDocsWithCacheFallback(q, `reviews/sellerId-${sellerId}`);
-        reviewsData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
-        reviewsData.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-          return timeB - timeA;
-        });
-      } catch (reviewErr) {
-        console.warn('Unable to load seller reviews:', reviewErr);
+      if (user) {
+        try {
+          const q = query(collection(db, 'reviews'), where('sellerId', '==', sellerId), limit(8));
+          const snap = await getDocsWithCacheFallback(q, `reviews/sellerId-${sellerId}`);
+          reviewsData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
+          
+          // Ordenação decrescente de data
+          reviewsData.sort((a, b) => {
+            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return timeB - timeA;
+          });
+        } catch (reviewErr) {
+          console.warn('Erro ao carregar avaliações do vendedor:', reviewErr);
+        }
       }
 
       setSellerReviews(reviewsData);
@@ -550,19 +550,6 @@ const AdDetails = () => {
     } finally {
       setReviewsLoading(false);
     }
-  };
-
-  const openSellerProfile = () => {
-    if (!ad?.sellerId) return;
-    setShowSellerProfileModal(true);
-    fetchSellerDetails(ad.sellerId);
-  };
-
-  const formatMemberSince = (value: any) => {
-    if (!value) return '';
-    const date = value?.toDate ? value.toDate() : (value instanceof Date ? value : new Date(value));
-    if (!(date instanceof Date) || isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   };
 
   const handleToggleFavorite = async () => {
@@ -1649,6 +1636,18 @@ const AdDetails = () => {
             {/* Contact actions — seller profile is now opened from the profile icon */}
             <div className="bg-white/58 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/70 space-y-4 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.60)]">
               <div className="flex flex-col gap-3">
+                {(ad as any).moreInfoUrl && /^https?:\/\//i.test((ad as any).moreInfoUrl) && (
+                  <a
+                    href={(ad as any).moreInfoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center"
+                  >
+                    <ExternalLink size={20} className="flex-shrink-0" />
+                    <span className="leading-tight">Ver Mais</span>
+                  </a>
+                )}
+
                 {ad.externalListing || (hasSourceUrl && !ad.demoListing) ? (
                   <a
                     href={ad.sourceUrl}
@@ -1679,7 +1678,7 @@ const AdDetails = () => {
                       <span className="leading-tight">Contact via WhatsApp</span>
                     </button>
                     <button
-                      onClick={openSellerProfile}
+                      onClick={() => setShowSellerProfileModal(true)}
                       aria-label="View seller profile and reviews"
                       title="Seller profile"
                       className="w-14 shrink-0 rounded-2xl border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 flex items-center justify-center transition-all active:scale-[0.98]"
@@ -2410,7 +2409,7 @@ const AdDetails = () => {
         </button>
 
         <button
-          onClick={openSellerProfile}
+          onClick={() => setShowSellerProfileModal(true)}
           aria-label="View seller profile and reviews"
           title="Seller profile"
           className="shrink-0 w-10 h-10 rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 flex items-center justify-center transition-all active:scale-95"
@@ -2474,16 +2473,12 @@ const AdDetails = () => {
               <div className="pr-11">
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-500">Seller profile</p>
                 <div className="flex items-center gap-3 mt-3">
-                  <div className="w-16 h-16 bg-indigo-50 text-indigo-700 rounded-2xl flex items-center justify-center font-black text-lg shrink-0 overflow-hidden border border-indigo-100">
-                    {sellerProfile?.profileImageUrl ? (
-                      <img src={sellerProfile.profileImageUrl} alt={sellerProfile.displayName || ad.sellerName || 'Seller'} className="w-full h-full object-cover" />
-                    ) : (
-                      (sellerProfile?.displayName || (hasSourceUrl ? 'Partner' : ad.sellerName) || 'Seller').slice(0, 2).toUpperCase()
-                    )}
+                  <div className="w-14 h-14 bg-indigo-50 text-indigo-700 rounded-2xl flex items-center justify-center font-black text-lg shrink-0">
+                    {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-lg font-black text-slate-950 flex items-center gap-1.5 truncate">
-                      {sellerProfile?.displayName || (hasSourceUrl ? 'Partner' : ad.sellerName)}
+                      {hasSourceUrl ? 'Partner' : ad.sellerName}
                       <Award size={15} className="text-indigo-500 shrink-0" />
                     </h3>
                     <div className="flex items-center gap-1 mt-1">
@@ -2503,33 +2498,6 @@ const AdDetails = () => {
                     </div>
                   </div>
                 </div>
-                {reviewsLoading && !sellerProfile && (
-                  <div className="mt-4 text-xs font-bold text-slate-400">Loading seller profile...</div>
-                )}
-
-                {sellerProfile && (
-                  <div className="mt-4 space-y-3">
-                    {(sellerProfile.city || sellerProfile.country) && (
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <MapPin size={15} className="text-indigo-500 shrink-0" />
-                        <span className="font-semibold">{[sellerProfile.city, sellerProfile.country === 'Reino Unido' ? 'United Kingdom' : sellerProfile.country].filter(Boolean).join(', ')}</span>
-                      </div>
-                    )}
-                    {sellerProfile.createdAt && formatMemberSince(sellerProfile.createdAt) && (
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <Clock size={15} className="text-indigo-500 shrink-0" />
-                        <span className="font-semibold">Member since {formatMemberSince(sellerProfile.createdAt)}</span>
-                      </div>
-                    )}
-                    {sellerProfile.publicDescription?.trim() && (
-                      <div className="rounded-2xl bg-slate-50 border border-slate-100 p-4">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 mb-2">About the seller</h4>
-                        <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{sellerProfile.publicDescription}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 {user && user.uid !== ad.sellerId && (
                   <button
                     onClick={() => {
