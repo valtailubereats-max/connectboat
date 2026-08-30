@@ -2192,62 +2192,58 @@ const CreateAd = () => {
                   </button>
                 </div>
               </div>
-              {/* Listing plan: paid only for Boats for Sale / Boats for Hire */}
-              {!isPaidBoatListingCategory(formData.category) ? (
-                <div className="p-3.5 rounded-2xl border-2 border-emerald-200 bg-emerald-50/70 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wider text-emerald-800">Free Marketplace Listing</p>
-                    <p className="text-[10px] sm:text-xs text-emerald-700 mt-0.5">This category is free and allows up to 3 photos. Paid extras remain optional.</p>
-                  </div>
-                  <span className="shrink-0 text-sm font-black text-emerald-700">£0.00</span>
-                </div>
-              ) : (
+              {/* Listing plans: three boat plans + one clearly separated Marketplace option */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200">
                     Choose Listing Plan
                   </label>
                   <span className="text-[10px] font-semibold text-slate-400">
-                    You can change it before payment
+                    Marketplace is not available for Boats for Sale or Hire
                   </span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   <button
                     type="button"
-                    disabled={!isAdmin && isEditLocked}
+                    disabled={(!isAdmin && isEditLocked) || !isPaidBoatListingCategory(formData.category)}
                     onClick={() => handlePlanChange('standard')}
-                    className={`relative min-h-[92px] p-2.5 rounded-xl border-2 text-left transition-all ${
-                      normalizeListingPlan(formData.plan) === 'standard'
-                        ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
-                        : 'border-slate-200 bg-white hover:border-emerald-300'
+                    className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
+                      !isPaidBoatListingCategory(formData.category)
+                        ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
+                        : normalizeListingPlan(formData.plan) === 'standard'
+                          ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
+                          : 'border-slate-200 bg-white hover:border-emerald-300'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-1">
                       <span className="text-base">🛥️</span>
-                      {normalizeListingPlan(formData.plan) === 'standard' && (
+                      {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'standard' && (
                         <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center">✓</span>
                       )}
                     </div>
                     <div className="mt-1">
                       <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Standard</p>
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
-                        {getMaxPhotosForPlan('standard')} photos
+                        {getPhotoLimit('Boats for Sale', 'standard')} photos
                       </p>
                     </div>
                     <p className="font-black text-emerald-700 text-xs sm:text-sm mt-1">
                       £{getPlanPrice('standard').toFixed(2)}
                     </p>
+                    <p className="text-[8px] text-slate-400 mt-1">Boats for Sale / Hire</p>
                   </button>
 
                   <button
                     type="button"
-                    disabled={!isAdmin && isEditLocked}
+                    disabled={(!isAdmin && isEditLocked) || !isPaidBoatListingCategory(formData.category)}
                     onClick={() => handlePlanChange('featured')}
-                    className={`relative min-h-[92px] p-2.5 rounded-xl border-2 text-left transition-all ${
-                      normalizeListingPlan(formData.plan) === 'featured'
-                        ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100'
-                        : 'border-slate-200 bg-white hover:border-amber-300'
+                    className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
+                      !isPaidBoatListingCategory(formData.category)
+                        ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
+                        : normalizeListingPlan(formData.plan) === 'featured'
+                          ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100'
+                          : 'border-slate-200 bg-white hover:border-amber-300'
                     }`}
                   >
                     <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[7px] sm:text-[8px] font-black px-2 py-0.5 rounded-full uppercase whitespace-nowrap">
@@ -2255,57 +2251,122 @@ const CreateAd = () => {
                     </div>
                     <div className="flex items-start justify-between gap-1">
                       <span className="text-base">⭐</span>
-                      {normalizeListingPlan(formData.plan) === 'featured' && (
+                      {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'featured' && (
                         <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center">✓</span>
                       )}
                     </div>
                     <div className="mt-1">
                       <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Featured</p>
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
-                        {getMaxPhotosForPlan('featured')} photos
+                        {getPhotoLimit('Boats for Sale', 'featured')} photos
                       </p>
                     </div>
                     <p className="font-black text-amber-600 text-xs sm:text-sm mt-1">
                       £{getPlanPrice('featured').toFixed(2)}
                     </p>
+                    <p className="text-[8px] text-slate-400 mt-1">Boats for Sale / Hire</p>
                   </button>
 
                   <button
                     type="button"
-                    disabled={!isAdmin && isEditLocked}
+                    disabled={(!isAdmin && isEditLocked) || !isPaidBoatListingCategory(formData.category)}
                     onClick={() => handlePlanChange('premium')}
-                    className={`relative min-h-[92px] p-2.5 rounded-xl border-2 text-left transition-all ${
-                      normalizeListingPlan(formData.plan) === 'premium'
-                        ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100'
-                        : 'border-slate-200 bg-white hover:border-indigo-300'
+                    className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
+                      !isPaidBoatListingCategory(formData.category)
+                        ? 'border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed'
+                        : normalizeListingPlan(formData.plan) === 'premium'
+                          ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100'
+                          : 'border-slate-200 bg-white hover:border-indigo-300'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-1">
                       <span className="text-base">👑</span>
-                      {normalizeListingPlan(formData.plan) === 'premium' && (
+                      {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'premium' && (
                         <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center">✓</span>
                       )}
                     </div>
                     <div className="mt-1">
                       <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Premium</p>
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
-                        {getMaxPhotosForPlan('premium')} photos
+                        {getPhotoLimit('Boats for Sale', 'premium')} photos
                       </p>
                     </div>
                     <p className="font-black text-indigo-600 text-xs sm:text-sm mt-1">
                       £{getPlanPrice('premium').toFixed(2)}
                     </p>
+                    <p className="text-[8px] text-slate-400 mt-1">Boats for Sale / Hire</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isPaidBoatListingCategory(formData.category) || (!isAdmin && isEditLocked)}
+                    onClick={() => {
+                      if (!isMarketplaceListingCategory(formData.category)) return;
+                      setFormData(prev => ({ ...prev, plan: 'free', images: prev.images.slice(0, 3) }));
+                    }}
+                    className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
+                      isPaidBoatListingCategory(formData.category)
+                        ? 'border-rose-200 bg-rose-50/60 opacity-70 cursor-not-allowed'
+                        : 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
+                    }`}
+                  >
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[7px] sm:text-[8px] font-black px-2 py-0.5 rounded-full uppercase whitespace-nowrap">
+                      Marketplace Only
+                    </div>
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-base">🧰</span>
+                      {!isPaidBoatListingCategory(formData.category) && (
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center">✓</span>
+                      )}
+                    </div>
+                    <div className="mt-1">
+                      <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">
+                        {isFirstMarketplaceListingFree() ? 'Free Marketplace' : 'Marketplace'}
+                      </p>
+                      <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">Up to 3 photos</p>
+                    </div>
+                    <p className={`font-black text-xs sm:text-sm mt-1 ${isPaidBoatListingCategory(formData.category) ? 'text-rose-600' : 'text-emerald-700'}`}>
+                      {isPaidBoatListingCategory(formData.category)
+                        ? 'NOT FOR BOATS'
+                        : isFirstMarketplaceListingFree()
+                          ? 'FREE'
+                          : `£${getMarketplaceAdditionalPrice().toFixed(2)}`}
+                    </p>
+                    <p className="text-[8px] font-semibold text-slate-500 mt-1 leading-tight">
+                      Parts, engines, electronics, trailers, accessories, marinas, services & wanted only
+                    </p>
                   </button>
                 </div>
+
+                {isPaidBoatListingCategory(formData.category) ? (
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-rose-700">
+                      🚫 Free Marketplace is not valid for Boats for Sale or Boats for Hire. Please choose Standard, Featured or Premium.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-emerald-800">
+                      {isFirstMarketplaceListingFree()
+                        ? '✓ Your first Marketplace listing is FREE and includes up to 3 photos.'
+                        : `✓ Your free Marketplace listing has already been used. This listing is £${getMarketplaceAdditionalPrice().toFixed(2)} and includes up to 3 photos.`}
+                    </p>
+                    <p className="text-[9px] sm:text-[10px] text-emerald-700 mt-0.5">
+                      Marketplace applies only to Parts, Engines, Electronics, Trailers, Accessories, Marinas, Services and Wanted listings — never to Boats for Sale or Hire.
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between gap-3 px-1">
                   <span className="text-[10px] text-slate-500">
                     Selected: <strong className="text-slate-700">
-                      {normalizeListingPlan(formData.plan) === 'premium'
-                        ? 'Premium Featured'
-                        : normalizeListingPlan(formData.plan) === 'featured'
-                          ? 'Featured Listing'
-                          : 'Standard Listing'}
+                      {isPaidBoatListingCategory(formData.category)
+                        ? (normalizeListingPlan(formData.plan) === 'premium'
+                            ? 'Premium Featured'
+                            : normalizeListingPlan(formData.plan) === 'featured'
+                              ? 'Featured Listing'
+                              : 'Standard Listing')
+                        : (isFirstMarketplaceListingFree() ? 'Free Marketplace' : 'Marketplace £1.99')}
                     </strong>
                   </span>
                   <span className="text-[10px] font-bold text-indigo-600">
@@ -2313,8 +2374,6 @@ const CreateAd = () => {
                   </span>
                 </div>
               </div>
-
-              )}
 
               {/* 1. Photos */}
               <div className="space-y-3">
