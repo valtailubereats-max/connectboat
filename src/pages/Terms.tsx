@@ -107,11 +107,25 @@ const Terms = () => {
               part of the service you order.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
-              Other listing categories may be offered free of charge and may have different limits,
-              including limits on the number of photographs or other media that can be uploaded.
-              ConnectBoat may change which categories are free or paid, and may change applicable
-              features or limits, from time to time. Any price or material restriction applying to a
-              paid service will be shown before purchase.
+              Eligible Marketplace categories, including Boat Parts, Boat Engines, Marine Electronics,
+              Trailers, Marinas, Boat Services, Accessories and Wanted, include one free listing per
+              registered account. That one-time free listing allows up to three photographs. After the
+              free benefit has been used, each additional eligible Marketplace listing is charged at
+              the price displayed before publication (currently £1.99 per listing) and also allows up
+              to three photographs. The free benefit does not renew when a listing expires or is deleted.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              The one-time free Marketplace benefit is linked to the account and its identifying contact
+              information. Users must not create duplicate or misleading accounts, reuse the same contact
+              details, or deliberately misclassify a listing in order to obtain additional free listings
+              or avoid the applicable boat-listing fee. ConnectBoat may refuse, reclassify, suspend or
+              remove listings or accounts used to circumvent this policy.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              Complete boats or yachts offered for sale or hire must be listed only under Boats for Sale
+              or Boats for Hire and must use the applicable boat listing plan. Marketplace categories may
+              not be used to advertise a complete boat for sale, hire, rent or charter. A genuine Wanted
+              listing seeking to buy or find a boat is not treated as a boat-for-sale listing.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               Payment for a listing does not automatically guarantee publication. Paid listings may
