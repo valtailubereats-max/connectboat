@@ -770,7 +770,7 @@ const AdCard: React.FC<AdCardProps> = ({
                     <div className={`font-black text-indigo-600 tracking-tight leading-none ${
                       isFeaturedVariant ? 'text-sm md:text-base' : 'text-base md:text-lg'
                     }`}>
-                      {formatAdPrice(ad)}
+                      {(ad as any).priceOnRequest ? 'Price on Request' : formatAdPrice(ad)}
                     </div>
                     {(ad.status === 'sold' || ad.adStatus === 'sold') && (
                       <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-tight flex items-center justify-center gap-1 mt-1">
@@ -933,7 +933,7 @@ const AdCard: React.FC<AdCardProps> = ({
                         {ad.category === '💚 Doações & Solidariedade' ? (
                           <span className="text-emerald-600 font-extrabold flex items-center gap-1.5">Free 💚</span>
                         ) : (
-                          formatAdPrice(ad)
+                          (ad as any).priceOnRequest ? 'Price on Request' : formatAdPrice(ad)
                         )}
                       </div>
                     )}
