@@ -1,827 +1,92 @@
-export type ManualItemType = 
-  | 'Page' 
-  | 'Button' 
-  | 'Form' 
-  | 'Flow' 
-  | 'Admin' 
-  | 'Firestore' 
-  | 'Monetisation' 
-  | 'Showcase' 
+export type ManualItemType =
+  | 'Page'
+  | 'Button'
+  | 'Form'
+  | 'Flow'
+  | 'Admin'
+  | 'Firestore'
+  | 'Monetisation'
+  | 'Showcase'
   | 'Listings';
 
 export interface ManualItem {
-  id: string;
-  title: string;
-  type: ManualItemType;
-  description: string;
-  route: string;
-  mainFile: string;
-  relatedComponents: string[];
-  relatedFunctions: string[];
-  firestoreCollections: string[];
-  access: string;
-  buttons: string[];
-  actions: string[];
-  technicalNotes: string;
-  failurePoints: string[];
-  tags: string[];
+  id: string; title: string; type: ManualItemType; description: string; route: string; mainFile: string;
+  relatedComponents: string[]; relatedFunctions: string[]; firestoreCollections: string[]; access: string;
+  buttons: string[]; actions: string[]; technicalNotes: string; failurePoints: string[]; tags: string[];
 }
 
 export interface TechnicalFlow {
-  id: string;
-  title: string;
-  description: string;
-  startPoint: string;
-  buttonsInvolved: string[];
-  pagesInvolved: string[];
-  mainFiles: string[];
-  firestoreCollections: string[];
-  expectedResult: string;
+  id: string; title: string; description: string; startPoint: string; buttonsInvolved: string[];
+  pagesInvolved: string[]; mainFiles: string[]; firestoreCollections: string[]; expectedResult: string;
 }
 
+const item = (v: ManualItem): ManualItem => v;
+
 export const manualItems: ManualItem[] = [
-  {
-    id: 'home',
-    title: 'Home Page',
-    type: 'Page',
-    description: 'Main entry page of ConnectBoat. Displays dynamic banner, featured channels, featured listings, and showcase grids or carousels.',
-    route: '/',
-    mainFile: 'src/pages/Home.tsx',
-    relatedComponents: ['src/components/AdCard.tsx', 'src/components/ShowcaseStats.tsx'],
-    relatedFunctions: ['fetchAds', 'fetchShowcases', 'setCountry', 'handleSearch'],
-    firestoreCollections: ['ads', 'showcases', 'settings'],
-    access: 'Public (Any visitor)',
-    buttons: ['Country Switcher', 'Search Field', 'Post Listing Button', 'View All Showcases', 'View More Listings'],
-    actions: ['Redirect to listing creation', 'Filter listings by selected region', 'Perform text search by title or tags'],
-    technicalNotes: 'The home page loads data based on the active selection in AuthContext or localStorage. Approved showcases are listed in the entrepreneur carousel.',
-    failurePoints: [
-      'Flagcdn.com API failure when rendering flag icons.',
-      'Excessive Firestore reads if pagination or listing limit is omitted.',
-      'Heavy hero cover images affecting First Contentful Paint.'
-    ],
-    tags: ['home', 'landing page', 'showcases', 'listings', 'search', 'uk']
-  },
-  {
-    id: 'navbar-menu',
-    title: 'Navbar & User Menu',
-    type: 'Button',
-    description: 'Persistent navigation bar present across all pages. Allows navigation to Home, Jobs, Pricing, Create Listing, Notifications, and access to the User Menu.',
-    route: 'All routes (Global)',
-    mainFile: 'src/App.tsx',
-    relatedComponents: ['src/hooks/useClickOutside.ts'],
-    relatedFunctions: ['getUserSignature', 'logout', 'toggleNotifications'],
-    firestoreCollections: ['users', 'notifications', 'ads'],
-    access: 'Public buttons; profile and admin panels restricted',
-    buttons: ['Post Listing (+)', 'Notification Bell', 'User Badge', 'Log Out', 'Admin Panel'],
-    actions: ['Navigate to /create-ad', 'Navigate to /admin (if admin)', 'Log out', 'View unread notifications'],
-    technicalNotes: 'The user badge displays initials or the user profile name. Replaces legacy navigation triggers.',
-    failurePoints: [
-      'Menu dropdown truncated on extremely small mobile screens.',
-      'Notification bell failing to update in real time if query snapshot fails.'
-    ],
-    tags: ['navbar', 'menu', 'header', 'navigation', 'post', 'admin']
-  },
-  {
-    id: 'criar-anuncio',
-    title: 'Create / Edit Listing',
-    type: 'Form',
-    description: 'Multi-step form interface for creating boat, yacht, gear, or marine service listings. Allows category selection, multi-image upload, price definition, location setting, and plan choice.',
-    route: '/create-ad, /edit-ad/:id',
-    mainFile: 'src/pages/CreateAd.tsx',
-    relatedComponents: ['src/components/SearchableCitySelect.tsx'],
-    relatedFunctions: ['handleSubmitAd', 'uploadImagesToStorage', 'handlePlanSelection'],
-    firestoreCollections: ['ads', 'users', 'settings'],
-    access: 'Authenticated User',
-    buttons: ['Submit Images', 'Choose Plan (Free, Local, National)', 'Publish Listing', 'Save Changes'],
-    actions: ['Upload files to Firebase Storage', 'Write document to "ads" collection', 'Send admin notification for approval'],
-    technicalNotes: 'For paid plans, listing status defaults to "pending" for admin moderation. Images are validated against plan limits set in global settings.',
-    failurePoints: [
-      'Oversized file upload exceeding Storage quotas.',
-      'Form error if user profile details are incomplete.'
-    ],
-    tags: ['create', 'post', 'listing', 'form', 'images', 'plan', 'upload']
-  },
-  {
-    id: 'detalhes-anuncio',
-    title: 'Listing Details Page',
-    type: 'Page',
-    description: 'Detailed view page for a specific listing. Displays image carousel, price, location map, formatted description, direct WhatsApp contact button, and seller details.',
-    route: '/anuncio/:id',
-    mainFile: 'src/pages/AdDetails.tsx',
-    relatedComponents: ['src/components/ReviewModal.tsx'],
-    relatedFunctions: ['toggleFavoriteGlobal', 'incrementViewCount', 'sendWhatsAppMessage'],
-    firestoreCollections: ['ads', 'users', 'reviews'],
-    access: 'Public',
-    buttons: ['Contact via WhatsApp', 'Save to Favourites', 'View Seller Details', 'Report Listing', 'Write Review'],
-    actions: ['Increment views count in Firestore', 'Toggle listing ID in user favourites array', 'Load seller reviews'],
-    technicalNotes: 'Google map is embedded via responsive iframe based on location. Unsplash fallbacks are used if images are missing.',
-    failurePoints: [
-      'Google Maps iframe block due to unencoded special characters.',
-      'WhatsApp button phone number missing international country code format.'
-    ],
-    tags: ['listing', 'details', 'view', 'map', 'seller', 'whatsapp']
-  },
-  {
-    id: 'perfil',
-    title: 'Profile / My Dashboard',
-    type: 'Page',
-    description: 'Personal area for authenticated users to manage personal details (Name, Phone, Region), active and pending listings, Digital Showcase, reviews, and billing information.',
-    route: '/profile',
-    mainFile: 'src/pages/Profile.tsx',
-    relatedComponents: ['src/components/ShowcaseInterests.tsx', 'src/components/ShowcaseStats.tsx'],
-    relatedFunctions: ['updateProfile', 'saveShowcaseSettings', 'handleUserDeletion'],
-    firestoreCollections: ['users', 'ads', 'showcaseProducts', 'purchases'],
-    access: 'Authenticated User (Account owner)',
-    buttons: ['Save Changes', 'Configure Showcase', 'Billing History', 'Delete Account', 'Add Showcase Product'],
-    actions: ['Update user document in "users" collection', 'Submit commercial showcase data (logo, cover, WhatsApp)'],
-    technicalNotes: 'Uses URL query parameters for tab navigation (e.g., ?tab=profile, ?tab=ads, ?tab=showcase).',
-    failurePoints: [
-      'Required fields left blank preventing profile save.',
-      'Broken image URLs for showcase logo or cover banner.'
-    ],
-    tags: ['profile', 'data', 'edit', 'user', 'account', 'showcase']
-  },
-  {
-    id: 'meus-anuncios',
-    title: 'My Listings',
-    type: 'Listings',
-    description: 'User dashboard section containing all user-created listings. Allows status monitoring (Approved, Pending, Rejected, Expired), plan renewal, and marking items as sold.',
-    route: '/profile?tab=ads',
-    mainFile: 'src/pages/Profile.tsx',
-    relatedComponents: ['src/components/AdCard.tsx'],
-    relatedFunctions: ['deleteAd', 'renewAdPlan', 'markAsSold'],
-    firestoreCollections: ['ads'],
-    access: 'Authenticated User',
-    buttons: ['Edit', 'Delete', 'Mark as Sold', 'Promote Plan', 'Renew Listing'],
-    actions: ['Change listing status to "sold" or "archived"', 'Restore expired listings to pending post-payment'],
-    technicalNotes: 'Listings are filtered locally by `where("userId", "==", user.uid)`. Marking as sold removes the listing from public search.',
-    failurePoints: [
-      'Missing composite index in Firestore for userId and orderby filtering.'
-    ],
-    tags: ['listings', 'manage', 'renew', 'feature', 'delete']
-  },
-  {
-    id: 'favoritos',
-    title: 'Favourites',
-    type: 'Listings',
-    description: 'User dashboard section displaying saved listings to track price and availability changes.',
-    route: '/profile?tab=favorites',
-    mainFile: 'src/pages/Profile.tsx',
-    relatedComponents: ['src/components/AdCard.tsx'],
-    relatedFunctions: ['toggleFavoriteGlobal', 'fetchFavoriteAds'],
-    firestoreCollections: ['users', 'ads'],
-    access: 'Authenticated User',
-    buttons: ['Remove from Favourites', 'View Listing Details', 'Contact Seller'],
-    actions: ['Remove listing ID from the "favorites" array in the user document'],
-    technicalNotes: 'Favourites are stored as string IDs in the user document. Orphaned IDs from deleted listings are ignored safely.',
-    failurePoints: [
-      'Render error when loading data for a deleted favourited listing.'
-    ],
-    tags: ['favourites', 'saved', 'listings', 'interest']
-  },
-  {
-    id: 'compras',
-    title: 'Purchases (History)',
-    type: 'Monetisation',
-    description: 'Transaction history and receipt records generated by promotion plans or showcase activation.',
-    route: '/profile?tab=purchases',
-    mainFile: 'src/pages/Profile.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['fetchUserPurchases'],
-    firestoreCollections: ['purchases'],
-    access: 'Authenticated User',
-    buttons: ['View Receipt', 'Export Invoice', 'Contact Support'],
-    actions: ['Fetch user purchase collection documents'],
-    technicalNotes: 'Displays all simulated or actual checkout payments executed on the platform.',
-    failurePoints: [
-      'Time zone differences in purchase date formatting.'
-    ],
-    tags: ['purchases', 'invoices', 'payments', 'plans', 'receipt']
-  },
-  {
-    id: 'avaliacoes',
-    title: 'Seller Reviews',
-    type: 'Page',
-    description: 'Reputation system showing buyer reviews and star ratings (1 to 5) for sellers to build trust on ConnectBoat.',
-    route: '/profile?tab=reviews',
-    mainFile: 'src/pages/Profile.tsx',
-    relatedComponents: ['src/components/ReviewModal.tsx'],
-    relatedFunctions: ['submitReview', 'calculateAverageRating'],
-    firestoreCollections: ['reviews', 'users'],
-    access: 'Any authenticated user can review; viewing is public',
-    buttons: ['Write Feedback', 'Submit Review', 'Select Star Rating'],
-    actions: ['Write review document and update seller "ratingAverage" in users collection'],
-    technicalNotes: 'Average rating is stored denormalised in the user profile to speed up home and ad details rendering.',
-    failurePoints: [
-      'Users attempting to review themselves.',
-      'Division by zero when calculating average for zero ratings.'
-    ],
-    tags: ['reviews', 'feedback', 'stars', 'reputation', 'seller']
-  },
-  {
-    id: 'leads-interesses',
-    title: 'Leads / Product Interests',
-    type: 'Flow',
-    description: 'Showcase dashboard panel where business owners monitor enquiries and buyer interest.',
-    route: '/profile?tab=interests',
-    mainFile: 'src/components/ShowcaseInterests.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['fetchShowcaseInterests', 'resolveInterestState'],
-    firestoreCollections: ['showcaseInterests', 'showcaseProducts'],
-    access: 'Logistics / Showcase Owner',
-    buttons: ['View Lead Details', 'Mark as Resolved', 'Export List'],
-    actions: ['Load interest submissions from showcase products for post-sale tracking'],
-    technicalNotes: 'Leads are saved whenever an authenticated user submits an enquiry for a showcase product.',
-    failurePoints: [
-      'Slow synchronization if leads collection grows without pagination.'
-    ],
-    tags: ['leads', 'interests', 'contacts', 'enquiries', 'interactions']
-  },
-  {
-    id: 'anuncios-destaque',
-    title: 'Featured Listing Channels',
-    type: 'Listings',
-    description: 'Home page sections rotating promoted listings with national or local boost plans.',
-    route: '/',
-    mainFile: 'src/pages/Home.tsx',
-    relatedComponents: ['src/components/AdCard.tsx'],
-    relatedFunctions: ['fetchFeaturedAds'],
-    firestoreCollections: ['ads'],
-    access: 'Public',
-    buttons: ['Click Listing', 'Carousel Navigation Arrows'],
-    actions: ['Filter approved listings ordered by plan priority (national > local > free)'],
-    technicalNotes: 'Firestore query retrieves active listings ordered by plan level. National listings appear site-wide.',
-    failurePoints: [
-      'Lack of rotation if few paid listings exist.'
-    ],
-    tags: ['featured', 'carousel', 'main', 'visibility']
-  },
-  {
-    id: 'destaque-local',
-    title: 'Local Boost Plan',
-    type: 'Monetisation',
-    description: 'Plan enabling sellers to promote their listing specifically within their declared region or city.',
-    route: '/create-ad, /profile?tab=ads',
-    mainFile: 'src/pages/CreateAd.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['selectLocalPlan', 'processPlanSubscription'],
-    firestoreCollections: ['ads', 'purchases', 'settings'],
-    access: 'Authenticated User',
-    buttons: ['Select Local Plan', 'Checkout Simulation'],
-    actions: ['Set plan field to "local" on ad document and log purchase report'],
-    technicalNotes: 'Expiry days correspond to global "planDurations.local" settings.',
-    failurePoints: [
-      'Listing location mismatch with local search filters.'
-    ],
-    tags: ['featured', 'local', 'plan', 'payment', 'region']
-  },
-  {
-    id: 'destaque-nacional',
-    title: 'National Boost Plan',
-    type: 'Monetisation',
-    description: 'Top priority plan lifting the listing across nationwide search feeds.',
-    route: '/create-ad, /profile?tab=ads',
-    mainFile: 'src/pages/CreateAd.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['selectNationalPlan', 'processPlanSubscription'],
-    firestoreCollections: ['ads', 'purchases', 'settings'],
-    access: 'Authenticated User',
-    buttons: ['Select National Boost', 'Pay Subscription'],
-    actions: ['Set plan field to "national" in Firestore and extend validity period'],
-    technicalNotes: 'National listings display a decorative "National" badge on the listing card.',
-    failurePoints: [
-      'Missing or disabled national plan configurations in global settings.'
-    ],
-    tags: ['featured', 'national', 'plan', 'payment', 'uk', 'top']
-  },
-  {
-    id: 'pagina-precos',
-    title: 'Pricing Page',
-    type: 'Page',
-    description: 'Informational page detailing available pricing plans for advertising and digital showcases on ConnectBoat.',
-    route: '/precos',
-    mainFile: 'src/pages/Precos.tsx',
-    relatedComponents: [],
-    relatedFunctions: [],
-    firestoreCollections: ['settings'],
-    access: 'Public',
-    buttons: ['Post Listing Now', 'Activate Showcase', 'Contact Commercial Support'],
-    actions: ['Redirect user to creation or profile page based on plan selection'],
-    technicalNotes: 'Prices are loaded dynamically from global settings document.',
-    failurePoints: [
-      'Currency symbol formatting errors if not matched to active region.'
-    ],
-    tags: ['pricing', 'plans', 'local', 'national', 'showcase', 'subscription']
-  },
-  {
-    id: 'convites-qrcode',
-    title: 'Invitations & QR Code System',
-    type: 'Flow',
-    description: 'Referral feature allowing users to share invitation links or download dynamic QR codes to earn referral credits.',
-    route: '/convite, /admin/invitations',
-    mainFile: 'src/pages/Convite.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['generateInvitationCode', 'renderDynamicQRCode', 'addReferralCredits'],
-    firestoreCollections: ['users', 'invitations'],
-    access: 'Authenticated Users to share; Admin to manage',
-    buttons: ['Copy Invite Link', 'Download QR Code Image', 'Validate Admin Code'],
-    actions: ['Register new referral in "invitations" collection linking referrer and referee'],
-    technicalNotes: 'QR Code is rendered dynamically using SVG/Canvas libraries with direct referral link.',
-    failurePoints: [
-      'Unreadable QR Code under low screen brightness.',
-      'Self-referral loop attempts.'
-    ],
-    tags: ['invites', 'qr code', 'referral', 'invite', 'register']
-  },
-  {
-    id: 'marketing',
-    title: 'Marketing Kit',
-    type: 'Admin',
-    description: 'Administrative tool to manage promotional materials, banners, and digital flyers for social media sharing.',
-    route: '/admin/marketing',
-    mainFile: 'src/pages/AdminMarketing.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['fetchMaterials', 'addMarketingMaterial', 'deleteMarketingMaterial'],
-    firestoreCollections: ['marketingMaterials'],
-    access: 'Admin or Moderator',
-    buttons: ['Add Material', 'Download Banner', 'Delete Material', 'Copy Share Link'],
-    actions: ['Save promotional material in Firestore and store banner image'],
-    technicalNotes: 'Supports social, print, and story marketing media categories.',
-    failurePoints: [
-      'Unsupported file format upload.'
-    ],
-    tags: ['marketing', 'banners', 'kit', 'share', 'social media']
-  },
-  {
-    id: 'importacao-olx',
-    title: 'AI Web Scraper & Import Tool',
-    type: 'Admin',
-    description: 'AI-assisted feature allowing admins to import listings by pasting external URLs from supported marketplaces.',
-    route: '/admin/import',
-    mainFile: 'src/pages/AdminImport.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['scrapeMetadataLink', 'processWithGemini', 'confirmAutomationImport'],
-    firestoreCollections: ['ads', 'settings'],
-    access: 'Admin Only',
-    buttons: ['Paste URL', 'Run AI Analysis', 'Import to System', 'Clear Fields'],
-    actions: ['Invoke server API for web scraping and Gemini AI parsing'],
-    technicalNotes: 'Extracts title, price, description, and images from external source URL.',
-    failurePoints: [
-      'Source page layout changes breaking scraper logic.',
-      'Gemini API token quota exhaustion.'
-    ],
-    tags: ['import', 'ai', 'scraper', 'create', 'apollo duck', 'boats and outboards']
-  },
-  {
-    id: 'sistema-saude',
-    title: 'System Health Monitor',
-    type: 'Admin',
-    description: 'Automated platform health and integrity monitoring system with alert logging and email notifications.',
-    route: '/admin/health',
-    mainFile: 'src/pages/AdminSystemHealth.tsx',
-    relatedComponents: ['src/utils/healthService.ts'],
-    relatedFunctions: ['runHealthChecks', 'logHealthEvent', 'handleHealthLevelChangeEmails'],
-    firestoreCollections: ['system_health_alerts', 'system_health_events', 'settings'],
-    access: 'Admin Only',
-    buttons: ['Run Health Check', 'Clear Resolved', 'Mark as Resolved', 'Simulate Incident', 'Reset Health Status'],
-    actions: ['Execute database health checks', 'Write alerts to system_health_alerts', 'Send email notifications on status changes'],
-    technicalNotes: 'Health scoring system calculates status from 0% to 100% based on open alerts and severity levels.',
-    failurePoints: [
-      'Notification email loops prevented by 30-minute anti-spam threshold.'
-    ],
-    tags: ['health', 'monitor', 'alerts', 'status', 'verification']
-  },
-  {
-    id: 'admin-dashboard',
-    title: 'Admin Dashboard Overview',
-    type: 'Admin',
-    description: 'Operational control center displaying platform performance statistics, active listing counts, billing totals, and pending reviews.',
-    route: '/admin/dashboard, /admin',
-    mainFile: 'src/pages/AdminDashboard.tsx',
-    relatedComponents: ['src/components/ShowcaseStats.tsx'],
-    relatedFunctions: ['loadDashboardMetrics', 'fetchRecentActivities'],
-    firestoreCollections: ['ads', 'users', 'purchases', 'settings'],
-    access: 'Admin Only',
-    buttons: ['Detailed Statistics', 'View Purchases', 'Filter Period'],
-    actions: ['Aggregate financial and operational metrics from Firestore'],
-    technicalNotes: 'Provides high-level system overview and operational metrics.',
-    failurePoints: [
-      'High query overhead when aggregating large collections.'
-    ],
-    tags: ['dashboard', 'statistics', 'admin', 'overview', 'charts']
-  },
-  {
-    id: 'gerir-anuncios',
-    title: 'Manage & Moderate Listings',
-    type: 'Admin',
-    description: 'Moderation section for approving, rejecting, or suspending submitted listings.',
-    route: '/admin/ads',
-    mainFile: 'src/pages/AdminAds.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['approveAdState', 'rejectAdState', 'archiveExpiredAds'],
-    firestoreCollections: ['ads', 'notifications'],
-    access: 'Admin or Moderator',
-    buttons: ['Approve Listing', 'Reject Listing', 'Add Justification', 'Search Listing'],
-    actions: ['Update ad status to "approved" or "rejected" and trigger user notification'],
-    technicalNotes: 'Filters listings by status (pending, approved, rejected, expired).',
-    failurePoints: [
-      'Missing rejection reason causing user confusion.'
-    ],
-    tags: ['listings', 'approve', 'reject', 'moderate', 'manage']
-  },
-  {
-    id: 'utilizadores',
-    title: 'Manage Users',
-    type: 'Admin',
-    description: 'Member management section to update user roles (user, moderator, admin) or handle suspensions.',
-    route: '/admin/users',
-    mainFile: 'src/pages/AdminUsers.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['changeUserRole', 'banUserAccount', 'adjustCreditsManually'],
-    firestoreCollections: ['users'],
-    access: 'Admin Only',
-    buttons: ['Make Admin', 'Make Moderator', 'Revoke Access', 'View Profile'],
-    actions: ['Update "role" attribute in user document'],
-    technicalNotes: 'Includes safety guards preventing self-revocation of admin privileges.',
-    failurePoints: [
-      'Account suspension failing to archive active listings immediately.'
-    ],
-    tags: ['users', 'roles', 'admin', 'ban', 'moderator']
-  },
-  {
-    id: 'definicoes',
-    title: 'System Settings',
-    type: 'Admin',
-    description: 'Technical configuration panel for platform rules, listing durations, promotion prices, and feature toggles.',
-    route: '/admin/settings',
-    mainFile: 'src/pages/AdminSettings.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['saveGlobalSettings', 'restoreDefaultSystemSettings'],
-    firestoreCollections: ['settings'],
-    access: 'Admin Only',
-    buttons: ['Save Settings', 'Clear Parameters', 'Enable Compact Mode', 'Restore Defaults'],
-    actions: ['Update "global" document in settings collection'],
-    technicalNotes: 'All components load pricing and duration parameters from this central document.',
-    failurePoints: [
-      'Negative values in numeric limits causing form rendering bugs.'
-    ],
-    tags: ['settings', 'configuration', 'pricing', 'limits']
-  },
-  {
-    id: 'notificacoes-sistema',
-    title: 'Internal Notifications',
-    type: 'Firestore',
-    description: 'Notification engine storing approval messages, plan updates, and system alerts for users.',
-    route: 'All (Header Bell)',
-    mainFile: 'src/App.tsx',
-    relatedComponents: [],
-    relatedFunctions: ['addNotificationSystem', 'markNotificationAsRead', 'deleteNotification'],
-    firestoreCollections: ['notifications'],
-    access: 'Notification recipient or Admin',
-    buttons: ['Mark as Read', 'Clear All', 'Click Notification Link'],
-    actions: ['Set "read" to true on notification document'],
-    technicalNotes: 'Real-time query snapshot indexed by userId drives the red unread badge in header.',
-    failurePoints: [
-      'Unread count mismatch due to transient network drops.'
-    ],
-    tags: ['notifications', 'alert', 'notice', 'bell']
-  },
-  {
-    id: 'firestore-rules',
-    title: 'Firestore Security Rules',
-    type: 'Firestore',
-    description: 'Server-side access control protocol governing read/write permissions across Firestore collections.',
-    route: 'N/A (Server Level)',
-    mainFile: 'firestore.rules',
-    relatedComponents: [],
-    relatedFunctions: [],
-    firestoreCollections: ['All collections'],
-    access: 'Firebase Server',
-    buttons: [],
-    actions: ['Validate JWT tokens, verify uid, and enforce role permissions'],
-    technicalNotes: 'Configured in root directory to prevent unauthorized data access.',
-    failurePoints: [
-      'Silent read errors if authenticated user ID does not match path rule expectation.'
-    ],
-    tags: ['rules', 'firestore', 'security', 'database']
-  },
-  {
-    id: 'storage-rules',
-    title: 'Cloud Storage Rules',
-    type: 'Firestore',
-    description: 'Security protocol for file uploads and asset storage in Firebase Storage bucket.',
-    route: 'N/A',
-    mainFile: 'storage.rules',
-    relatedComponents: [],
-    relatedFunctions: [],
-    firestoreCollections: ['N/A (Storage Bucket)'],
-    access: 'Storage Server',
-    buttons: [],
-    actions: ['Enforce authenticated file upload rules for image formats (JPG, PNG, WEBP)'],
-    technicalNotes: 'Restricts file sizes to under 5MB per image.',
-    failurePoints: [
-      'Frontend upload rejection caused by MIME type mismatch.'
-    ],
-    tags: ['storage', 'rules', 'bucket', 'security', 'upload']
-  },
-  {
-    id: 'destaques-permanentes',
-    title: 'Permanent Admin Featured Listings',
-    type: 'Admin',
-    description: 'Administrative feature to pin specific listings permanently to home page carousels as fallbacks.',
-    route: '/create-ad, /edit-ad/:id',
-    mainFile: 'src/pages/CreateAd.tsx',
-    relatedComponents: ['src/pages/Home.tsx', 'src/components/SearchableCitySelect.tsx'],
-    relatedFunctions: ['fetchFeatured', 'filteredFeaturedAds', 'handleSubmit', 'handleCountryChange'],
-    firestoreCollections: ['ads', 'users', 'settings'],
-    access: 'Admins & Moderators Only',
-    buttons: ['Enable Permanent Boost (Toggle)', 'Boost Scope (Local/National)', 'Display Region (UK/Both)'],
-    actions: [
-      'Bypass payment checkout for permanent featured status',
-      'Set regional visibility to Both or specific country',
-      'Exempt listing from automatic expiration filters'
-    ],
-    technicalNotes: 'Sets "isPermanentFeatured" to true with a far-future expiry date.',
-    failurePoints: [
-      'Conflict when attempting billing operations on manually pinned listings.'
-    ],
-    tags: ['featured', 'permanent', 'carousel', 'fallback', 'admin']
-  },
-  {
-    id: 'pwa-install',
-    title: 'Progressive Web App (PWA) Setup',
-    type: 'Page',
-    description: 'Allows ConnectBoat to be installed directly on mobile devices and desktop without app store friction.',
-    route: 'All routes (Global)',
-    mainFile: 'public/manifest.json',
-    relatedComponents: ['src/hooks/usePWA.ts', 'src/components/PWAInstallButton.tsx', 'public/sw.js'],
-    relatedFunctions: ['installApp', 'dismissInstall', 'registerServiceWorker'],
-    firestoreCollections: [],
-    access: 'Public',
-    buttons: ['"📱 Install App" (Desktop User Menu)', '"📱 Install App" (Mobile Navigation)', '"📱 Install App" (Footer)'],
-    actions: [
-      'Automatically hide install prompts if running in standalone mode',
-      'Trigger browser native install prompt on Android/Chromium',
-      'Show step-by-step instructions modal on iOS Safari'
-    ],
-    technicalNotes: 'Uses immediate activation service worker and Network-First caching strategy.',
-    failurePoints: [
-      'Non-HTTPS connection blocking native browser install prompt.'
-    ],
-    tags: ['pwa', 'install', 'offline', 'safari', 'chrome', 'android', 'ios']
-  },
-  {
-    id: 'footer-system',
-    title: 'Universal Footer Structure',
-    type: 'Page',
-    description: 'Unified responsive footer organizing navigation links, legal information, and support contacts.',
-    route: 'All routes (Global)',
-    mainFile: 'src/App.tsx',
-    relatedComponents: ['src/components/PWAInstallButton.tsx'],
-    relatedFunctions: [],
-    firestoreCollections: [],
-    access: 'Public',
-    buttons: ['WhatsApp Support', 'Install App (PWA)', 'Digital Showcases'],
-    actions: [
-      'Redirect to contato@connectboat.co.uk for email support',
-      'Open WhatsApp support in new tab',
-      'Navigate to legal and help pages'
-    ],
-    technicalNotes: 'Footer links structured in responsive 4-column layout on desktop.',
-    failurePoints: [
-      'Broken link if navigating to unregistered route.'
-    ],
-    tags: ['footer', 'structure', 'support', 'legal', 'community', 'uk']
-  },
-  {
-    id: 'partilha-dinamica',
-    title: 'Dynamic Sharing System',
-    type: 'Flow',
-    description: 'Unified sharing engine adapting content dynamically based on current page context.',
-    route: 'Global (via triggerShare and ShareModal)',
-    mainFile: 'src/utils/shareUtils.ts',
-    relatedComponents: ['src/components/ShareModal.tsx', 'src/App.tsx', 'src/pages/AdDetails.tsx'],
-    relatedFunctions: ['triggerShare', 'generateShareText'],
-    firestoreCollections: ['shares'],
-    access: 'Public',
-    buttons: ['Share (Navbar)', 'Share Listing (AdCard)', 'Share Showcase'],
-    actions: [
-      'Generate context-aware share text for active listing or showcase',
-      'Open pre-filled share URLs for WhatsApp, Telegram, Facebook or copy to clipboard'
-    ],
-    technicalNotes: 'Centralized share handler formatted for UK marine market.',
-    failurePoints: [
-      'Navigator.share API unsupported in legacy browsers (fallback modal provided).'
-    ],
-    tags: ['share', 'whatsapp', 'telegram', 'facebook', 'modal', 'copy link']
-  },
-  {
-    id: 'doacoes-solidariedade',
-    title: '💚 Marine Equipment Donations',
-    type: 'Listings',
-    description: 'Community donation category for free boat parts and marine equipment.',
-    route: '/create-ad, /anuncio/:id',
-    mainFile: 'src/pages/CreateAd.tsx',
-    relatedComponents: ['src/components/AdCard.tsx', 'src/pages/AdDetails.tsx'],
-    relatedFunctions: ['handleSubmitAd', 'formatPrice'],
-    firestoreCollections: ['ads'],
-    access: 'Authenticated user to create, Public to view',
-    buttons: ['Free Price Enforced', 'Donation Badge Enforced'],
-    actions: ['Automatically enable donation boost and badge', 'Bypass payment checkout', 'Set price to £0'],
-    technicalNotes: 'Selecting donation category automatically sets price to 0 and applies local boost.',
-    failurePoints: [
-      'Attempts to list commercial items under donation category.'
-    ],
-    tags: ['donation', 'community', 'free', 'equipment', 'marine']
-  },
-  {
-    id: 'configuracao-arquitetura-email',
-    title: 'Email Architecture & Settings',
-    type: 'Admin',
-    description: 'System email infrastructure for transactional notifications and support communications.',
-    route: 'Global',
-    mainFile: 'api/email/send.ts',
-    relatedComponents: ['src/App.tsx', 'src/pages/FAQ.tsx'],
-    relatedFunctions: ['sendEmailGeneric', 'renderEmail'],
-    firestoreCollections: ['system_health_events'],
-    access: 'Public for alert triggers, Server for SMTP credentials',
-    buttons: ['Send Email (Support)'],
-    actions: [
-      'Display official support email contato@connectboat.co.uk on public pages',
-      'Use serverless API routes to send automated notifications'
-    ],
-    technicalNotes: 'Proxy endpoint /api/email/send safely proxies emails without exposing secret keys.',
-    failurePoints: [
-      'Missing API key in environment variables.'
-    ],
-    tags: ['email', 'support', 'communication', 'architecture', 'security']
-  }
+  item({ id:'home', title:'Home / Página Inicial', type:'Page', description:'Página pública principal. Mostra hero, pesquisa, filtros, anúncios de barcos à venda/aluguer, destaques, banners e secções públicas habilitadas nas definições.', route:'/', mainFile:'src/pages/Home.tsx', relatedComponents:['src/components/AdCard.tsx','src/components/SearchableCitySelect.tsx','src/components/ConnectBoatLogo.tsx'], relatedFunctions:['loadAds','search/filter','featured rotation'], firestoreCollections:['ads','settings','users'], access:'Público', buttons:['Search','All Categories','All Locations','Filters','View Listing'], actions:['Pesquisar anúncios','Filtrar categoria/localização','Abrir detalhes','Exibir apenas categorias permitidas na home'], technicalNotes:'A Home prioriza barcos à venda e para aluguer; outras categorias continuam acessíveis por pesquisa, filtros e categorias. Configurações visuais vêm de settings/global.', failurePoints:['Consulta Firestore sem índice','Configuração global ausente','Imagem do anúncio indisponível'], tags:['home','search','filters','featured','boats'] }),
+  item({ id:'navbar', title:'Navbar, Login e Menu do Utilizador', type:'Button', description:'Navegação global, autenticação, acesso ao perfil, criação de anúncio e painel administrativo conforme permissões.', route:'Todas as rotas (Global)', mainFile:'src/App.tsx', relatedComponents:['src/components/ConnectBoatLogo.tsx','src/components/PWAInstallButton.tsx'], relatedFunctions:['useAuth','navigate','logout'], firestoreCollections:['users'], access:'Público / autenticado / staff conforme ação', buttons:['Post Listing','Login','Profile','Admin','Logout','Install App'], actions:['Navegar','Entrar/sair','Abrir perfil','Abrir criação de anúncio'], technicalNotes:'As opções administrativas dependem do role/permissões carregados pelo AuthContext.', failurePoints:['Sessão expirada','Perfil/role ainda carregando'], tags:['navbar','auth','menu','login'] }),
+  item({ id:'create-ad', title:'Criar / Editar Anúncio', type:'Form', description:'Formulário central de criação e edição. Controla plano, fotos, Media Boost, categoria, dados técnicos, contacto, localização, Marketplace grátis/pago e ferramentas exclusivas de staff.', route:'/create-ad / /edit-ad/:id', mainFile:'src/pages/CreateAd.tsx', relatedComponents:['src/components/SearchableCitySelect.tsx'], relatedFunctions:['handleSubmit','handleImageUpload','validateForm','listing_save','createCheckout'], firestoreCollections:['ads','users','settings','marketplaceFreePhones','marketplaceFreeEmails'], access:'Utilizador autenticado; funções especiais para admin/moderador', buttons:['Standard','Featured','Premium','Free Marketplace / Marketplace £1.99','Upload Photos','Media Boost','Publish / Continue to Payment'], actions:['Criar anúncio','Editar anúncio','Selecionar plano','Enviar/reordenar fotos','Definir foto principal','Adicionar vídeo','Salvar ou iniciar checkout'], technicalNotes:'Planos de barco e Marketplace são mutuamente exclusivos por categoria. O backend é a fonte de verdade para elegibilidade e limites.', failurePoints:['Token Firebase inválido','Limite de fotos excedido','Categoria incompatível com plano','Upload falha','Duplicado detectado'], tags:['create','edit','listing','photos','marketplace','plans'] }),
+  item({ id:'boat-plans', title:'Planos Standard, Featured e Premium', type:'Monetisation', description:'Planos pagos destinados a Boats for Sale e Boats for Hire. Preço, duração e máximo de fotos são configuráveis pelo Admin.', route:'/create-ad', mainFile:'src/pages/CreateAd.tsx', relatedComponents:[], relatedFunctions:['getPlanPrice','getMaxImagesForPlan','requiresPayment'], firestoreCollections:['settings','ads'], access:'Utilizador autenticado', buttons:['Standard','Featured','Premium'], actions:['Selecionar plano','Validar categoria','Ir para pagamento'], technicalNotes:'Valores atuais são lidos de settings/global; não devem ser hard-coded na documentação operacional.', failurePoints:['Categoria Marketplace selecionada','Settings indisponível'], tags:['standard','featured','premium','boats','pricing'] }),
+  item({ id:'marketplace-listings', title:'Marketplace: 1º Grátis + Anúncios Adicionais', type:'Monetisation', description:'Categorias Marketplace têm até 3 fotos. O primeiro anúncio elegível da conta é grátis uma única vez; depois, o card passa a Marketplace pago pelo valor configurado (atualmente £1.99).', route:'/create-ad', mainFile:'src/pages/CreateAd.tsx', relatedComponents:[], relatedFunctions:['isMarketplaceListingCategory','isFirstMarketplaceListingFree','listing_save'], firestoreCollections:['ads','users','settings','marketplaceFreePhones','marketplaceFreeEmails'], access:'Utilizador autenticado', buttons:['Free Marketplace','Marketplace £1.99'], actions:['Selecionar Marketplace','Consumir benefício grátis','Criar anúncio adicional pago'], technicalNotes:'Não se aplica a Boats for Sale/Hire. O benefício grátis não volta ao apagar/expirar. Backend verifica conta e identificadores de contacto para evitar reutilização indevida.', failurePoints:['Telefone/e-mail inválido para benefício grátis','Tentativa de anunciar barco completo como Marketplace','Benefício já utilizado'], tags:['marketplace','free','1.99','3 photos','anti abuse'] }),
+  item({ id:'plan-category-guidance', title:'Orientação Plano ↔ Categoria', type:'Flow', description:'Quando o utilizador clica num plano incompatível, o sistema mostra popup temporário, rola até Categoria e destaca o dropdown para orientar a correção.', route:'/create-ad', mainFile:'src/pages/CreateAd.tsx', relatedComponents:[], relatedFunctions:['plan click handler','category guidance timeout'], firestoreCollections:[], access:'Utilizador autenticado', buttons:['Standard','Featured','Premium','Marketplace'], actions:['Mostrar popup por 4 segundos','Scroll até Category','Destacar/pulsar dropdown'], technicalNotes:'Boat plans exigem Boats for Sale/Hire; Marketplace exige uma categoria Marketplace.', failurePoints:['Elemento Category não encontrado no DOM'], tags:['ux','popup','category','plans'] }),
+  item({ id:'photo-system', title:'Fotos, Limites e Foto Principal', type:'Form', description:'Upload, preview, remoção, reordenação e definição da foto de capa. O limite depende do plano; Marketplace é limitado a 3 fotos.', route:'/create-ad', mainFile:'src/pages/CreateAd.tsx', relatedComponents:['src/components/OptimizedImage.tsx','src/components/ImageLightboxModal.tsx'], relatedFunctions:['handleImageUpload','removeImage','setMainImage','reorderImages'], firestoreCollections:['ads'], access:'Utilizador autenticado', buttons:['Upload','Remove','Set as Main','Reorder'], actions:['Comprimir/validar','Carregar fotos','Definir capa'], technicalNotes:'Standard/Featured/Premium usam maxImages configurado no Admin; Marketplace usa máximo 3.', failurePoints:['Arquivo > limite','Formato inválido','Falha Storage','Quantidade acima do plano'], tags:['photos','images','limits','cover'] }),
+  item({ id:'media-boost', title:'Media Boost — Vídeo de até 60s', type:'Monetisation', description:'Extra opcional de vídeo para apresentar o anúncio. O vídeo é cobrado separadamente quando aplicável e aparece junto à mídia do anúncio.', route:'/create-ad', mainFile:'src/pages/CreateAd.tsx', relatedComponents:[], relatedFunctions:['video upload','requiresPayment'], firestoreCollections:['ads'], access:'Utilizador autenticado', buttons:['Media Boost toggle','Upload Video'], actions:['Ativar extra','Enviar vídeo','Adicionar cobrança ao checkout'], technicalNotes:'Validação do formulário impede Media Boost ativo sem vídeo válido. Campos videoPaid/mediaBoost controlam o estado.', failurePoints:['Vídeo inválido','Upload incompleto','Pagamento não confirmado'], tags:['video','media boost','60s','extra'] }),
+  item({ id:'live-preview', title:'Pré-visualização do Anúncio ao Vivo', type:'Page', description:'Card de preview atualizado durante o preenchimento. No desktop acompanha a rolagem para permanecer visível.', route:'/create-ad', mainFile:'src/pages/CreateAd.tsx', relatedComponents:[], relatedFunctions:['live form state'], firestoreCollections:[], access:'Utilizador autenticado', buttons:[], actions:['Visualizar título/preço/categoria/foto em tempo real'], technicalNotes:'Painel usa comportamento sticky no desktop e adapta-se a telas menores.', failurePoints:['Viewport pequeno pode reduzir área útil'], tags:['preview','sticky','create ad'] }),
+  item({ id:'staff-more-info', title:'URL Externa “Ver Mais” — Staff', type:'Admin', description:'Admin e moderador podem cadastrar uma URL externa no anúncio. Na página pública, quando válida, aparece o botão “Ver Mais” que abre o destino em nova aba.', route:'/create-ad / /edit-ad/:id', mainFile:'src/pages/CreateAd.tsx', relatedComponents:['src/pages/AdDetails.tsx'], relatedFunctions:['moreInfoUrl normalization'], firestoreCollections:['ads'], access:'Somente Admin/Moderator para cadastrar; botão público para visitantes', buttons:['Ver Mais'], actions:['Salvar URL externa','Abrir YouTube ou outra plataforma'], technicalNotes:'Campo moreInfoUrl é preservado para utilizadores sem permissão e normalizado para http/https quando staff salva.', failurePoints:['URL inválida','Campo não preenchido'], tags:['admin','moderator','url','ver mais','youtube'] }),
+  item({ id:'ad-details', title:'Página de Detalhes do Anúncio', type:'Page', description:'Página pública completa do anúncio: galeria, vídeo, dados técnicos, preço, localização, contacto, partilha, perfil do vendedor, origem externa/claimable e botão Ver Mais quando configurado.', route:'/anuncio/:id / /listing/:id', mainFile:'src/pages/AdDetails.tsx', relatedComponents:['src/components/ImageLightboxModal.tsx','src/components/ShareModal.tsx','src/components/ReviewModal.tsx'], relatedFunctions:['loadAd','registerView','contactSeller','share'], firestoreCollections:['ads','users','sellerPublicProfiles','reviews','businessClaimRequests'], access:'Público; algumas ações exigem login', buttons:['Contact Seller','Share','Ver Mais','View Original Listing','Activate & Claim'], actions:['Visualizar anúncio','Contactar','Abrir perfil','Partilhar','Abrir link externo'], technicalNotes:'Suporta anúncios normais, importados, demo e claimable. /anuncio/:id e /listing/:id apontam para a mesma página.', failurePoints:['Anúncio inexistente','URL externa inválida','Dados de vendedor incompletos'], tags:['details','gallery','contact','share'] }),
+  item({ id:'seller-public-profile', title:'Perfil Público do Vendedor', type:'Listings', description:'Popup do vendedor com foto/logo, nome, localização, descrição pública, média de estrelas e avaliações.', route:'/anuncio/:id', mainFile:'src/pages/AdDetails.tsx', relatedComponents:['src/pages/Profile.tsx','src/components/ReviewModal.tsx'], relatedFunctions:['loadSellerPublicProfile','loadReviews'], firestoreCollections:['sellerPublicProfiles','users','reviews'], access:'Visualização pública; edição pelo próprio vendedor', buttons:['Seller Profile','Close'], actions:['Carregar perfil público','Mostrar reviews'], technicalNotes:'Busca sellerPublicProfiles e usa users como fallback para perfis antigos.', failurePoints:['Perfil público não criado','Imagem removida','Seller ID ausente'], tags:['seller','profile','logo','about','reviews'] }),
+  item({ id:'reviews', title:'Avaliações do Vendedor', type:'Listings', description:'Sistema de reputação com estrelas, comentário e indicação de negócio concluído quando aplicável.', route:'/profile?tab=reviews / /anuncio/:id', mainFile:'src/components/ReviewModal.tsx', relatedComponents:['src/pages/AdDetails.tsx','src/pages/Profile.tsx'], relatedFunctions:['submitReview','calculateAverageRating'], firestoreCollections:['reviews','users','sellerPublicProfiles'], access:'Visualização pública; envio conforme regras de autenticação', buttons:['Write Review','Submit'], actions:['Criar avaliação','Recalcular reputação'], technicalNotes:'A página de detalhes agrega reviews no popup do vendedor.', failurePoints:['Autoavaliação','Review duplicada','Permissão Firestore'], tags:['reviews','stars','reputation'] }),
+  item({ id:'profile', title:'Perfil / Minha Conta', type:'Page', description:'Área autenticada para dados pessoais/públicos, anúncios, favoritos, histórico e recursos associados à conta.', route:'/profile', mainFile:'src/pages/Profile.tsx', relatedComponents:['src/components/AdCard.tsx'], relatedFunctions:['loadProfile','saveProfile'], firestoreCollections:['users','sellerPublicProfiles','ads','reviews'], access:'Utilizador autenticado', buttons:['Save Profile','My Listings','Favorites'], actions:['Editar dados','Gerir perfil público','Gerir anúncios'], technicalNotes:'Dados públicos do vendedor são separados dos dados usados internamente quando aplicável.', failurePoints:['Sessão expirada','Falha de gravação'], tags:['profile','account','seller'] }),
+  item({ id:'pricing', title:'Pricing / Preços', type:'Monetisation', description:'Explica os planos comerciais, limites e preços atuais do ConnectBoat, incluindo Marketplace.', route:'/pricing', mainFile:'src/pages/Precos.tsx', relatedComponents:[], relatedFunctions:['useSettings'], firestoreCollections:['settings'], access:'Público', buttons:['Choose Plan','Post Listing'], actions:['Comparar planos','Ir para criação'], technicalNotes:'Preços devem refletir settings/global.', failurePoints:['Settings não carregado'], tags:['pricing','plans','marketplace'] }),
+  item({ id:'boats-hire', title:'Boats for Hire', type:'Page', description:'Página dedicada à descoberta de barcos disponíveis para aluguer.', route:'/boats-for-hire', mainFile:'src/pages/BoatsForHire.tsx', relatedComponents:['src/components/AdCard.tsx'], relatedFunctions:['load hire listings'], firestoreCollections:['ads'], access:'Público', buttons:['View Listing'], actions:['Listar barcos de aluguer','Abrir detalhes'], technicalNotes:'Alias antigo /barcos-aluguer redireciona para esta rota.', failurePoints:['Nenhum anúncio aprovado/ativo'], tags:['hire','boats','rent'] }),
+  item({ id:'marine-gallery', title:'Marine Gallery / Fotos', type:'Page', description:'Galeria pública de fotos náuticas, controlada por configuração e moderação administrativa.', route:'/photos', mainFile:'src/pages/Fotos.tsx', relatedComponents:[], relatedFunctions:['load photos'], firestoreCollections:['photos','settings'], access:'Público quando habilitado', buttons:['View Photo'], actions:['Explorar galeria'], technicalNotes:'Administração em /admin/fotos.', failurePoints:['Secção desativada nas definições'], tags:['gallery','photos','marine'] }),
+  item({ id:'report', title:'Denunciar Conteúdo', type:'Form', description:'Canal público para reportar anúncio ou conteúdo inadequado.', route:'/report', mainFile:'src/pages/Report.tsx', relatedComponents:[], relatedFunctions:['submitReport'], firestoreCollections:['reports'], access:'Público/conforme validação do formulário', buttons:['Submit Report'], actions:['Enviar denúncia'], technicalNotes:'Alias /denuncia redireciona para /report.', failurePoints:['Campos obrigatórios ausentes'], tags:['report','safety','moderation'] }),
+  item({ id:'suggestions', title:'Sugestões', type:'Form', description:'Formulário público para enviar ideias, melhorias e feedback à equipa.', route:'/suggestions', mainFile:'src/pages/Suggestions.tsx', relatedComponents:[], relatedFunctions:['submitSuggestion'], firestoreCollections:['suggestions'], access:'Público', buttons:['Send Suggestion'], actions:['Enviar sugestão'], technicalNotes:'Admin revê em /admin/suggestions.', failurePoints:['Falha de gravação'], tags:['suggestions','feedback'] }),
+  item({ id:'faq-legal', title:'FAQ, Termos, Privacidade e Cookies', type:'Page', description:'Documentação pública de ajuda e políticas legais do marketplace.', route:'/faq / /terms / /privacy / /cookie-policy', mainFile:'src/pages/FAQ.tsx', relatedComponents:['src/pages/Terms.tsx','src/pages/Privacy.tsx','src/pages/Cookies.tsx','src/components/CookieConsent.tsx'], relatedFunctions:[], firestoreCollections:[], access:'Público', buttons:['Cookie choices'], actions:['Consultar regras','Gerir consentimento'], technicalNotes:'Termos incluem regras comerciais atuais; política de cookies tem rota canónica /cookie-policy.', failurePoints:['Texto legal desatualizado após mudança comercial'], tags:['faq','terms','privacy','cookies','legal'] }),
+  item({ id:'pwa', title:'PWA / Instalação do ConnectBoat', type:'Page', description:'Experiência de instalação do site como aplicação em dispositivos compatíveis.', route:'Todas as rotas (Global)', mainFile:'src/hooks/usePWA.ts', relatedComponents:['src/components/PWAInstallButton.tsx','src/components/InstallButton.tsx'], relatedFunctions:['beforeinstallprompt','install'], firestoreCollections:[], access:'Público', buttons:['Install App'], actions:['Mostrar instruções/prompt de instalação'], technicalNotes:'Comportamento varia entre Android/Chrome, desktop e iOS/Safari.', failurePoints:['Browser não suporta prompt nativo','App já instalado'], tags:['pwa','install','mobile'] }),
+  item({ id:'sharing-seo', title:'Partilha, SEO, Sitemap e OG Image', type:'Flow', description:'Infraestrutura para partilha social e indexação: metadados, sitemap, SEO de produto/anúncio e imagem Open Graph.', route:'Interno', mainFile:'api/seo.ts', relatedComponents:['src/components/ShareModal.tsx','src/components/AnalyticsTracker.tsx'], relatedFunctions:['seo','sitemap','og-image','product-seo'], firestoreCollections:['ads'], access:'Público / motores de busca', buttons:['Share'], actions:['Gerar metadados','Gerar sitemap','Criar preview social'], technicalNotes:'Endpoints: /api/seo, /api/sitemap, /api/og-image e /api/product-seo.', failurePoints:['Anúncio não encontrado','Cache/metadados desatualizados'], tags:['seo','sitemap','og','share'] }),
+
+  item({ id:'admin-dashboard', title:'Admin Dashboard / Financeiro', type:'Admin', description:'Visão central administrativa: métricas, anúncios, utilizadores, receitas, pagamentos, Marketplace, reembolsos/ações financeiras e atalhos operacionais.', route:'/admin / /admin/dashboard', mainFile:'src/pages/AdminDashboard.tsx', relatedComponents:['src/components/AdminLayout.tsx'], relatedFunctions:['loadDashboard','finance filters','createAssistedPayment'], firestoreCollections:['ads','users','sellerPublicProfiles','settings'], access:'Admin; áreas podem respeitar permissões específicas', buttons:['Finance actions','Assisted Payment','Admin shortcuts'], actions:['Consultar métricas','Filtrar registros','Acompanhar receita','Criar pagamento assistido'], technicalNotes:'Distingue receitas de anúncios de barco e Marketplace adicional usando paymentProductType/marketplaceListingType.', failurePoints:['Permissão financeira insuficiente','Registro legado sem amountPaid'], tags:['admin','dashboard','finance','revenue'] }),
+  item({ id:'admin-settings', title:'Admin Settings / Definições', type:'Admin', description:'Painel mestre de configuração comercial e visual: preços, duração, fotos, Marketplace £1.99, showcase, expiração, Home, pesquisa, destaques, categorias e e-mails automáticos.', route:'/admin/settings', mainFile:'src/pages/AdminSettings.tsx', relatedComponents:[], relatedFunctions:['loadSettings','saveSettings','send test email'], firestoreCollections:['settings'], access:'Admin', buttons:['Save Settings','Email Test'], actions:['Alterar preços','Alterar limites','Ativar/desativar secções','Gerir categorias','Configurar e-mails'], technicalNotes:'settings/global alimenta várias páginas; alterações podem refletir imediatamente no site.', failurePoints:['Valor inválido','Permissão Firestore','Configuração parcial'], tags:['settings','prices','photos','categories','email'] }),
+  item({ id:'admin-ads', title:'Manage Listings / Moderação', type:'Admin', description:'Gestão administrativa dos anúncios: pesquisa, inspeção, aprovação, rejeição e outras ações de moderação.', route:'/admin/ads', mainFile:'src/pages/AdminAds.tsx', relatedComponents:['src/components/AdCard.tsx'], relatedFunctions:['approveAd','rejectAd','delete/moderate'], firestoreCollections:['ads','notifications'], access:'Admin/Moderator conforme permissões', buttons:['Approve','Reject','Edit','Delete'], actions:['Aprovar','Rejeitar','Editar','Remover'], technicalNotes:'Status do anúncio determina visibilidade pública.', failurePoints:['Anúncio já alterado por outro operador','Permissão insuficiente'], tags:['admin','ads','moderation'] }),
+  item({ id:'admin-users', title:'Users / Gestão de Utilizadores', type:'Admin', description:'Consulta e administração de contas e informações operacionais de utilizadores.', route:'/admin/users', mainFile:'src/pages/AdminUsers.tsx', relatedComponents:[], relatedFunctions:['loadUsers','user actions'], firestoreCollections:['users'], access:'Admin', buttons:['Search User','User Actions'], actions:['Pesquisar utilizadores','Consultar estado/perfil'], technicalNotes:'Ações sensíveis devem respeitar role/permissões.', failurePoints:['Dados de perfil incompletos'], tags:['admin','users','accounts'] }),
+  item({ id:'admin-team', title:'Team / Staff e Permissões', type:'Admin', description:'Gestão da equipa administrativa, roles e permissões operacionais.', route:'Acesso pelo AdminLayout / equipa', mainFile:'src/pages/AdminTeam.tsx', relatedComponents:['src/components/AdminLayout.tsx'], relatedFunctions:['team management'], firestoreCollections:['users'], access:'Admin autorizado', buttons:['Add/Update Staff','Permissions'], actions:['Gerir admin/moderador','Controlar permissões'], technicalNotes:'Recursos como URL “Ver Mais” verificam role de staff no frontend; operações sensíveis também precisam validação backend/rules.', failurePoints:['Elevação indevida de privilégio','Role desatualizado na sessão'], tags:['team','roles','permissions','moderator'] }),
+  item({ id:'admin-claims', title:'Claims / Reivindicação de Negócios', type:'Admin', description:'Painel para analisar pedidos de reivindicação de anúncios/negócios claimable.', route:'/admin/claims', mainFile:'src/pages/AdminClaims.tsx', relatedComponents:['src/pages/AdDetails.tsx'], relatedFunctions:['approveClaim','rejectClaim'], firestoreCollections:['businessClaimRequests','ads','users'], access:'Admin/Moderator conforme permissão', buttons:['Approve Claim','Reject Claim'], actions:['Validar pedido','Associar anúncio ao proprietário'], technicalNotes:'Anúncios claimable podem receber pedidos a partir da página de detalhes.', failurePoints:['Pedido duplicado','Anúncio já reivindicado'], tags:['claims','business','claimable'] }),
+  item({ id:'claimable-flow', title:'Anúncios Claimable / Activate & Claim', type:'Flow', description:'Anúncios preparados para serem reivindicados pelo proprietário. O visitante pode solicitar ativação/reivindicação e enviar dados de contacto.', route:'/anuncio/:id', mainFile:'src/pages/AdDetails.tsx', relatedComponents:['src/pages/AdminClaims.tsx'], relatedFunctions:['submitClaim'], firestoreCollections:['businessClaimRequests','ads'], access:'Público para visualizar; autenticação pode ser exigida para concluir ação', buttons:['Activate & Claim'], actions:['Criar pedido de claim','Enviar nome/telefone/e-mail/mensagem'], technicalNotes:'Estados principais: unclaimed, pending e claimed.', failurePoints:['Campos obrigatórios vazios','Claim concorrente'], tags:['claimable','claim','business'] }),
+  item({ id:'admin-import-ai', title:'Import via AI', type:'Admin', description:'Ferramenta administrativa para analisar fonte externa e acelerar a criação de anúncio com IA.', route:'/admin/import', mainFile:'src/pages/AdminImport.tsx', relatedComponents:[], relatedFunctions:['/api/import-ad','/api/gemini/analyze'], firestoreCollections:['ads'], access:'Admin', buttons:['Analyze','Import','Publish'], actions:['Extrair dados','Rever conteúdo','Criar anúncio'], technicalNotes:'Usa endpoints serverless existentes; não cria função adicional além das rotas atuais.', failurePoints:['Fonte bloqueia extração','Resposta IA incompleta','URL inválida'], tags:['import','ai','scraper','admin'] }),
+  item({ id:'admin-bulk-import', title:'Bulk Import Listings', type:'Admin', description:'Importação administrativa em lote para acelerar a inclusão de múltiplos anúncios.', route:'/admin/bulk-import', mainFile:'src/pages/AdminBulkImport.tsx', relatedComponents:[], relatedFunctions:['bulk import'], firestoreCollections:['ads'], access:'Admin', buttons:['Import Batch','Validate'], actions:['Validar lote','Criar múltiplos anúncios'], technicalNotes:'Deve ser usado com atenção a duplicados e qualidade dos dados.', failurePoints:['Linha inválida','Duplicado','Upload parcial'], tags:['bulk','import','admin'] }),
+  item({ id:'admin-demo', title:'Demo Content / Anúncios de Demonstração', type:'Admin', description:'Ferramenta para conteúdo demonstrativo. Anúncios demo são identificados publicamente como exemplos e não disponíveis para compra.', route:'/admin/demo-content', mainFile:'src/pages/AdminDemoListings.tsx', relatedComponents:['src/pages/AdDetails.tsx'], relatedFunctions:['create demo listings'], firestoreCollections:['ads'], access:'Admin', buttons:['Create Demo','Manage Demo'], actions:['Criar/remover conteúdo demo'], technicalNotes:'Campo demoListing controla o aviso na página de detalhes.', failurePoints:['Demo confundido com anúncio real se flag ausente'], tags:['demo','content','admin'] }),
+  item({ id:'admin-health', title:'System Health', type:'Admin', description:'Monitor técnico de saúde do sistema, eventos e alertas operacionais.', route:'/admin/health', mainFile:'src/pages/AdminSystemHealth.tsx', relatedComponents:[], relatedFunctions:['healthService','run checks','resolve alerts'], firestoreCollections:['system_health_alerts','system_health_events','settings'], access:'Admin', buttons:['Run Health Check','Resolve','Clear Resolved'], actions:['Executar diagnóstico','Consultar alertas','Marcar resolvido'], technicalNotes:'Implementação auxiliar em src/utils/healthService.ts.', failurePoints:['Serviço externo indisponível','Permissão de leitura/gravação'], tags:['health','monitor','alerts'] }),
+  item({ id:'admin-marketing', title:'Marketing / Campaigns', type:'Admin', description:'Gestão de campanhas e publicidade do ConnectBoat.', route:'/admin/marketing', mainFile:'src/pages/AdminMarketing.tsx', relatedComponents:[], relatedFunctions:['campaign management'], firestoreCollections:['campaigns','ads'], access:'Admin/Marketing autorizado', buttons:['Create Campaign','Manage Campaign'], actions:['Criar campanha','Acompanhar publicidade'], technicalNotes:'Métricas de campanhas pagas podem aparecer no dashboard financeiro.', failurePoints:['Campanha sem período/dados válidos'], tags:['marketing','campaigns','ads'] }),
+  item({ id:'admin-banner', title:'Editor do Banner Principal', type:'Admin', description:'Editor administrativo do hero/banner principal da Home.', route:'/admin/banner-editor', mainFile:'src/pages/AdminBannerEditor.tsx', relatedComponents:['src/pages/Home.tsx'], relatedFunctions:['save banner config'], firestoreCollections:['settings'], access:'Admin', buttons:['Save Banner'], actions:['Alterar conteúdo/configuração do banner'], technicalNotes:'Alterações afetam a apresentação da Home.', failurePoints:['Configuração inválida','Imagem indisponível'], tags:['banner','hero','admin'] }),
+  item({ id:'admin-invitations', title:'Invites / Convites e QR', type:'Admin', description:'Gestão administrativa do sistema de convites e materiais associados.', route:'/admin/invitations', mainFile:'src/pages/AdminInvitations.tsx', relatedComponents:['src/pages/Convite.tsx'], relatedFunctions:['invitation management'], firestoreCollections:['invitations','users'], access:'Admin/Marketing autorizado', buttons:['Generate/Manage Invite'], actions:['Gerir convites','Acompanhar utilização'], technicalNotes:'A página pública /convite complementa o fluxo.', failurePoints:['Código/QR inválido'], tags:['invite','qr','referral','marketing'] }),
+  item({ id:'admin-suggestions', title:'Admin Suggestions', type:'Admin', description:'Caixa administrativa para leitura e tratamento das sugestões enviadas pelo público.', route:'/admin/suggestions', mainFile:'src/pages/AdminSuggestions.tsx', relatedComponents:['src/pages/Suggestions.tsx'], relatedFunctions:['load suggestions','update status'], firestoreCollections:['suggestions'], access:'Admin', buttons:['Review','Update Status'], actions:['Ler feedback','Organizar sugestões'], technicalNotes:'Complementa /suggestions.', failurePoints:['Sugestão removida/alterada'], tags:['admin','suggestions','feedback'] }),
+  item({ id:'admin-gallery', title:'Admin Marine Gallery', type:'Admin', description:'Gestão e moderação da galeria pública de fotos.', route:'/admin/fotos', mainFile:'src/pages/AdminFotos.tsx', relatedComponents:['src/pages/Fotos.tsx'], relatedFunctions:['photo moderation'], firestoreCollections:['photos'], access:'Admin', buttons:['Approve/Remove Photo'], actions:['Moderar galeria'], technicalNotes:'Visibilidade pública também depende das definições.', failurePoints:['Arquivo ausente'], tags:['admin','gallery','photos'] }),
+  item({ id:'admin-manual', title:'Technical Manual', type:'Admin', description:'Este próprio manual técnico pesquisável. Organiza páginas, botões, formulários, fluxos, Firestore, monetização e ferramentas administrativas.', route:'/admin/manual-tecnico', mainFile:'src/pages/AdminManualTecnico.tsx', relatedComponents:[], relatedFunctions:['search/filter manualItems','filter technicalFlows'], firestoreCollections:[], access:'Admin', buttons:['Componentes do App','Fluxos Críticos','Search','Type Filters'], actions:['Pesquisar documentação','Filtrar por tipo','Expandir item','Copiar referência'], technicalNotes:'Conteúdo documental é mantido em src/data/systemTechnicalManual.ts.', failurePoints:['Manual fica desatualizado se novas funcionalidades não forem documentadas'], tags:['manual','technical','documentation'] }),
+  item({ id:'assisted-payment', title:'Pagamento Assistido pelo Admin', type:'Monetisation', description:'Admin pode gerar um checkout/pagamento assistido para um anúncio ou operação financeira suportada.', route:'/admin', mainFile:'api/admin/create-assisted-payment.ts', relatedComponents:['src/pages/AdminDashboard.tsx'], relatedFunctions:['createAssistedPayment'], firestoreCollections:['ads','users'], access:'Admin autorizado', buttons:['Create Assisted Payment'], actions:['Gerar sessão de pagamento','Associar ao registro'], technicalNotes:'Há também endpoint para reenvio de e-mail de pagamento.', failurePoints:['Registro não elegível','Stripe/configuração ausente'], tags:['payment','assisted','stripe','admin'] }),
+  item({ id:'stripe-checkout', title:'Stripe Checkout', type:'Monetisation', description:'Endpoint consolidado de checkout e ações relacionadas a anúncios, incluindo listing_save para evitar criar uma função serverless extra.', route:'Interno', mainFile:'api/stripe/create-checkout-session.ts', relatedComponents:['src/pages/CreateAd.tsx'], relatedFunctions:['listing_save','create checkout','verifyIdToken'], firestoreCollections:['ads','users','settings','marketplaceFreePhones','marketplaceFreeEmails'], access:'Backend autenticado conforme ação', buttons:[], actions:['Salvar novo anúncio','Validar Marketplace','Criar sessão Stripe'], technicalNotes:'A consolidação mantém o projeto dentro do limite de funções do Vercel Hobby. Firebase Admin deve ser inicializado antes de verifyIdToken.', failurePoints:['401 token inválido','Categoria/plano incompatível','Stripe falha'], tags:['stripe','checkout','listing_save','serverless'] }),
+  item({ id:'stripe-webhook', title:'Stripe Webhook / Ativação Pós-Pagamento', type:'Monetisation', description:'Recebe confirmação do Stripe e atualiza anúncio/pagamento, plano, expiração, Media Boost e classificação de receita.', route:'Interno', mainFile:'api/stripe/webhook.ts', relatedComponents:[], relatedFunctions:['webhook handler'], firestoreCollections:['ads','users'], access:'Stripe / backend', buttons:[], actions:['Confirmar pagamento','Ativar anúncio/extra','Registrar metadados financeiros'], technicalNotes:'paymentProductType e marketplaceListingType permitem distinguir receitas.', failurePoints:['Assinatura webhook inválida','Evento duplicado','Ad ID ausente'], tags:['stripe','webhook','payment','activation'] }),
+  item({ id:'email-api', title:'E-mails Automáticos', type:'Flow', description:'Infraestrutura serverless para e-mails transacionais e testes configuráveis pelo Admin.', route:'Interno', mainFile:'api/email/send.ts', relatedComponents:['src/utils/emailService.ts','src/pages/AdminSettings.tsx'], relatedFunctions:['send email','test template','resend payment email'], firestoreCollections:['settings'], access:'Backend/Admin conforme ação', buttons:['Send Test Email','Resend Payment Email'], actions:['Enviar notificações','Testar templates'], technicalNotes:'Credenciais ficam no servidor/variáveis de ambiente, não no cliente.', failurePoints:['API key ausente','Destinatário inválido'], tags:['email','notifications','resend'] }),
+  item({ id:'firestore-model', title:'Firestore — Coleções Principais', type:'Firestore', description:'Mapa operacional das coleções usadas pelas funcionalidades atuais.', route:'N/A (Nível de Segurança)', mainFile:'src/firebase.ts', relatedComponents:[], relatedFunctions:['getDoc','getDocs','setDoc','updateDoc'], firestoreCollections:['ads','users','sellerPublicProfiles','reviews','settings','businessClaimRequests','suggestions','photos','system_health_alerts','system_health_events','marketplaceFreePhones','marketplaceFreeEmails'], access:'Conforme Firestore Rules e Admin SDK', buttons:[], actions:['Persistir anúncios/perfis/configurações/reviews/claims'], technicalNotes:'Operações backend com Admin SDK não dependem das regras do cliente. Não substituir firestore.rules sem usar a versão completa atual.', failurePoints:['Rules bloqueiam cliente','Índice ausente','Documento legado com formato diferente'], tags:['firestore','database','collections','rules'] }),
+  item({ id:'external-demo-listings', title:'Anúncios Externos e Origem Original', type:'Listings', description:'Anúncios importados podem manter sourceUrl/sourceSite e exibir aviso de origem com botão para abrir o anúncio original.', route:'/anuncio/:id', mainFile:'src/pages/AdDetails.tsx', relatedComponents:[], relatedFunctions:['external listing display'], firestoreCollections:['ads'], access:'Público', buttons:['View Original Listing'], actions:['Abrir fonte externa'], technicalNotes:'externalListing, sourceUrl, sourceSite e externalStatus identificam esse tipo de registro.', failurePoints:['Fonte removida','URL original inválida'], tags:['external','source','imported'] }),
 ];
 
+const flow = (v: TechnicalFlow): TechnicalFlow => v;
 export const technicalFlows: TechnicalFlow[] = [
-  {
-    id: 'flow-criar-anuncio',
-    title: 'How to create a listing',
-    description: 'Basic creation and registration of boat and marine listings by users.',
-    startPoint: 'Click "+" or "Post Listing" button in header',
-    buttonsInvolved: ['Post Listing', 'Choose Images', 'Publish Listing'],
-    pagesInvolved: ['CreateAd.tsx', 'Home.tsx'],
-    mainFiles: ['src/pages/CreateAd.tsx', 'src/components/SearchableCitySelect.tsx'],
-    firestoreCollections: ['ads', 'users'],
-    expectedResult: 'New listing saved as free (approved immediately) or paid plan (pending moderation).'
-  },
-  {
-    id: 'flow-destaque-local',
-    title: 'How to boost a local listing',
-    description: 'Promote a listing specifically within the selected region.',
-    startPoint: 'Via CreateAd form choosing "Local" plan or via My Listings panel',
-    buttonsInvolved: ['Select Local Plan', 'Complete Payment'],
-    pagesInvolved: ['CreateAd.tsx', 'Profile.tsx', 'Precos.tsx'],
-    mainFiles: ['src/pages/CreateAd.tsx', 'src/pages/Profile.tsx'],
-    firestoreCollections: ['ads', 'purchases'],
-    expectedResult: 'Plan changed to "local" and validity extended based on admin settings.'
-  },
-  {
-    id: 'flow-destaque-nacional',
-    title: 'How to boost a national listing',
-    description: 'Elevate listing priority across nationwide search feeds.',
-    startPoint: 'CreateAd form selecting "National" plan or promoting from My Listings',
-    buttonsInvolved: ['Select National Boost', 'Subscribe'],
-    pagesInvolved: ['CreateAd.tsx', 'Profile.tsx', 'Precos.tsx'],
-    mainFiles: ['src/pages/CreateAd.tsx', 'src/pages/Profile.tsx'],
-    firestoreCollections: ['ads', 'purchases'],
-    expectedResult: 'Plan updated to "national", enabling top banner display and national badge.'
-  },
-  {
-    id: 'flow-criar-vitrine',
-    title: 'How to create a Digital Showcase',
-    description: 'Setup commercial showcase in ConnectBoat business directory.',
-    startPoint: 'Profile sidebar under "My Showcase" tab enabling "Activate Showcase"',
-    buttonsInvolved: ['Activate Showcase', 'Upload Cover', 'Upload Logo', 'Save Showcase Info'],
-    pagesInvolved: ['Profile.tsx', 'Empreendedores.tsx'],
-    mainFiles: ['src/pages/Profile.tsx'],
-    firestoreCollections: ['users'],
-    expectedResult: 'Sets "showcaseActive" to true, triggering mandatory admin approval.'
-  },
-  {
-    id: 'flow-adicionar-produto-vitrine',
-    title: 'How to add a product to Showcase',
-    description: 'Add products to business showcase catalogue.',
-    startPoint: 'Inside "My Showcase" tab clicking "Add New Product"',
-    buttonsInvolved: ['Add New Product', 'Upload Product Image', 'Save Product'],
-    pagesInvolved: ['Profile.tsx', 'EmpreendedorDetalhes.tsx'],
-    mainFiles: ['src/pages/Profile.tsx', 'src/components/ShowcaseStats.tsx'],
-    firestoreCollections: ['showcaseProducts', 'users'],
-    expectedResult: 'New document created in "showcaseProducts" collection.'
-  },
-  {
-    id: 'flow-whatsapp-vitrine',
-    title: 'How Showcase WhatsApp contact works',
-    description: 'Direct buyer-to-seller communication via WhatsApp.',
-    startPoint: 'Click on showcase item or "Contact Direct" button on showcase profile',
-    buttonsInvolved: ['Contact via WhatsApp', 'Order via WhatsApp'],
-    pagesInvolved: ['EmpreendedorDetalhes.tsx', 'EmpreendedorProduto.tsx'],
-    mainFiles: ['src/pages/EmpreendedorDetalhes.tsx', 'src/pages/EmpreendedorProduto.tsx'],
-    firestoreCollections: ['users', 'showcaseInterests'],
-    expectedResult: 'Opens external WhatsApp link with pre-formatted message.'
-  },
-  {
-    id: 'flow-qrcode-convite',
-    title: 'How invitation QR Code works',
-    description: 'Referral sharing system with referral credits.',
-    startPoint: 'Click "Share & Invite" in profile or sidebar',
-    buttonsInvolved: ['Copy Invite Link', 'Get QR Code PNG'],
-    pagesInvolved: ['Convite.tsx'],
-    mainFiles: ['src/pages/Convite.tsx'],
-    firestoreCollections: ['invitations', 'users'],
-    expectedResult: 'Displays referral code. Successful registrations grant credits to referrer.'
-  },
-  {
-    id: 'flow-aprovar-anuncio',
-    title: 'How to approve listings (Moderation)',
-    description: 'Admin inspection to moderate submitted listings.',
-    startPoint: 'Log in as Admin and navigate to "Moderate Listings"',
-    buttonsInvolved: ['Approve Listing', 'Reject Listing', 'Quick Search'],
-    pagesInvolved: ['AdminAds.tsx', 'AdminDashboard.tsx'],
-    mainFiles: ['src/pages/AdminAds.tsx'],
-    firestoreCollections: ['ads', 'notifications'],
-    expectedResult: 'Ad status updated to "approved", making listing live and notifying user.'
-  },
-  {
-    id: 'flow-importador-ia',
-    title: 'How to import via Web Scraper AI',
-    description: 'Accelerated listing creation using AI URL parsing.',
-    startPoint: 'Navigate to "Import Listing with AI" in Admin menu',
-    buttonsInvolved: ['Paste URL', 'Run AI Analysis', 'Publish to Site'],
-    pagesInvolved: ['AdminImport.tsx'],
-    mainFiles: ['src/pages/AdminImport.tsx'],
-    firestoreCollections: ['ads'],
-    expectedResult: 'Automated extraction of title, images, price, and category into draft listing.'
-  },
-  {
-    id: 'flow-painel-precos',
-    title: 'How pricing panel works',
-    description: 'Update current plan pricing and promotion costs.',
-    startPoint: 'Admin Panel under "Settings"',
-    buttonsInvolved: ['Change Plan Prices', 'Save Changes'],
-    pagesInvolved: ['AdminSettings.tsx', 'Precos.tsx'],
-    mainFiles: ['src/pages/AdminSettings.tsx', 'src/pages/Precos.tsx'],
-    firestoreCollections: ['settings'],
-    expectedResult: 'Updated plan pricing reflected site-wide immediately.'
-  },
-  {
-    id: 'flow-limites-fotos',
-    title: 'How photo limits work',
-    description: 'Image upload restriction limits based on plan level.',
-    startPoint: 'Listing creation or product creation form',
-    buttonsInvolved: ['Upload New File'],
-    pagesInvolved: ['CreateAd.tsx', 'Profile.tsx'],
-    mainFiles: ['src/pages/AdminSettings.tsx', 'src/pages/CreateAd.tsx'],
-    firestoreCollections: ['settings'],
-    expectedResult: 'Prevents uploading files beyond active plan allowance (e.g. max 3 images for Free plan).'
-  },
-  {
-    id: 'flow-destaque-permanente-admin',
-    title: 'How to manage Permanent Featured listings',
-    description: 'Admin workflow to pin permanent featured fallback listings on home page.',
-    startPoint: 'Create or edit listing as Admin, toggling "Permanent Featured"',
-    buttonsInvolved: ['Enable Permanent Boost', 'Boost Scope', 'Display Region', 'Save Listing'],
-    pagesInvolved: ['CreateAd.tsx', 'Home.tsx'],
-    mainFiles: ['src/pages/CreateAd.tsx', 'src/pages/Home.tsx', 'src/types.ts'],
-    firestoreCollections: ['ads'],
-    expectedResult: 'Creates or updates listing without requiring payment, pinning it to main carousel.'
-  },
-  {
-    id: 'flow-monitor-saude',
-    title: 'System Health Monitor & Alerts',
-    description: 'Automated health tracking and alert notification pipeline.',
-    startPoint: 'System anomaly occurrence or opening Health Monitor page',
-    buttonsInvolved: ['Run Health Check', 'Mark as Resolved', 'Clear Resolved'],
-    pagesInvolved: ['AdminSystemHealth.tsx'],
-    mainFiles: ['src/pages/AdminSystemHealth.tsx', 'src/utils/healthService.ts'],
-    firestoreCollections: ['system_health_alerts', 'system_health_events', 'settings'],
-    expectedResult: 'Visual health score indicator and email notifications sent on status drops.'
-  },
-  {
-    id: 'flow-instalacao-pwa',
-    title: 'PWA Installation Flow',
-    description: 'Direct app installation on Android, iOS, or Desktop.',
-    startPoint: 'User clicks "📱 Install App" in user menu, navigation, or footer',
-    buttonsInvolved: ['📱 Install App', 'Got it'],
-    pagesInvolved: ['All (Global PWA button)'],
-    mainFiles: ['src/hooks/usePWA.ts', 'src/components/PWAInstallButton.tsx', 'public/sw.js'],
-    firestoreCollections: [],
-    expectedResult: 'Triggers native install prompt on Android/Chrome or step-by-step modal on iOS/Safari.'
-  },
-  {
-    id: 'flow-doacoes-solidariedade',
-    title: 'Equipment Donation Flow',
-    description: 'Posting free community boat equipment and gear.',
-    startPoint: 'Navigate to "Post Listing" and select "💚 Marine Equipment Donations" category',
-    buttonsInvolved: ['Post Listing', 'Fill Form', 'Publish Listing'],
-    pagesInvolved: ['CreateAd.tsx', 'AdDetails.tsx', 'Home.tsx'],
-    mainFiles: ['src/pages/CreateAd.tsx', 'src/components/AdCard.tsx', 'src/pages/AdDetails.tsx'],
-    firestoreCollections: ['ads'],
-    expectedResult: 'Listing registered free of charge with automatic donation badge and local highlight.'
-  }
+  flow({ id:'flow-create-boat', title:'Criar anúncio de barco pago', description:'Fluxo de Boats for Sale/Hire usando Standard, Featured ou Premium.', startPoint:'Post Listing → escolher Boats for Sale ou Boats for Hire', buttonsInvolved:['Standard / Featured / Premium','Upload Photos','Publish / Payment'], pagesInvolved:['CreateAd.tsx','AdDetails.tsx'], mainFiles:['src/pages/CreateAd.tsx','api/stripe/create-checkout-session.ts','api/stripe/webhook.ts'], firestoreCollections:['ads','settings','users'], expectedResult:'Anúncio respeita preço/limite do plano, segue checkout quando necessário e é ativado conforme pagamento/moderação.' }),
+  flow({ id:'flow-marketplace-free', title:'Primeiro anúncio Marketplace GRÁTIS', description:'Primeiro anúncio elegível da conta em categoria Marketplace, máximo 3 fotos e benefício de uso único.', startPoint:'Post Listing → Free Marketplace ou escolher categoria Marketplace', buttonsInvolved:['Free Marketplace','Category','Publish'], pagesInvolved:['CreateAd.tsx'], mainFiles:['src/pages/CreateAd.tsx','api/stripe/create-checkout-session.ts'], firestoreCollections:['ads','users','marketplaceFreePhones','marketplaceFreeEmails'], expectedResult:'Anúncio salvo como marketplaceListingType=free_first, sem cobrança, e benefício marcado como consumido.' }),
+  flow({ id:'flow-marketplace-paid', title:'Marketplace adicional £1.99', description:'Após consumir o primeiro grátis, o card Marketplace passa a usar o preço adicional configurado.', startPoint:'Post Listing → Marketplace após benefício grátis', buttonsInvolved:['Marketplace £1.99','Publish / Payment'], pagesInvolved:['CreateAd.tsx','AdminSettings.tsx'], mainFiles:['src/pages/CreateAd.tsx','api/stripe/create-checkout-session.ts','api/stripe/webhook.ts'], firestoreCollections:['ads','users','settings'], expectedResult:'Checkout cobra marketplaceAdditional e registra marketplaceListingType=paid_additional.' }),
+  flow({ id:'flow-plan-guidance', title:'Trocar entre Marketplace e planos de barco', description:'UX de prevenção de categoria/plano incompatível.', startPoint:'Clicar em um card incompatível com a categoria atual', buttonsInvolved:['Standard','Featured','Premium','Marketplace'], pagesInvolved:['CreateAd.tsx'], mainFiles:['src/pages/CreateAd.tsx'], firestoreCollections:[], expectedResult:'Popup aparece por 4 segundos, tela rola até Category e dropdown é destacado para o utilizador corrigir.' }),
+  flow({ id:'flow-media-boost', title:'Adicionar Media Boost', description:'Adicionar vídeo opcional de até 60 segundos ao anúncio.', startPoint:'CreateAd → ativar Media Boost', buttonsInvolved:['Media Boost toggle','Upload Video','Payment'], pagesInvolved:['CreateAd.tsx','AdDetails.tsx'], mainFiles:['src/pages/CreateAd.tsx','api/stripe/create-checkout-session.ts','api/stripe/webhook.ts'], firestoreCollections:['ads'], expectedResult:'Vídeo válido é associado ao anúncio e o extra é confirmado após pagamento quando aplicável.' }),
+  flow({ id:'flow-more-info', title:'Admin/Moderator adiciona botão Ver Mais', description:'Staff adiciona URL externa opcional ao anúncio.', startPoint:'Create/Edit Listing como Admin ou Moderator', buttonsInvolved:['External URL field','Save','Ver Mais'], pagesInvolved:['CreateAd.tsx','AdDetails.tsx'], mainFiles:['src/pages/CreateAd.tsx','src/pages/AdDetails.tsx','src/types.ts'], firestoreCollections:['ads'], expectedResult:'moreInfoUrl é salvo e o visitante vê “Ver Mais”, abrindo o link externo em nova aba.' }),
+  flow({ id:'flow-seller-profile', title:'Perfil público do vendedor', description:'Exibir identidade pública e reputação sem poluir os detalhes principais do anúncio.', startPoint:'Página do anúncio → clicar no perfil do vendedor', buttonsInvolved:['Seller Profile','Close'], pagesInvolved:['AdDetails.tsx','Profile.tsx'], mainFiles:['src/pages/AdDetails.tsx','src/pages/Profile.tsx'], firestoreCollections:['sellerPublicProfiles','users','reviews'], expectedResult:'Popup mostra foto/logo, nome, localização, About Seller, estrelas e reviews.' }),
+  flow({ id:'flow-moderation', title:'Aprovar / rejeitar anúncio', description:'Fluxo de moderação administrativa antes/ao longo da publicação.', startPoint:'Admin → Manage Listings', buttonsInvolved:['Approve','Reject','Edit'], pagesInvolved:['AdminAds.tsx','AdminDashboard.tsx'], mainFiles:['src/pages/AdminAds.tsx'], firestoreCollections:['ads','notifications'], expectedResult:'Status atualizado e visibilidade pública ajustada.' }),
+  flow({ id:'flow-claim', title:'Reivindicar anúncio/negócio claimable', description:'Proprietário solicita ativação de um anúncio claimable e Admin analisa.', startPoint:'AdDetails → Activate & Claim', buttonsInvolved:['Activate & Claim','Approve Claim / Reject Claim'], pagesInvolved:['AdDetails.tsx','AdminClaims.tsx'], mainFiles:['src/pages/AdDetails.tsx','src/pages/AdminClaims.tsx'], firestoreCollections:['businessClaimRequests','ads','users'], expectedResult:'Pedido passa de unclaimed para pending e, após aprovação, claimed.' }),
+  flow({ id:'flow-ai-import', title:'Importar anúncio via IA', description:'Admin analisa uma fonte externa, revê os dados extraídos e publica.', startPoint:'Admin → Import via AI', buttonsInvolved:['Analyze','Import','Publish'], pagesInvolved:['AdminImport.tsx','CreateAd.tsx'], mainFiles:['src/pages/AdminImport.tsx','api/import-ad.ts','api/gemini/analyze.ts'], firestoreCollections:['ads'], expectedResult:'Dados extraídos viram anúncio/draft revisto pelo operador.' }),
+  flow({ id:'flow-bulk-import', title:'Importação em lote', description:'Entrada administrativa de múltiplos anúncios com validação.', startPoint:'Admin → Bulk Import Listings', buttonsInvolved:['Validate','Import Batch'], pagesInvolved:['AdminBulkImport.tsx'], mainFiles:['src/pages/AdminBulkImport.tsx'], firestoreCollections:['ads'], expectedResult:'Registros válidos são importados sem ultrapassar regras de qualidade/duplicidade.' }),
+  flow({ id:'flow-assisted-payment', title:'Pagamento assistido', description:'Admin cria uma sessão de pagamento para auxiliar uma operação comercial.', startPoint:'Admin Dashboard → ação de pagamento assistido', buttonsInvolved:['Create Assisted Payment','Open Payment'], pagesInvolved:['AdminDashboard.tsx'], mainFiles:['src/pages/AdminDashboard.tsx','api/admin/create-assisted-payment.ts','api/admin/resend-payment-email.ts'], firestoreCollections:['ads','users'], expectedResult:'Sessão Stripe criada e link/e-mail disponibilizado conforme o fluxo.' }),
+  flow({ id:'flow-settings', title:'Alterar preços, fotos e regras comerciais', description:'Admin altera settings/global e o site passa a consumir os novos valores.', startPoint:'Admin → Settings', buttonsInvolved:['Save Settings'], pagesInvolved:['AdminSettings.tsx','Precos.tsx','CreateAd.tsx','Home.tsx'], mainFiles:['src/pages/AdminSettings.tsx','src/context/SettingsContext.tsx'], firestoreCollections:['settings'], expectedResult:'Preços, duração, limites e opções visuais passam a refletir a configuração salva.' }),
+  flow({ id:'flow-health', title:'Monitor de saúde', description:'Admin executa verificações e trata alertas técnicos.', startPoint:'Admin → System Health', buttonsInvolved:['Run Health Check','Resolve','Clear Resolved'], pagesInvolved:['AdminSystemHealth.tsx'], mainFiles:['src/pages/AdminSystemHealth.tsx','src/utils/healthService.ts'], firestoreCollections:['system_health_alerts','system_health_events','settings'], expectedResult:'Estado e alertas são apresentados e podem ser resolvidos.' }),
+  flow({ id:'flow-pwa', title:'Instalar PWA', description:'Instalação do ConnectBoat como app em dispositivo compatível.', startPoint:'Install App', buttonsInvolved:['Install App'], pagesInvolved:['Global'], mainFiles:['src/hooks/usePWA.ts','src/components/PWAInstallButton.tsx'], firestoreCollections:[], expectedResult:'Prompt nativo ou instruções apropriadas ao dispositivo.' }),
+  flow({ id:'flow-seo-share', title:'Partilha e indexação', description:'Anúncio gera experiência de partilha e metadados para motores de busca/redes sociais.', startPoint:'Share ou crawler acessa rota/endpoint SEO', buttonsInvolved:['Share'], pagesInvolved:['AdDetails.tsx'], mainFiles:['src/components/ShareModal.tsx','api/seo.ts','api/product-seo.ts','api/og-image.ts','api/sitemap.ts'], firestoreCollections:['ads'], expectedResult:'Link compartilhável com metadados e imagem de preview; sitemap/SEO atualizados a partir dos dados disponíveis.' }),
 ];
