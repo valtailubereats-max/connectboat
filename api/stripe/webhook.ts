@@ -798,6 +798,8 @@ export default async function stripeWebhookHandler(
           > = isAdminAssisted
             ? {
                 plan: activePlan,
+                paymentProductType: metadata.paymentProductType || null,
+                marketplaceListingType: metadata.marketplaceListingType || adData.marketplaceListingType || null,
 
                 amountPaid:
                   confirmedAmountPaid,
@@ -843,6 +845,8 @@ export default async function stripeWebhookHandler(
             : {
                 plan:
                   activePlan,
+                paymentProductType: metadata.paymentProductType || null,
+                marketplaceListingType: metadata.marketplaceListingType || adData.marketplaceListingType || null,
 
                 amountPaid:
                   confirmedAmountPaid,
@@ -1301,10 +1305,12 @@ export default async function stripeWebhookHandler(
                 isMediaBoostPaid ||
                 !!adData.mediaBoostEnabled;
 
-              let planTitle =
-                'Standard Listing';
+              const isMarketplacePayment = metadata.paymentProductType === 'marketplace_additional';
 
-              let fallbackPlanPrice = 4.99;
+              let planTitle =
+                isMarketplacePayment ? 'Additional Marketplace Listing' : 'Standard Listing';
+
+              let fallbackPlanPrice = isMarketplacePayment ? 1.99 : 4.99;
 
               if (
                 activePlan ===
@@ -1379,9 +1385,9 @@ export default async function stripeWebhookHandler(
                 adId,
 
                 listingType:
-                  isHire
-                    ? 'Boat for Hire'
-                    : 'Boat for Sale',
+                  isMarketplacePayment
+                    ? (adData.category || 'Marketplace Listing')
+                    : (isHire ? 'Boat for Hire' : 'Boat for Sale'),
 
                 planTitle,
 
