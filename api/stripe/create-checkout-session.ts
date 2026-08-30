@@ -44,6 +44,11 @@ function looksLikeCompleteBoatOffer(category: string, title: string, description
 }
 
 async function handleListingSave(req: Request, res: Response) {
+  // Initialise Firebase Admin before attempting to verify the user's ID token.
+  // Without this, getApp() can fail on a cold serverless invocation and the
+  // error is incorrectly reported to the user as an expired login session.
+  getAdminDb();
+
   const authHeader = req.headers.authorization || '';
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
   if (!match) {
@@ -53,7 +58,8 @@ async function handleListingSave(req: Request, res: Response) {
   let decoded: any;
   try {
     decoded = await getAuth(getApp()).verifyIdToken(match[1]);
-  } catch {
+  } catch (error) {
+    console.error('[Listing Save Auth] Token verification failed:', error);
     return res.status(401).json({ success: false, error: 'INVALID_AUTH_TOKEN', errorMessage: 'Your login session is invalid or expired. Please sign in again.' });
   }
 
