@@ -74,6 +74,8 @@ const AdminDashboard = () => {
   const [financeExpenseCategory, setFinanceExpenseCategory] = useState('Domain');
   const [financeExpenseDescription, setFinanceExpenseDescription] = useState('');
   const [financeExpenseAmount, setFinanceExpenseAmount] = useState('');
+  const [financePeriodStart, setFinancePeriodStart] = useState<string>('');
+  const [financeResettingPeriod, setFinanceResettingPeriod] = useState(false);
 
   const financeOwnerEmails = new Set([
     'valtailubereats@gmail.com',
@@ -152,6 +154,40 @@ const AdminDashboard = () => {
       setFinanceDataError(error?.message || 'Unable to load operating expenses.');
     } finally {
       setFinanceExpensesLoading(false);
+    }
+  };
+
+  const loadFinancePeriod = async (passwordOverride?: string) => {
+    try {
+      const data = await callFinanceApi({ action: 'getFinancePeriod' }, passwordOverride);
+      setFinancePeriodStart(typeof data.periodStart === 'string' ? data.periodStart : '');
+    } catch (error: any) {
+      console.error('[Finance] Unable to load finance period:', error);
+      setFinanceDataError(error?.message || 'Unable to load finance period.');
+    }
+  };
+
+  const handleStartNewFinancePeriod = async () => {
+    if (financeResettingPeriod) return;
+    const confirmed = window.confirm(
+      'Start a new financial period now? Previous transactions will be preserved, but they will no longer be included in the Finance Dashboard totals.'
+    );
+    if (!confirmed) return;
+
+    setFinanceResettingPeriod(true);
+    setFinanceDataError('');
+    setFinanceActionMessage('');
+    try {
+      const data = await callFinanceApi({ action: 'startNewFinancePeriod' });
+      setFinancePeriodStart(typeof data.periodStart === 'string' ? data.periodStart : '');
+      setFinanceRange('all');
+      setFinanceDateFrom('');
+      setFinanceDateTo('');
+      setFinanceActionMessage('New financial period started. Dashboard totals now begin from £0.00.');
+    } catch (error: any) {
+      setFinanceDataError(error?.message || 'Unable to start a new financial period.');
+    } finally {
+      setFinanceResettingPeriod(false);
     }
   };
 
@@ -321,6 +357,7 @@ const AdminDashboard = () => {
         loadFinanceData(),
         loadFinanceExpenses(financePassword),
         loadFinanceAdvertisingRevenue(),
+        loadFinancePeriod(financePassword),
       ]);
       setFinancePassword('');
       setFinanceModalOpen(false);
@@ -861,11 +898,16 @@ const AdminDashboard = () => {
         ? new Date(now.getFullYear(), now.getMonth(), 1)
         : null;
 
+  const financePeriodStartDate = financePeriodStart ? financeDate(financePeriodStart) : null;
+  const effectiveFinanceRangeStart = financePeriodStartDate && (!financeRangeStart || financePeriodStartDate > financeRangeStart)
+    ? financePeriodStartDate
+    : financeRangeStart;
+
   const filteredFinanceRecords = financeRecords
     .filter((record) => {
       const paidDate = financeDate(record.paidAt);
       if (!paidDate) return false;
-      if (financeRangeStart && paidDate < financeRangeStart) return false;
+      if (effectiveFinanceRangeStart && paidDate < effectiveFinanceRangeStart) return false;
       if (financeRangeEnd && paidDate > financeRangeEnd) return false;
       return true;
     })
@@ -914,7 +956,7 @@ const AdminDashboard = () => {
           : null;
 
       if (!expenseDate || Number.isNaN(expenseDate.getTime())) return false;
-      if (financeRangeStart && expenseDate < financeRangeStart) return false;
+      if (effectiveFinanceRangeStart && expenseDate < effectiveFinanceRangeStart) return false;
       if (financeRangeEnd && expenseDate > financeRangeEnd) return false;
       return true;
     })
@@ -935,10 +977,10 @@ const AdminDashboard = () => {
 
   const filteredFinanceAdvertisingRevenue = financeAdvertisingRevenue
     .filter((campaign) => {
-      if (!campaign.paidDate) return !financeRangeStart && !financeRangeEnd;
+      if (!campaign.paidDate) return !effectiveFinanceRangeStart && !financeRangeEnd;
       const paidDate = new Date(`${campaign.paidDate}T12:00:00`);
       if (Number.isNaN(paidDate.getTime())) return false;
-      if (financeRangeStart && paidDate < financeRangeStart) return false;
+      if (effectiveFinanceRangeStart && paidDate < effectiveFinanceRangeStart) return false;
       if (financeRangeEnd && paidDate > financeRangeEnd) return false;
       return true;
     })
@@ -1610,6 +1652,21 @@ const AdminDashboard = () => {
                 <div>
                   <p className="font-black text-white">Finance Dashboard</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">Stripe-confirmed historical amounts only.</p>
+                </div>
+                <div className="flex flex-col sm:items-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleStartNewFinancePeriod}
+                    disabled={financeResettingPeriod}
+                    className="px-3 py-2 rounded-xl text-[11px] font-black border border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {financeResettingPeriod ? 'Starting...' : 'Start New Financial Period'}
+                  </button>
+                  {financePeriodStart && (
+                    <p className="text-[10px] text-slate-500">
+                      Current period since {new Date(financePeriodStart).toLocaleString('en-GB')}
+                    </p>
+                  )}
                 </div>
                 <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto">
                   {([
