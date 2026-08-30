@@ -130,6 +130,7 @@ const CreateAd = () => {
     duration: 30, // Default for standard
     contactEmail: '',
     externalUrl: '',
+    moreInfoUrl: '',
     sellerPhone: prefill?.sellerPhone || '',
     sourceUrl: prefill?.sourceUrl || '',
     listingMode: 'external' as 'external' | 'claimable',
@@ -749,13 +750,16 @@ const CreateAd = () => {
       setTimeout(() => (el as HTMLSelectElement | null)?.focus(), 450);
     }, 80);
 
-    window.setTimeout(() => setCategoryAttention(false), 3500);
+    window.setTimeout(() => {
+      setCategoryAttention(false);
+      setPlanCategoryHint(null);
+    }, 4000);
   };
 
   const handleBoatPlanCardClick = (plan: 'standard' | 'featured' | 'premium') => {
     if (!isAdmin && isEditLocked) return;
     if (!isPaidBoatListingCategory(formData.category)) {
-      guideToCategory('To use this plan, choose the category Boats for Sale or Boats for Hire.');
+      guideToCategory('Para usar este plano, escolha a categoria Barcos à Venda ou Barcos para Alugar.');
       return;
     }
     setPlanCategoryHint(null);
@@ -861,6 +865,7 @@ const CreateAd = () => {
           duration: 30, // Duration is only used for calculation on submit
           contactEmail: data.contactEmail || '',
           externalUrl: data.externalUrl || '',
+          moreInfoUrl: (data as any).moreInfoUrl || '',
           sellerPhone: data.sellerPhone || '',
           sourceUrl: data.sourceUrl || '',
           salary: data.salary || '',
@@ -1495,6 +1500,11 @@ const CreateAd = () => {
         updatedAt: serverTimestamp(),
         contactEmail: (formData.category === 'Imigração' || isJob) ? (formData.contactEmail || '') : (originalAd?.contactEmail || ''),
         externalUrl: (formData.category === 'Imigração' || isJob) ? (formData.externalUrl || '') : (originalAd?.externalUrl || ''),
+        moreInfoUrl: isStaff
+          ? (formData.moreInfoUrl.trim()
+              ? (/^https?:\/\//i.test(formData.moreInfoUrl.trim()) ? formData.moreInfoUrl.trim() : `https://${formData.moreInfoUrl.trim()}`)
+              : '')
+          : ((originalAd as any)?.moreInfoUrl || ''),
         sourceUrl: validSourceUrl || (originalAd?.sourceUrl || null),
         imagePositionX: imagePositionX,
         imagePositionY: imagePositionY,
@@ -1968,6 +1978,17 @@ const CreateAd = () => {
   if (fetching) return <div className="text-center py-20">Loading...</div>;
 
   return (
+    <>
+      {planCategoryHint && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] w-[calc(100%-2rem)] max-w-md rounded-2xl border-2 border-amber-300 bg-white px-4 py-3 shadow-2xl animate-in fade-in zoom-in-95 duration-200" role="alert" aria-live="assertive">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <AlertCircle size={18} />
+            </div>
+            <p className="text-sm font-bold text-slate-800 leading-snug">{planCategoryHint}</p>
+          </div>
+        </div>
+      )}
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 mb-6 font-medium transition-colors cursor-pointer">
         <ChevronLeft size={20} /> Back
@@ -2377,13 +2398,6 @@ const CreateAd = () => {
                   </button>
                 </div>
 
-                {planCategoryHint && (
-                  <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-3 py-2.5 flex items-start gap-2">
-                    <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                    <p className="text-[10px] sm:text-xs font-bold text-amber-900 leading-relaxed">{planCategoryHint}</p>
-                  </div>
-                )}
-
                 {isPaidBoatListingCategory(formData.category) ? (
                   <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2">
                     <p className="text-[10px] sm:text-xs font-bold text-indigo-800">
@@ -2782,6 +2796,26 @@ const CreateAd = () => {
                   />
                 </div>
               </div>
+
+              {(isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator') && (
+                <div className="space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+                  <label className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                    <ExternalLink size={16} className="text-indigo-600" />
+                    Ver Mais — External URL
+                    <span className="text-[10px] normal-case tracking-normal text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">Admin / Moderator</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.moreInfoUrl}
+                    onChange={(e) => setFormData({ ...formData, moreInfoUrl: e.target.value })}
+                    placeholder="https://youtube.com/... ou https://outra-plataforma.com/..."
+                    className="w-full px-3 py-2.5 bg-white border-2 border-slate-100 rounded-xl focus:border-indigo-600 outline-none transition-all font-medium"
+                  />
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    When filled in, the listing will show a public <strong>Ver Mais</strong> button on the details page. The link opens in a new tab.
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-2.5">
               {/* 4. Category */}
@@ -3722,8 +3756,8 @@ const CreateAd = () => {
     </div>
 
     {/* Right Column: Sticky Live Listing Preview Panel (Desktop) */}
-    <div className="hidden lg:block lg:col-span-5 xl:col-span-4">
-      <div className="sticky top-24 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xl space-y-4">
+    <div className="hidden lg:block lg:col-span-5 xl:col-span-4 lg:sticky lg:top-24 self-start">
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xl space-y-4 max-h-[calc(100vh-7rem)] overflow-y-auto">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
             <span>👁️</span> Live Listing Preview
@@ -4152,6 +4186,7 @@ const CreateAd = () => {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 };
 
