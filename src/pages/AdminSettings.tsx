@@ -133,27 +133,31 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
             showcase: data.planDurations?.showcase || 30,
             intermediate: data.planDurations?.intermediate || 180
           },
-          planPrices: data.planPrices || {
-            local: 4.99,
-            national: 7.99,
-            showcase: 8.99
+          planPrices: {
+            standard: data.planPrices?.standard ?? 4.99,
+            featured: data.planPrices?.featured ?? 7.99,
+            premium: data.planPrices?.premium ?? 12.99,
+            marketplaceAdditional: data.planPrices?.marketplaceAdditional ?? 1.99,
+            local: data.planPrices?.local ?? 4.99,
+            national: data.planPrices?.national ?? 7.99,
+            showcase: data.planPrices?.showcase ?? 8.99
           },
           maxImages: data.maxImages ? {
-            standard: data.maxImages.standard || 6,
-            featured: data.maxImages.featured || 10,
-            premium: data.maxImages.premium || 15,
-            free: data.maxImages.free || 2,
-            local: data.maxImages.local || 4,
-            national: data.maxImages.national === 4 ? 6 : (data.maxImages.national || 6),
+            standard: data.maxImages.standard || 8,
+            featured: data.maxImages.featured || 15,
+            premium: data.maxImages.premium || 25,
+            free: 3,
+            local: data.maxImages.featured || 15,
+            national: data.maxImages.premium || 25,
             showcase: data.maxImages.showcase || 6,
             intermediate: data.maxImages.intermediate || 3
           } : {
-            standard: 6,
-            featured: 10,
-            premium: 15,
-            free: 2,
-            local: 4,
-            national: 6,
+            standard: 8,
+            featured: 15,
+            premium: 25,
+            free: 3,
+            local: 15,
+            national: 25,
             showcase: 6,
             intermediate: 3
           },
@@ -176,8 +180,8 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
         const defaultSettings: MarketplaceSettings = {
           id: 'global',
           planDurations: { standard: 30, featured: 30, premium: 30, free: 30, local: 30, national: 30, showcase: 30, intermediate: 180 },
-          planPrices: { standard: 4.99, featured: 7.99, premium: 12.99, local: 4.99, national: 7.99, showcase: 8.99 },
-          maxImages: { standard: 6, featured: 10, premium: 15, free: 2, local: 4, national: 6, showcase: 6, intermediate: 3 },
+          planPrices: { standard: 4.99, featured: 7.99, premium: 12.99, marketplaceAdditional: 1.99, local: 4.99, national: 7.99, showcase: 8.99 },
+          maxImages: { standard: 8, featured: 15, premium: 25, free: 3, local: 15, national: 25, showcase: 6, intermediate: 3 },
           maxShowcaseProducts: 6,
           expirationAction: 'archive',
           warningDays: 3,
@@ -348,7 +352,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <label className="text-xs font-bold text-slate-500">Máximo de Fotos</label>
                   <input
                     type="number"
-                    value={settings.maxImages.standard ?? 6}
+                    value={settings.maxImages.standard ?? 8}
                     onChange={(e) => setSettings({
                       ...settings,
                       maxImages: { ...settings.maxImages, standard: parseInt(e.target.value) || 0 }
@@ -394,7 +398,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <label className="text-xs font-bold text-slate-500">Máximo de Fotos</label>
                   <input
                     type="number"
-                    value={settings.maxImages.featured ?? 10}
+                    value={settings.maxImages.featured ?? 15}
                     onChange={(e) => setSettings({
                       ...settings,
                       maxImages: { ...settings.maxImages, featured: parseInt(e.target.value) || 0 }
@@ -440,13 +444,31 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                   <label className="text-xs font-bold text-slate-500">Máximo de Fotos</label>
                   <input
                     type="number"
-                    value={settings.maxImages.premium ?? 15}
+                    value={settings.maxImages.premium ?? 25}
                     onChange={(e) => setSettings({
                       ...settings,
                       maxImages: { ...settings.maxImages, premium: parseInt(e.target.value) || 0 }
                     })}
                     className="w-full px-4 py-2.5 bg-white border border-indigo-200 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold text-sm"
                   />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 bg-emerald-50/30 rounded-2xl border border-emerald-100 space-y-4">
+              <h3 className="text-sm font-black text-emerald-700 uppercase tracking-widest">Marketplace Listings</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Additional listing price (£)</label>
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={settings.planPrices?.marketplaceAdditional ?? 1.99}
+                    onChange={(e) => setSettings({ ...settings, planPrices: { ...settings.planPrices, marketplaceAdditional: parseFloat(e.target.value) || 0 } })}
+                    className="w-full px-4 py-2.5 bg-white border border-emerald-200 rounded-xl focus:border-emerald-500 outline-none transition-all font-bold text-sm"
+                  />
+                </div>
+                <div className="rounded-xl bg-white border border-emerald-100 p-3 text-xs text-slate-600 leading-relaxed">
+                  First eligible Marketplace listing per account: <strong>FREE</strong>. Additional listings use this fee and always allow up to <strong>3 photos</strong>.
                 </div>
               </div>
             </div>
