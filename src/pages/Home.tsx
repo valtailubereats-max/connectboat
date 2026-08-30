@@ -681,10 +681,7 @@ const Home = () => {
       }
       setErrorMsg(null);
 
-      // Delay visual rápido e subtil de carregamento inicial apenas se não for load-more
-      if (!isLoadMore) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-      }
+      // Carrega imediatamente: não adicionamos atraso artificial antes de buscar os anúncios.
       if (!active) return;
 
       try {
@@ -1972,7 +1969,7 @@ const Home = () => {
             {loading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="bg-slate-100 dark:bg-slate-800 rounded-2xl h-64 animate-pulse" />
+                  <div key={i} className="bg-slate-50 dark:bg-slate-800/45 border border-slate-100 dark:border-slate-700/40 rounded-2xl h-64 animate-pulse" />
                 ))}
               </div>
             ) : errorMsg ? (
