@@ -1183,13 +1183,17 @@ const CreateAd = () => {
       try {
         if (!id && user) {
           const idToken = await user.getIdToken();
-          const response = await fetch('/api/listings/save', {
+          const response = await fetch('/api/stripe/create-checkout-session', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${idToken}`,
             },
-            body: JSON.stringify({ adId: targetAdId, adData: cleanPayload }),
+            body: JSON.stringify({
+              action: 'listing_save',
+              adId: targetAdId,
+              adData: cleanPayload,
+            }),
           });
           const result = await response.json().catch(() => ({}));
           if (!response.ok || result?.success !== true) {
