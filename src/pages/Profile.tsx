@@ -38,6 +38,9 @@ const Profile = () => {
   const [city, setCity] = useState('');
   const [region, setRegion] = useState('');
   const [country, setCountry] = useState<'Portugal' | 'Reino Unido'>('Reino Unido');
+  const [publicDescription, setPublicDescription] = useState('');
+  const [profileImageUrl, setProfileImageUrl] = useState('');
+  const [uploadingProfileImage, setUploadingProfileImage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ads, setAds] = useState<Ad[]>([]);
   const [adsLoading, setAdsLoading] = useState(true);
@@ -636,6 +639,8 @@ const Profile = () => {
       }
       setName(profile.name || '');
       setCity(profile.city || '');
+      setPublicDescription(profile.publicDescription || '');
+      setProfileImageUrl(profile.profileImageUrl || '');
       if (settings?.enablePortugalMarket === true && (profile.country === 'Portugal' || profile.country === 'Reino Unido')) {
         setCountry(profile.country);
       } else {
@@ -860,6 +865,31 @@ const Profile = () => {
     }
   };
 
+  const handleProfileImageUpload = async (file: File) => {
+    if (!user) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('The profile image must be 5 MB or smaller.');
+      return;
+    }
+    setUploadingProfileImage(true);
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileRef = ref(storage, `showcases/${user.uid}/seller-profile/profile-${Date.now()}.${extension}`);
+      const uploadSnapshot = await uploadBytes(fileRef, file);
+      const downloadUrl = await getDownloadURL(uploadSnapshot.ref);
+      setProfileImageUrl(downloadUrl);
+    } catch (err) {
+      console.error('[Profile] Error uploading public profile image:', err);
+      alert('Unable to upload the profile image. Please try again.');
+    } finally {
+      setUploadingProfileImage(false);
+    }
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -951,6 +981,8 @@ const Profile = () => {
         phone: fullPhone, 
         city, 
         country,
+        publicDescription: publicDescription.trim(),
+        profileImageUrl,
         ...showcasePayload
       }, { merge: true });
 
@@ -970,6 +1002,8 @@ const Profile = () => {
           displayName: name,
           city: city,
           country: country,
+          publicDescription: publicDescription.trim(),
+          profileImageUrl,
           updatedAt: now,
           ...showcasePayload
         };
@@ -1289,10 +1323,63 @@ const Profile = () => {
             </div>
           </div>
 
+          <div className="md:col-span-2 mt-2 rounded-3xl border border-slate-200 bg-slate-50/70 p-5 sm:p-6 space-y-5">
+            <div>
+              <h2 className="text-lg font-black text-slate-900">Public Seller Profile</h2>
+              <p className="text-sm text-slate-500 mt-1">This information is shown when someone opens your seller profile from one of your listings.</p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="w-24 h-24 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+                {profileImageUrl ? (
+                  <img src={profileImageUrl} alt="Public seller profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={36} className="text-slate-300" />
+                )}
+              </div>
+              <div className="flex-1">
+                <label className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-100 cursor-pointer transition">
+                  {uploadingProfileImage ? 'Uploading...' : profileImageUrl ? 'Change photo / logo' : 'Upload photo / logo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploadingProfileImage}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleProfileImageUpload(file);
+                      e.currentTarget.value = '';
+                    }}
+                  />
+                </label>
+                {profileImageUrl && (
+                  <button type="button" onClick={() => setProfileImageUrl('')} className="ml-2 text-xs font-bold text-rose-600 hover:text-rose-700">Remove</button>
+                )}
+                <p className="text-xs text-slate-400 mt-2">Optional. Use your photo or business logo. Maximum 5 MB.</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">About you / your business</label>
+                <span className="text-xs font-bold text-slate-400">{publicDescription.length}/500</span>
+              </div>
+              <textarea
+                value={publicDescription}
+                onChange={(e) => setPublicDescription(e.target.value.slice(0, 500))}
+                rows={5}
+                maxLength={500}
+                className="w-full px-4 py-4 bg-white border-2 border-slate-100 rounded-2xl focus:border-indigo-600 outline-none transition-all resize-none"
+                placeholder="Tell buyers a little about you, your business, your experience and what you do..."
+              />
+              <p className="text-xs text-slate-400">Do not include your phone number or email here. Buyers can contact you using the Contact button.</p>
+            </div>
+          </div>
+
           <div className="md:col-span-2">
             <button
               type="submit"
-              disabled={loading || uploadingLogo || uploadingCover || profileSaved}
+              disabled={loading || uploadingLogo || uploadingCover || uploadingProfileImage || profileSaved}
               className={`w-full py-4 rounded-2xl font-bold transition-all shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 ${
                 profileSaved 
                   ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100' 
