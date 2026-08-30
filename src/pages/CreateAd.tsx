@@ -21,6 +21,19 @@ import { evaluateListingDuplicates, DuplicateCheckResult } from '../utils/duplic
 import { saveCustomCity } from '../utils/locationService';
 
 const PAID_BOAT_LISTING_CATEGORIES = new Set(['Boats for Sale', 'Boats for Hire']);
+const MARKETPLACE_LISTING_CATEGORIES = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Boat Services', 'Accessories', 'Wanted']);
+
+const isMarketplaceListingCategory = (category?: string): boolean =>
+  MARKETPLACE_LISTING_CATEGORIES.has((category || '').trim());
+
+const looksLikeBoatSaleOrHire = (category: string, title: string, description: string): boolean => {
+  if (category === 'Wanted') return false;
+  const text = `${title || ''} ${description || ''}`.toLowerCase();
+  const explicitBoatOffer = /\bboat\s+(for\s+sale|for\s+hire|for\s+rent)\b/.test(text);
+  const vesselWords = /\b(yacht|motorboat|speedboat|sailboat|catamaran|cruiser|narrowboat|houseboat|jet\s*ski|rib)\b/.test(text);
+  const offerWords = /\b(for\s+sale|for\s+hire|for\s+rent|selling|charter)\b/.test(text);
+  return explicitBoatOffer || (vesselWords && offerWords);
+};
 
 const isPaidBoatListingCategory = (category?: string): boolean =>
   PAID_BOAT_LISTING_CATEGORIES.has((category || '').trim());
@@ -360,9 +373,12 @@ const CreateAd = () => {
     const isNewMediaBoost = formData.mediaBoostEnabled && !originalAd?.videoPaid;
 
     if (!isEditing) {
-      // Only Boats for Sale and Boats for Hire pay for the listing itself.
-      // Every other category is free and only goes to Stripe when a paid extra is selected.
-      return isPaidBoatListing || formData.mediaBoostEnabled;
+      if (isPaidBoatListing) return true;
+      if (isMarketplaceListingCategory(formData.category)) {
+        const freeAlreadyUsed = profile?.marketplaceFreeListingUsed === true;
+        return freeAlreadyUsed || formData.mediaBoostEnabled;
+      }
+      return formData.mediaBoostEnabled;
     }
 
     // When editing an existing ad:
@@ -376,26 +392,32 @@ const CreateAd = () => {
     return isPlanUpgrade || isNewMediaBoost;
   };
 
-  const getMaxPhotosForPlan = (planKey: string): number => {
-    if (!isPaidBoatListingCategory(formData.category)) return 3;
+  const getPhotoLimit = (category: string | undefined, planKey: string): number => {
+    // Business rule: every category except Boats for Sale / Boats for Hire is free
+    // and is intentionally limited to 3 photos.
+    if (!isPaidBoatListingCategory(category)) return 3;
 
-    if (settings?.maxImages) {
-      const val = settings.maxImages[planKey as keyof typeof settings.maxImages];
-      if (val) return val;
-      if ((planKey === 'featured' || planKey === 'highlight' || planKey === 'local') && settings.maxImages.featured) {
-        return settings.maxImages.featured;
-      }
-      if ((planKey === 'premium' || planKey === 'national') && settings.maxImages.premium) {
-        return settings.maxImages.premium;
-      }
-      if ((planKey === 'standard' || planKey === 'free') && settings.maxImages.standard) {
-        return settings.maxImages.standard;
-      }
-    }
-    if (planKey === 'premium' || planKey === 'national') return 8;
-    if (planKey === 'featured' || planKey === 'local' || planKey === 'highlight') return 6;
-    return 4;
+    // Legacy paid plan names are aliases only. They must never carry their old
+    // photo limits forward, otherwise a Premium/National listing can get stuck at 6.
+    const normalizedPlan = (planKey || 'standard').toLowerCase();
+    const targetPlan: 'standard' | 'featured' | 'premium' =
+      ['premium', 'national'].includes(normalizedPlan)
+        ? 'premium'
+        : ['featured', 'highlight', 'local', 'intermediate'].includes(normalizedPlan)
+          ? 'featured'
+          : 'standard';
+
+    const configured = Number(settings?.maxImages?.[targetPlan]);
+    if (Number.isFinite(configured) && configured > 0) return configured;
+
+    // These defaults are only used if settings/global cannot be read.
+    if (targetPlan === 'premium') return 25;
+    if (targetPlan === 'featured') return 15;
+    return 8;
   };
+
+  const getMaxPhotosForPlan = (planKey: string): number =>
+    getPhotoLimit(formData.category, planKey);
 
   const getPlanPrice = (planKey: string): number => {
     const prices = globalSettings?.planPrices;
@@ -412,10 +434,18 @@ const CreateAd = () => {
     return Number(prices?.standard ?? 4.99);
   };
 
+  const getMarketplaceAdditionalPrice = (): number =>
+    Number(globalSettings?.planPrices?.marketplaceAdditional ?? 1.99);
+
+  const isFirstMarketplaceListingFree = (): boolean =>
+    !id && isMarketplaceListingCategory(formData.category) && profile?.marketplaceFreeListingUsed !== true;
+
   const getCheckoutTotalAmountFormatted = () => {
     if (!checkRequiresPayment()) return '0.00';
     const activePlan = (formData.plan || 'standard').toLowerCase();
-    const planBase = isPaidBoatListingCategory(formData.category) ? getPlanPrice(activePlan) : 0;
+    const planBase = isPaidBoatListingCategory(formData.category)
+      ? getPlanPrice(activePlan)
+      : (isMarketplaceListingCategory(formData.category) && !isFirstMarketplaceListingFree() ? getMarketplaceAdditionalPrice() : 0);
     const mediaBoostExtra = (formData.mediaBoostEnabled && !originalAd?.videoPaid) ? 2.00 : 0;
     return (planBase + mediaBoostExtra).toFixed(2);
   };
@@ -790,7 +820,7 @@ const CreateAd = () => {
           return;
         }
         setOriginalAd(data);
-        const fetchedImages = normalizeAndLimitImages(data.images || (data.imageUrl ? [data.imageUrl] : []), 6);
+        const fetchedImages = normalizeAndLimitImages(data.images || (data.imageUrl ? [data.imageUrl] : []), getPhotoLimit(data.category, data.plan || 'standard'));
         setFormData({
           title: data.title,
           description: data.description,
@@ -1151,7 +1181,23 @@ const CreateAd = () => {
         coverImageSettings: cleanPayload.coverImageSettings,
       });
       try {
-        await setDoc(doc(db, 'ads', targetAdId), cleanPayload, { merge: true });
+        if (!id && user) {
+          const idToken = await user.getIdToken();
+          const response = await fetch('/api/listings/save', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ adId: targetAdId, adData: cleanPayload }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || result?.success !== true) {
+            throw new Error(result?.errorMessage || result?.error || `Listing save failed (HTTP ${response.status}).`);
+          }
+        } else {
+          await setDoc(doc(db, 'ads', targetAdId), cleanPayload, { merge: true });
+        }
         if (cleanPayload.city) {
           saveCustomCity(cleanPayload.city, cleanPayload.region, cleanPayload.country).catch((err) => {
             console.error('[CreateAd] Error auto-saving custom city:', err);
@@ -1159,7 +1205,7 @@ const CreateAd = () => {
         }
       } catch (saveErr: any) {
         console.error('[Ad Save Failure]', saveErr);
-        showValidationError(`Erro ao guardar anúncio no Firestore: ${saveErr?.message || String(saveErr)}`);
+        showValidationError(saveErr?.message || 'Unable to save this listing.');
         setLoading(false);
         return;
       }
@@ -1279,6 +1325,11 @@ const CreateAd = () => {
       return;
     }
 
+    if (isMarketplaceListingCategory(formData.category) && looksLikeBoatSaleOrHire(formData.category, formData.title, formData.description)) {
+      showValidationError('This appears to be a complete boat or yacht offered for sale or hire. Boats must be listed under Boats for Sale or Boats for Hire and use a boat listing plan.', 'select-category');
+      return;
+    }
+
     const isJob = formData.category === 'Trabalho/Empregos' || formData.category === 'Boat Jobs';
     const isSpecialCategory = formData.category === 'Imigração' || isJob;
     const isImportedAd = isImportedOrExternalAd(formData) || isImportedOrExternalAd(originalAd) || isAdmin || isModerator;
@@ -1328,7 +1379,7 @@ const CreateAd = () => {
 
     const cleanFormImages = normalizeAndLimitImages(
       formData.images,
-      isPaidBoatListingCategory(formData.category) ? 6 : 3
+      getPhotoLimit(formData.category, formData.plan)
     );
     if (cleanFormImages.length === 0) {
       showValidationError('Please upload at least one valid image for your listing.', 'sec-images-upload');
@@ -1396,6 +1447,14 @@ const CreateAd = () => {
         status: isStaff && id ? (originalAd?.status || 'approved') : 'pending',
         adStatus: id && originalAd ? originalAd.adStatus : 'active',
         plan: isPaidBoatListingCategory(formData.category) ? formData.plan : 'free',
+        marketplaceListingType: isMarketplaceListingCategory(formData.category)
+          ? (id && originalAd
+              ? ((originalAd as any).marketplaceListingType || 'paid_additional')
+              : (profile?.marketplaceFreeListingUsed === true ? 'paid_additional' : 'free_first'))
+          : undefined,
+        marketplaceListingFee: isMarketplaceListingCategory(formData.category)
+          ? (profile?.marketplaceFreeListingUsed === true ? getMarketplaceAdditionalPrice() : 0)
+          : undefined,
         expirationDate: id && originalAd ? (originalAd.expirationDate || expirationDate) : expirationDate,
         userNotified: id && originalAd
           ? (Object.prototype.hasOwnProperty.call(originalAd, 'userNotified') ? originalAd.userNotified : false)
@@ -1650,6 +1709,7 @@ const CreateAd = () => {
           country: formData.country,
           category: formData.category,
           adId: finalizedId,
+          marketplaceListingType: pendingAdData.marketplaceListingType || null,
           mediaBoostEnabled: !!formData.mediaBoostEnabled && (!originalAd || !originalAd.videoPaid),
           successUrl: `${window.location.origin}/create-ad?stripe_success=true&ad_id=${finalizedId}&plan=${activePlan}`,
           cancelUrl: `${window.location.origin}/create-ad?stripe_cancel=true`
@@ -2410,6 +2470,15 @@ const CreateAd = () => {
                     </button>
                   )}
                 </div>
+                <div className={`text-[11px] font-bold rounded-xl px-3 py-2 border ${
+                  isPaidBoatListingCategory(formData.category)
+                    ? 'text-indigo-700 bg-indigo-50 border-indigo-100'
+                    : 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                }`}>
+                  {isPaidBoatListingCategory(formData.category)
+                    ? `📷 Your ${normalizeListingPlan(formData.plan)} plan allows up to ${maxAllowed} photos.`
+                    : `✓ FREE listing — this category includes up to 3 photos at no listing cost.`}
+                </div>
                 <p className="text-[10px] text-slate-400 font-medium">
                   * First photo is the cover photo. Use arrows or &quot;Set as Main&quot; to reorder photos. Max 5MB per file.
                 </p>
@@ -2638,6 +2707,18 @@ const CreateAd = () => {
                     })
                     .map((c, index) => <option key={`category-${c}-${index}`} value={c}>{c}</option>)}
                 </select>
+
+                {formData.category && !isPaidBoatListingCategory(formData.category) && (
+                  <div className="mt-2.5 rounded-2xl border-2 border-emerald-200 bg-emerald-50 px-4 py-3 flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black shrink-0">£0</div>
+                    <div>
+                      <p className="text-sm font-black text-emerald-900">FREE TO LIST</p>
+                      <p className="text-xs font-semibold text-emerald-700 mt-0.5">
+                        {formData.category} listings have no listing fee and include up to 3 photos. Paid listing plans apply only to Boats for Sale and Boats for Hire.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 5. Price */}
@@ -3291,8 +3372,8 @@ const CreateAd = () => {
                 <div className="p-5 rounded-3xl border-2 border-emerald-200 bg-emerald-50/70">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <h3 className="text-sm font-black text-emerald-900 uppercase tracking-wider">Free Listing</h3>
-                      <p className="text-xs text-emerald-700 mt-1">No listing fee for this category. Maximum 3 photos.</p>
+                      <h3 className="text-sm font-black text-emerald-900 uppercase tracking-wider">✓ Free Marketplace Listing</h3>
+                      <p className="text-xs text-emerald-700 mt-1 font-semibold">No listing fee • Up to 3 photos • Only Boats for Sale and Boats for Hire require a paid listing plan.</p>
                     </div>
                     <span className="text-xl font-black text-emerald-700">£0.00</span>
                   </div>
