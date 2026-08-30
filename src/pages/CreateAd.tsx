@@ -2800,7 +2800,7 @@ const CreateAd = () => {
               {(isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator') && (
                 <div className="space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
                   <label className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-                    <ExternalLink size={16} className="text-indigo-600" />
+                    <Link size={16} className="text-indigo-600" />
                     Ver Mais — External URL
                     <span className="text-[10px] normal-case tracking-normal text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">Admin / Moderator</span>
                   </label>
