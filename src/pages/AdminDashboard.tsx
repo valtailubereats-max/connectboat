@@ -877,6 +877,16 @@ const AdminDashboard = () => {
   const getFinanceCustomerEmail = (record: any) =>
     record.contactEmail || record.sellerEmail || record.userEmail || record.ownerEmail || record.email || 'Email not available';
 
+
+  const isMarketplaceFinanceRecord = (record: any) =>
+    record?.paymentProductType === 'marketplace_additional' ||
+    record?.marketplaceListingType === 'paid_additional';
+
+  const getFinanceListingLabel = (record: any) =>
+    isMarketplaceFinanceRecord(record)
+      ? `Marketplace · ${record.category || 'Additional listing'}`
+      : `Boat listing · ${record.plan || 'standard'}`;
+
   const normalizedFinanceSearch = financeSearch.trim().toLowerCase();
   const visibleFinanceRecords = filteredFinanceRecords.filter((record) => {
     if (!normalizedFinanceSearch) return true;
@@ -884,6 +894,9 @@ const AdminDashboard = () => {
       record.title,
       record.id,
       record.plan,
+      record.category,
+      record.paymentProductType,
+      record.marketplaceListingType,
       getFinanceCustomerName(record),
       getFinanceCustomerEmail(record),
       record.stripeCheckoutSessionId,
@@ -938,6 +951,8 @@ const AdminDashboard = () => {
   });
 
   const financeListingRevenue = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountPaid || 0), 0);
+  const financeMarketplaceRevenue = filteredFinanceRecords.filter(isMarketplaceFinanceRecord).reduce((sum, record) => sum + Number(record.amountPaid || 0), 0);
+  const financeBoatListingRevenue = financeListingRevenue - financeMarketplaceRevenue;
   const financeAdvertisingTotal = filteredFinanceAdvertisingRevenue.reduce((sum, campaign) => sum + Number(campaign.amountPaid || 0), 0);
   const financeGrossRevenue = financeListingRevenue + financeAdvertisingTotal;
   const financeRefunds = filteredFinanceRecords.reduce((sum, record) => sum + Number(record.amountRefunded || 0), 0);
@@ -1016,7 +1031,7 @@ const AdminDashboard = () => {
         record.title || '',
         getFinanceCustomerName(record),
         getFinanceCustomerEmail(record),
-        record.plan || '',
+        getFinanceListingLabel(record),
         status,
         paid.toFixed(2),
         refunded.toFixed(2),
@@ -1729,7 +1744,7 @@ const AdminDashboard = () => {
                       <span className="text-slate-400">
                         ({formatGBP(financeListingRevenue)} + {formatGBP(financeAdvertisingTotal)}) − {formatGBP(financeRefunds)} − {formatGBP(financeStripeFees)} − {formatGBP(financeOperatingExpenses)} = <strong className={financeRealNet < 0 ? 'text-rose-300' : 'text-emerald-300'}>{formatGBP(financeRealNet)}</strong>
                       </span>
-                      <span className="text-slate-500 whitespace-nowrap">Paid {financePaidListings} · Refunded {financeRefundedListings}</span>
+                      <span className="text-slate-500 whitespace-nowrap">Boats {formatGBP(financeBoatListingRevenue)} · Marketplace {formatGBP(financeMarketplaceRevenue)} · Paid {financePaidListings} · Refunded {financeRefundedListings}</span>
                     </div>
                     {financeMissingFeeCount > 0 && (
                       <div className="border-t border-amber-400/10 bg-amber-500/5 px-3 py-1.5 text-[9px] sm:text-[10px] font-bold text-amber-200/80">
@@ -1778,7 +1793,7 @@ const AdminDashboard = () => {
                                 <div className="min-w-0">
                                   <p className="font-black text-white text-sm truncate">{record.title || record.id}</p>
                                   <p className="text-[10px] text-slate-500 mt-0.5">
-                                    {paidDate ? format(paidDate, 'dd/MM/yyyy HH:mm') : 'No date'} · <span className="capitalize">{record.plan || 'No plan'}</span>
+                                    {paidDate ? format(paidDate, 'dd/MM/yyyy HH:mm') : 'No date'} · <span>{getFinanceListingLabel(record)}</span>
                                   </p>
                                   <p className="text-[10px] text-slate-400 mt-1 truncate">
                                     {getFinanceCustomerName(record)} · {getFinanceCustomerEmail(record)}
