@@ -323,9 +323,27 @@ const Navbar = () => {
                 <PlusCircle size={19.8} /> <span>List Boat / Item</span>
               </Link>
 
-              <Link to="/profile" className="flex items-center gap-[6.6px] px-[13.2px] py-[6.6px] bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-sky-400 font-bold text-[13.2px] tracking-wider rounded-[13.2px] transition-all uppercase select-none cursor-pointer">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
-                <span className="text-slate-200 font-extrabold">{getUserSignature()}</span>
+              <Link
+                to="/profile"
+                title="My Profile"
+                className="group flex flex-col items-center justify-center min-w-[44px] px-1 py-0.5 rounded-xl hover:bg-slate-800/70 transition-all select-none cursor-pointer"
+              >
+                <div className="w-[34px] h-[34px] rounded-full overflow-hidden border border-slate-600 bg-slate-800 flex items-center justify-center shadow-sm group-hover:border-sky-400 transition-colors">
+                  {profile?.profileImageUrl ? (
+                    <img
+                      src={profile.profileImageUrl}
+                      alt={profile?.name ? `${profile.name} profile` : 'User profile'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-[11px] font-black text-sky-300 uppercase leading-none">
+                      {getUserSignature().slice(0, 2)}
+                    </span>
+                  )}
+                </div>
+                <span className="mt-[2px] max-w-[52px] truncate text-[9px] leading-[10px] font-bold text-slate-200 normal-case tracking-normal">
+                  {(profile?.name || user?.displayName || user?.email?.split('@')[0] || 'User').trim().split(/\s+/)[0]}
+                </span>
               </Link>
 
               <div className="relative" ref={notificationsRef}>
@@ -1090,3 +1108,4 @@ export default function App() {
   </HelmetProvider>
 );
 }
+vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
