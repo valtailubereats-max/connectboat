@@ -621,6 +621,33 @@ const AdminAds = () => {
     }
   };
 
+  const handleTogglePriceOnRequest = async (adId: string, currentValue?: boolean) => {
+    const newValue = !Boolean(currentValue);
+    try {
+      await updateDoc(doc(db, 'ads', adId), {
+        priceOnRequest: newValue,
+        updatedAt: serverTimestamp()
+      });
+      clearHomeCache();
+
+      setAds(prevAds => prevAds.map(ad =>
+        ad.id === adId ? ({ ...ad, priceOnRequest: newValue } as any) : ad
+      ));
+
+      if (selectedAd?.id === adId) {
+        setSelectedAd(prev => prev ? ({ ...prev, priceOnRequest: newValue } as any) : null);
+      }
+
+      alert(newValue
+        ? 'Price on Request enabled for this listing.'
+        : 'Price on Request disabled. The normal listing price will be shown again.'
+      );
+    } catch (err) {
+      console.error('Error toggling Price on Request:', err);
+      handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
+    }
+  };
+
   const handleBatchToggleHide = async (hideState: boolean) => {
     if (selectedAdIds.length === 0) return;
     const actionText = hideState ? 'colocar em Standby (ocultar)' : 'tornar visíveis';
@@ -1512,7 +1539,7 @@ const AdminAds = () => {
 
                   <div className="flex items-baseline gap-2 flex-wrap">
                     <span className="text-sm sm:text-base font-black text-indigo-600">
-                      {ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}
+                      {(ad as any).priceOnRequest ? 'Price on Request' : ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}
                     </span>
                     <span className="text-xs text-slate-400 font-medium whitespace-nowrap">
                       • Seller: <span className="text-slate-600 font-semibold">{ad.sellerName || 'ValtailAdmin'}</span>
@@ -1588,6 +1615,20 @@ const AdminAds = () => {
                       }`} />
                     </div>
                     <span>{ad.isHidden ? 'Standby' : 'Ocultar'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePriceOnRequest(ad.id, (ad as any).priceOnRequest)}
+                    className={`h-9 px-3 flex items-center gap-1.5 rounded-xl border font-bold text-[11px] transition-all ${
+                      (ad as any).priceOnRequest
+                        ? 'bg-violet-100 text-violet-800 border-violet-300 hover:bg-violet-200'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                    title={(ad as any).priceOnRequest ? 'Disable Price on Request' : 'Show Price on Request instead of a numeric price'}
+                  >
+                    <Tag size={14} />
+                    <span>{(ad as any).priceOnRequest ? 'Price on Request ✓' : 'Price on Request'}</span>
                   </button>
 
                   {ad.isClaimableBusiness ? (
@@ -1900,6 +1941,18 @@ const AdminAds = () => {
                               onClick={() => handleToggleHideAd(ad.id, ad.isHidden)}
                               className={`px-1.5 py-1 text-[8px] font-bold rounded-md border ${ad.isHidden ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}
                             >{ad.isHidden ? 'Show' : 'Hide'}</button>
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePriceOnRequest(ad.id, (ad as any).priceOnRequest)}
+                              className={`px-1.5 py-1 text-[8px] font-bold rounded-md border ${
+                                (ad as any).priceOnRequest
+                                  ? 'bg-violet-100 text-violet-800 border-violet-200'
+                                  : 'bg-slate-50 text-slate-600 border-slate-200'
+                              }`}
+                              title={(ad as any).priceOnRequest ? 'Disable Price on Request' : 'Enable Price on Request'}
+                            >
+                              {(ad as any).priceOnRequest ? 'On Request ✓' : 'On Request'}
+                            </button>
                             {ad.status === 'pending' && (
                               <>
                                 <button onClick={() => handleAdAction(ad.id, 'approved')} className="p-1 text-white bg-emerald-500 rounded-md" title="Approve"><CheckCircle size={12} /></button>
@@ -1955,7 +2008,7 @@ const AdminAds = () => {
                       {ad.title}
                     </h4>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      {countryIcon} {ad.city} • <span className="font-extrabold text-indigo-600">{ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}</span>
+                      {countryIcon} {ad.city} • <span className="font-extrabold text-indigo-600">{(ad as any).priceOnRequest ? 'Price on Request' : ad.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(ad.price, ad.country)}</span>
                     </p>
                     <div className="flex gap-1 mt-1">
                       <span className={`inline-block text-[8px] font-black px-1.5 py-0.2 rounded uppercase ${
@@ -2260,8 +2313,20 @@ const AdminAds = () => {
                   <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
                     <p className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">Price</p>
                     <p className="text-2xl font-black text-slate-950 mt-1">
-                      {selectedAd.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(selectedAd.price, selectedAd.country)}
+                      {(selectedAd as any).priceOnRequest ? 'Price on Request' : selectedAd.category === '💚 Doações & Solidariedade' ? 'Free 💚' : formatPrice(selectedAd.price, selectedAd.country)}
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePriceOnRequest(selectedAd.id, (selectedAd as any).priceOnRequest)}
+                      className={`mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-[11px] font-black transition-all ${
+                        (selectedAd as any).priceOnRequest
+                          ? 'bg-violet-100 text-violet-800 border-violet-300 hover:bg-violet-200'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Tag size={14} />
+                      {(selectedAd as any).priceOnRequest ? 'Price on Request enabled' : 'Enable Price on Request'}
+                    </button>
                   </div>
 
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
