@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   MapPin, MessageCircle, Clock, ChevronLeft, ChevronRight, X, Heart, Star, 
   Trash2, Edit, AlertCircle, ShieldAlert, Eye, EyeOff, Award, Calendar, Share2, ExternalLink,
-  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video
+  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video, UserRound
 } from 'lucide-react';
 import { 
   doc, updateDoc, increment, setDoc, collection, query, where, limit, getDoc, serverTimestamp, Timestamp, onSnapshot 
@@ -266,7 +266,7 @@ const AdDetails = () => {
   const [sellerProfile, setSellerProfile] = useState<UserProfile | null>(null);
   const [sellerReviews, setSellerReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [showReviewsSection, setShowReviewsSection] = useState(true);
+  const [showSellerProfileModal, setShowSellerProfileModal] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -1633,53 +1633,8 @@ const AdDetails = () => {
         <div className="lg:col-span-3 space-y-6">
           <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-8 space-y-6">
 
-            {/* Cartão do Vendedor e Avaliações */}
+            {/* Contact actions — seller profile is now opened from the profile icon */}
             <div className="bg-white/58 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/70 space-y-4 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.60)]">
-              <div className="flex flex-col gap-3 pb-3 border-b border-slate-200/60">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-12 h-12 bg-indigo-600/10 text-indigo-700 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0">
-                    {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="font-extrabold text-slate-900 leading-tight flex items-center gap-1 truncate">
-                      {hasSourceUrl ? 'Partner' : ad.sellerName}
-                      <Award size={14} className="text-indigo-500 flex-shrink-0" />
-                    </h4>
-                    
-                    {/* Estrelas */}
-                    <div className="flex items-center gap-0.5 mt-1" title={`${sellerProfile?.ratingAverage || 0} / 5`}>
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map((star) => {
-                          const ratingVal = sellerProfile?.ratingAverage || 0;
-                          const isFilled = star <= Math.round(ratingVal);
-                          return (
-                            <Star
-                              key={star}
-                              size={12}
-                              className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
-                            />
-                          );
-                        })}
-                      </div>
-                      <span className="text-[10px] text-slate-500 font-bold ml-1">
-                        ({sellerProfile?.ratingCount || 0} reviews)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Botão de Avaliar */}
-                {user && user.uid !== ad.sellerId && (
-                  <button
-                    onClick={() => setShowReviewModal(true)}
-                    className="w-full text-[11px] font-black bg-indigo-50 text-indigo-600 py-2 px-3 rounded-xl border border-indigo-100 hover:bg-indigo-100/80 hover:text-indigo-700 transition-all text-center"
-                  >
-                    Rate Seller
-                  </button>
-                )}
-              </div>
-
-              {/* CTAs */}
               <div className="flex flex-col gap-3">
                 {ad.externalListing || (hasSourceUrl && !ad.demoListing) ? (
                   <a
@@ -1702,30 +1657,37 @@ const AdDetails = () => {
                     <span className="leading-tight">Listing Sold</span>
                   </div>
                 ) : (
-                  <button
-                    onClick={handleContactClick}
-                    className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center"
-                  >
-                    <MessageCircle size={20} className="flex-shrink-0" />
-                    <span className="leading-tight">Contact via WhatsApp</span>
-                  </button>
+                  <div className="flex items-stretch gap-2">
+                    <button
+                      onClick={handleContactClick}
+                      className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] text-center"
+                    >
+                      <MessageCircle size={20} className="flex-shrink-0" />
+                      <span className="leading-tight">Contact via WhatsApp</span>
+                    </button>
+                    <button
+                      onClick={() => setShowSellerProfileModal(true)}
+                      aria-label="View seller profile and reviews"
+                      title="Seller profile"
+                      className="w-14 shrink-0 rounded-2xl border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 flex items-center justify-center transition-all active:scale-[0.98]"
+                    >
+                      <UserRound size={22} />
+                    </button>
+                  </div>
                 )}
 
                 <div className="flex gap-2">
-                  {/* Share button */}
                   <button
                     onClick={handleShare}
                     className={`flex-1 flex items-center justify-center gap-2 border py-3 px-3 rounded-xl font-bold text-xs transition-all ${
-                      shareCopied 
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
+                      shareCopied
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
                         : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
                     }`}
                   >
                     <Share2 size={16} className={shareCopied ? 'text-emerald-500 animate-bounce' : ''} />
                     <span>{shareCopied ? 'Link copied!' : 'Share'}</span>
                   </button>
-
-                  {/* Report Button */}
                   <button
                     onClick={() => setShowReportModal(true)}
                     className="flex items-center justify-center gap-1.5 border border-rose-100 hover:border-rose-200 text-rose-500 bg-rose-50/50 hover:bg-rose-50 py-3 px-4 rounded-xl font-bold text-xs transition"
@@ -1734,52 +1696,6 @@ const AdDetails = () => {
                   </button>
                 </div>
               </div>
-
-              {/* Seção das avaliações do vendedor */}
-              {sellerReviews.length > 0 && (
-                <div className="pt-3 border-t border-slate-200/60 font-sans">
-                  <button
-                    onClick={() => setShowReviewsSection(!showReviewsSection)}
-                    className="flex items-center justify-between w-full text-xs font-bold text-indigo-600 uppercase tracking-widest"
-                  >
-                    <span>Seller Reviews ({sellerReviews.length})</span>
-                    <span className="text-slate-400 text-[10px] uppercase font-bold">{showReviewsSection ? 'Collapse' : 'Expand'}</span>
-                  </button>
-
-                  <AnimatePresence>
-                    {showReviewsSection && (
-                      <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-3 space-y-3 max-h-56 overflow-y-auto pr-1"
-                      >
-                        {sellerReviews.map((rev) => (
-                          <div key={rev.id} className="bg-white p-3 rounded-xl border border-slate-100 text-xs shadow-sm">
-                            <div className="flex justify-between items-start mb-1">
-                              <span className="font-extrabold text-slate-800">{rev.buyerName}</span>
-                              <div className="flex gap-0.5">
-                                {[1, 2, 3, 4, 5].map((s) => (
-                                  <Star key={s} size={10} className={`${s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-100'}`} />
-                                ))}
-                              </div>
-                            </div>
-                            {rev.comment ? (
-                              <p className="text-slate-600 italic">"{rev.comment}"</p>
-                            ) : (
-                              <p className="text-slate-400 italic">Rated without written comment.</p>
-                            )}
-                            <div className="text-[9px] text-slate-400 mt-1 flex justify-between">
-                              <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
-                              <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
             </div>
           </div>
 
@@ -2278,73 +2194,26 @@ const AdDetails = () => {
             </div>
           )}
 
-          {/* Cartão do Vendedor Compacto */}
-          <div className="bg-slate-50 rounded-2xl p-3 sm:p-4 border border-slate-100 space-y-3">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-200/50 pb-2.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-9 h-9 bg-indigo-600/10 bg-indigo-50 text-indigo-700 rounded-lg flex items-center justify-center font-black text-xs shrink-0">
-                  {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm leading-tight flex items-center gap-1 truncate">
-                    {hasSourceUrl ? 'Partner' : ad.sellerName}
-                    <Award size={11} className="text-indigo-500 shrink-0" />
-                  </h4>
-                  <div className="flex items-center gap-0.5 mt-0.5" title={`${sellerProfile?.ratingAverage || 0} / 5`}>
-                    <div className="flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => {
-                        const ratingVal = sellerProfile?.ratingAverage || 0;
-                        const isFilled = star <= Math.round(ratingVal);
-                        return (
-                          <Star
-                            key={star}
-                            size={9}
-                            className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
-                          />
-                        );
-                      })}
-                    </div>
-                    <span className="text-[9px] text-slate-500 font-bold ml-1">
-                      ({sellerProfile?.ratingCount || 0} reviews)
-                    </span>
-                  </div>
+          {/* Claim ownership remains visible when applicable */}
+          {ad.isClaimableBusiness && (ad.claimStatus === 'unclaimed' || !ad.claimStatus) && (
+            <div className="bg-gradient-to-br from-indigo-50 to-amber-50/10 border border-indigo-100 rounded-2xl p-4 space-y-2.5 text-left animate-fade-in my-2">
+              <div className="flex gap-2 items-start">
+                <span className="text-xl">💼</span>
+                <div className="space-y-0.5">
+                  <p className="font-extrabold text-[#030d32] text-xs">Are you the owner of this business?</p>
+                  <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
+                    Activate and claim this listing for free to start receiving direct WhatsApp enquiries!
+                  </p>
                 </div>
               </div>
-
-              {/* Avaliar button */}
-              {user && user.uid !== ad.sellerId && (
-                <button
-                  onClick={() => setShowReviewModal(true)}
-                  className="text-[9px] font-black bg-indigo-50 text-indigo-600 py-1 px-2.5 rounded-lg border border-indigo-100 shrink-0 text-center hover:bg-indigo-100/70"
-                >
-                  Rate
-                </button>
-              )}
+              <button
+                onClick={handleOpenClaimModal}
+                className="w-full text-center py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                Confirm Ownership
+              </button>
             </div>
-
-            {/* Reivindicar Card no Mobile */}
-            {ad.isClaimableBusiness && (ad.claimStatus === 'unclaimed' || !ad.claimStatus) && (
-              <div className="bg-gradient-to-br from-indigo-50 to-amber-50/10 border border-indigo-100 rounded-2xl p-4 space-y-2.5 text-left animate-fade-in my-2">
-                <div className="flex gap-2 items-start">
-                  <span className="text-xl">💼</span>
-                  <div className="space-y-0.5">
-                    <p className="font-extrabold text-[#030d32] text-xs">Are you the owner of this business?</p>
-                    <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
-                      Activate and claim this listing for free to start receiving direct WhatsApp enquiries!
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleOpenClaimModal}
-                  className="w-full text-center py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
-                >
-                  Confirm Ownership
-                </button>
-              </div>
-            )}
-
-
-          </div>
+          )}
         </div>
 
         {/* SECTION CARD 2: Localização aproximada */}
@@ -2421,53 +2290,6 @@ const AdDetails = () => {
               The location shown is approximate based on the city provided by the seller and serves strictly as a reference point.
             </p>
           </div>
-        </div>
-
-        {/* SECTION CARD 3: Avaliações do Vendedor (Feedback) */}
-        <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] rounded-3xl p-4 sm:p-5 space-y-3.5 text-left">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
-            <div className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
-              <Star size={14} className="text-amber-500" />
-            </div>
-            <div>
-              <h2 className="text-sm font-black text-slate-900 leading-none">⭐️ Seller Reviews</h2>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 font-sans">Real feedback from other customers</p>
-            </div>
-          </div>
-
-          {sellerReviews.length > 0 ? (
-            <div className="space-y-2.5 max-h-60 overflow-y-auto pr-0.5 scrollbar-none">
-              {sellerReviews.map((rev) => (
-                <div key={rev.id} className="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 text-xs shadow-sm">
-                  <div className="flex justify-between items-start mb-1 gap-1.5">
-                    <span className="font-extrabold text-slate-800 text-[11px] truncate">{rev.buyerName}</span>
-                    <div className="flex gap-0.5 shrink-0">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} size={9} className={`${s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-100'}`} />
-                      ))}
-                    </div>
-                  </div>
-                  {rev.comment ? (
-                    <p className="text-slate-600 text-[11px] italic leading-relaxed">"{rev.comment}"</p>
-                  ) : (
-                    <p className="text-slate-400 text-[10px] italic">Rated without written comment.</p>
-                  )}
-                  <div className="text-[8px] text-slate-400 mt-2 flex justify-between items-center">
-                    <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
-                    <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-5 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-3.5">
-              <span className="text-lg block mb-1">💬</span>
-              <h4 className="text-xs font-bold text-slate-800">No reviews yet</h4>
-              <p className="text-[9px] text-slate-400 mt-0.5 leading-normal">
-                Transact safely with the seller or hire operator and be the first to leave feedback!
-              </p>
-            </div>
-          )}
         </div>
 
       </div> {/* closes block lg:hidden */}
@@ -2575,6 +2397,15 @@ const AdDetails = () => {
         </button>
 
         <button
+          onClick={() => setShowSellerProfileModal(true)}
+          aria-label="View seller profile and reviews"
+          title="Seller profile"
+          className="shrink-0 w-10 h-10 rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 flex items-center justify-center transition-all active:scale-95"
+        >
+          <UserRound size={18} />
+        </button>
+
+        <button
           onClick={() => {
             if (isUnclaimed) {
               setShowUnclaimedContactModal(true);
@@ -2597,6 +2428,108 @@ const AdDetails = () => {
           <span className="truncate">{hasSourceUrl ? 'Contact Seller' : 'Contact'}</span>
         </button>
       </div>
+
+      {/* Seller profile + reviews popup */}
+      <AnimatePresence>
+        {showSellerProfileModal && (
+          <div className="fixed inset-0 z-[185] flex items-center justify-center p-4">
+            <motion.button
+              type="button"
+              aria-label="Close seller profile"
+              className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSellerProfileModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 14 }}
+              transition={{ duration: 0.18 }}
+              className="relative z-10 w-full max-w-md max-h-[82vh] overflow-y-auto rounded-3xl bg-white shadow-2xl border border-slate-100 p-5 sm:p-6"
+            >
+              <button
+                type="button"
+                onClick={() => setShowSellerProfileModal(false)}
+                aria-label="Close"
+                className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center transition"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="pr-11">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-500">Seller profile</p>
+                <div className="flex items-center gap-3 mt-3">
+                  <div className="w-14 h-14 bg-indigo-50 text-indigo-700 rounded-2xl flex items-center justify-center font-black text-lg shrink-0">
+                    {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-black text-slate-950 flex items-center gap-1.5 truncate">
+                      {hasSourceUrl ? 'Partner' : ad.sellerName}
+                      <Award size={15} className="text-indigo-500 shrink-0" />
+                    </h3>
+                    <div className="flex items-center gap-1 mt-1">
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const ratingVal = sellerProfile?.ratingAverage || 0;
+                          return (
+                            <Star
+                              key={star}
+                              size={13}
+                              className={star <= Math.round(ratingVal) ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}
+                            />
+                          );
+                        })}
+                      </div>
+                      <span className="text-[11px] text-slate-500 font-bold">({sellerProfile?.ratingCount || 0} reviews)</span>
+                    </div>
+                  </div>
+                </div>
+                {user && user.uid !== ad.sellerId && (
+                  <button
+                    onClick={() => {
+                      setShowSellerProfileModal(false);
+                      setShowReviewModal(true);
+                    }}
+                    className="mt-4 w-full text-[11px] font-black bg-indigo-50 text-indigo-700 py-2.5 px-3 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-all"
+                  >
+                    Rate Seller
+                  </button>
+                )}
+              </div>
+
+              {sellerReviews.length > 0 && (
+                <div className="mt-5 pt-5 border-t border-slate-100">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">Seller Reviews</h4>
+                    <span className="text-[10px] font-bold text-slate-400">{sellerReviews.length}</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {sellerReviews.map((rev) => (
+                      <div key={rev.id} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs">
+                        <div className="flex justify-between items-start gap-2 mb-1">
+                          <span className="font-extrabold text-slate-800 truncate">{rev.buyerName}</span>
+                          <div className="flex gap-0.5 shrink-0">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star key={star} size={10} className={star <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'} />
+                            ))}
+                          </div>
+                        </div>
+                        {rev.comment && <p className="text-slate-600 italic leading-relaxed">“{rev.comment}”</p>}
+                        <div className="text-[9px] text-slate-400 mt-2 flex justify-between gap-3">
+                          <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
+                          <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Review Modal para deixar novas review*/}
       {showReviewModal && (
