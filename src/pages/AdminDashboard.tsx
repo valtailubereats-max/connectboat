@@ -56,6 +56,7 @@ const AdminDashboard = () => {
   const [financeDataLoading, setFinanceDataLoading] = useState(false);
   const [financeDataError, setFinanceDataError] = useState('');
   const [financeRange, setFinanceRange] = useState<'thisMonth' | 'lastMonth' | 'all'>('all');
+  const [financePeriodView, setFinancePeriodView] = useState<'current' | 'history'>('current');
   const [financeRecords, setFinanceRecords] = useState<any[]>([]);
   const [financeSessionPassword, setFinanceSessionPassword] = useState('');
   const [financeRefundingId, setFinanceRefundingId] = useState('');
@@ -181,6 +182,7 @@ const AdminDashboard = () => {
       const data = await callFinanceApi({ action: 'startNewFinancePeriod' });
       setFinancePeriodStart(typeof data.periodStart === 'string' ? data.periodStart : '');
       setFinanceRange('all');
+      setFinancePeriodView('current');
       setFinanceDateFrom('');
       setFinanceDateTo('');
       setFinanceActionMessage('New financial period started. Dashboard totals now begin from £0.00.');
@@ -899,16 +901,22 @@ const AdminDashboard = () => {
         : null;
 
   const financePeriodStartDate = financePeriodStart ? financeDate(financePeriodStart) : null;
-  const effectiveFinanceRangeStart = financePeriodStartDate && (!financeRangeStart || financePeriodStartDate > financeRangeStart)
-    ? financePeriodStartDate
-    : financeRangeStart;
+  const isFinanceHistoryView = financePeriodView === 'history' && Boolean(financePeriodStartDate);
+  const effectiveFinanceRangeStart = isFinanceHistoryView
+    ? financeRangeStart
+    : financePeriodStartDate && (!financeRangeStart || financePeriodStartDate > financeRangeStart)
+      ? financePeriodStartDate
+      : financeRangeStart;
+  const effectiveFinanceRangeEnd = isFinanceHistoryView && financePeriodStartDate
+    ? (financeRangeEnd && financeRangeEnd < financePeriodStartDate ? financeRangeEnd : new Date(financePeriodStartDate.getTime() - 1))
+    : financeRangeEnd;
 
   const filteredFinanceRecords = financeRecords
     .filter((record) => {
       const paidDate = financeDate(record.paidAt);
       if (!paidDate) return false;
       if (effectiveFinanceRangeStart && paidDate < effectiveFinanceRangeStart) return false;
-      if (financeRangeEnd && paidDate > financeRangeEnd) return false;
+      if (effectiveFinanceRangeEnd && paidDate > effectiveFinanceRangeEnd) return false;
       return true;
     })
     .sort((a, b) => (financeDate(b.paidAt)?.getTime() || 0) - (financeDate(a.paidAt)?.getTime() || 0));
@@ -957,7 +965,7 @@ const AdminDashboard = () => {
 
       if (!expenseDate || Number.isNaN(expenseDate.getTime())) return false;
       if (effectiveFinanceRangeStart && expenseDate < effectiveFinanceRangeStart) return false;
-      if (financeRangeEnd && expenseDate > financeRangeEnd) return false;
+      if (effectiveFinanceRangeEnd && expenseDate > effectiveFinanceRangeEnd) return false;
       return true;
     })
     .sort((a, b) => String(b.expenseDate || '').localeCompare(String(a.expenseDate || '')));
@@ -977,11 +985,11 @@ const AdminDashboard = () => {
 
   const filteredFinanceAdvertisingRevenue = financeAdvertisingRevenue
     .filter((campaign) => {
-      if (!campaign.paidDate) return !effectiveFinanceRangeStart && !financeRangeEnd;
+      if (!campaign.paidDate) return !effectiveFinanceRangeStart && !effectiveFinanceRangeEnd;
       const paidDate = new Date(`${campaign.paidDate}T12:00:00`);
       if (Number.isNaN(paidDate.getTime())) return false;
       if (effectiveFinanceRangeStart && paidDate < effectiveFinanceRangeStart) return false;
-      if (financeRangeEnd && paidDate > financeRangeEnd) return false;
+      if (effectiveFinanceRangeEnd && paidDate > effectiveFinanceRangeEnd) return false;
       return true;
     })
     .sort((a, b) => String(b.paidDate || '').localeCompare(String(a.paidDate || '')));
@@ -1668,6 +1676,34 @@ const AdminDashboard = () => {
                     </p>
                   )}
                 </div>
+                {financePeriodStart && (
+                  <div className="grid grid-cols-2 gap-1.5 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFinancePeriodView('current');
+                        setFinanceRange('all');
+                        setFinanceDateFrom('');
+                        setFinanceDateTo('');
+                      }}
+                      className={`px-3 py-2 rounded-xl text-[11px] font-black border transition-colors ${financePeriodView === 'current' ? 'bg-emerald-400 text-slate-950 border-emerald-400' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'}`}
+                    >
+                      Current Period
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFinancePeriodView('history');
+                        setFinanceRange('all');
+                        setFinanceDateFrom('');
+                        setFinanceDateTo('');
+                      }}
+                      className={`px-3 py-2 rounded-xl text-[11px] font-black border transition-colors ${financePeriodView === 'history' ? 'bg-amber-300 text-slate-950 border-amber-300' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'}`}
+                    >
+                      Previous History
+                    </button>
+                  </div>
+                )}
                 <div className="grid grid-cols-3 gap-1.5 w-full sm:w-auto">
                   {([
                     ['thisMonth', 'Month'],
@@ -1689,6 +1725,12 @@ const AdminDashboard = () => {
                   ))}
                 </div>
               </div>
+
+              {financePeriodStart && financePeriodView === 'history' && (
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] font-bold text-amber-200">
+                  Viewing preserved financial history before {new Date(financePeriodStart).toLocaleString('en-GB')}. Nothing has been deleted.
+                </div>
+              )}
 
               <div className="rounded-2xl border border-slate-800 bg-slate-900/55 p-3">
                 <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto_auto] gap-2.5 items-end">
