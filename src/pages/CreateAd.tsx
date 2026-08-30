@@ -755,7 +755,7 @@ const CreateAd = () => {
   const handleBoatPlanCardClick = (plan: 'standard' | 'featured' | 'premium') => {
     if (!isAdmin && isEditLocked) return;
     if (!isPaidBoatListingCategory(formData.category)) {
-      guideToCategory('To use Standard, Featured or Premium, change Category to Boats for Sale or Boats for Hire. We highlighted the Category field below.');
+      guideToCategory('To use this plan, choose the category Boats for Sale or Boats for Hire.');
       return;
     }
     setPlanCategoryHint(null);
