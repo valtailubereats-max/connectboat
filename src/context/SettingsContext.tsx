@@ -51,6 +51,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               standard: data.planPrices?.standard || 4.99,
               featured: data.planPrices?.featured || 7.99,
               premium: data.planPrices?.premium || 12.99,
+              marketplaceAdditional: data.planPrices?.marketplaceAdditional ?? 1.99,
               local: data.planPrices?.local || 4.99,
               national: data.planPrices?.national || 7.99,
               showcase: data.planPrices?.showcase || 8.99
@@ -59,9 +60,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               standard: data.maxImages?.standard || 8,
               featured: data.maxImages?.featured || 15,
               premium: data.maxImages?.premium || 25,
-              free: data.maxImages?.free || 2,
-              local: data.maxImages?.local || 4,
-              national: data.maxImages?.national || 6,
+              // Legacy fields mirror current tiers so old plan names cannot re-introduce stale limits.
+              free: 3,
+              local: data.maxImages?.featured || 15,
+              national: data.maxImages?.premium || 25,
             },
             maxShowcaseProducts: data.maxShowcaseProducts || 6,
             showTotalAdsBadge: data.showTotalAdsBadge !== undefined ? data.showTotalAdsBadge : false,
@@ -76,7 +78,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const defaultSettings: MarketplaceSettings = {
             id: 'global',
             planDurations: { standard: 30, featured: 30, premium: 30 },
-            planPrices: { standard: 4.99, featured: 7.99, premium: 12.99 },
+            planPrices: { standard: 4.99, featured: 7.99, premium: 12.99, marketplaceAdditional: 1.99 },
             maxImages: { standard: 8, featured: 15, premium: 25 },
             maxShowcaseProducts: 6,
             expirationAction: 'archive',
