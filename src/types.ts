@@ -42,6 +42,7 @@ export interface MarketplaceSettings {
     standard: number;
     featured: number;
     premium: number;
+    marketplaceAdditional?: number;
     local?: number; // legacy
     national?: number;
     showcase?: number;
@@ -153,6 +154,8 @@ export interface UserProfile {
   city?: string;
   role?: 'user' | 'admin' | 'moderator' | 'content_creator';
   financeAccess?: boolean;
+  marketplaceFreeListingUsed?: boolean;
+  marketplaceFreeListingUsedAt?: any;
   acceptedTerms: boolean;
   acceptedTermsAt: any; // Firestore Timestamp
   lastLoginAt?: any; // Firestore Timestamp
@@ -224,6 +227,10 @@ export interface Ad {
   adStatus?: AdLifecycleStatus;
   isHidden?: boolean;
   plan?: AdPlan;
+  marketplaceListingType?: 'free_first' | 'paid_additional';
+  marketplaceFreeBenefitConsumed?: boolean;
+  marketplaceListingFee?: number;
+  paymentProductType?: string;
   paidAt?: any; // Firestore Timestamp
   stripeCheckoutSessionId?: string;
   paymentConfirmationEmailSent?: boolean;
