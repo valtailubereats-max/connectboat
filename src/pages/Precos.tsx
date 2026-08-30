@@ -52,22 +52,17 @@ export default function Precos() {
   };
 
   const getMaxPhotosForPlan = (planKey: string): number => {
-    if (settings?.maxImages) {
-      const val = settings.maxImages[planKey as keyof typeof settings.maxImages];
-      if (val) return val;
-      if ((planKey === 'featured' || planKey === 'highlight' || planKey === 'local') && settings.maxImages.featured) {
-        return settings.maxImages.featured;
-      }
-      if ((planKey === 'premium' || planKey === 'national') && settings.maxImages.premium) {
-        return settings.maxImages.premium;
-      }
-      if ((planKey === 'standard' || planKey === 'free') && settings.maxImages.standard) {
-        return settings.maxImages.standard;
-      }
-    }
-    if (planKey === 'premium' || planKey === 'national') return 25;
-    if (planKey === 'featured' || planKey === 'local' || planKey === 'highlight') return 15;
-    return 8;
+    const normalized = (planKey || 'standard').toLowerCase();
+    const targetPlan: 'standard' | 'featured' | 'premium' =
+      ['premium', 'national'].includes(normalized)
+        ? 'premium'
+        : ['featured', 'highlight', 'local', 'intermediate'].includes(normalized)
+          ? 'featured'
+          : 'standard';
+
+    const configured = Number(settings?.maxImages?.[targetPlan]);
+    if (Number.isFinite(configured) && configured > 0) return configured;
+    return targetPlan === 'premium' ? 25 : targetPlan === 'featured' ? 15 : 8;
   };
 
   const handlePublishClick = () => {
@@ -123,6 +118,31 @@ export default function Precos() {
             Choose the best plan to showcase your boat, marine product or service.
           </p>
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8 rounded-3xl border-2 border-emerald-300 bg-emerald-50 p-5 md:p-6 shadow-sm"
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 text-emerald-800 font-black text-sm uppercase tracking-wider">
+                <span className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center">£0</span>
+                Marine products & services are free to list
+              </div>
+              <p className="mt-2 text-sm font-semibold text-emerald-800/90 leading-relaxed">
+                Selling parts, engines, electronics, trailers or accessories, or advertising a marina or boat service? Your listing is free and includes up to 3 photos. Paid listing plans below apply only to Boats for Sale and Boats for Hire.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handlePublishClick}
+              className="shrink-0 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-black transition-colors flex items-center justify-center gap-2"
+            >
+              Create a Free Listing <ArrowRight size={16} />
+            </button>
+          </div>
+        </motion.div>
 
         {isPromoActive && (
           <motion.div
@@ -230,6 +250,27 @@ export default function Precos() {
             </div>
           </div>
         )}
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10 rounded-3xl border-2 border-emerald-200 bg-emerald-50/60 p-6 md:p-7 shadow-sm"
+        >
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-widest text-emerald-700">Marine Marketplace</p>
+              <h2 className="mt-1 text-xl md:text-2xl font-black text-slate-900">Your first eligible Marketplace listing is FREE</h2>
+              <p className="mt-2 text-sm font-medium text-slate-600 max-w-2xl">
+                Parts, engines, marine electronics, trailers, accessories, marinas, boat services and Wanted listings: your first listing is free once per account. Additional listings are £{Number(settings?.planPrices?.marketplaceAdditional ?? 1.99).toFixed(2)} each.
+              </p>
+            </div>
+            <div className="shrink-0 rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-center">
+              <p className="text-2xl font-black text-emerald-700">3 photos</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">maximum per listing</p>
+            </div>
+          </div>
+          <p className="mt-4 text-xs font-bold text-slate-600">Complete boats for sale or hire are not eligible for Marketplace pricing and must use a Boats for Sale or Boats for Hire plan.</p>
+        </motion.div>
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
