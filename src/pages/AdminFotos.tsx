@@ -50,10 +50,11 @@ type MarineEvent = {
   imageUrl?: string;
   plan: EventPlan;
   pricePaid: number;
-  paymentStatus: 'admin_free' | 'free' | 'paid' | 'pending';
+  paymentStatus: 'admin_free' | 'free' | 'not_required' | 'paid' | 'pending';
   status: EventStatus;
   active: boolean;
-  source: 'admin' | 'organizer';
+  source: 'admin' | 'organizer' | 'public_submission';
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
   createdAt?: any;
   updatedAt?: any;
 };
@@ -311,6 +312,28 @@ export default function AdminFotos() {
     }
   };
 
+  const approveEvent = async (event: MarineEvent) => {
+    try {
+      await updateDoc(doc(db, colPath, event.id), {
+        approvalStatus: 'approved',
+        status: 'published',
+        active: true,
+        updatedAt: serverTimestamp(),
+      });
+      setEvents((current) =>
+        current.map((item) =>
+          item.id === event.id
+            ? { ...item, approvalStatus: 'approved', status: 'published', active: true }
+            : item
+        )
+      );
+      toast('Marine Event approved and published.');
+    } catch (error) {
+      console.error(error);
+      toast('Could not approve the event.', 'error');
+    }
+  };
+
   const removeEvent = async (event: MarineEvent) => {
     if (!window.confirm(`Delete "${event.title}"? This action cannot be undone.`)) return;
 
@@ -347,6 +370,7 @@ export default function AdminFotos() {
   }
 
   const publishedCount = events.filter((event) => event.active && event.status === 'published').length;
+  const pendingCount = events.filter((event) => event.approvalStatus === 'pending').length;
   const featuredCount = events.filter((event) => event.plan === 'featured').length;
   const premiumCount = events.filter((event) => event.plan === 'premium').length;
 
@@ -389,7 +413,7 @@ export default function AdminFotos() {
         {[
           ['Total Events', events.length, CalendarDays],
           ['Published', publishedCount, CheckCircle2],
-          ['Featured', featuredCount, Star],
+          ['Pending Approval', pendingCount, ShieldAlert],
           ['Premium', premiumCount, Sparkles],
         ].map(([label, value, Icon]: any) => (
           <div key={label} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
@@ -670,7 +694,12 @@ export default function AdminFotos() {
                     }`}>
                       {event.plan || 'standard'}
                     </span>
-                    {!event.active && (
+                    {event.approvalStatus === 'pending' && (
+                      <span className="text-[10px] uppercase font-black px-2.5 py-1 rounded-full bg-orange-100 text-orange-700">
+                        Pending Approval
+                      </span>
+                    )}
+                    {!event.active && event.approvalStatus !== 'pending' && (
                       <span className="text-[10px] uppercase font-black px-2.5 py-1 rounded-full bg-red-50 text-red-600">
                         Hidden
                       </span>
@@ -694,6 +723,16 @@ export default function AdminFotos() {
                 </div>
 
                 <div className="flex flex-wrap gap-2 shrink-0">
+                  {event.approvalStatus === 'pending' && (
+                    <button
+                      onClick={() => approveEvent(event)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-black"
+                      title="Approve and publish event"
+                    >
+                      <CheckCircle2 size={17} />
+                      Approve
+                    </button>
+                  )}
                   {event.website && (
                     <a
                       href={event.website}
