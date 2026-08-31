@@ -421,7 +421,7 @@ const Navbar = () => {
                           className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
                           id="nav-fotos-link"
                         >
-                          📸 Marine Gallery
+                          📅 Marine Events
                         </Link>
                       )}
                       <Link
@@ -596,7 +596,7 @@ const Navbar = () => {
                             className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
                             id="nav-fotos-link"
                           >
-                            📸 Marine Gallery
+                            📅 Marine Events
                           </Link>
                         )}
                         <Link
@@ -663,7 +663,7 @@ const Navbar = () => {
             <div className="px-4 py-6 space-y-4 flex flex-col">
               <Link to="/" onClick={() => setIsOpen(false)} className="text-lg font-black text-sky-400">Home</Link>
               {(settings?.enableFotosFeature !== false || isAdmin || isModerator) && (
-                <Link to="/photos" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Marine Gallery</Link>
+                <Link to="/photos" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Marine Events</Link>
               )}
               <Link to="/pricing" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Pricing Plans</Link>
               <Link to="/advertise" onClick={() => setIsOpen(false)} className="text-lg font-black text-indigo-300">Advertise on ConnectBoat</Link>
