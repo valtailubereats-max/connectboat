@@ -611,10 +611,21 @@ service cloud.firestore {
     }
 // Marine Events
 // Public visitors can read events.
-// Only administrators can create, edit or delete events.
+// Authenticated users may submit new events for admin review.
+// Only administrators can approve, publish, edit or delete events.
 match /marineEvents/{eventId} {
   allow read: if true;
-  allow create, update, delete: if isAdmin();
+
+  allow create: if isAdmin() || (
+    isAuthenticated() &&
+    request.resource.data.get('source', '') == 'public_submission' &&
+    request.resource.data.get('submittedByUserId', '') == request.auth.uid &&
+    request.resource.data.get('approvalStatus', '') == 'pending' &&
+    request.resource.data.get('status', '') == 'draft' &&
+    request.resource.data.get('active', true) == false
+  );
+
+  allow update, delete: if isAdmin();
 }
     match /locations/{locationId} {
       allow read: if true;
