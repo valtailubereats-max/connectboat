@@ -1186,45 +1186,9 @@ async function marineEventCreateCheckout(req: Request, res: Response) {
   const amountCents = Math.round(amount * 100);
   const title = String(eventData.title || 'Marine Event').trim();
 
-  const baseOrigin = req.headers.origin || 'https://connectboat.co.uk';
-
-  // TEMPORARY MARINE EVENTS PAYMENT TEST
-  // Only this exact normal-user account can simulate a successful event payment.
-  // This does NOT call Stripe and does NOT create real revenue.
-  const marineEventTestEmail = 'mercadolusopt@gmail.com';
-
-  if (userEmail === marineEventTestEmail) {
-    await eventRef.set(
-      {
-        paymentStatus: 'paid',
-        amountPaid: 0,
-        pricePaid: 0,
-        currency: 'GBP',
-        paymentSource: 'marine_event_test_simulation',
-        paymentProductType: 'marine_event',
-        testPayment: true,
-        testConfiguredPlanPrice: amount,
-        paidAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    const testSuccessUrl =
-      `${baseOrigin}/create-event?event_payment=success&event_id=${encodeURIComponent(eventId)}&test_payment=1`;
-
-    return res.status(200).json({
-      success: true,
-      url: testSuccessUrl,
-      checkoutUrl: testSuccessUrl,
-      sessionId: `test_marine_event_${eventId}`,
-      eventId,
-      testPayment: true,
-    });
-  }
-
   const stripe = getStripe();
 
+  const baseOrigin = req.headers.origin || 'https://connectboat.co.uk';
   const defaultSuccessUrl =
     `${baseOrigin}/create-event?event_payment=success&event_id=${encodeURIComponent(eventId)}&session_id={CHECKOUT_SESSION_ID}`;
   const defaultCancelUrl =
