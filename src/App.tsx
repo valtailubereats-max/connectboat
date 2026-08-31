@@ -415,16 +415,14 @@ const Navbar = () => {
                       >
                         🧭 Home
                       </Link>
-                      {(settings?.enableFotosFeature !== false || isAdmin || isModerator) && (
-                        <Link
-                          to="/events"
-                          onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
-                          id="nav-fotos-link"
-                        >
-                          📅 Marine Events
-                        </Link>
-                      )}
+                      <Link
+                        to="/events"
+                        onClick={() => setShowUserDropdown(false)}
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
+                        id="nav-fotos-link"
+                      >
+                        📅 Marine Events
+                      </Link>
                       <Link
                         to="/pricing"
                         onClick={() => setShowUserDropdown(false)}
@@ -661,9 +659,7 @@ const Navbar = () => {
           <motion.div initial={{opacity:0,height:0}} animate={{opacity:1,height:'auto'}} exit={{opacity:0,height:0}} className="md:hidden bg-slate-900 border-t border-slate-800 overflow-hidden text-slate-100">
             <div className="px-4 py-6 space-y-4 flex flex-col">
               <Link to="/" onClick={() => setIsOpen(false)} className="text-lg font-black text-sky-400">Home</Link>
-              {(settings?.enableFotosFeature !== false || isAdmin || isModerator) && (
-                <Link to="/events" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Marine Events</Link>
-              )}
+              <Link to="/events" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Marine Events</Link>
               <Link to="/pricing" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Pricing Plans</Link>
               <Link to="/advertise" onClick={() => setIsOpen(false)} className="text-lg font-black text-indigo-300">Advertise on ConnectBoat</Link>
               
