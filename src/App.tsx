@@ -14,6 +14,7 @@ import Precos from './pages/Precos';
 import Profile from './pages/Profile';
 import Campanhas from './pages/Campanhas';
 import CreateAd from './pages/CreateAd';
+import CreateEvent from './pages/CreateEvent';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminImport from './pages/AdminImport';
 import AdminBulkImport from './pages/AdminBulkImport';
@@ -942,6 +943,7 @@ export default function App() {
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
                 <Route path="/create-ad" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
+                <Route path="/create-event" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
                 <Route path="/edit-ad/:id" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
                 <Route path="/anuncio/:id" element={<AdDetails />} />
                 <Route path="/listing/:id" element={<AdDetails />} />
