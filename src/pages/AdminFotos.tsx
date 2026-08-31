@@ -51,6 +51,8 @@ type MarineEvent = {
   plan: EventPlan;
   pricePaid: number;
   paymentStatus: 'admin_free' | 'free' | 'not_required' | 'paid' | 'pending';
+  refundRequired?: boolean;
+  refundStatus?: 'pending' | 'refunded' | 'not_required' | 'failed';
   status: EventStatus;
   active: boolean;
   source: 'admin' | 'organizer' | 'public_submission';
@@ -349,6 +351,55 @@ export default function AdminFotos() {
     } catch (error) {
       console.error(error);
       toast('Could not approve the event.', 'error');
+    }
+  };
+
+  const rejectEvent = async (event: MarineEvent) => {
+    const isPaidPlan = event.plan === 'featured' || event.plan === 'premium';
+    const isPaid = event.paymentStatus === 'paid';
+
+    const message =
+      isPaidPlan && isPaid
+        ? `Reject "${event.title}"? The event will remain unpublished. A full Stripe refund will be processed in the next step of this workflow.`
+        : `Reject "${event.title}"? The event will remain unpublished.`;
+
+    if (!window.confirm(message)) return;
+
+    try {
+      await updateDoc(doc(db, colPath, event.id), {
+        approvalStatus: 'rejected',
+        status: 'rejected',
+        active: false,
+        awaitingAdminApproval: false,
+        refundRequired: isPaidPlan && isPaid,
+        refundStatus: isPaidPlan && isPaid ? 'pending' : 'not_required',
+        updatedAt: serverTimestamp(),
+      });
+
+      setEvents((current) =>
+        current.map((item) =>
+          item.id === event.id
+            ? {
+                ...item,
+                approvalStatus: 'rejected',
+                status: 'rejected',
+                active: false,
+                awaitingAdminApproval: false,
+                refundRequired: isPaidPlan && isPaid,
+                refundStatus: isPaidPlan && isPaid ? 'pending' : 'not_required',
+              }
+            : item
+        )
+      );
+
+      toast(
+        isPaidPlan && isPaid
+          ? 'Marine Event rejected. Full refund is now required.'
+          : 'Marine Event rejected.'
+      );
+    } catch (error) {
+      console.error(error);
+      toast('Could not reject the event.', 'error');
     }
   };
 
@@ -717,11 +768,18 @@ export default function AdminFotos() {
                         Pending Approval
                       </span>
                     )}
-                    {!event.active && event.approvalStatus !== 'pending' && (
-                      <span className="text-[10px] uppercase font-black px-2.5 py-1 rounded-full bg-red-50 text-red-600">
-                        Hidden
+                    {event.approvalStatus === 'rejected' && (
+                      <span className="text-[10px] uppercase font-black px-2.5 py-1 rounded-full bg-rose-100 text-rose-700">
+                        Rejected
                       </span>
                     )}
+                    {!event.active &&
+                      event.approvalStatus !== 'pending' &&
+                      event.approvalStatus !== 'rejected' && (
+                        <span className="text-[10px] uppercase font-black px-2.5 py-1 rounded-full bg-red-50 text-red-600">
+                          Hidden
+                        </span>
+                      )}
                   </div>
 
                   <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold text-slate-500">
@@ -766,6 +824,15 @@ export default function AdminFotos() {
                     >
                       <CheckCircle2 size={17} />
                       Approve
+                    </button>
+                  )}
+                  {event.approvalStatus === 'pending' && (
+                    <button
+                      onClick={() => rejectEvent(event)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 text-xs font-black"
+                      title="Reject event"
+                    >
+                      Reject
                     </button>
                   )}
                   {event.website && (
