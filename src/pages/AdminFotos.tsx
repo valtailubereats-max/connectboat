@@ -50,7 +50,7 @@ type MarineEvent = {
   imageUrl?: string;
   plan: EventPlan;
   pricePaid: number;
-  paymentStatus: 'admin_free' | 'free' | 'not_required' | 'paid' | 'pending';
+  paymentStatus: 'admin_free' | 'free' | 'not_required' | 'paid' | 'pending' | 'refunded';
   refundRequired?: boolean;
   refundStatus?: 'pending' | 'refunded' | 'not_required' | 'failed';
   status: EventStatus;
@@ -360,19 +360,77 @@ export default function AdminFotos() {
 
     const message =
       isPaidPlan && isPaid
-        ? `Reject "${event.title}"? The event will remain unpublished. A full Stripe refund will be processed in the next step of this workflow.`
+        ? `Reject "${event.title}"? This will immediately issue a FULL Stripe refund and keep the event unpublished.`
         : `Reject "${event.title}"? The event will remain unpublished.`;
 
     if (!window.confirm(message)) return;
 
     try {
+      if (isPaidPlan && isPaid) {
+        if (!user) {
+          toast('Administrator authentication is required.', 'error');
+          return;
+        }
+
+        const token = await user.getIdToken();
+
+        const response = await fetch('/api/admin/create-assisted-payment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: 'rejectAndRefundMarineEvent',
+            eventId: event.id,
+          }),
+        });
+
+        const rawBody = await response.text();
+        let data: any = {};
+
+        try {
+          data = rawBody ? JSON.parse(rawBody) : {};
+        } catch {
+          data = {};
+        }
+
+        if (!response.ok || data?.success !== true) {
+          throw new Error(
+            data?.errorMessage ||
+              data?.error ||
+              'Could not reject and refund this Marine Event.'
+          );
+        }
+
+        setEvents((current) =>
+          current.map((item) =>
+            item.id === event.id
+              ? {
+                  ...item,
+                  approvalStatus: 'rejected',
+                  status: 'rejected',
+                  active: false,
+                  awaitingAdminApproval: false,
+                  refundRequired: false,
+                  refundStatus: 'refunded',
+                  paymentStatus: 'refunded',
+                }
+              : item
+          )
+        );
+
+        toast('Marine Event rejected and full Stripe refund issued.');
+        return;
+      }
+
       await updateDoc(doc(db, colPath, event.id), {
         approvalStatus: 'rejected',
         status: 'rejected',
         active: false,
         awaitingAdminApproval: false,
-        refundRequired: isPaidPlan && isPaid,
-        refundStatus: isPaidPlan && isPaid ? 'pending' : 'not_required',
+        refundRequired: false,
+        refundStatus: 'not_required',
         updatedAt: serverTimestamp(),
       });
 
@@ -385,21 +443,20 @@ export default function AdminFotos() {
                 status: 'rejected',
                 active: false,
                 awaitingAdminApproval: false,
-                refundRequired: isPaidPlan && isPaid,
-                refundStatus: isPaidPlan && isPaid ? 'pending' : 'not_required',
+                refundRequired: false,
+                refundStatus: 'not_required',
               }
             : item
         )
       );
 
-      toast(
-        isPaidPlan && isPaid
-          ? 'Marine Event rejected. Full refund is now required.'
-          : 'Marine Event rejected.'
-      );
-    } catch (error) {
+      toast('Marine Event rejected.');
+    } catch (error: any) {
       console.error(error);
-      toast('Could not reject the event.', 'error');
+      toast(
+        error?.message || 'Could not reject the event.',
+        'error'
+      );
     }
   };
 
