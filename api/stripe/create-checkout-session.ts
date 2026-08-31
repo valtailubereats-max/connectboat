@@ -1083,6 +1083,176 @@ async function advertisingSelectBanner(req: Request, res: Response) {
   return res.status(200).json({ success: true });
 }
 
+
+async function marineEventCreateCheckout(req: Request, res: Response) {
+  getAdminDb();
+
+  const authHeader = req.headers.authorization || '';
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+
+  if (!match) {
+    return res.status(401).json({
+      success: false,
+      error: 'UNAUTHENTICATED',
+      errorMessage: 'Authentication is required to pay for an event plan.',
+    });
+  }
+
+  let decodedToken: any;
+  try {
+    decodedToken = await getAuth(getApp()).verifyIdToken(match[1]);
+  } catch (error) {
+    console.warn('[Marine Event Checkout] Invalid Firebase ID token', error);
+    return res.status(401).json({
+      success: false,
+      error: 'INVALID_AUTH_TOKEN',
+      errorMessage: 'Your login session is invalid or expired. Please sign in again.',
+    });
+  }
+
+  const userId = decodedToken.uid;
+  const userEmail =
+    typeof decodedToken.email === 'string' ? decodedToken.email.trim().toLowerCase() : '';
+
+  const {
+    eventId,
+    successUrl,
+    cancelUrl,
+  } = req.body || {};
+
+  if (!eventId || typeof eventId !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: 'MISSING_EVENT_ID',
+      errorMessage: 'A valid Marine Event ID is required.',
+    });
+  }
+
+  const db = getAdminDb();
+  const eventRef = db.collection('marineEvents').doc(eventId);
+  const eventSnap = await eventRef.get();
+
+  if (!eventSnap.exists) {
+    return res.status(404).json({
+      success: false,
+      error: 'EVENT_NOT_FOUND',
+      errorMessage: 'The Marine Event could not be found.',
+    });
+  }
+
+  const eventData = eventSnap.data() || {};
+  const submittedByUserId = String(eventData.submittedByUserId || '');
+
+  if (submittedByUserId !== userId) {
+    return res.status(403).json({
+      success: false,
+      error: 'EVENT_OWNERSHIP_MISMATCH',
+      errorMessage: 'You can only pay for an event submitted by your own account.',
+    });
+  }
+
+  if (
+    eventData.source !== 'public_submission' ||
+    eventData.approvalStatus !== 'pending' ||
+    eventData.status !== 'draft' ||
+    eventData.active !== false
+  ) {
+    return res.status(409).json({
+      success: false,
+      error: 'EVENT_NOT_ELIGIBLE_FOR_CHECKOUT',
+      errorMessage: 'This event is not in a valid state for payment.',
+    });
+  }
+
+  const plan = String(eventData.plan || 'standard').toLowerCase();
+
+  if (plan !== 'featured' && plan !== 'premium') {
+    return res.status(400).json({
+      success: false,
+      error: 'EVENT_PLAN_NOT_PAID',
+      errorMessage: 'Standard Marine Events do not require Stripe payment.',
+    });
+  }
+
+  if (eventData.paymentStatus === 'paid') {
+    return res.status(409).json({
+      success: false,
+      error: 'EVENT_ALREADY_PAID',
+      errorMessage: 'This event plan has already been paid.',
+    });
+  }
+
+  const amount = plan === 'premium' ? 19.99 : 9.99;
+  const amountCents = Math.round(amount * 100);
+  const title = String(eventData.title || 'Marine Event').trim();
+
+  const stripe = getStripe();
+
+  const baseOrigin = req.headers.origin || 'https://connectboat.co.uk';
+  const defaultSuccessUrl =
+    `${baseOrigin}/create-event?event_payment=success&event_id=${encodeURIComponent(eventId)}&session_id={CHECKOUT_SESSION_ID}`;
+  const defaultCancelUrl =
+    `${baseOrigin}/create-event?event_payment=cancelled&event_id=${encodeURIComponent(eventId)}`;
+
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    customer_email: userEmail || undefined,
+    payment_intent_data: userEmail
+      ? {
+          receipt_email: userEmail,
+        }
+      : undefined,
+    line_items: [
+      {
+        price_data: {
+          currency: 'gbp',
+          product_data: {
+            name:
+              plan === 'premium'
+                ? 'ConnectBoat Marine Events — Premium'
+                : 'ConnectBoat Marine Events — Featured',
+            description:
+              plan === 'premium'
+                ? `Premium visibility for "${title}" until the event end date`
+                : `Featured visibility for "${title}" until the event end date`,
+          },
+          unit_amount: amountCents,
+        },
+        quantity: 1,
+      },
+    ],
+    managed_payments: {
+      enabled: false,
+    } as any,
+    metadata: {
+      itemType: 'marine_event',
+      eventId,
+      userId,
+      plan,
+    },
+    success_url: successUrl || defaultSuccessUrl,
+    cancel_url: cancelUrl || defaultCancelUrl,
+  });
+
+  await eventRef.set(
+    {
+      paymentStatus: 'pending',
+      configuredPlanPrice: amount,
+      stripeCheckoutSessionId: session.id,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  return res.status(200).json({
+    success: true,
+    url: session.url,
+    checkoutUrl: session.url,
+    sessionId: session.id,
+    eventId,
+  });
+}
+
 export default async function createCheckoutSessionHandler(req: Request, res: Response) {
   if (req.method === 'POST') {
     const advertisingAction = String(req.body?.action || '');
@@ -1090,6 +1260,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     try {
       if (advertisingAction === 'listing_save') {
         return await handleListingSave(req, res);
+      }
+      if (advertisingAction === 'marine_event_create_checkout') {
+        return await marineEventCreateCheckout(req, res);
       }
       if (advertisingAction === 'advertising_create_checkout') {
         return await advertisingCreateCheckout(req, res);
