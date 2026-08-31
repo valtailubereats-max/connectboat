@@ -628,6 +628,7 @@ export default async function stripeWebhookHandler(
     const {
       itemType,
       adId,
+      eventId,
       userId,
       plan,
       showcaseDataJson,
@@ -1531,6 +1532,178 @@ export default async function stripeWebhookHandler(
                     'no_email_provided',
                 })
                 .catch(() => {});
+            }
+          }
+        }
+      } else if (
+        itemType === 'marine_event'
+      ) {
+        if (!eventId) {
+          console.error(
+            '[Stripe Webhook Marine Events] Missing eventId in metadata.'
+          );
+        } else {
+          const firebaseAdmin =
+            (admin as any).default || admin;
+
+          const eventRef =
+            db.collection('marineEvents').doc(eventId);
+
+          const eventSnap =
+            await eventRef.get();
+
+          if (!eventSnap.exists) {
+            console.error(
+              `[Stripe Webhook Marine Events] Event ${eventId} was not found.`
+            );
+          } else {
+            const eventData =
+              eventSnap.data() || {};
+
+            const metadataUserId =
+              String(userId || '');
+
+            const submittedByUserId =
+              String(eventData.submittedByUserId || '');
+
+            if (
+              metadataUserId &&
+              submittedByUserId &&
+              metadataUserId !== submittedByUserId
+            ) {
+              console.error(
+                `[Stripe Webhook Marine Events] User mismatch for event ${eventId}.`
+              );
+            } else {
+              const confirmedAmountPaid =
+                typeof session.amount_total === 'number'
+                  ? session.amount_total / 100
+                  : Number(eventData.configuredPlanPrice || 0);
+
+              const confirmedCurrency =
+                (session.currency || 'gbp').toUpperCase();
+
+              let confirmedStripeFee = 0;
+              let confirmedStripeNetReceived =
+                confirmedAmountPaid;
+
+              try {
+                const paymentIntentId =
+                  typeof session.payment_intent === 'string'
+                    ? session.payment_intent
+                    : session.payment_intent?.id || null;
+
+                if (paymentIntentId) {
+                  const paymentIntent =
+                    await stripe.paymentIntents.retrieve(
+                      paymentIntentId,
+                      {
+                        expand: [
+                          'latest_charge.balance_transaction',
+                        ],
+                      }
+                    );
+
+                  const latestCharge =
+                    paymentIntent.latest_charge &&
+                    typeof paymentIntent.latest_charge !== 'string'
+                      ? paymentIntent.latest_charge
+                      : null;
+
+                  const balanceTransaction =
+                    latestCharge?.balance_transaction &&
+                    typeof latestCharge.balance_transaction !== 'string'
+                      ? latestCharge.balance_transaction
+                      : null;
+
+                  if (balanceTransaction) {
+                    confirmedStripeFee =
+                      balanceTransaction.fee / 100;
+
+                    confirmedStripeNetReceived =
+                      balanceTransaction.net / 100;
+                  }
+                }
+              } catch (feeError) {
+                console.error(
+                  `[Stripe Webhook Marine Events] Unable to retrieve Stripe fee for session ${session.id}:`,
+                  feeError
+                );
+              }
+
+              const paidPlan =
+                String(plan || eventData.plan || '')
+                  .toLowerCase();
+
+              await eventRef.set(
+                {
+                  plan:
+                    paidPlan || eventData.plan || 'standard',
+
+                  paymentStatus:
+                    'paid',
+
+                  amountPaid:
+                    confirmedAmountPaid,
+
+                  pricePaid:
+                    confirmedAmountPaid,
+
+                  currency:
+                    confirmedCurrency,
+
+                  amountRefunded:
+                    0,
+
+                  stripeFee:
+                    confirmedStripeFee,
+
+                  stripeNetReceived:
+                    confirmedStripeNetReceived,
+
+                  paidAt:
+                    eventData.paidAt ||
+                    firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+
+                  stripeCheckoutSessionId:
+                    session.id,
+
+                  stripePaymentIntentId:
+                    typeof session.payment_intent === 'string'
+                      ? session.payment_intent
+                      : session.payment_intent?.id || null,
+
+                  paymentSource:
+                    'stripe_checkout',
+
+                  paymentProductType:
+                    'marine_event',
+
+                  awaitingAdminApproval:
+                    true,
+
+                  approvalStatus:
+                    eventData.approvalStatus || 'pending',
+
+                  status:
+                    eventData.status === 'published'
+                      ? 'published'
+                      : 'draft',
+
+                  active:
+                    eventData.status === 'published'
+                      ? eventData.active === true
+                      : false,
+
+                  updatedAt:
+                    firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+                },
+                { merge: true }
+              );
+
+              console.log(
+                `[Stripe Webhook Marine Events] Payment confirmed for event ${eventId} (${paidPlan || eventData.plan}). Event remains pending admin approval.`
+              );
             }
           }
         }
