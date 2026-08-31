@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { CalendarDays, CheckCircle2, Image as ImageIcon, Loader2, MapPin, Ticket, UploadCloud } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useAuth } from '../context/AuthContext';
 
 type EventPlan = 'standard' | 'featured' | 'premium';
@@ -76,6 +77,9 @@ export default function CreateEvent() {
   const navigate = useNavigate();
   const [form, setForm] = useState<FormState>(initialForm);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -86,6 +90,26 @@ export default function CreateEvent() {
 
   const updateField = <K extends keyof FormState>(field: K, value: FormState[K]) => {
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+
+  const uploadEventImage = async () => {
+    if (!selectedImage || !user) return '';
+
+    setUploadingImage(true);
+
+    try {
+      const safeName = selectedImage.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const imageRef = ref(
+        storage,
+        `marine_event_submissions/${user.uid}/${Date.now()}_${safeName}`,
+      );
+
+      const snapshot = await uploadBytes(imageRef, selectedImage);
+      return await getDownloadURL(snapshot.ref);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -110,6 +134,8 @@ export default function CreateEvent() {
     setSubmitting(true);
 
     try {
+      const uploadedImageUrl = selectedImage ? await uploadEventImage() : '';
+
       await addDoc(collection(db, 'marineEvents'), {
         title: form.title.trim(),
         description: form.description.trim(),
@@ -121,7 +147,7 @@ export default function CreateEvent() {
         venue: form.venue.trim(),
         website: normalizeUrl(form.website),
         ticketUrl: normalizeUrl(form.ticketUrl),
-        imageUrl: normalizeUrl(form.imageUrl),
+        imageUrl: uploadedImageUrl || normalizeUrl(form.imageUrl),
         plan: form.plan,
         status: 'draft',
         active: false,
@@ -139,6 +165,7 @@ export default function CreateEvent() {
 
       setSuccess(true);
       setForm(initialForm);
+      setSelectedImage(null);
     } catch (error) {
       console.error('Error submitting marine event:', error);
       setErrorMessage('Could not submit the event. Please try again.');
@@ -322,21 +349,42 @@ export default function CreateEvent() {
                 </div>
               </label>
 
-              <label className="md:col-span-2">
-                <span className="block text-sm font-black text-slate-700 mb-2">Event Image URL</span>
-                <div className="relative">
-                  <ImageIcon size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <div className="md:col-span-2">
+                <span className="block text-sm font-black text-slate-700 mb-2">Event Image</span>
+
+                <div className="grid sm:grid-cols-[1fr_auto] gap-3">
+                  <div className="relative">
+                    <ImageIcon size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={form.imageUrl}
+                      onChange={(e) => updateField('imageUrl', e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-3 outline-none focus:border-sky-500"
+                      placeholder="Optional image URL"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-black text-sm"
+                  >
+                    <UploadCloud size={17} />
+                    {selectedImage ? selectedImage.name : 'Upload Event Image'}
+                  </button>
+
                   <input
-                    value={form.imageUrl}
-                    onChange={(e) => updateField('imageUrl', e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 pl-10 pr-4 py-3 outline-none focus:border-sky-500"
-                    placeholder="https://..."
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => setSelectedImage(e.target.files?.[0] || null)}
                   />
                 </div>
+
                 <p className="mt-2 text-xs text-slate-400">
-                  Direct file upload will be added in a later step. For now, use a public image URL.
+                  Choose an image from your phone or computer, or use an optional public image URL.
                 </p>
-              </label>
+              </div>
             </div>
           </section>
 
@@ -398,13 +446,13 @@ export default function CreateEvent() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || uploadingImage}
               className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white font-black text-sm shadow-sm"
             >
-              {submitting ? (
+              {submitting || uploadingImage ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  Submitting...
+                  {uploadingImage ? 'Uploading Image...' : 'Submitting...'}
                 </>
               ) : (
                 <>
