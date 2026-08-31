@@ -609,7 +609,13 @@ service cloud.firestore {
         resource.data.ownerId == request.auth.uid
       );
     }
-
+// Marine Events
+// Public visitors can read events.
+// Only administrators can create, edit or delete events.
+match /marineEvents/{eventId} {
+  allow read: if true;
+  allow create, update, delete: if isAdmin();
+}
     match /locations/{locationId} {
       allow read: if true;
       allow create, update: if isAuthenticated();
