@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { CalendarDays, CheckCircle2, Image as ImageIcon, Loader2, MapPin, Ticket, UploadCloud } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db, storage } from '../firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { useAuth } from '../context/AuthContext';
@@ -75,6 +75,7 @@ const normalizeUrl = (value: string) => {
 export default function CreateEvent() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [form, setForm] = useState<FormState>(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -82,6 +83,9 @@ export default function CreateEvent() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [success, setSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const paymentSuccess = searchParams.get('event_payment') === 'success';
+  const paymentCancelled = searchParams.get('event_payment') === 'cancelled';
 
   const selectedPlan = useMemo(
     () => plans.find((plan) => plan.id === form.plan) || plans[0],
@@ -136,7 +140,7 @@ export default function CreateEvent() {
     try {
       const uploadedImageUrl = selectedImage ? await uploadEventImage() : '';
 
-      await addDoc(collection(db, 'marineEvents'), {
+      const eventDoc = await addDoc(collection(db, 'marineEvents'), {
         title: form.title.trim(),
         description: form.description.trim(),
         category: form.category,
@@ -163,18 +167,51 @@ export default function CreateEvent() {
         updatedAt: serverTimestamp(),
       });
 
+      if (form.plan === 'featured' || form.plan === 'premium') {
+        const token = await user.getIdToken();
+
+        const checkoutResponse = await fetch('/api/stripe/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: 'marine_event_create_checkout',
+            eventId: eventDoc.id,
+          }),
+        });
+
+        const checkoutData = await checkoutResponse.json().catch(() => ({}));
+
+        if (!checkoutResponse.ok || !checkoutData?.checkoutUrl) {
+          throw new Error(
+            checkoutData?.errorMessage ||
+              checkoutData?.error ||
+              'Could not start Stripe checkout for this event.',
+          );
+        }
+
+        window.location.href = checkoutData.checkoutUrl;
+        return;
+      }
+
       setSuccess(true);
       setForm(initialForm);
       setSelectedImage(null);
     } catch (error) {
       console.error('Error submitting marine event:', error);
-      setErrorMessage('Could not submit the event. Please try again.');
+      setErrorMessage(
+        error instanceof Error && error.message
+          ? error.message
+          : 'Could not submit the event. Please try again.',
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (success) {
+  if (success || paymentSuccess) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-4">
         <div className="w-full max-w-xl bg-white border border-slate-200 rounded-3xl shadow-sm p-8 sm:p-10 text-center">
@@ -182,10 +219,12 @@ export default function CreateEvent() {
             <CheckCircle2 size={34} />
           </div>
           <h1 className="mt-5 text-2xl sm:text-3xl font-black text-slate-900">
-            Event submitted
+            {paymentSuccess ? 'Payment confirmed' : 'Event submitted'}
           </h1>
           <p className="mt-3 text-sm sm:text-base text-slate-600 leading-relaxed">
-            Your event was sent to ConnectBoat for review. It will only appear publicly after admin approval.
+            {paymentSuccess
+              ? 'Your payment was completed and your event is now waiting for ConnectBoat admin approval before publication.'
+              : 'Your event was sent to ConnectBoat for review. It will only appear publicly after admin approval.'}
           </p>
           <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
             <button
@@ -391,7 +430,7 @@ export default function CreateEvent() {
           <section className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-sm">
             <h2 className="text-xl font-black text-slate-900">Choose Your Event Plan</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Paid plans will be connected to Stripe after this submission flow is tested.
+              Featured and Premium plans are paid securely through Stripe after you submit the event.
             </p>
 
             <div className="mt-6 grid md:grid-cols-3 gap-4">
@@ -429,6 +468,12 @@ export default function CreateEvent() {
             </div>
           </section>
 
+          {paymentCancelled && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 text-amber-800 px-4 py-3 text-sm font-bold">
+              Payment was cancelled. Your event was saved as pending and has not been published.
+            </div>
+          )}
+
           {errorMessage && (
             <div className="rounded-2xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm font-bold">
               {errorMessage}
@@ -457,7 +502,7 @@ export default function CreateEvent() {
               ) : (
                 <>
                   <UploadCloud size={18} />
-                  Submit Event for Review
+                  {form.plan === 'standard' ? 'Submit Event for Review' : 'Continue to Secure Payment'}
                 </>
               )}
             </button>
