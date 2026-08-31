@@ -590,16 +590,14 @@ const Navbar = () => {
                         >
                           🧭 Home
                         </Link>
-                        {(settings?.enableFotosFeature !== false || isAdmin || isModerator) && (
-                          <Link
-                            to="/events"
-                            onClick={() => setShowUserDropdown(false)}
-                            className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
-                            id="nav-fotos-link"
-                          >
-                            📅 Marine Events
-                          </Link>
-                        )}
+                        <Link
+                          to="/events"
+                          onClick={() => setShowUserDropdown(false)}
+                          className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
+                          id="nav-fotos-link"
+                        >
+                          📅 Marine Events
+                        </Link>
                         <Link
                           to="/pricing"
                           onClick={() => setShowUserDropdown(false)}
