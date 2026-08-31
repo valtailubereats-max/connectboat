@@ -313,17 +313,35 @@ export default function AdminFotos() {
   };
 
   const approveEvent = async (event: MarineEvent) => {
+    const isPaidPlan = event.plan === 'featured' || event.plan === 'premium';
+    const paymentReady =
+      !isPaidPlan ||
+      event.paymentStatus === 'paid' ||
+      event.paymentStatus === 'admin_free';
+
+    if (!paymentReady) {
+      toast('This paid event cannot be approved until Stripe payment is confirmed.', 'error');
+      return;
+    }
+
     try {
       await updateDoc(doc(db, colPath, event.id), {
         approvalStatus: 'approved',
         status: 'published',
         active: true,
+        awaitingAdminApproval: false,
         updatedAt: serverTimestamp(),
       });
       setEvents((current) =>
         current.map((item) =>
           item.id === event.id
-            ? { ...item, approvalStatus: 'approved', status: 'published', active: true }
+            ? {
+                ...item,
+                approvalStatus: 'approved',
+                status: 'published',
+                active: true,
+                awaitingAdminApproval: false,
+              }
             : item
         )
       );
@@ -726,8 +744,25 @@ export default function AdminFotos() {
                   {event.approvalStatus === 'pending' && (
                     <button
                       onClick={() => approveEvent(event)}
-                      className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-black"
-                      title="Approve and publish event"
+                      disabled={
+                        (event.plan === 'featured' || event.plan === 'premium') &&
+                        event.paymentStatus !== 'paid' &&
+                        event.paymentStatus !== 'admin_free'
+                      }
+                      className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-black ${
+                        (event.plan === 'featured' || event.plan === 'premium') &&
+                        event.paymentStatus !== 'paid' &&
+                        event.paymentStatus !== 'admin_free'
+                          ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                          : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                      }`}
+                      title={
+                        (event.plan === 'featured' || event.plan === 'premium') &&
+                        event.paymentStatus !== 'paid' &&
+                        event.paymentStatus !== 'admin_free'
+                          ? 'Waiting for Stripe payment confirmation'
+                          : 'Approve and publish event'
+                      }
                     >
                       <CheckCircle2 size={17} />
                       Approve
