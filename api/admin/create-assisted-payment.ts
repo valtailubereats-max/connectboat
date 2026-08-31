@@ -144,6 +144,7 @@ async function resolveRefundRecipientEmail(db: any, adData: any) {
     adData.userEmail,
     adData.ownerEmail,
     adData.email,
+    adData.submittedByEmail,
   ];
 
   for (const candidate of directCandidates) {
@@ -161,6 +162,7 @@ async function resolveRefundRecipientEmail(db: any, adData: any) {
     adData.userId,
     adData.ownerId,
     adData.createdBy,
+    adData.submittedByUserId,
   ];
 
   for (const uidCandidate of ownerUidCandidates) {
@@ -436,6 +438,210 @@ export default async function createAssistedPaymentHandler(
 
       return res.status(200).json({
         success: true,
+      });
+    }
+
+
+    if (action === 'rejectAndRefundMarineEvent') {
+      const eventId =
+        typeof req.body?.eventId === 'string'
+          ? req.body.eventId.trim()
+          : '';
+
+      if (!eventId) {
+        return res.status(400).json({
+          success: false,
+          error: 'MISSING_EVENT_ID',
+          errorMessage: 'A valid Marine Event ID is required.',
+        });
+      }
+
+      const db = getAdminDb();
+      const adminCheck = await verifyAdminRequest(req, db);
+
+      if (!adminCheck.ok) {
+        return res.status(adminCheck.status).json({
+          success: false,
+          error: adminCheck.code,
+          errorMessage: adminCheck.message,
+        });
+      }
+
+      const eventRef = db.collection('marineEvents').doc(eventId);
+      const eventSnapshot = await eventRef.get();
+
+      if (!eventSnapshot.exists) {
+        return res.status(404).json({
+          success: false,
+          error: 'EVENT_NOT_FOUND',
+          errorMessage: 'The Marine Event could not be found.',
+        });
+      }
+
+      const eventData = eventSnapshot.data() || {};
+      const eventPlan = String(eventData.plan || 'standard').toLowerCase();
+
+      if (eventPlan !== 'featured' && eventPlan !== 'premium') {
+        return res.status(409).json({
+          success: false,
+          error: 'EVENT_PLAN_NOT_PAID',
+          errorMessage: 'Only paid Featured or Premium Marine Events use the automatic Stripe refund flow.',
+        });
+      }
+
+      if (eventData.paymentStatus !== 'paid') {
+        return res.status(409).json({
+          success: false,
+          error: 'EVENT_NOT_PAID',
+          errorMessage: 'This Marine Event does not have a confirmed Stripe payment to refund.',
+        });
+      }
+
+      if (eventData.approvalStatus !== 'pending') {
+        return res.status(409).json({
+          success: false,
+          error: 'EVENT_NOT_PENDING_APPROVAL',
+          errorMessage: 'Only Marine Events still waiting for approval can be rejected through this refund flow.',
+        });
+      }
+
+      const amountPaid = Number(eventData.amountPaid || eventData.pricePaid || 0);
+      const amountRefunded = Number(eventData.amountRefunded || 0);
+      const remainingAmount = Math.max(0, amountPaid - amountRefunded);
+
+      const paymentIntentId =
+        typeof eventData.stripePaymentIntentId === 'string'
+          ? eventData.stripePaymentIntentId.trim()
+          : '';
+
+      if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
+        return res.status(409).json({
+          success: false,
+          error: 'PAYMENT_AMOUNT_UNAVAILABLE',
+          errorMessage: 'The original Marine Event payment amount is unavailable.',
+        });
+      }
+
+      if (remainingAmount <= 0.0001) {
+        return res.status(409).json({
+          success: false,
+          error: 'ALREADY_FULLY_REFUNDED',
+          errorMessage: 'This Marine Event has already been fully refunded.',
+        });
+      }
+
+      if (!paymentIntentId) {
+        return res.status(409).json({
+          success: false,
+          error: 'PAYMENT_INTENT_UNAVAILABLE',
+          errorMessage: 'Stripe Payment Intent is unavailable for this Marine Event.',
+        });
+      }
+
+      const stripe = getStripe();
+      const amountCents = Math.round(remainingAmount * 100);
+
+      const refund = await stripe.refunds.create(
+        {
+          payment_intent: paymentIntentId,
+          amount: amountCents,
+          metadata: {
+            source: 'connectboat_marine_event_rejection',
+            eventId,
+            refundedBy: adminCheck.email || adminCheck.uid,
+          },
+        },
+        {
+          idempotencyKey:
+            `connectboat-marine-event-refund-${eventId}-${Math.round(amountRefunded * 100)}-${amountCents}`,
+        }
+      );
+
+      const actualRefundAmount = refund.amount / 100;
+      const newRefundedTotal = Math.min(
+        amountPaid,
+        Math.round((amountRefunded + actualRefundAmount) * 100) / 100
+      );
+
+      const refundDate = new Date();
+
+      await eventRef.update({
+        approvalStatus: 'rejected',
+        status: 'rejected',
+        active: false,
+        awaitingAdminApproval: false,
+        refundRequired: false,
+        refundStatus: 'refunded',
+        amountRefunded: newRefundedTotal,
+        refundedAt: refundDate,
+        stripeRefundId: refund.id,
+        stripeRefundStatus: refund.status || 'unknown',
+        paymentStatus: 'refunded',
+        updatedAt: refundDate,
+      });
+
+      let refundEmailSent = false;
+      let refundEmailRecipient = '';
+      let refundEmailError = '';
+
+      try {
+        refundEmailRecipient = await resolveRefundRecipientEmail(db, eventData);
+
+        if (refundEmailRecipient) {
+          await sendRefundEmailDirect(
+            refundEmailRecipient,
+            {
+              customerName:
+                eventData.submittedByName ||
+                eventData.organizerName ||
+                '',
+              listingTitle:
+                eventData.title ||
+                eventId,
+              amountRefunded: actualRefundAmount,
+              currency: eventData.currency || 'GBP',
+              refundId: refund.id,
+              paymentIntentId,
+              refundDate,
+            }
+          );
+
+          refundEmailSent = true;
+
+          await eventRef.update({
+            refundEmailSent: true,
+            refundEmailSentAt: new Date(),
+            refundEmailRecipient,
+            refundEmailError: '',
+          });
+        }
+      } catch (emailError: any) {
+        refundEmailError =
+          emailError?.message ||
+          'Refund completed, but the confirmation email could not be sent.';
+
+        console.error(
+          `[Marine Event Refund Email] Refund ${refund.id} completed but email failed:`,
+          emailError
+        );
+
+        await eventRef.update({
+          refundEmailSent: false,
+          refundEmailRecipient,
+          refundEmailError: refundEmailError.slice(0, 1000),
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        eventId,
+        refundId: refund.id,
+        stripeRefundStatus: refund.status || 'unknown',
+        amountRefunded: actualRefundAmount,
+        totalRefunded: newRefundedTotal,
+        refundEmailSent,
+        refundEmailRecipient,
+        refundEmailError,
       });
     }
 
