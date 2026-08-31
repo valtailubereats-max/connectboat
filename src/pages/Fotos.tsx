@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import {
   CalendarDays,
   ExternalLink,
   Loader2,
   MapPin,
+  PlusCircle,
   Search,
   Sparkles,
   Star,
@@ -60,6 +62,7 @@ const formatDateRange = (startDate: string, endDate?: string) => {
 };
 
 export default function Fotos() {
+  const navigate = useNavigate();
   const [events, setEvents] = useState<MarineEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<(typeof FILTERS)[number]>('All Events');
@@ -137,17 +140,28 @@ export default function Fotos() {
       <section className="relative overflow-hidden bg-slate-950 text-white">
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_top_right,_#38bdf8,_transparent_40%)]" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 text-sky-300 text-xs font-black uppercase tracking-[0.2em]">
-              <CalendarDays size={17} />
-              ConnectBoat
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 text-sky-300 text-xs font-black uppercase tracking-[0.2em]">
+                <CalendarDays size={17} />
+                ConnectBoat
+              </div>
+              <h1 className="mt-4 text-4xl sm:text-5xl font-black tracking-tight">
+                Marine Events
+              </h1>
+              <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl">
+                Discover boat shows, regattas and marine events across the UK and beyond.
+              </p>
             </div>
-            <h1 className="mt-4 text-4xl sm:text-5xl font-black tracking-tight">
-              Marine Events
-            </h1>
-            <p className="mt-4 text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl">
-              Discover boat shows, regattas and marine events across the UK and beyond.
-            </p>
+
+            <button
+              type="button"
+              onClick={() => navigate('/create-event')}
+              className="inline-flex items-center justify-center gap-2 self-start lg:self-auto bg-sky-500 hover:bg-sky-400 text-slate-950 px-5 py-3.5 rounded-xl font-black text-sm shadow-lg shadow-sky-950/20 transition-all active:scale-[0.98]"
+            >
+              <PlusCircle size={18} />
+              List Your Event
+            </button>
           </div>
         </div>
       </section>
