@@ -100,7 +100,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { icon: Megaphone, label: 'Marketing', path: '/admin/marketing' },
     { icon: QrCode, label: 'Invites', path: '/admin/invitations' },
     { icon: MessageSquare, label: 'Suggestions', path: '/admin/suggestions' },
-    { icon: Camera, label: 'Marine Gallery', path: '/admin/fotos' },
+    { icon: Camera, label: 'Marine Events', path: '/admin/fotos' },
     { icon: Settings, label: 'Settings', path: '/admin/settings' },
     { icon: BookOpen, label: 'Technical Manual', path: '/admin/manual-tecnico' },
   ];
@@ -154,7 +154,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       title: 'Utilities & Support',
       items: [
         { icon: MessageSquare, label: 'Suggestions', path: '/admin/suggestions' },
-        { icon: Camera, label: 'Marine Gallery', path: '/admin/fotos' },
+        { icon: Camera, label: 'Marine Events', path: '/admin/fotos' },
         { icon: Settings, label: 'Settings / Definições', path: '/admin/settings' },
         { icon: BookOpen, label: 'Technical Manual', path: '/admin/manual-tecnico' },
       ]
