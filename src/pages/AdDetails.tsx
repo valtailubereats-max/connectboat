@@ -1027,7 +1027,11 @@ const AdDetails = () => {
     ? formatDistanceToNow(dateObject, { addSuffix: true, locale: pt }) 
     : 'data indisponível';
 
-  const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
+  const isUnclaimed =
+    (ad.isClaimableBusiness === true ||
+      ad.isClaimable === true ||
+      ad.listingType === 'claimable') &&
+    ad.claimStatus !== 'claimed';
 
   return (
     <>
@@ -2466,13 +2470,21 @@ const AdDetails = () => {
           className={`flex-1 min-w-0 h-10 px-3 rounded-xl font-black text-[11px] text-white shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
             ad.adStatus === 'sold' || ad.status === 'sold'
               ? 'bg-slate-400 cursor-not-allowed'
-              : hasSourceUrl
-                ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
-                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+              : isUnclaimed
+                ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200'
+                : hasSourceUrl
+                  ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
+                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
           }`}
         >
-          <MessageCircle size={15} className="shrink-0" />
-          <span className="truncate">{hasSourceUrl ? 'Contact Seller' : 'Contact'}</span>
+          {isUnclaimed ? (
+            <ShieldAlert size={15} className="shrink-0" />
+          ) : (
+            <MessageCircle size={15} className="shrink-0" />
+          )}
+          <span className="truncate">
+            {isUnclaimed ? 'Awaiting Owner Claim' : hasSourceUrl ? 'Contact Seller' : 'Contact'}
+          </span>
         </button>
       </div>
 
