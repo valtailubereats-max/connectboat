@@ -611,10 +611,6 @@ const AdDetails = () => {
   };
 
   const hasSourceUrl = !!(ad && ad.sourceUrl && /^https?:\/\//i.test(ad.sourceUrl));
-  const isAwaitingOwnerClaim = !!(
-    ad?.isClaimableBusiness &&
-    ad.claimStatus !== 'claimed'
-  );
 
   const getTargetContactUrl = () => {
     if (!ad) return '';
@@ -636,7 +632,7 @@ const AdDetails = () => {
   };
 
   const handleContactClick = () => {
-    if (ad?.isClaimableBusiness && ad.claimStatus !== 'claimed') {
+    if (ad?.isClaimableBusiness && (ad.claimStatus === 'unclaimed' || !ad.claimStatus)) {
       setShowUnclaimedContactModal(true);
       return;
     }
@@ -1703,40 +1699,6 @@ const AdDetails = () => {
                     <Tag size={20} className="flex-shrink-0 text-slate-400" />
                     <span className="leading-tight">Listing Sold</span>
                   </div>
-                ) : isAwaitingOwnerClaim ? (
-                  <div className="space-y-3">
-                    <div className="w-full flex items-center justify-center gap-2 bg-amber-50 text-amber-800 py-3.5 px-5 rounded-2xl font-black border border-amber-200 shadow-sm text-center cursor-not-allowed">
-                      <ShieldAlert size={20} className="flex-shrink-0 text-amber-600" />
-                      <span className="leading-tight">
-                        {ad.claimStatus === 'pending'
-                          ? 'Owner Verification Pending'
-                          : 'Awaiting Owner Claim'}
-                      </span>
-                    </div>
-
-                    {ad.claimStatus !== 'pending' && (
-                      <div className="rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-amber-50 p-4 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                            <ShieldCheck size={20} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-black text-slate-900">Is this your listing?</p>
-                            <p className="text-xs text-slate-600 font-semibold mt-1 leading-relaxed">
-                              Claim it free to verify ownership, manage the listing and activate direct customer enquiries.
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={handleOpenClaimModal}
-                          className="mt-3 w-full flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-sm transition-all shadow-sm active:scale-[0.98]"
-                        >
-                          <ShieldCheck size={17} />
-                          Claim This Listing — Free
-                        </button>
-                      </div>
-                    )}
-                  </div>
                 ) : (
                   <div className="flex items-stretch gap-2">
                     <button
@@ -2275,6 +2237,26 @@ const AdDetails = () => {
             </div>
           )}
 
+          {/* Claim ownership remains visible when applicable */}
+          {ad.isClaimableBusiness && (ad.claimStatus === 'unclaimed' || !ad.claimStatus) && (
+            <div className="bg-gradient-to-br from-indigo-50 to-amber-50/10 border border-indigo-100 rounded-2xl p-4 space-y-2.5 text-left animate-fade-in my-2">
+              <div className="flex gap-2 items-start">
+                <span className="text-xl">💼</span>
+                <div className="space-y-0.5">
+                  <p className="font-extrabold text-[#030d32] text-xs">Are you the owner of this business?</p>
+                  <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
+                    Activate and claim this listing for free to start receiving direct WhatsApp enquiries!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleOpenClaimModal}
+                className="w-full text-center py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
+              >
+                Confirm Ownership
+              </button>
+            </div>
+          )}
         </div>
 
         {/* SECTION CARD 2: Localização aproximada */}
