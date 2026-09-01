@@ -2245,24 +2245,36 @@ const AdDetails = () => {
             </div>
           )}
 
-          {/* Claim ownership remains visible when applicable */}
-          {ad.isClaimableBusiness && (ad.claimStatus === 'unclaimed' || !ad.claimStatus) && (
-            <div className="bg-gradient-to-br from-indigo-50 to-amber-50/10 border border-indigo-100 rounded-2xl p-4 space-y-2.5 text-left animate-fade-in my-2">
-              <div className="flex gap-2 items-start">
-                <span className="text-xl">💼</span>
-                <div className="space-y-0.5">
-                  <p className="font-extrabold text-[#030d32] text-xs">Are you the owner of this business?</p>
-                  <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
-                    Activate and claim this listing for free to start receiving direct WhatsApp enquiries!
+          {/* Highly visible ownership claim call-to-action */}
+          {ad.isClaimableBusiness && ad.claimStatus !== 'claimed' && (
+            <div className="bg-white/95 border-2 border-amber-300 rounded-2xl p-4 space-y-3 text-left animate-fade-in my-3 shadow-lg shadow-amber-100/60">
+              <div className="flex gap-3 items-start">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <ShieldAlert size={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-black text-[#030d32] text-sm">
+                    Is this your boat?
+                  </p>
+                  <p className="text-xs text-slate-600 font-semibold leading-relaxed mt-1">
+                    Claim this listing free to verify ownership, manage the advert and activate direct customer enquiries.
                   </p>
                 </div>
               </div>
-              <button
-                onClick={handleOpenClaimModal}
-                className="w-full text-center py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
-              >
-                Confirm Ownership
-              </button>
+
+              {ad.claimStatus === 'pending' ? (
+                <div className="w-full text-center py-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-black text-xs">
+                  Ownership verification pending
+                </div>
+              ) : (
+                <button
+                  onClick={handleOpenClaimModal}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-sm transition-all cursor-pointer shadow-md active:scale-[0.98]"
+                >
+                  <ShieldCheck size={17} />
+                  Claim This Listing — Free
+                </button>
+              )}
             </div>
           )}
         </div>
