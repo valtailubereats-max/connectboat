@@ -1425,17 +1425,29 @@ const AdDetails = () => {
                   )}
                 </div>
                 {ad.category === '💚 Doações & Solidariedade' ? (
-                  <div className="text-3.5xl font-black text-emerald-600 bg-emerald-50 py-1.5 px-4 rounded-2xl border border-emerald-200 flex items-center justify-center animate-pulse">
-                    Free 💚
-                  </div>
-                ) : hasPrice ? (
-                  <div className="text-3.5xl font-black text-indigo-600 bg-indigo-50/50 py-1.5 px-4 rounded-2xl border border-indigo-100/50 flex items-center justify-center">
-                    {formatPrice(ad.price, ad.country)}
+                  <div className="min-w-[150px] rounded-2xl border border-emerald-200 bg-white/85 px-5 py-3 text-right shadow-sm">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-emerald-500">
+                      Price
+                    </span>
+                    <span className="mt-1 block text-2xl md:text-3xl font-black leading-none text-emerald-600">
+                      Free 💚
+                    </span>
                   </div>
                 ) : (
-                  <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-100 flex items-center justify-center">
-                    Price on Request
-                  </span>
+                  <div className="min-w-[150px] rounded-2xl border border-indigo-200/80 bg-white/88 px-5 py-3 text-right shadow-[0_8px_22px_rgba(79,70,229,0.10)]">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                      Price
+                    </span>
+                    <span className={`mt-1 block font-black leading-none text-indigo-600 ${
+                      (ad as any).priceOnRequest || !hasPrice
+                        ? 'text-lg md:text-xl uppercase'
+                        : 'text-2xl md:text-3xl'
+                    }`}>
+                      {(ad as any).priceOnRequest || !hasPrice
+                        ? 'On Request'
+                        : formatPrice(ad.price, ad.country)}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
@@ -1668,82 +1680,101 @@ const AdDetails = () => {
         <div className="lg:col-span-3 space-y-6">
           <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-8 space-y-6">
 
-            {/* Contact actions — seller profile is now opened from the profile icon */}
-            <div className="bg-white/58 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/70 space-y-4 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.60)]">
+            {/* Contact actions — responsive and claim-aware */}
+            <div className="bg-white/58 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/70 space-y-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.60)]">
               <div className="flex flex-col gap-3">
                 {(ad as any).moreInfoUrl && /^https?:\/\//i.test((ad as any).moreInfoUrl) && (
                   <a
                     href={(ad as any).moreInfoUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-indigo-700 active:scale-[0.98]"
                   >
-                    <ExternalLink size={20} className="flex-shrink-0" />
-                    <span className="leading-tight">Ver Mais</span>
+                    <ExternalLink size={19} className="shrink-0" />
+                    <span className="leading-tight">View Original Listing</span>
                   </a>
                 )}
 
-                {ad.externalListing || (hasSourceUrl && !ad.demoListing) ? (
-                  <a
-                    href={ad.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center"
-                  >
-                    <ExternalLink size={20} className="flex-shrink-0" />
-                    <span className="leading-tight">View Original Listing</span>
-                  </a>
-                ) : ad.demoListing ? (
-                  <div className="flex items-center justify-center gap-2 bg-amber-50 text-amber-800 py-3.5 px-6 rounded-2xl font-extrabold text-xs text-center border border-amber-200/80">
-                    <Tag size={16} className="text-amber-600 shrink-0" />
+                {!((ad as any).moreInfoUrl && /^https?:\/\//i.test((ad as any).moreInfoUrl)) &&
+                  (ad.externalListing || (hasSourceUrl && !ad.demoListing)) && (
+                    <a
+                      href={ad.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-indigo-700 active:scale-[0.98]"
+                    >
+                      <ExternalLink size={19} className="shrink-0" />
+                      <span className="leading-tight">View Original Listing</span>
+                    </a>
+                  )}
+
+                {ad.demoListing ? (
+                  <div className="flex items-center justify-center gap-2 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3.5 text-center text-xs font-extrabold text-amber-800">
+                    <Tag size={16} className="shrink-0 text-amber-600" />
                     <span>Demo Listing — Not Available for Sale</span>
                   </div>
                 ) : ad.adStatus === 'sold' || ad.status === 'sold' ? (
-                  <div className="flex items-center justify-center gap-2 bg-slate-100 text-slate-500 py-3.5 px-6 rounded-2xl font-black text-sm border border-slate-200">
-                    <Tag size={20} className="flex-shrink-0 text-slate-400" />
-                    <span className="leading-tight">Listing Sold</span>
+                  <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3.5 text-sm font-black text-slate-500">
+                    <Tag size={19} className="shrink-0 text-slate-400" />
+                    <span>Listing Sold</span>
                   </div>
+                ) : ad.isClaimableBusiness && ad.claimStatus !== 'claimed' ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowUnclaimedContactModal(true)}
+                    className="flex w-full cursor-default items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-center font-black text-amber-800 shadow-sm"
+                    title="Direct contact becomes available after the owner claims this listing"
+                  >
+                    <ShieldAlert size={19} className="shrink-0 text-amber-600" />
+                    <span className="leading-tight">
+                      {ad.claimStatus === 'pending'
+                        ? 'Owner Verification Pending'
+                        : 'Awaiting Owner Claim'}
+                    </span>
+                  </button>
                 ) : (
-                  <div className="flex items-stretch gap-2">
-                    <button
-                      onClick={handleContactClick}
-                      className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] text-center"
-                    >
-                      <MessageCircle size={20} className="flex-shrink-0" />
-                      <span className="leading-tight">
-                        {ad.isClaimableBusiness && ad.claimStatus !== 'claimed'
-                          ? 'Awaiting Owner Claim'
-                          : 'Contact via WhatsApp'}
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setShowSellerProfileModal(true)}
-                      aria-label="View seller profile and reviews"
-                      title="Seller profile"
-                      className="w-14 shrink-0 rounded-2xl border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 flex items-center justify-center transition-all active:scale-[0.98]"
-                    >
-                      <UserRound size={22} />
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleContactClick}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-emerald-600 active:scale-[0.98]"
+                  >
+                    <MessageCircle size={19} className="shrink-0" />
+                    <span className="leading-tight">Contact via WhatsApp</span>
+                  </button>
                 )}
 
-                <div className="flex gap-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setShowSellerProfileModal(true)}
+                    aria-label="View seller profile and reviews"
+                    title="Seller profile"
+                    className="min-w-0 rounded-xl border border-indigo-100 bg-indigo-50 px-2 py-3 text-indigo-700 transition-all hover:bg-indigo-100 active:scale-[0.98] flex flex-col items-center justify-center gap-1"
+                  >
+                    <UserRound size={18} />
+                    <span className="text-[10px] font-black leading-tight">Profile</span>
+                  </button>
+
                   <button
                     onClick={handleShare}
-                    className={`flex-1 flex items-center justify-center gap-2 border py-3 px-3 rounded-xl font-bold text-xs transition-all ${
+                    className={`min-w-0 rounded-xl border px-2 py-3 transition-all flex flex-col items-center justify-center gap-1 ${
                       shareCopied
                         ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
                         : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
                     }`}
+                    title="Share listing"
                   >
-                    <Share2 size={16} className={shareCopied ? 'text-emerald-500 animate-bounce' : ''} />
-                    <span>{shareCopied ? 'Link copied!' : 'Share'}</span>
+                    <Share2 size={18} className={shareCopied ? 'text-emerald-500 animate-bounce' : ''} />
+                    <span className="text-[10px] font-black leading-tight">
+                      {shareCopied ? 'Copied' : 'Share'}
+                    </span>
                   </button>
+
                   <button
                     onClick={() => setShowReportModal(true)}
-                    className="flex items-center justify-center gap-1.5 border border-rose-100 hover:border-rose-200 text-rose-500 bg-rose-50/50 hover:bg-rose-50 py-3 px-4 rounded-xl font-bold text-xs transition"
+                    className="min-w-0 rounded-xl border border-rose-100 bg-rose-50/60 px-2 py-3 text-rose-500 transition-all hover:border-rose-200 hover:bg-rose-50 flex flex-col items-center justify-center gap-1"
+                    title="Report listing"
                   >
-                    <ShieldAlert size={16} /> Report
+                    <ShieldAlert size={18} />
+                    <span className="text-[10px] font-black leading-tight">Report</span>
                   </button>
                 </div>
               </div>
