@@ -792,9 +792,15 @@ const AdDetails = () => {
     };
   }, [ad]);
 
-  // More listings from the same seller
+  // More listings from the same seller.
+  // For claimable listings still controlled by Admin/Moderator, do not expose
+  // other listings uploaded from the same staff account.
   useEffect(() => {
-    if (!ad?.sellerId) {
+    const isAwaitingClaim =
+      !!ad?.isClaimableBusiness &&
+      ad?.claimStatus !== 'claimed';
+
+    if (!ad?.sellerId || isAwaitingClaim) {
       setSellerAds([]);
       return;
     }
@@ -848,7 +854,7 @@ const AdDetails = () => {
     };
 
     fetchSellerListings();
-  }, [ad?.id, ad?.sellerId]);
+  }, [ad?.id, ad?.sellerId, ad?.isClaimableBusiness, ad?.claimStatus]);
 
   // Fetch and similarity-score related listings
   useEffect(() => {
@@ -2389,7 +2395,8 @@ const AdDetails = () => {
       </div> {/* closes block lg:hidden */}
 
       {/* MORE FROM THIS SELLER */}
-      {sellerAds.length > 0 && (
+      {sellerAds.length > 0 &&
+        !(ad.isClaimableBusiness && ad.claimStatus !== 'claimed') && (
         <section className="mt-10 sm:mt-12 rounded-[1.75rem] sm:rounded-[2rem] border border-white/70 bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] shadow-[0_12px_32px_rgba(3,24,46,0.18)] overflow-hidden text-left">
           <div className="px-4 sm:px-6 lg:px-7 py-5 sm:py-6 border-b border-white/60 bg-white/10">
             <div className="flex items-center justify-between gap-4">
