@@ -344,6 +344,14 @@ const AdCard: React.FC<AdCardProps> = ({
   const handleContactClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Claimable listings must not expose the imported contact details
+    // until the owner has completed the claim process.
+    if (ad.isClaimableBusiness && ad.claimStatus !== 'claimed') {
+      navigate(getAdUrl(ad));
+      return;
+    }
+
     if (ad.demoListing) {
       showToastMsg('error', 'This is a demo listing and is not available for contact or purchase.');
       return;
