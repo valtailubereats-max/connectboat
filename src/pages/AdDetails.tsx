@@ -1017,6 +1017,9 @@ const AdDetails = () => {
   const currentMedia = mediaItems[validMediaIndex] || mediaItems[0];
 
   const normalizedDescription = normalizeDescription(ad.description);
+
+  // Only collapse the description when "More From This Seller" is present.
+  const shouldCollapseDescription = sellerAds.length > 0;
   
   const hasPrice =
     ad.category !== 'Imigração' &&
@@ -1466,11 +1469,11 @@ const AdDetails = () => {
             <div className="space-y-2">
               <h3 className="text-sm font-black text-slate-700 uppercase tracking-[0.08em]">Detailed Description</h3>
               <p className="text-slate-700 text-[15px] leading-relaxed whitespace-pre-line break-words overflow-hidden bg-white/38 backdrop-blur-sm p-4 rounded-2xl border border-white/55">
-                {normalizedDescription.length > 400 && !descriptionExpanded
+                {shouldCollapseDescription && normalizedDescription.length > 400 && !descriptionExpanded
                   ? `${normalizedDescription.substring(0, 400).trim()}...`
                   : normalizedDescription}
               </p>
-              {normalizedDescription.length > 400 && (
+              {shouldCollapseDescription && normalizedDescription.length > 400 && (
                 <button
                   onClick={() => setDescriptionExpanded(!descriptionExpanded)}
                   className="text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
@@ -2100,11 +2103,11 @@ const AdDetails = () => {
           <div className="space-y-1">
             <h3 className="text-xs font-black text-slate-700 uppercase tracking-[0.08em]">Detailed Description</h3>
             <p className="text-slate-650 text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words bg-slate-50/40 p-3 rounded-xl border border-slate-50">
-              {normalizedDescription.length > 250 && !descriptionExpanded
+              {shouldCollapseDescription && normalizedDescription.length > 250 && !descriptionExpanded
                 ? `${normalizedDescription.substring(0, 250).trim()}...`
                 : normalizedDescription}
             </p>
-            {normalizedDescription.length > 250 && (
+            {shouldCollapseDescription && normalizedDescription.length > 250 && (
               <button
                 onClick={() => setDescriptionExpanded(!descriptionExpanded)}
                 className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
