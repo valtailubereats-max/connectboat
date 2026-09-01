@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Ad } from '../types';
-import { MapPin, MessageCircle, Clock, X, User, Phone, AlertTriangle, Heart, Flag, Search, ChevronLeft, ChevronRight, Tag, Star, Mail, Globe, Share2, ExternalLink, Anchor, Gauge, Ruler, Bed, Calendar } from 'lucide-react';
+import { MapPin, MessageCircle, Clock, X, User, Phone, AlertTriangle, Heart, Flag, Search, ChevronLeft, ChevronRight, Tag, Star, Mail, Globe, Share2, ExternalLink, Anchor, Gauge, Ruler, Bed, Calendar , ShieldAlert} from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
@@ -320,6 +320,10 @@ const AdCard: React.FC<AdCardProps> = ({
   const cleanPhone = getAdPhone().replace(/\D/g, '');
   const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(`Hello ${hasSourceUrl ? 'Partner' : ad.sellerName}, I am interested in your listing "${ad.title}" on ConnectBoat.`)}`;
   const targetContactUrl = hasSourceUrl ? ad.sourceUrl : whatsappUrl;
+  const isAwaitingOwnerClaim = !!(
+    ad.isClaimableBusiness &&
+    ad.claimStatus !== 'claimed'
+  );
 
   const incrementViews = async () => {
     try {
@@ -344,6 +348,10 @@ const AdCard: React.FC<AdCardProps> = ({
   const handleContactClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isAwaitingOwnerClaim) {
+      navigate(getAdUrl(ad));
+      return;
+    }
     if (ad.demoListing) {
       showToastMsg('error', 'This is a demo listing and is not available for contact or purchase.');
       return;
@@ -731,17 +739,27 @@ const AdCard: React.FC<AdCardProps> = ({
                   )}
 
                   {/* WhatsApp ou Contato */}
-                  {!hideWhatsAppButton && ad.listingType !== 'informativo' && ((getAdPhone() && getAdPhone().trim() !== '') || hasSourceUrl) && ad.adStatus !== 'sold' && ad.status !== 'sold' && (
+                  {!hideWhatsAppButton && ad.listingType !== 'informativo' && ((getAdPhone() && getAdPhone().trim() !== '') || hasSourceUrl || isAwaitingOwnerClaim) && ad.adStatus !== 'sold' && ad.status !== 'sold' && (
                     <button
                       onClick={handleContactClick}
-                      className={`transition-all border shadow-sm cursor-pointer hover:scale-110 active:scale-95 bg-slate-50 border-slate-100 ${
-                        hasSourceUrl
-                          ? 'text-indigo-400 hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600'
-                          : 'text-slate-400 hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-600'
+                      className={`transition-all border shadow-sm cursor-pointer hover:scale-110 active:scale-95 ${
+                        isAwaitingOwnerClaim
+                          ? 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100 hover:border-amber-300'
+                          : hasSourceUrl
+                          ? 'bg-slate-50 border-slate-100 text-indigo-400 hover:bg-indigo-50 hover:border-indigo-100 hover:text-indigo-600'
+                          : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-emerald-50 hover:border-emerald-100 hover:text-emerald-600'
                       } ${isFeaturedVariant ? 'p-1.5' : 'p-2'}`}
-                      title={hasSourceUrl ? "Contact" : "Contact via WhatsApp"}
+                      title={
+                        isAwaitingOwnerClaim
+                          ? 'Awaiting Owner Claim'
+                          : hasSourceUrl
+                          ? 'Contact'
+                          : 'Contact via WhatsApp'
+                      }
                     >
-                      {hasSourceUrl ? (
+                      {isAwaitingOwnerClaim ? (
+                        <ShieldAlert size={isFeaturedVariant ? 12 : 14} />
+                      ) : hasSourceUrl ? (
                         <ExternalLink size={isFeaturedVariant ? 12 : 14} className="text-indigo-600" />
                       ) : (
                         <MessageCircle size={isFeaturedVariant ? 12 : 14} className="text-[#25D366]" />
