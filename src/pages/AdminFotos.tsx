@@ -851,7 +851,17 @@ export default function AdminFotos() {
                   </div>
 
                   <div className="mt-2 text-[11px] font-bold text-slate-400">
-                    {event.category} · {event.paymentStatus === 'admin_free' ? 'Added by Admin — no charge' : event.paymentStatus}
+                    {event.category} · Payment: {event.paymentStatus === 'pending'
+  ? 'Pending'
+  : event.paymentStatus === 'paid'
+  ? 'Paid'
+  : event.paymentStatus === 'refunded'
+  ? 'Refunded'
+  : event.paymentStatus === 'admin_free'
+  ? 'Admin Free'
+  : event.paymentStatus === 'free' || event.paymentStatus === 'not_required'
+  ? 'Not Required'
+  : event.paymentStatus}
                   </div>
                 </div>
 
