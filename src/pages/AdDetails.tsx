@@ -2078,14 +2078,14 @@ const AdDetails = () => {
                 <div className="text-lg sm:text-xl font-black text-emerald-600 bg-emerald-50 py-0.5 px-2.5 rounded-lg border border-emerald-200 flex-shrink-0">
                   Free 💚
                 </div>
-              ) : hasPrice ? (
-                <div className="text-lg sm:text-xl font-black text-indigo-600 bg-indigo-50/50 py-0.5 px-2.5 rounded-lg border border-indigo-100/30 flex-shrink-0">
-                  {formatPrice(ad.price, ad.country)}
-                </div>
-              ) : (
+              ) : (ad as any).priceOnRequest || !hasPrice ? (
                 <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-100 flex-shrink-0">
                   Price on Request
                 </span>
+              ) : (
+                <div className="text-lg sm:text-xl font-black text-indigo-600 bg-indigo-50/50 py-0.5 px-2.5 rounded-lg border border-indigo-100/30 flex-shrink-0">
+                  {formatPrice(ad.price, ad.country)}
+                </div>
               )}
             </div>
           </div>
@@ -2466,7 +2466,9 @@ const AdDetails = () => {
         <div className="flex flex-col shrink-0 min-w-[68px]">
           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Price</span>
           <span className="text-xs sm:text-sm font-black text-indigo-600 leading-tight">
-            {hasPrice ? formatPrice(ad.price, ad.country) : 'On Request'}
+            {(ad as any).priceOnRequest || !hasPrice
+              ? 'On Request'
+              : formatPrice(ad.price, ad.country)}
           </span>
         </div>
 
