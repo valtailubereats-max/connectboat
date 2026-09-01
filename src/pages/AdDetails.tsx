@@ -632,7 +632,7 @@ const AdDetails = () => {
   };
 
   const handleContactClick = () => {
-    if (ad?.isClaimableBusiness && (ad.claimStatus === 'unclaimed' || !ad.claimStatus)) {
+    if (ad?.isClaimableBusiness && ad.claimStatus !== 'claimed') {
       setShowUnclaimedContactModal(true);
       return;
     }
@@ -1706,7 +1706,11 @@ const AdDetails = () => {
                       className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] text-center"
                     >
                       <MessageCircle size={20} className="flex-shrink-0" />
-                      <span className="leading-tight">Contact via WhatsApp</span>
+                      <span className="leading-tight">
+                        {ad.isClaimableBusiness && ad.claimStatus !== 'claimed'
+                          ? 'Awaiting Owner Claim'
+                          : 'Contact via WhatsApp'}
+                      </span>
                     </button>
                     <button
                       onClick={() => setShowSellerProfileModal(true)}
