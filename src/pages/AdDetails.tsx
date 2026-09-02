@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   MapPin, MessageCircle, Clock, ChevronLeft, ChevronRight, X, Heart, Star, 
   Trash2, Edit, AlertCircle, ShieldAlert, Eye, EyeOff, Award, Calendar, Share2, ExternalLink,
-  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video, UserRound
+  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video, UserRound, Mail, Phone
 } from 'lucide-react';
 import { 
   doc, updateDoc, increment, setDoc, collection, query, where, limit, getDoc, serverTimestamp, Timestamp, onSnapshot 
@@ -592,21 +592,27 @@ const AdDetails = () => {
     }
   };
 
-  const getAdPhone = () => {
-    if (!ad) return '';
-    if (ad.useProfilePhone === false && ad.contactPhone) {
-      return ad.contactPhone;
-    }
-    return ad.sellerPhone || '';
-  };
+  const cleanPhone = (phone: string) => phone.replace(/\D/g, '');
 
-  const cleanPhone = (phone: string) => {
-    return phone.replace(/\D/g, '');
-  };
+  const legacyContactMode = !!ad &&
+    (ad as any).showWhatsapp === undefined &&
+    (ad as any).showPhone === undefined &&
+    (ad as any).showEmail === undefined;
+
+  const whatsappNumber = ad
+    ? (((ad as any).contactWhatsapp || (legacyContactMode ? (ad.contactPhone || ad.sellerPhone) : '')) || '').trim()
+    : '';
+  const phoneNumber = ad ? (ad.contactPhone || '').trim() : '';
+  const emailAddress = ad ? (ad.contactEmail || '').trim() : '';
+
+  const showWhatsappContact = !!whatsappNumber && (legacyContactMode || (ad as any).showWhatsapp === true);
+  const showPhoneContact = !!phoneNumber && !legacyContactMode && (ad as any).showPhone === true;
+  const showEmailContact = !!emailAddress && !legacyContactMode && (ad as any).showEmail === true &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
 
   const getWhatsappUrl = () => {
-    if (!ad) return '';
-    const phone = cleanPhone(getAdPhone());
+    if (!ad || !showWhatsappContact) return '';
+    const phone = cleanPhone(whatsappNumber);
     return `https://wa.me/${phone}?text=${encodeURIComponent(`Hello, I saw your listing "${ad.title}" on ConnectBoat and I'm interested. Is it still available?`)}`;
   };
 
@@ -617,7 +623,7 @@ const AdDetails = () => {
     if (hasSourceUrl && ad.sourceUrl) {
       return ad.sourceUrl;
     }
-    return getWhatsappUrl();
+    return showWhatsappContact ? getWhatsappUrl() : '';
   };
 
   const incrementWhatsappClicks = async () => {
@@ -628,6 +634,28 @@ const AdDetails = () => {
       });
     } catch (err) {
       console.error('Erro ao registar clique no WhatsApp:', err);
+    }
+  };
+
+  const handleDirectContact = (channel: 'phone' | 'email') => {
+    if (!ad) return;
+    if (ad.adStatus === 'sold' || ad.status === 'sold') {
+      showToastMsg('error', 'This listing is sold. The seller can no longer be contacted.');
+      return;
+    }
+    if (!user) {
+      navigate(`/login?message=${encodeURIComponent('To contact the seller, please log in or create a free account.')}`);
+      return;
+    }
+
+    if (channel === 'phone' && showPhoneContact) {
+      window.location.href = `tel:${phoneNumber.replace(/\s+/g, '')}`;
+      return;
+    }
+
+    if (channel === 'email' && showEmailContact) {
+      const subject = encodeURIComponent(`ConnectBoat enquiry: ${ad.title}`);
+      window.location.href = `mailto:${emailAddress}?subject=${subject}`;
     }
   };
 
@@ -1717,6 +1745,38 @@ const AdDetails = () => {
                     </a>
                   )}
 
+                {showWhatsappContact && (
+                  <button
+                    onClick={handleContactClick}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-emerald-600 active:scale-[0.98]"
+                  >
+                    <MessageCircle size={19} className="shrink-0" />
+                    <span className="leading-tight">Contact via WhatsApp</span>
+                  </button>
+                )}
+
+                {showPhoneContact && (
+                  <button
+                    type="button"
+                    onClick={() => handleDirectContact('phone')}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-sky-700 active:scale-[0.98]"
+                  >
+                    <Phone size={19} className="shrink-0" />
+                    <span className="leading-tight">Call Seller</span>
+                  </button>
+                )}
+
+                {showEmailContact && (
+                  <button
+                    type="button"
+                    onClick={() => handleDirectContact('email')}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-500 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-indigo-600 active:scale-[0.98]"
+                  >
+                    <Mail size={19} className="shrink-0" />
+                    <span className="leading-tight">Email Seller</span>
+                  </button>
+                )}
+
                 {ad.demoListing ? (
                   <div className="flex items-center justify-center gap-2 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3.5 text-center text-xs font-extrabold text-amber-800">
                     <Tag size={16} className="shrink-0 text-amber-600" />
@@ -1741,15 +1801,11 @@ const AdDetails = () => {
                         : 'Awaiting Owner Claim'}
                     </span>
                   </button>
-                ) : (
-                  <button
-                    onClick={handleContactClick}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-emerald-600 active:scale-[0.98]"
-                  >
-                    <MessageCircle size={19} className="shrink-0" />
-                    <span className="leading-tight">Contact via WhatsApp</span>
-                  </button>
-                )}
+                ) : !showWhatsappContact && !showPhoneContact && !showEmailContact ? (
+                  <div className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-center text-sm font-bold text-slate-500">
+                    <span>No direct contact method selected</span>
+                  </div>
+                ) : null}
 
                 <div className="grid grid-cols-3 gap-2">
                   <button
