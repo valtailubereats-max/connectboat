@@ -1550,6 +1550,10 @@ const Home = () => {
                 value={category}
                 onChange={(e) => {
                   const val = e.target.value;
+                  if (val === '__cheap_boats__') {
+                    navigate('/cheap-boats');
+                    return;
+                  }
                   setCategory(val);
                   setFilterRegion(false);
                   setFilterNational(false);
@@ -1558,6 +1562,7 @@ const Home = () => {
                 className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
               >
                 <option value="Todas" className="bg-white text-slate-900 font-medium">All Categories</option>
+                <option value="__cheap_boats__" className="bg-white text-slate-900 font-semibold">🔥 Cheap &amp; Free Boats UK</option>
                 {categories.map((c, i) => (
                   <option key={i} value={c} className="bg-white text-slate-900 font-medium">{c}</option>
                 ))}
@@ -2131,6 +2136,10 @@ const Home = () => {
                 value={category}
                 onChange={(e) => {
                   const val = e.target.value;
+                  if (val === '__cheap_boats__') {
+                    navigate('/cheap-boats');
+                    return;
+                  }
                   setCategory(val);
                   setFilterRegion(false);
                   setFilterNational(false);
@@ -2139,6 +2148,7 @@ const Home = () => {
                 className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
               >
                 <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
+                <option value="__cheap_boats__" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-semibold">🔥 Cheap &amp; Free Boats UK</option>
                 {categories.map((c, i) => (
                   <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
                 ))}
