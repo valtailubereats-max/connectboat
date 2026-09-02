@@ -48,7 +48,7 @@ import OptimizedImage from './components/OptimizedImage';
 import { motion, AnimatePresence } from 'motion/react';
 import Links from './pages/Links';
 import BoatsForHire from './pages/BoatsForHire';
-import CheapBoats from './pages/CheapBoats';
+import CheapBoatsFinal from './pages/CheapBoatsFinal';
 import NotFound from './pages/NotFound';
 import Advertise from './pages/Advertise';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -960,7 +960,7 @@ export default function App() {
                 <Route path="/fotos" element={<Navigate to="/events" replace />} />
                 <Route path="/admin/fotos" element={<AdminLayout><AdminFotos /></AdminLayout>} />
                 <Route path="/boats-for-hire" element={<BoatsForHire />} />
-                <Route path="/cheap-boats" element={<CheapBoats />} />
+                <Route path="/cheap-boats" element={<CheapBoatsFinal />} />
                 <Route path="/barcos-aluguer" element={<Navigate to="/boats-for-hire" replace />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
