@@ -81,7 +81,7 @@ const CookieConsent: React.FC = () => {
                   type="button"
                   onClick={handleEssentialOnly}
                   className="text-slate-400 hover:text-slate-600 transition-colors p-1 shrink-0"
-                  aria-label="Continue with essential cookies only"
+                  aria-label="Close cookie banner and use essential technologies only"
                   title="Essential Only"
                 >
                   <X size={17} />
@@ -101,7 +101,7 @@ const CookieConsent: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleEssentialOnly}
-                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold transition-all"
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs font-extrabold transition-all shadow-sm"
                 >
                   <ShieldCheck size={15} />
                   Essential Only
