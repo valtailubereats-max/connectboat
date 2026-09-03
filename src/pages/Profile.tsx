@@ -1090,16 +1090,43 @@ const Profile = () => {
   };
 
   const handleMarkAsAvailable = async (adId: string) => {
-    if (!window.confirm('Do you want to mark this listing as available again?')) return;
+    const targetAd = userAds.find((item: any) => item.id === adId);
+
+    if (!targetAd) {
+      alert('Listing not found.');
+      return;
+    }
+
+    const expirationValue = targetAd.expirationDate;
+    const expirationDate = expirationValue?.toDate
+      ? expirationValue.toDate()
+      : expirationValue
+        ? new Date(expirationValue)
+        : null;
+
+    if (expirationDate && expirationDate.getTime() <= Date.now()) {
+      alert('This listing has already expired. Please renew or relist it instead of reactivating it.');
+      return;
+    }
+
+    if (!window.confirm('Reactivate this listing using the remaining time before its original expiration date?')) return;
+
     try {
       const adRef = doc(db, 'ads', adId);
       await updateDoc(adRef, {
         adStatus: 'active',
         status: 'approved',
+        soldOutsidePlatform: false,
+        soldAt: null,
         updatedAt: serverTimestamp()
       });
       clearHomeCache();
-      alert('Listing marked as available again!');
+
+      const remainingText = expirationDate
+        ? ` It will remain active until ${format(expirationDate, "dd MMMM yyyy", { locale: enGB })}.`
+        : '';
+
+      alert(`Listing reactivated successfully.${remainingText}`);
       fetchUserAds();
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
@@ -1627,7 +1654,7 @@ const Profile = () => {
                       onClick={() => handleMarkAsAvailable(ad.id)}
                       className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-all border border-indigo-100"
                     >
-                      <RefreshCcw size={14} /> Revert to Available
+                      <RefreshCcw size={14} /> Reactivate Listing
                     </button>
                   )}
 
