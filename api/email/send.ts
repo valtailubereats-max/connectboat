@@ -191,6 +191,26 @@ async function authorizeEmailRequest(
     return;
   }
 
+  if (template === 'seller_message') {
+    const suppliedBuyerEmail =
+      typeof data?.interestedEmail === 'string'
+        ? data.interestedEmail.trim().toLowerCase()
+        : '';
+
+    if (!callerEmail || suppliedBuyerEmail !== callerEmail) {
+      const error: any = new Error('The sender email must match the authenticated ConnectBoat account.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const message = typeof data?.message === 'string' ? data.message.trim() : '';
+    if (message.length < 10 || message.length > 3000) {
+      const error: any = new Error('Message must contain between 10 and 3000 characters.');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
   if (template === 'anuncio_pendente_staff') {
     const checks = await Promise.all(recipients.map((recipient) => isStaffEmail(recipient)));
     if (checks.some((allowed) => !allowed)) {
@@ -201,7 +221,7 @@ async function authorizeEmailRequest(
     return;
   }
 
-  if (template === 'interesse_contacto' || template === 'review_recebida') {
+  if (template === 'interesse_contacto' || template === 'seller_message' || template === 'review_recebida') {
     const adId = typeof data?.adId === 'string' ? data.adId : '';
     const sellerEmails = await getAdSellerEmails(adId);
 
@@ -228,6 +248,19 @@ async function authorizeEmailRequest(
   throw error;
 }
 
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function nl2brSafe(value: unknown): string {
+  return escapeHtml(value).replace(/\r?\n/g, '<br>');
+}
 
 // Helper to generate unified HTML email templates
 function generateConnectBoatTemplate(title: string, bodyContent: string, ctaLink?: string, ctaText?: string): string {
@@ -471,6 +504,27 @@ export function renderEmail(template: string, data: any): { subject: string; htm
       `;
       ctaLink = `${baseUrl}/admin/ads`;
       ctaText = 'Go to Moderation Panel';
+      break;
+
+    case 'seller_message':
+      subject = `✉️ New Message About: ${escapeHtml(data.adTitle || 'Your ConnectBoat Listing')}`;
+      bodyContent = `
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${escapeHtml(data.sellerName || 'Seller')},</p>
+        <p>You have received a new message from a ConnectBoat user about your listing:</p>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; margin: 20px 0;">
+          <p style="margin: 0 0 8px 0;"><strong>Listing:</strong> ${escapeHtml(data.adTitle || '')}</p>
+          <p style="margin: 0 0 8px 0;"><strong>From:</strong> ${escapeHtml(data.interestedName || 'ConnectBoat User')}</p>
+          <p style="margin: 0;"><strong>Reply email:</strong> ${escapeHtml(data.interestedEmail || '')}</p>
+        </div>
+        <div style="background-color: #ffffff; border-left: 4px solid #4f46e5; padding: 16px 18px; margin: 20px 0; color: #334155;">
+          ${nl2brSafe(data.message || '')}
+        </div>
+        <p style="font-size: 13px; color: #64748b;">
+          You can reply directly to this email to respond to the interested user.
+        </p>
+      `;
+      ctaLink = data.adUrl || `${baseUrl}/anuncio/${data.adId}`;
+      ctaText = 'View Listing';
       break;
 
     case 'interesse_contacto':
@@ -717,7 +771,15 @@ export default async function handler(req: any, res: any) {
     const { subject, html } = renderEmail(template, data);
 
     const emailFrom = process.env.EMAIL_FROM || 'ConnectBoat <no-reply@connectboat.co.uk>';
-    const emailReplyTo = process.env.EMAIL_REPLY_TO || 'contato@connectboat.co.uk';
+    const defaultReplyTo = process.env.EMAIL_REPLY_TO || 'contato@connectboat.co.uk';
+    const authenticatedReplyEmail =
+      typeof decodedUser?.email === 'string' && decodedUser.email.includes('@')
+        ? decodedUser.email.trim().toLowerCase()
+        : '';
+    const emailReplyTo =
+      template === 'seller_message' && authenticatedReplyEmail
+        ? authenticatedReplyEmail
+        : defaultReplyTo;
     const resendApiKey = process.env.RESEND_API_KEY;
 
     // Send via Resend (Single production email provider for ConnectBoat)
