@@ -128,6 +128,23 @@ const Terms = () => {
               listing seeking to buy or find a boat is not treated as a boat-for-sale listing.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
+              ConnectBoat may also display referenced, imported or claimable listings based on
+              information supplied by a user, business, authorised representative or obtained from a
+              publicly available source. Where an external source link is shown, the external source
+              remains separate from ConnectBoat and should be checked for the latest availability,
+              price, specifications and contact information. A referenced or claimable listing does
+              not by itself mean that the owner or advertiser has endorsed ConnectBoat or appointed
+              ConnectBoat as its agent.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              If you are the owner, operator or authorised representative of a referenced or
+              claimable listing, you may contact ConnectBoat to request correction, removal or, where
+              the relevant feature is available, to claim and manage the listing. We may request
+              reasonable information to verify your authority before transferring control or making
+              certain changes.
+            </p>
+
+            <p className="text-slate-600 leading-relaxed mt-3">
               Payment for a listing does not automatically guarantee publication. Paid listings may
               remain pending until they have been reviewed and approved by an authorised ConnectBoat
               administrator or moderator. Where a paid listing is subject to a stated listing period,
@@ -196,6 +213,21 @@ const Terms = () => {
               carrying out appropriate checks before sending money, agreeing a contract or taking
               delivery.
             </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              Advertisers may choose which contact methods are made available on a listing, including
+              WhatsApp, telephone and email. Where ConnectBoat provides an internal email contact
+              form, ConnectBoat acts only as a technical communication channel: the message and the
+              sender&apos;s account contact details are forwarded to the listing contact so that the
+              parties can communicate directly. ConnectBoat does not become a party to the enquiry or
+              any resulting transaction and does not guarantee that a message will be delivered,
+              opened or answered.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              ConnectBoat may record that a logged-in user contacted or expressed interest in a
+              listing, including the listing, user, contact method and time, for marketplace
+              functionality, seller notifications, fraud prevention, support and dispute handling as
+              described in the Privacy Policy.
+            </p>
           </section>
 
           <section>
@@ -254,6 +286,15 @@ const Terms = () => {
               <li>Treating other users fairly and respectfully.</li>
               <li>Protecting their own payment details and avoiding unsafe or unverifiable transactions.</li>
             </ul>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              For Boats for Sale, advertisers should mark a listing as sold when the vessel is no
+              longer available. A sold listing may remain publicly visible until its original expiry
+              date for marketplace continuity, but seller contact options may be disabled while the
+              listing is marked sold. If a transaction falls through, the advertiser may reactivate
+              the listing only while the original listing period is still valid. Reactivation does
+              not extend, restart or replace the original expiry date and does not create a new paid
+              listing period.
+            </p>
           </section>
 
           <section>
@@ -468,7 +509,7 @@ const Terms = () => {
               terms agreed directly between buyers, sellers, owners, charter operators or service
               providers remain the responsibility of those parties.
             </p>
-            <p className="text-sm text-slate-400 mt-2">Last updated: 29 August 2026.</p>
+            <p className="text-sm text-slate-400 mt-2">Last updated: 3 September 2026.</p>
           </section>
 
           <div className="pt-6 border-t border-slate-100 flex justify-center">
