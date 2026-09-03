@@ -10,7 +10,7 @@ import { sendEmailGeneric } from '../utils/emailService';
 import { CITIES, Ad, MarketplaceSettings, PORTUGAL_CITIES, UK_CITIES, UK_REGIONS, CITIES_BY_REGION, getRegionForCity, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS, PRICING_UNITS } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
-import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, ChevronRight, Upload, X, Plus, RefreshCcw, Link, ExternalLink, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard } from 'lucide-react';
+import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, ChevronRight, Upload, X, Plus, RefreshCcw, Link, ExternalLink, Mail, Phone, MessageCircle, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
 import { normalizeDescription } from '../utils/textFormatter';
 import { parsePrice, formatPrice } from '../utils';
@@ -128,7 +128,12 @@ const CreateAd = () => {
     category: urlCategory || prefill?.category || categories[0] || 'Outros',
     plan: 'standard' as 'standard' | 'free' | 'local' | 'national' | 'highlight' | 'featured' | 'premium',
     duration: 30, // Default for standard
-    contactEmail: '',
+    contactEmail: prefill?.contactEmail || '',
+    contactWhatsapp: prefill?.contactWhatsapp || prefill?.sellerPhone || '',
+    contactPhone: prefill?.contactPhone || '',
+    showWhatsapp: prefill?.showWhatsapp !== undefined ? !!prefill.showWhatsapp : true,
+    showPhone: prefill?.showPhone !== undefined ? !!prefill.showPhone : false,
+    showEmail: prefill?.showEmail !== undefined ? !!prefill.showEmail : false,
     externalUrl: '',
     moreInfoUrl: '',
     sellerPhone: prefill?.sellerPhone || '',
@@ -140,7 +145,6 @@ const CreateAd = () => {
     companyName: '',
     experienceRequired: '',
     useProfilePhone: true,
-    contactPhone: '',
     isPermanentFeatured: false,
     listingType: 'normal' as 'normal' | 'informativo',
     targetUrl: '',
@@ -189,6 +193,15 @@ const CreateAd = () => {
     videoMimeType: null as string | null,
     videoPaid: false
   });
+
+  useEffect(() => {
+    if (!id && profile?.phone) {
+      setFormData(prev => ({
+        ...prev,
+        contactWhatsapp: prev.contactWhatsapp || profile.phone || ''
+      }));
+    }
+  }, [id, profile?.phone]);
 
   // Media Boost Upload States & Handlers
   const [videoUploading, setVideoUploading] = useState(false);
@@ -341,6 +354,31 @@ const CreateAd = () => {
     if (!formData.city) {
       showValidationError('Please select a city/region.');
       return false;
+    }
+    const selectedContactCount = [
+      formData.showWhatsapp && !!formData.contactWhatsapp?.trim(),
+      formData.showPhone && !!formData.contactPhone?.trim(),
+      formData.showEmail && !!formData.contactEmail?.trim()
+    ].filter(Boolean).length;
+
+    if (selectedContactCount === 0) {
+      showValidationError('Please select at least one contact option and enter its details.', 'contact-options-section');
+      return false;
+    }
+    if (formData.showWhatsapp && !formData.contactWhatsapp?.trim()) {
+      showValidationError('Please enter the WhatsApp number or untick WhatsApp.', 'txt-contact-whatsapp');
+      return false;
+    }
+    if (formData.showPhone && !formData.contactPhone?.trim()) {
+      showValidationError('Please enter the phone number or untick Phone.', 'txt-contact-phone');
+      return false;
+    }
+    if (formData.showEmail) {
+      const email = formData.contactEmail?.trim() || '';
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showValidationError('Please enter a valid email address or untick Email.', 'txt-contact-email');
+        return false;
+      }
     }
     if (formData.mediaBoostEnabled) {
       if (videoUploading) {
@@ -864,6 +902,11 @@ const CreateAd = () => {
           plan: data.plan || 'free',
           duration: 30, // Duration is only used for calculation on submit
           contactEmail: data.contactEmail || '',
+          contactWhatsapp: (data as any).contactWhatsapp || data.sellerPhone || '',
+          contactPhone: data.contactPhone || '',
+          showWhatsapp: (data as any).showWhatsapp !== undefined ? !!(data as any).showWhatsapp : true,
+          showPhone: (data as any).showPhone !== undefined ? !!(data as any).showPhone : false,
+          showEmail: (data as any).showEmail !== undefined ? !!(data as any).showEmail : false,
           externalUrl: data.externalUrl || '',
           moreInfoUrl: (data as any).moreInfoUrl || '',
           sellerPhone: data.sellerPhone || '',
@@ -874,7 +917,6 @@ const CreateAd = () => {
           companyName: data.companyName || '',
           experienceRequired: data.experienceRequired || '',
           useProfilePhone: data.useProfilePhone !== undefined ? data.useProfilePhone : true,
-          contactPhone: data.contactPhone || '',
           isPermanentFeatured: !!(data as any).isPermanentFeatured,
           listingType: data.listingType || 'normal',
           targetUrl: data.targetUrl || '',
@@ -1371,36 +1413,30 @@ const CreateAd = () => {
     const isSpecialCategory = formData.category === 'Imigração' || isJob;
     const isImportedAd = isImportedOrExternalAd(formData) || isImportedOrExternalAd(originalAd) || isAdmin || isModerator;
 
-    // Contact Phone Validation (Only required for normal non-imported listings)
-    if (!isImportedAd) {
-      if (isSpecialCategory) {
-        if (!formData.sellerPhone?.trim()) {
-          showValidationError('Please enter a contact phone/WhatsApp number.', 'txt-seller-phone');
-          return;
-        }
-      } else {
-        if (formData.useProfilePhone) {
-          if (!profile?.phone?.trim()) {
-            showValidationError(
-              'Your profile does not have a configured phone number. Enter a contact phone or update your profile.',
-              'contact-phone-section'
-            );
-            setFormData(prev => ({ ...prev, useProfilePhone: false }));
-            setTimeout(() => {
-              const phoneInput = document.getElementById('txt-contact-phone');
-              phoneInput?.focus();
-            }, 100);
-            return;
-          }
-        } else {
-          if (!formData.contactPhone?.trim() && !profile?.phone?.trim()) {
-            showValidationError(
-              'Please enter a contact phone number for your listing.',
-              'txt-contact-phone'
-            );
-            return;
-          }
-        }
+    // Contact options validation
+    const selectedContactCount = [
+      formData.showWhatsapp && !!formData.contactWhatsapp?.trim(),
+      formData.showPhone && !!formData.contactPhone?.trim(),
+      formData.showEmail && !!formData.contactEmail?.trim()
+    ].filter(Boolean).length;
+
+    if (selectedContactCount === 0) {
+      showValidationError('Please select at least one contact option and enter its details.', 'contact-options-section');
+      return;
+    }
+    if (formData.showWhatsapp && !formData.contactWhatsapp?.trim()) {
+      showValidationError('Please enter the WhatsApp number or untick WhatsApp.', 'txt-contact-whatsapp');
+      return;
+    }
+    if (formData.showPhone && !formData.contactPhone?.trim()) {
+      showValidationError('Please enter the phone number or untick Phone.', 'txt-contact-phone');
+      return;
+    }
+    if (formData.showEmail) {
+      const email = formData.contactEmail?.trim() || '';
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showValidationError('Please enter a valid email address or untick Email.', 'txt-contact-email');
+        return;
       }
     }
 
@@ -1450,13 +1486,12 @@ const CreateAd = () => {
 
       const validSourceUrl = (formData.sourceUrl && /^https?:\/\//i.test(formData.sourceUrl)) ? formData.sourceUrl.trim() : null;
 
-      const useProfilePhoneValue = isSpecialCategory ? false : formData.useProfilePhone;
-      const contactPhoneValue = isSpecialCategory 
-        ? formData.sellerPhone.replace(/\s+/g, ' ').trim()
-        : (formData.useProfilePhone ? '' : formData.contactPhone.replace(/\s+/g, ' ').trim());
-      const finalSellerPhoneValue = isSpecialCategory
-        ? (formData.sellerPhone.replace(/\s+/g, ' ').trim() || profile.phone || '')
-        : (formData.useProfilePhone ? (profile.phone || '') : (formData.contactPhone?.replace(/\s+/g, ' ').trim() || profile.phone || ''));
+      const useProfilePhoneValue = false;
+      const contactWhatsappValue = formData.contactWhatsapp.replace(/\s+/g, ' ').trim();
+      const contactPhoneValue = formData.contactPhone.replace(/\s+/g, ' ').trim();
+      const contactEmailValue = formData.contactEmail.trim();
+      // sellerPhone remains populated for backward compatibility with older cards/pages.
+      const finalSellerPhoneValue = contactWhatsappValue || contactPhoneValue || profile.phone || '';
 
       const isStaff = isAdmin || isModerator;
 
@@ -1478,7 +1513,12 @@ const CreateAd = () => {
           ? (Object.prototype.hasOwnProperty.call(originalAd, 'userEmail') ? originalAd.userEmail : '')
           : (user?.email || profile?.email || ''),
         sellerPhone: finalSellerPhoneValue || (originalAd?.sellerPhone || ''),
-        contactPhone: contactPhoneValue || (originalAd?.contactPhone || ''),
+        contactWhatsapp: contactWhatsappValue,
+        contactPhone: contactPhoneValue,
+        contactEmail: contactEmailValue,
+        showWhatsapp: !!formData.showWhatsapp,
+        showPhone: !!formData.showPhone,
+        showEmail: !!formData.showEmail,
         useProfilePhone: useProfilePhoneValue,
         sellerName: id && originalAd ? (originalAd.sellerName || profile.name || 'ConnectBoat') : (profile.name || 'ConnectBoat'),
         status: isStaff && id ? (originalAd?.status || 'approved') : 'pending',
@@ -1498,7 +1538,6 @@ const CreateAd = () => {
           : false,
         createdAt: id && originalAd ? originalAd.createdAt : serverTimestamp(),
         updatedAt: serverTimestamp(),
-        contactEmail: (formData.category === 'Imigração' || isJob) ? (formData.contactEmail || '') : (originalAd?.contactEmail || ''),
         externalUrl: (formData.category === 'Imigração' || isJob) ? (formData.externalUrl || '') : (originalAd?.externalUrl || ''),
         moreInfoUrl: isStaff
           ? (formData.moreInfoUrl.trim()
@@ -2957,30 +2996,80 @@ const CreateAd = () => {
 
               </div>
 
-              {/* 8. Contact Phone */}
-              <div className="space-y-2 p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl">
-                <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Contact Phone</h4>
-                <label className="flex items-center gap-3 cursor-pointer select-none py-1">
-                  <input
-                    type="checkbox"
-                    checked={formData.useProfilePhone}
-                    onChange={(e) => handleUseProfilePhoneChange(e.target.checked)}
-                    className="w-5 h-5 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 transition-all cursor-pointer"
-                  />
-                  <span className="text-sm font-bold text-slate-700">
-                    Use phone from my profile <span className="text-slate-500 font-normal">({profile?.phone || 'No phone configured'})</span>
-                  </span>
-                </label>
+              {/* 8. Contact Options */}
+              <div id="contact-options-section" className="space-y-3 p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Contact Options</h4>
+                  <span className="text-[10px] font-semibold text-slate-500">Tick the methods you want shown publicly</span>
+                </div>
 
-                {!formData.useProfilePhone && (
-                  <input
-                    type="tel"
-                    value={formData.contactPhone}
-                    onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:border-indigo-600 focus:outline-none text-sm"
-                    placeholder={formData.country === 'Reino Unido' ? '+44 7123 456789' : '+351 912 345 678'}
-                  />
-                )}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-[90px_minmax(0,1fr)_28px] items-center gap-2">
+                    <label htmlFor="txt-contact-whatsapp" className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                      <MessageCircle size={15} className="text-emerald-600" />
+                      WhatsApp
+                    </label>
+                    <input
+                      id="txt-contact-whatsapp"
+                      type="tel"
+                      value={formData.contactWhatsapp}
+                      onChange={(e) => setFormData(prev => ({ ...prev, contactWhatsapp: e.target.value }))}
+                      className="min-w-0 w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-sm"
+                      placeholder="+44 7508 309536"
+                    />
+                    <input
+                      aria-label="Show WhatsApp on listing"
+                      type="checkbox"
+                      checked={formData.showWhatsapp}
+                      onChange={(e) => setFormData(prev => ({ ...prev, showWhatsapp: e.target.checked }))}
+                      className="w-5 h-5 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[90px_minmax(0,1fr)_28px] items-center gap-2">
+                    <label htmlFor="txt-contact-phone" className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                      <Phone size={15} className="text-sky-600" />
+                      Phone
+                    </label>
+                    <input
+                      id="txt-contact-phone"
+                      type="tel"
+                      value={formData.contactPhone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, contactPhone: e.target.value }))}
+                      className="min-w-0 w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none text-sm"
+                      placeholder="+44 23 9999 9999"
+                    />
+                    <input
+                      aria-label="Show phone on listing"
+                      type="checkbox"
+                      checked={formData.showPhone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, showPhone: e.target.checked }))}
+                      className="w-5 h-5 rounded text-sky-600 border-slate-300 focus:ring-sky-500 cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[90px_minmax(0,1fr)_28px] items-center gap-2">
+                    <label htmlFor="txt-contact-email" className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                      <Mail size={15} className="text-indigo-600" />
+                      Email
+                    </label>
+                    <input
+                      id="txt-contact-email"
+                      type="email"
+                      value={formData.contactEmail}
+                      onChange={(e) => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
+                      className="min-w-0 w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-indigo-500 focus:outline-none text-sm"
+                      placeholder="seller@example.com"
+                    />
+                    <input
+                      aria-label="Show email on listing"
+                      type="checkbox"
+                      checked={formData.showEmail}
+                      onChange={(e) => setFormData(prev => ({ ...prev, showEmail: e.target.checked }))}
+                      className="w-5 h-5 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Step 1 Actions */}
