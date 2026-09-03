@@ -71,7 +71,7 @@ const Privacy = () => {
 
         <div className="prose prose-slate max-w-none space-y-8">
           <p className="text-sm font-semibold text-indigo-600">
-            Last updated: 29 August 2026
+            Last updated: 3 September 2026
           </p>
 
           <section>
@@ -142,11 +142,26 @@ const Privacy = () => {
                   Contact and communication information
                 </p>
                 <p className="text-slate-600 text-sm leading-relaxed">
-                  Telephone numbers, customer email addresses used for assisted listings, contact
-                  preferences and information required to send transactional emails such as payment
-                  confirmations, listing approvals, moderation messages and account-related notices.
-                  Where a listing contains a telephone number or WhatsApp contact option, that
-                  information may be visible to other users as part of the listing.
+                  Telephone and WhatsApp numbers, contact email addresses, contact-method
+                  preferences, and information required to send transactional or marketplace
+                  communications such as payment confirmations, listing approvals, moderation
+                  messages, account-related notices and buyer-to-seller enquiries. Where you choose
+                  to make a telephone, WhatsApp or email contact method public on a listing, that
+                  contact information may be visible to visitors or registered users.
+                </p>
+              </div>
+
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="font-bold text-slate-800 text-sm mb-1">
+                  Enquiry and marketplace interaction information
+                </p>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  When a logged-in user contacts or expresses interest in a listing, we may record
+                  information such as the user and listing identifiers, sender name and account email,
+                  the contact method used, date and time, seller or listing owner identifier and
+                  related notification or delivery information. If you use the internal Email Seller
+                  form, we also process the message text you submit in order to deliver it to the
+                  listing contact.
                 </p>
               </div>
 
@@ -203,6 +218,7 @@ const Privacy = () => {
               <li>Creating, authenticating and maintaining user accounts.</li>
               <li>Publishing, displaying, editing and managing marine listings.</li>
               <li>Allowing buyers, sellers, owners, hirers and marine businesses to connect.</li>
+              <li>Delivering buyer-to-seller enquiries and recording marketplace interest or contact events.</li>
               <li>Processing ConnectBoat listing plans, upgrades and optional paid services.</li>
               <li>Sending transactional and service-related emails.</li>
               <li>Reviewing and moderating listings before or after publication.</li>
@@ -228,14 +244,16 @@ const Privacy = () => {
             <ul className="list-disc pl-6 text-slate-600 space-y-2 text-sm leading-relaxed mt-3">
               <li>
                 <strong>Contract:</strong> where processing is necessary to provide an account,
-                listing, paid plan, Media Boost or another service you request.
+                listing, paid plan, Media Boost, requested contact feature or another service you
+                ask us to provide.
               </li>
               <li>
                 <strong>Legitimate interests:</strong> where reasonably necessary for our
-                legitimate interests in operating and improving the marketplace, protecting users
-                and the platform from fraud and abuse, maintaining security, enforcing platform
-                rules, moderating content and measuring service performance, provided those
-                interests are not overridden by your rights and freedoms.
+                legitimate interests in operating and improving the marketplace, facilitating and
+                evidencing genuine listing enquiries, protecting users and the platform from fraud
+                and abuse, maintaining security, enforcing platform rules, moderating content and
+                measuring service performance, provided those interests are not overridden by your
+                rights and freedoms.
               </li>
               <li>
                 <strong>Legal obligation:</strong> where information must be retained, processed or
@@ -287,6 +305,14 @@ const Privacy = () => {
               Information provided to an email delivery provider is limited to what is reasonably
               necessary to send and administer the relevant message, such as the recipient email
               address, message content and delivery information.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              If a registered user chooses <strong>Email Seller</strong>, ConnectBoat may send the
+              enquiry through our email delivery provider to the email address selected by the
+              advertiser for that listing. The recipient may receive the sender&apos;s name, authenticated
+              account email address, the enquiry message, listing title and a link to the relevant
+              listing. This allows the recipient to reply directly to the sender. ConnectBoat does
+              not use the contents of a seller enquiry for unrelated advertising.
             </p>
           </section>
 
@@ -351,7 +377,7 @@ const Privacy = () => {
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <UserCheck size={20} />
-              <h2 className="text-xl font-bold m-0">9. Public Listing Information and WhatsApp</h2>
+              <h2 className="text-xl font-bold m-0">9. Public Listing Information and Contact Methods</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -362,9 +388,48 @@ const Privacy = () => {
             </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">
-              Where a WhatsApp or telephone contact option is available, selecting it may transfer
-              you to a third-party service. Your use of WhatsApp or another external communication
-              provider is also subject to that provider's own privacy terms.
+              Advertisers can choose which supported contact methods are enabled for a listing,
+              including WhatsApp, telephone and email. A method that is not enabled should not be
+              presented as a public contact option. Telephone or WhatsApp contact may transfer you
+              to a third-party telecommunications or messaging service, whose own privacy terms
+              also apply.
+            </p>
+            <p className="text-slate-600 leading-relaxed mt-3">
+              The internal Email Seller feature is different from simply publishing an email link.
+              ConnectBoat verifies the logged-in sender, processes the enquiry and forwards it to the
+              listing contact using our email delivery infrastructure. We may also create an enquiry
+              or interest record linked to the relevant user and listing so that the contact event
+              can be supported, notified and, where necessary, investigated.
+            </p>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-2 text-indigo-600 mb-3">
+              <Globe2 size={20} />
+              <h2 className="text-xl font-bold m-0">9A. Referenced, Imported and Claimable Listings</h2>
+            </div>
+
+            <p className="text-slate-600 leading-relaxed">
+              Some listings may be referenced, imported or prepared from information provided by a
+              third party or obtained from a publicly available source, such as an advertiser&apos;s
+              website or public listing page. In those cases we may process information such as the
+              vessel or service description, business or contact name, public business contact
+              details, location, photographs where we have a lawful basis to use them, and the
+              original source URL.
+            </p>
+
+            <p className="text-slate-600 leading-relaxed mt-3">
+              We use this information where reasonably necessary to operate the marketplace,
+              identify the source, prevent duplicate imports, maintain listing accuracy and allow
+              an owner or authorised representative to request correction, removal or claim a
+              listing. Where this information is personal data obtained from another source,
+              ConnectBoat will provide privacy information to the individual where required by
+              applicable UK data protection law, subject to any lawful exception.
+            </p>
+
+            <p className="text-slate-600 leading-relaxed mt-3">
+              If you believe a referenced or claimable listing contains your personal data and you
+              want it corrected or removed, contact us using the details in section 18.
             </p>
           </section>
 
@@ -425,10 +490,12 @@ const Privacy = () => {
 
             <p className="text-slate-600 leading-relaxed mt-3">
               Retention periods may therefore differ by category. For example, an account or listing
-              may be removed from public display before related payment, security, moderation or
-              accounting records are deleted. Where an exact period is not fixed, we use criteria
-              such as account status, legal requirements, the risk of fraud or disputes and whether
-              the information remains necessary for the service.
+              may be removed from public display before related payment, security, moderation,
+              enquiry, email-delivery or accounting records are deleted. Sold listings may remain
+              publicly visible until their original listing expiry date even though seller contact
+              has been disabled. Where an exact period is not fixed, we use criteria such as account
+              and listing status, legal requirements, the risk of fraud or disputes and whether the
+              information remains necessary for the service.
             </p>
           </section>
 
