@@ -226,6 +226,10 @@ const Home = () => {
   }, []);
   const [ads, setAds] = useState<Ad[]>([]);
   const [featuredAds, setFeaturedAds] = useState<Ad[]>([]);
+  // Sale and hire listings are fetched independently so older boat ads are not
+  // excluded by the 48-item general homepage discovery query.
+  const [saleSectionAds, setSaleSectionAds] = useState<Ad[]>([]);
+  const [hireSectionAds, setHireSectionAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reloadCounter, setReloadCounter] = useState(0);
@@ -781,7 +785,7 @@ const Home = () => {
         // Garantir ordenação por data de criação de forma estrita em memória para evitar variações não-determinísticas
         adsData.sort((a, b) => {
           const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
-          const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1050 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+         const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
           return (timeB || 0) - (timeA || 0);
         });
 
@@ -819,6 +823,136 @@ const Home = () => {
     };
   }, [country, authLoading, reloadCounter, dbLimit]); // Recarrega sempre que mudar de país ou com dbLimit
 
+
+  // Dedicated query for the Boats for Sale homepage section.
+  // The general homepage discovery feed intentionally loads only the newest 48
+  // ads across all categories, so older sale listings must not depend on it.
+  useEffect(() => {
+    let active = true;
+
+    const loadSaleSectionAds = async () => {
+      if (authLoading) return;
+
+      try {
+        const qSale = query(
+          collection(db, 'ads'),
+          where('category', '==', 'Boats for Sale'),
+          limit(200)
+        );
+
+        const snapshot = await withTimeout(
+          getDocsWithCacheFallback(qSale, `home/sale-section-${country}`),
+          20000
+        );
+
+        if (!active) return;
+
+        const rows = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Ad))
+          .filter(ad => {
+            if (ad.isHidden) return false;
+
+            const isActive =
+              ad.status === 'approved' &&
+              (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
+
+            const adCountry = (ad.country || '').trim();
+            const selectedCountry = (country || '').trim();
+            const ukLabels = new Set(['Reino Unido', 'United Kingdom', 'UK']);
+            const matchesCountry =
+              !adCountry ||
+              adCountry === selectedCountry ||
+              (ukLabels.has(adCountry) && ukLabels.has(selectedCountry));
+
+            return isActive && matchesCountry;
+          })
+          .sort((a, b) => {
+            const timeA = a.createdAt?.seconds
+              ? a.createdAt.seconds * 1000
+              : (a.createdAt ? new Date(a.createdAt as any).getTime() : 0);
+            const timeB = b.createdAt?.seconds
+              ? b.createdAt.seconds * 1000
+              : (b.createdAt ? new Date(b.createdAt as any).getTime() : 0);
+            return (timeB || 0) - (timeA || 0);
+          });
+
+        setSaleSectionAds(rows);
+      } catch (err) {
+        console.error('[Home] Failed to load dedicated sale listings:', err);
+        if (active) setSaleSectionAds([]);
+      }
+    };
+
+    loadSaleSectionAds();
+    return () => {
+      active = false;
+    };
+  }, [country, authLoading, reloadCounter]);
+
+
+  // Dedicated query for the Boats for Hire & Charter homepage section.
+  // The general homepage feed intentionally loads only the newest 48 ads, so
+  // older hire listings must not depend on that limited result set.
+  useEffect(() => {
+    let active = true;
+
+    const loadHireSectionAds = async () => {
+      if (authLoading) return;
+
+      try {
+        const qHire = query(
+          collection(db, 'ads'),
+          where('category', '==', 'Boats for Hire'),
+          limit(20)
+        );
+
+        const snapshot = await withTimeout(
+          getDocsWithCacheFallback(qHire, `home/hire-section-${country}`),
+          20000
+        );
+
+        if (!active) return;
+
+        const rows = snapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Ad))
+          .filter(ad => {
+            const isActive =
+              ad.status === 'approved' &&
+              (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus);
+
+            const adCountry = (ad.country || '').trim();
+            const selectedCountry = (country || '').trim();
+            const ukLabels = new Set(['Reino Unido', 'United Kingdom', 'UK']);
+            const matchesCountry =
+              !adCountry ||
+              adCountry === selectedCountry ||
+              (ukLabels.has(adCountry) && ukLabels.has(selectedCountry));
+
+            return isActive && matchesCountry;
+          })
+          .sort((a, b) => {
+            const timeA = a.createdAt?.seconds
+              ? a.createdAt.seconds * 1000
+              : (a.createdAt ? new Date(a.createdAt as any).getTime() : 0);
+            const timeB = b.createdAt?.seconds
+              ? b.createdAt.seconds * 1000
+              : (b.createdAt ? new Date(b.createdAt as any).getTime() : 0);
+            return (timeB || 0) - (timeA || 0);
+          });
+
+        setHireSectionAds(rows);
+      } catch (err) {
+        console.error('[Home] Failed to load dedicated hire listings:', err);
+        if (active) setHireSectionAds([]);
+      }
+    };
+
+    loadHireSectionAds();
+    return () => {
+      active = false;
+    };
+  }, [country, authLoading, reloadCounter]);
+
   const handleLoadMore = () => {
     if (isFetchingMore) return;
     
@@ -845,8 +979,11 @@ const Home = () => {
     let result = featuredAds.filter(ad => {
       if (ad.isHidden) return false;
       if (ad.category === 'Trabalho/Empregos') return false;
-      // EXCLUSIVE FOR SALE LISTINGS: Boats for Hire are strictly forbidden from Featured Marine Listings
+      // HOME RULE: Featured listings on the homepage are exclusively boats for sale.
+      // Hire listings have their own dedicated homepage section, and every other
+      // marine category remains available through search, filters and categories.
       if (ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') return false;
+      if (ad.category !== 'Boats for Sale') return false;
       
       const search = searchTerm.toLowerCase().trim();
       const matchesSearch = !search || ad.title?.toLowerCase().includes(search) || ad.description?.toLowerCase().includes(search);
@@ -883,7 +1020,17 @@ const Home = () => {
       }
 
       // City / Regional limits
-      const isNational = ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel;
+      // Current paid plans (Featured/Premium) are marketplace-wide highlights.
+      // Legacy local/national plans are still supported for older listings.
+      const isPremiumPlan = ad.featuredLevel === 'premium' || ad.plan === 'premium';
+      const isFeaturedPlan = ad.featuredLevel === 'featured' || ad.plan === 'featured';
+      const isNational =
+        isPremiumPlan ||
+        isFeaturedPlan ||
+        ad.featuredLevel === 'national' ||
+        ad.plan === 'national' ||
+        !ad.featuredLevel;
+
       if (city !== 'Todas') {
         const isLocal = ad.featuredLevel === 'local' || ad.plan === 'local' || ad.plan === 'highlight' || ad.plan === 'intermediate';
         if (isLocal) {
@@ -892,7 +1039,7 @@ const Home = () => {
           return false;
         }
       } else {
-        // city === 'Todas': show National (or all permanent if national or without city constraints)
+        // With no city selected, show current Featured/Premium plans and legacy national highlights.
         if (!isNational) return false;
       }
 
@@ -912,11 +1059,19 @@ const Home = () => {
 
     const filteredActivePermanent = result.filter(ad => ad.isPermanentFeatured);
 
-    // Priorities:
-    // 1. Destaques Nacionais ativos
-    // 2. Destaques Locais ativos
-    // 3. Destaques Permanentes
-    const paidNational = filteredActivePaid.filter(ad => ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel);
+    // Featured Marine Listings priority:
+    // 1. Premium paid listings
+    // 2. Featured paid listings
+    // 3. Legacy national highlights
+    // 4. Legacy local highlights
+    // 5. Permanent highlights
+    const paidPremium = filteredActivePaid.filter(ad => ad.featuredLevel === 'premium' || ad.plan === 'premium');
+    const paidFeatured = filteredActivePaid.filter(ad => ad.featuredLevel === 'featured' || ad.plan === 'featured');
+    const paidNational = filteredActivePaid.filter(ad =>
+      (ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel) &&
+      ad.featuredLevel !== 'premium' && ad.plan !== 'premium' &&
+      ad.featuredLevel !== 'featured' && ad.plan !== 'featured'
+    );
     const paidLocal = filteredActivePaid.filter(ad => ad.featuredLevel === 'local' || ad.plan === 'local' || ad.plan === 'highlight' || ad.plan === 'intermediate');
 
     const sortByFeaturedUntilDesc = (a: Ad, b: Ad) => {
@@ -925,6 +1080,8 @@ const Home = () => {
       return (timeB || 0) - (timeA || 0);
     };
 
+    paidPremium.sort(sortByFeaturedUntilDesc);
+    paidFeatured.sort(sortByFeaturedUntilDesc);
     paidNational.sort(sortByFeaturedUntilDesc);
     paidLocal.sort(sortByFeaturedUntilDesc);
 
@@ -935,8 +1092,14 @@ const Home = () => {
       return (timeB || 0) - (timeA || 0);
     });
 
-    // Combine them in priority order: Paid National, Paid Local, Permanent Featured
-    let finalResult = [...paidNational, ...paidLocal, ...filteredActivePermanent];
+    // Combine in commercial plan priority order.
+    let finalResult = [
+      ...paidPremium,
+      ...paidFeatured,
+      ...paidNational,
+      ...paidLocal,
+      ...filteredActivePermanent
+    ];
 
     return finalResult.slice(0, 50);
   }, [featuredAds, searchTerm, category, city, country, filterRegion, filterNational, filterOnline]);
@@ -966,9 +1129,46 @@ const Home = () => {
 
 
   const filteredAds = useMemo(() => {
-    let result = ads.filter(ad => {
+    // On the untouched homepage, the main/latest grid is exclusively Boats for Sale.
+    // As soon as the visitor actively searches, selects a category or uses a filter,
+    // the marketplace opens back up so parts, engines, electronics, services, etc.
+    // can still be discovered normally.
+    const hasActiveDiscoveryFilter =
+      searchTerm.trim() !== '' ||
+      category !== 'Todas' ||
+      city !== 'Todas' ||
+      (selectedRegion !== '' && selectedRegion !== 'All Regions') ||
+      filterRegion ||
+      filterNational ||
+      filterOnline ||
+      filterBoatType !== 'Todas' ||
+      filterMinPrice.trim() !== '' ||
+      filterMaxPrice.trim() !== '' ||
+      filterManufacturer.trim() !== '' ||
+      filterModel.trim() !== '' ||
+      filterMinYear.trim() !== '' ||
+      filterMaxYear.trim() !== '' ||
+      filterCondition !== 'Todas' ||
+      filterMinLength.trim() !== '' ||
+      filterMaxLength.trim() !== '' ||
+      filterFuelType !== 'Todas' ||
+      filterHullMaterial !== 'Todas' ||
+      filterLocationKeyword.trim() !== '' ||
+      filterMinCabins.trim() !== '' ||
+      filterTrailer !== 'Any';
+
+    // On the untouched homepage, use the dedicated Boats for Sale query so
+    // older sale listings are not lost behind the 48-item mixed-category limit.
+    // Once the visitor searches or filters, keep using the general discovery feed.
+    const sourceAds = hasActiveDiscoveryFilter ? ads : saleSectionAds;
+
+    let result = sourceAds.filter(ad => {
       if (ad.isHidden) return false;
       if (ad.category === 'Trabalho/Empregos') return false;
+
+      // HOME RULE: without an active search/filter/category, only Boats for Sale
+      // may enter the main/latest homepage grid.
+      if (!hasActiveDiscoveryFilter && ad.category !== 'Boats for Sale') return false;
 
       // Exclude rental/hire listings from "Latest Marine Listings"
       if (
@@ -1172,6 +1372,11 @@ const Home = () => {
         );
 
         if (isFeatured) {
+          // Current ConnectBoat paid-plan hierarchy.
+          if (ad.featuredLevel === 'premium' || ad.plan === 'premium') return 5;
+          if (ad.featuredLevel === 'featured' || ad.plan === 'featured') return 4;
+
+          // Keep compatibility with older national/local featured records.
           const isNational = ad.featuredLevel === 'national' || ad.plan === 'national' || !ad.featuredLevel;
           if (isNational) return 4;
           const isDonation = ad.category === '💚 Doações & Solidariedade' || ad.donationBoost === true || ad.featuredReason === 'donation';
@@ -1199,10 +1404,12 @@ const Home = () => {
     });
   }, [
     ads,
+    saleSectionAds,
     searchTerm,
     category,
     city,
     country,
+    selectedRegion,
     filterRegion,
     filterNational,
     filterOnline,
@@ -1236,15 +1443,9 @@ const Home = () => {
   }, [ads, country]);
 
   // Paginação inteligente de anúncios filtrados em memória (carregamento instantâneo offline-first)
-  // Boats for Hire list
-  const hireAds = useMemo(() => {
-    return ads.filter(ad => (
-      ad.status === 'approved' &&
-      (ad.adStatus === 'active' || ad.adStatus === 'sold' || !ad.adStatus) &&
-      (ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') &&
-      (ad.country ? ad.country === country : true)
-    ));
-  }, [ads, country]);
+  // Boats for Hire list comes from its own Firestore query and therefore does
+  // not disappear when hire listings are older than the 48 newest homepage ads.
+  const hireAds = useMemo(() => hireSectionAds, [hireSectionAds]);
 
   const displayedAds = useMemo(() => {
     return filteredAds.slice(0, limitAmount);
@@ -1408,8 +1609,8 @@ const Home = () => {
           {/* 3 Dropdowns na Primeira Linha */}
           <div className="grid grid-cols-3 gap-2 w-full" id="desktop-filters-section">
             {/* Categoria */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
-              <Tag size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
+            <div className="relative h-11 flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
+              <Tag size={14} className="text-slate-400 shrink-0 select-none" />
               <select
                 value={category}
                 onChange={(e) => {
@@ -1419,30 +1620,30 @@ const Home = () => {
                   setFilterNational(false);
                   setFilterOnline(false);
                 }}
-                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
+                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
               >
-                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
+                <option value="Todas" className="bg-white text-slate-900 font-medium">All Categories</option>
                 {categories.map((c, i) => (
-                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
+                  <option key={i} value={c} className="bg-white text-slate-900 font-medium">{c}</option>
                 ))}
               </select>
-              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
+              <span className="text-[9px] text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
             </div>
 
             {/* Cidade / Localização */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
-              <MapPin size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
+            <div className="relative h-11 flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
+              <MapPin size={14} className="text-slate-400 shrink-0 select-none" />
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
+                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
               >
-                <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
+                <option value="Todas" className="bg-white text-slate-900 font-medium">All Locations</option>
                 {selectableCitiesOnHome.map((c, i) => (
-                  <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
+                  <option key={i} value={c} className="bg-white text-slate-900 font-medium">{c}</option>
                 ))}
               </select>
-              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
+              <span className="text-[9px] text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
             </div>
 
             {/* Botão de Filtros */}
@@ -1452,10 +1653,10 @@ const Home = () => {
               className={`h-11 flex items-center justify-center gap-1.5 px-3 sm:px-3.5 rounded-2xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer min-w-0 truncate ${
                 activeMarineFilterCount > 0
                   ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
               }`}
             >
-              <SlidersHorizontal size={14} className="shrink-0 text-slate-500 dark:text-slate-400" />
+              <SlidersHorizontal size={14} className="shrink-0 text-slate-500" />
               <span className="truncate">Filters</span>
               {activeMarineFilterCount > 0 && (
                 <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
@@ -1466,7 +1667,7 @@ const Home = () => {
           </div>
 
           {/* Campo de Pesquisa Textual na Segunda Linha */}
-          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 focus-within:border-sky-500 transition-all">
+          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white rounded-2xl border border-slate-200 focus-within:border-sky-500 transition-all">
             <input
               type="text"
               value={searchTerm}
@@ -1477,7 +1678,7 @@ const Home = () => {
               }}
               onBlur={() => setIsSearchFocused(false)}
               placeholder="Search boats, engines, parts, services..."
-              className="w-full bg-transparent text-slate-900 dark:text-slate-100 font-medium placeholder:text-slate-400 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
+              className="w-full bg-transparent text-slate-800 font-medium placeholder:text-slate-800 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
             />
             {searchTerm && (
               <button
@@ -2555,7 +2756,7 @@ const Home = () => {
                 {/* Section 6: Length (Meters) */}
                 <div className="space-y-2.5">
                   <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Length (Meters)
+                    Length (Metres)
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
