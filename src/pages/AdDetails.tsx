@@ -307,9 +307,30 @@ const AdDetails = () => {
   const [showContactWarning, setShowContactWarning] = useState(false);
   const [showContactOptionsModal, setShowContactOptionsModal] = useState(false);
   const [selectedContactMethod, setSelectedContactMethod] = useState<'whatsapp' | 'phone' | 'email' | 'source' | null>(null);
+  const [showEmailContactModal, setShowEmailContactModal] = useState(false);
+  const [emailContactName, setEmailContactName] = useState('');
+  const [emailContactAddress, setEmailContactAddress] = useState('');
+  const [emailContactMessage, setEmailContactMessage] = useState('');
+  const [emailContactSending, setEmailContactSending] = useState(false);
   const [acceptedContactTerms, setAcceptedContactTerms] = useState(() => {
     return localStorage.getItem('safety_terms_accepted') === 'true';
   });
+
+  useEffect(() => {
+    if (!showEmailContactModal || !user || !ad) return;
+
+    setEmailContactName(
+      (profile?.name || user.displayName || '').trim()
+    );
+    setEmailContactAddress(
+      (user.email || profile?.email || '').trim()
+    );
+    setEmailContactMessage((current) =>
+      current.trim()
+        ? current
+        : `Hello,\n\nI saw your listing "${ad.title}" on ConnectBoat and I'm interested. Is it still available?\n\nThank you.`
+    );
+  }, [showEmailContactModal, user, profile, ad]);
 
   // Denúncia
   const [showReportModal, setShowReportModal] = useState(false);
@@ -669,10 +690,7 @@ const AdDetails = () => {
 
     if (method === 'email') {
       const email = (a.contactEmail || '').trim();
-      if (!email) return '';
-      const subject = encodeURIComponent(`ConnectBoat enquiry: ${ad.title}`);
-      const body = encodeURIComponent(`Hello,\n\nI saw your listing "${ad.title}" on ConnectBoat and I'm interested. Is it still available?\n\nThank you.`);
-      return `mailto:${email}?subject=${subject}&body=${body}`;
+      return email ? 'connectboat:email-form' : '';
     }
 
     if (method === 'source' && hasSourceUrl && ad.sourceUrl) {
@@ -696,6 +714,16 @@ const AdDetails = () => {
   const openContactMethod = async (method: ContactMethod) => {
     if (!ad) return;
 
+    if (method === 'email') {
+      const email = ((ad as any).contactEmail || '').trim();
+      if (!email) {
+        showToastMsg('error', 'Email contact is not available for this listing.');
+        return;
+      }
+      setShowEmailContactModal(true);
+      return;
+    }
+
     const targetUrl = getTargetContactUrl(method);
     if (!targetUrl) {
       showToastMsg('error', 'This contact method is not available.');
@@ -716,7 +744,7 @@ const AdDetails = () => {
       }
     }
 
-    if (method === 'phone' || method === 'email') {
+    if (method === 'phone') {
       window.location.href = targetUrl;
     } else {
       window.open(targetUrl, '_blank', 'noopener,noreferrer');
@@ -832,6 +860,79 @@ const AdDetails = () => {
       console.error(`[AdDetails] Erro ao gravar adInterest com ID ${docId}:`, err);
       const errMsg = err instanceof Error ? err.message : String(err);
       return { success: false, error: errMsg };
+    }
+  };
+
+  const handleEmailContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ad || !user) return;
+
+    const recipient = ((ad as any).contactEmail || '').trim();
+    const name = emailContactName.trim();
+    const senderEmail = emailContactAddress.trim();
+    const message = emailContactMessage.trim();
+
+    if (!recipient) {
+      showToastMsg('error', 'The seller email is not available.');
+      return;
+    }
+    if (!name) {
+      showToastMsg('error', 'Please enter your name.');
+      return;
+    }
+    if (!senderEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail)) {
+      showToastMsg('error', 'Your account email is not available.');
+      return;
+    }
+    if (!message || message.length < 10) {
+      showToastMsg('error', 'Please write a message of at least 10 characters.');
+      return;
+    }
+    if (message.length > 3000) {
+      showToastMsg('error', 'Your message is too long. Please keep it under 3000 characters.');
+      return;
+    }
+
+    setEmailContactSending(true);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          template: 'seller_message',
+          to: recipient,
+          data: {
+            adId: ad.id,
+            adTitle: ad.title,
+            sellerName: ad.sellerName || 'Seller',
+            interestedName: name,
+            interestedEmail: senderEmail,
+            message,
+            adUrl: `${window.location.origin}${location.pathname}`
+          }
+        })
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.success === false) {
+        throw new Error(result?.error || 'Could not send the message.');
+      }
+
+      await registerInterest('email');
+
+      setShowEmailContactModal(false);
+      setSelectedContactMethod(null);
+      setEmailContactMessage('');
+      showToastMsg('success', 'Message sent to the seller successfully.', 4500);
+    } catch (error: any) {
+      console.error('[AdDetails] Email contact error:', error);
+      showToastMsg('error', error?.message || 'Could not send the message. Please try again.');
+    } finally {
+      setEmailContactSending(false);
     }
   };
 
@@ -2831,6 +2932,119 @@ const AdDetails = () => {
               >
                 Cancel
               </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Internal email contact form */}
+      <AnimatePresence>
+        {showEmailContactModal && (
+          <div className="fixed inset-0 z-[198] flex items-center justify-center p-4">
+            <motion.button
+              type="button"
+              aria-label="Close email form"
+              className="absolute inset-0 bg-slate-950/65 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !emailContactSending && setShowEmailContactModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              className="relative z-10 w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl md:p-7"
+            >
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                    <Mail size={22} />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-950">Email Seller</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Your message will be sent securely by ConnectBoat.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={emailContactSending}
+                  onClick={() => setShowEmailContactModal(false)}
+                  className="rounded-full bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200 disabled:opacity-50"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEmailContactSubmit} className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                    Your Name
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={100}
+                    value={emailContactName}
+                    onChange={(e) => setEmailContactName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    placeholder="Your name"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                    Your Email
+                  </label>
+                  <input
+                    type="email"
+                    value={emailContactAddress}
+                    readOnly
+                    className="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-600 outline-none"
+                    required
+                  />
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+                    Replies will be sent to the email address linked to your ConnectBoat account.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                    Message
+                  </label>
+                  <textarea
+                    value={emailContactMessage}
+                    onChange={(e) => setEmailContactMessage(e.target.value)}
+                    maxLength={3000}
+                    rows={7}
+                    className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    placeholder="Write your message to the seller..."
+                    required
+                  />
+                  <div className="mt-1 text-right text-[11px] text-slate-400">
+                    {emailContactMessage.length}/3000
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row">
+                  <button
+                    type="button"
+                    disabled={emailContactSending}
+                    onClick={() => setShowEmailContactModal(false)}
+                    className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={emailContactSending}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-md transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Mail size={17} />
+                    {emailContactSending ? 'Sending...' : 'Send Message'}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}
