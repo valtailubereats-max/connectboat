@@ -592,10 +592,12 @@ const AdCard: React.FC<AdCardProps> = ({
           )}
           {/* Removed top overlay tags per user request */}
           {(ad.status === 'sold' || ad.adStatus === 'sold') && (
-            <div className="absolute inset-x-0 bottom-0 top-0 bg-slate-900/60 z-30 flex items-center justify-center backdrop-blur-[1.5px] pointer-events-none">
-              <span className="bg-rose-600 text-white text-xs font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full shadow-lg border border-rose-500 flex items-center gap-1.5 animate-scale-in">
-                <Tag size={12} className="fill-current text-white shrink-0" /> SOLD
-              </span>
+            <div className="absolute inset-0 z-30 overflow-hidden pointer-events-none flex items-center justify-center">
+              <div className="w-[150%] -rotate-[28deg] bg-rose-600/78 backdrop-blur-[1px] border-y border-white/35 py-2.5 text-center shadow-[0_8px_24px_rgba(190,24,93,0.28)]">
+                <span className="text-white text-sm sm:text-base font-black tracking-[0.20em] uppercase drop-shadow-md">
+                  SOLD
+                </span>
+              </div>
             </div>
           )}
           {ad.imageUrl && ad.listingType !== 'informativo' && (
