@@ -618,7 +618,7 @@ const BoatsForHire = () => {
           </div>
           <div>
             <p className="font-extrabold text-slate-900 dark:text-slate-100">
-              Direct WhatsApp Connection
+              Direct Contact with Owners
             </p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
               ConnectBoat connects hirers with owners and operators directly.
