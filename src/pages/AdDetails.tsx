@@ -3227,7 +3227,8 @@ const AdDetails = () => {
               <div className="space-y-2 text-left">
                 <h3 className="text-xl font-black text-slate-950">Contact Unavailable</h3>
                 <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                 This listing was created for service providers on ConnectBoat and is awaiting activation by its owner. Direct contact options will be enabled as soon as the business is activated.
+                  This listing was created for service providers on ConnectBoat and is **awaiting activation by its owner**. Direct contact options will be enabled as soon as the business is activated.
+                </p>
                 <p className="text-xs text-indigo-950 font-extrabold leading-relaxed bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100">
                   💡 If you are the owner or manager of this business, click "Claim Business" below to activate it for free!
                 </p>
