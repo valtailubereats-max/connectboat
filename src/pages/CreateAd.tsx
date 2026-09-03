@@ -47,6 +47,7 @@ const CreateAd = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [originalAd, setOriginalAd] = useState<Ad | null>(null);
+  const [soldStatusUpdating, setSoldStatusUpdating] = useState(false);
 
   const isEditLocked = useMemo(() => {
     if (!id || !originalAd || !originalAd.isFeatured) return false;
@@ -490,6 +491,74 @@ const CreateAd = () => {
       : (isMarketplaceListingCategory(formData.category) && !isFirstMarketplaceListingFree() ? getMarketplaceAdditionalPrice() : 0);
     const mediaBoostExtra = (formData.mediaBoostEnabled && !originalAd?.videoPaid) ? 2.00 : 0;
     return (planBase + mediaBoostExtra).toFixed(2);
+  };
+
+  const getOriginalExpirationDate = () => {
+    const value: any = (originalAd as any)?.expirationDate;
+    if (!value) return null;
+    if (typeof value?.toDate === 'function') return value.toDate();
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const handleToggleSoldFromEdit = async () => {
+    if (!id || !originalAd || !user) return;
+
+    const isSold = originalAd.status === 'sold' || originalAd.adStatus === 'sold';
+    const expirationDate = getOriginalExpirationDate();
+
+    if (isSold && expirationDate && expirationDate.getTime() <= Date.now()) {
+      alert('This listing has already expired. Please renew or relist it instead of reactivating it.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      isSold
+        ? 'Reactivate this listing using only the remaining time before its original expiration date?'
+        : 'Mark this listing as SOLD? It will remain visible until its original expiration date, but contact will be disabled.'
+    );
+    if (!confirmed) return;
+
+    setSoldStatusUpdating(true);
+    try {
+      const adRef = doc(db, 'ads', id);
+
+      if (isSold) {
+        await updateDoc(adRef, {
+          adStatus: 'active',
+          status: 'approved',
+          soldOutsidePlatform: false,
+          soldAt: null,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        await updateDoc(adRef, {
+          adStatus: 'sold',
+          status: 'approved',
+          soldOutsidePlatform: true,
+          soldAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      clearHomeCache();
+
+      const refreshedSnap = await getDoc(adRef);
+      if (refreshedSnap.exists()) {
+        setOriginalAd({ id: refreshedSnap.id, ...refreshedSnap.data() } as Ad);
+      }
+
+      alert(
+        isSold
+          ? 'Listing reactivated successfully. The original expiration date has not changed.'
+          : 'Listing marked as SOLD. It will remain visible until it expires.'
+      );
+    } catch (error) {
+      console.error('[CreateAd] Failed to update sold status:', error);
+      alert('Could not update the listing status. Please try again.');
+    } finally {
+      setSoldStatusUpdating(false);
+    }
   };
 
   const validateStep1AndProceed = () => {
@@ -3071,6 +3140,55 @@ const CreateAd = () => {
                   </div>
                 </div>
               </div>
+
+              {id && originalAd && formData.category === 'Boats for Sale' && (
+                <div className={`rounded-2xl border-2 p-4 ${
+                  (originalAd.status === 'sold' || originalAd.adStatus === 'sold')
+                    ? 'border-rose-200 bg-rose-50'
+                    : 'border-slate-200 bg-white'
+                }`}>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                        (originalAd.status === 'sold' || originalAd.adStatus === 'sold')
+                          ? 'bg-rose-600 text-white'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        <Tag size={19} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-black text-slate-900">
+                          {(originalAd.status === 'sold' || originalAd.adStatus === 'sold')
+                            ? 'This listing is marked as SOLD'
+                            : 'Has this boat been sold?'}
+                        </p>
+                        <p className="mt-1 text-xs font-medium leading-relaxed text-slate-500">
+                          {(originalAd.status === 'sold' || originalAd.adStatus === 'sold')
+                            ? 'You can reactivate it if the deal falls through. The original expiration date will not be extended.'
+                            : 'The listing will remain visible with a SOLD banner until it expires, and buyer contact will be disabled.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleToggleSoldFromEdit}
+                      disabled={soldStatusUpdating}
+                      className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-black text-white transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
+                        (originalAd.status === 'sold' || originalAd.adStatus === 'sold')
+                          ? 'bg-emerald-600 hover:bg-emerald-700'
+                          : 'bg-rose-600 hover:bg-rose-700'
+                      }`}
+                    >
+                      {soldStatusUpdating
+                        ? 'Updating...'
+                        : (originalAd.status === 'sold' || originalAd.adStatus === 'sold')
+                          ? 'Reactivate Listing'
+                          : 'Mark as Sold'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Step 1 Actions */}
               <div className="flex items-center justify-between pt-4 border-t border-slate-200 mt-5">
