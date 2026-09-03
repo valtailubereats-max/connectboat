@@ -3779,7 +3779,7 @@ const CreateAd = () => {
 
                     <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
                       <li>📷 <strong>Up to {getMaxPhotosForPlan('standard')} Photos</strong></li>
-                      <li>💬 Direct WhatsApp Contact</li>
+                      <li>💬 Direct Contact Options</li>
                       <li>🔍 Standard Search & Category</li>
                     </ul>
 
