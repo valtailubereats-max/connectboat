@@ -92,7 +92,7 @@ const Cookies = () => {
 
         <div className="prose prose-slate max-w-none space-y-8">
           <p className="text-sm font-semibold text-emerald-600">
-            Last updated: 29 August 2026
+            Last updated: 3 September 2026
           </p>
 
           <section>
@@ -113,7 +113,12 @@ const Cookies = () => {
               ConnectBoat may also use browser storage and similar technologies, including local
               storage or session storage. These technologies are not always technically cookies,
               but they may perform similar functions, such as remembering preferences or supporting
-              platform functionality. For simplicity, this policy uses the term cookies to include cookies and other storage or access technologies where appropriate. These technologies are covered by the Privacy and Electronic Communications Regulations (PECR) where they store information on, or access information from, a user's device.
+              platform functionality. For simplicity, this policy uses the term cookies to include
+              cookies and other storage or access technologies where appropriate. UK rules can apply
+              whenever information is stored on, or accessed from, a user&apos;s device, not only when a
+              traditional cookie file is used. ConnectBoat therefore treats browser storage and
+              similar technologies in accordance with the applicable Privacy and Electronic
+              Communications Regulations (PECR) requirements.
             </p>
           </section>
 
@@ -272,7 +277,16 @@ const Cookies = () => {
             <p className="text-slate-600 leading-relaxed">
               When the ConnectBoat cookie banner is shown, you can choose <strong>Accept Analytics</strong>
               or <strong>Essential Only</strong>. Optional Google Analytics is disabled unless you
-              expressly choose to enable it.
+              expressly choose to enable it. Choosing Essential Only does not prevent you from
+              using the core marketplace.
+            </p>
+
+            <p className="text-slate-600 leading-relaxed mt-3">
+              Consent for optional analytics must be a clear positive choice. ConnectBoat does not
+              treat continued browsing, silence or closing the banner as consent to Analytics. You
+              can withdraw a previous Analytics choice at any time on this page; when you do, we stop
+              sending new ConnectBoat Analytics events and remove accessible <code>_ga</code> cookies
+              from this site.
             </p>
 
             <div className="mt-5 p-5 bg-emerald-50/60 rounded-2xl border border-emerald-100">
@@ -296,7 +310,7 @@ const Cookies = () => {
                 <button
                   type="button"
                   onClick={useEssentialOnly}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-extrabold transition-all"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white border border-slate-700 text-xs font-extrabold transition-all"
                 >
                   <Shield size={15} />
                   Essential Only
