@@ -1443,12 +1443,13 @@ const AdDetails = () => {
             )}
 
             {(ad.status === 'sold' || ad.adStatus === 'sold') && (
-              <div className="absolute inset-0 z-[18] overflow-hidden pointer-events-none flex items-center justify-center">
-                <div className="w-[145%] -rotate-[28deg] bg-rose-600/78 backdrop-blur-[1px] border-y border-white/35 py-3 sm:py-4 text-center shadow-[0_10px_30px_rgba(190,24,93,0.28)]">
-                  <span className="text-white text-2xl sm:text-4xl md:text-5xl font-black tracking-[0.22em] uppercase drop-shadow-md">
-                    SOLD
-                  </span>
-                </div>
+              <div className="absolute inset-0 z-[18] overflow-hidden pointer-events-none">
+                <img
+                  src="/sold-banner-connectboat.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full object-cover opacity-[0.86]"
+                />
               </div>
             )}
 
@@ -2124,12 +2125,13 @@ const AdDetails = () => {
             )}
 
             {(ad.status === 'sold' || ad.adStatus === 'sold') && (
-              <div className="absolute inset-0 z-[18] overflow-hidden pointer-events-none flex items-center justify-center">
-                <div className="w-[145%] -rotate-[28deg] bg-rose-600/78 backdrop-blur-[1px] border-y border-white/35 py-3 sm:py-4 text-center shadow-[0_10px_30px_rgba(190,24,93,0.28)]">
-                  <span className="text-white text-2xl sm:text-4xl md:text-5xl font-black tracking-[0.22em] uppercase drop-shadow-md">
-                    SOLD
-                  </span>
-                </div>
+              <div className="absolute inset-0 z-[18] overflow-hidden pointer-events-none">
+                <img
+                  src="/sold-banner-connectboat.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full object-cover opacity-[0.86]"
+                />
               </div>
             )}
 
