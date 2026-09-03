@@ -606,6 +606,8 @@ const AdDetails = () => {
     return phone.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
   };
 
+  const hasSourceUrl = !!(ad && ad.sourceUrl && /^https?:\/\//i.test(ad.sourceUrl));
+
   type ContactMethod = 'whatsapp' | 'phone' | 'email' | 'source';
 
   const getContactMethods = (): ContactMethod[] => {
