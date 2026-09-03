@@ -3,9 +3,9 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  MapPin, MessageCircle, Clock, ChevronLeft, ChevronRight, X, Heart, Star, 
+  MapPin, MessageCircle, Phone, Mail, Clock, ChevronLeft, ChevronRight, X, Heart, Star, 
   Trash2, Edit, AlertCircle, ShieldAlert, Eye, EyeOff, Award, Calendar, Share2, ExternalLink,
-  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video, UserRound, Mail, Phone
+  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video, UserRound
 } from 'lucide-react';
 import { 
   doc, updateDoc, increment, setDoc, collection, query, where, limit, getDoc, serverTimestamp, Timestamp, onSnapshot 
@@ -305,6 +305,8 @@ const AdDetails = () => {
 
   // Segurança de Contacto WhatsApp
   const [showContactWarning, setShowContactWarning] = useState(false);
+  const [showContactOptionsModal, setShowContactOptionsModal] = useState(false);
+  const [selectedContactMethod, setSelectedContactMethod] = useState<'whatsapp' | 'phone' | 'email' | 'source' | null>(null);
   const [acceptedContactTerms, setAcceptedContactTerms] = useState(() => {
     return localStorage.getItem('safety_terms_accepted') === 'true';
   });
@@ -592,38 +594,90 @@ const AdDetails = () => {
     }
   };
 
-  const cleanPhone = (phone: string) => phone.replace(/\D/g, '');
-
-  const legacyContactMode = !!ad &&
-    (ad as any).showWhatsapp === undefined &&
-    (ad as any).showPhone === undefined &&
-    (ad as any).showEmail === undefined;
-
-  const whatsappNumber = ad
-    ? (((ad as any).contactWhatsapp || (legacyContactMode ? (ad.contactPhone || ad.sellerPhone) : '')) || '').trim()
-    : '';
-  const phoneNumber = ad ? (ad.contactPhone || '').trim() : '';
-  const emailAddress = ad ? (ad.contactEmail || '').trim() : '';
-
-  const showWhatsappContact = !!whatsappNumber && (legacyContactMode || (ad as any).showWhatsapp === true);
-  const showPhoneContact = !!phoneNumber && !legacyContactMode && (ad as any).showPhone === true;
-  const showEmailContact = !!emailAddress && !legacyContactMode && (ad as any).showEmail === true &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
-
-  const getWhatsappUrl = () => {
-    if (!ad || !showWhatsappContact) return '';
-    const phone = cleanPhone(whatsappNumber);
-    return `https://wa.me/${phone}?text=${encodeURIComponent(`Hello, I saw your listing "${ad.title}" on ConnectBoat and I'm interested. Is it still available?`)}`;
+  const getAdPhone = () => {
+    if (!ad) return '';
+    if (ad.useProfilePhone === false && ad.contactPhone) {
+      return ad.contactPhone;
+    }
+    return ad.sellerPhone || '';
   };
 
-  const hasSourceUrl = !!(ad && ad.sourceUrl && /^https?:\/\//i.test(ad.sourceUrl));
+  const cleanPhone = (phone: string) => {
+    return phone.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+  };
 
-  const getTargetContactUrl = () => {
+  type ContactMethod = 'whatsapp' | 'phone' | 'email' | 'source';
+
+  const getContactMethods = (): ContactMethod[] => {
+    if (!ad) return [];
+
+    const a = ad as any;
+    const hasNewVisibilityFlags =
+      typeof a.showWhatsapp === 'boolean' ||
+      typeof a.showPhone === 'boolean' ||
+      typeof a.showEmail === 'boolean';
+
+    const whatsappNumber = (a.contactWhatsapp || '').trim();
+    const phoneNumber = (a.contactPhone || '').trim();
+    const emailAddress = (a.contactEmail || '').trim();
+
+    if (hasNewVisibilityFlags) {
+      const methods: ContactMethod[] = [];
+      if (a.showWhatsapp === true && whatsappNumber) methods.push('whatsapp');
+      if (a.showPhone === true && phoneNumber) methods.push('phone');
+      if (a.showEmail === true && emailAddress) methods.push('email');
+      return methods;
+    }
+
+    // Backward compatibility for listings created before Contact Options.
+    if ((ad.sellerPhone || '').trim()) return ['whatsapp'];
+    if (emailAddress) return ['email'];
+    if (hasSourceUrl && ad.sourceUrl) return ['source'];
+    return [];
+  };
+
+  const getContactMethodLabel = (method: ContactMethod) => {
+    if (method === 'whatsapp') return 'WhatsApp';
+    if (method === 'phone') return 'Call Seller';
+    if (method === 'email') return 'Email Seller';
+    return 'Contact Seller';
+  };
+
+  const getContactMethodIcon = (method: ContactMethod) => {
+    if (method === 'phone') return Phone;
+    if (method === 'email') return Mail;
+    if (method === 'source') return ExternalLink;
+    return MessageCircle;
+  };
+
+  const getTargetContactUrl = (method: ContactMethod) => {
     if (!ad) return '';
-    if (hasSourceUrl && ad.sourceUrl) {
+    const a = ad as any;
+
+    if (method === 'whatsapp') {
+      const phone = cleanPhone((a.contactWhatsapp || ad.sellerPhone || '').trim());
+      if (!phone) return '';
+      return `https://wa.me/${phone.replace(/^\+/, '')}?text=${encodeURIComponent(`Hello, I saw your listing "${ad.title}" on ConnectBoat and I'm interested. Is it still available?`)}`;
+    }
+
+    if (method === 'phone') {
+      const phone = cleanPhone((a.contactPhone || '').trim());
+      return phone ? `tel:${phone}` : '';
+    }
+
+    if (method === 'email') {
+      const email = (a.contactEmail || '').trim();
+      if (!email) return '';
+      const subject = encodeURIComponent(`ConnectBoat enquiry: ${ad.title}`);
+      const body = encodeURIComponent(`Hello,\n\nI saw your listing "${ad.title}" on ConnectBoat and I'm interested. Is it still available?\n\nThank you.`);
+      return `mailto:${email}?subject=${subject}&body=${body}`;
+    }
+
+    if (method === 'source' && hasSourceUrl && ad.sourceUrl) {
       return ad.sourceUrl;
     }
-    return showWhatsappContact ? getWhatsappUrl() : '';
+
+    return '';
   };
 
   const incrementWhatsappClicks = async () => {
@@ -637,25 +691,45 @@ const AdDetails = () => {
     }
   };
 
-  const handleDirectContact = (channel: 'phone' | 'email') => {
+  const openContactMethod = async (method: ContactMethod) => {
     if (!ad) return;
-    if (ad.adStatus === 'sold' || ad.status === 'sold') {
-      showToastMsg('error', 'This listing is sold. The seller can no longer be contacted.');
-      return;
-    }
-    if (!user) {
-      navigate(`/login?message=${encodeURIComponent('To contact the seller, please log in or create a free account.')}`);
+
+    const targetUrl = getTargetContactUrl(method);
+    if (!targetUrl) {
+      showToastMsg('error', 'This contact method is not available.');
       return;
     }
 
-    if (channel === 'phone' && showPhoneContact) {
-      window.location.href = `tel:${phoneNumber.replace(/\s+/g, '')}`;
-      return;
+    if (method === 'whatsapp') {
+      incrementWhatsappClicks();
     }
 
-    if (channel === 'email' && showEmailContact) {
-      const subject = encodeURIComponent(`ConnectBoat enquiry: ${ad.title}`);
-      window.location.href = `mailto:${emailAddress}?subject=${subject}`;
+    if (user) {
+      showToastMsg('loading', 'Registering your interest...');
+      const res = await registerInterest(method);
+      if (res.success) {
+        showToastMsg('success', `${getContactMethodLabel(method)} opening...`, res.bypassed ? 2000 : 3000);
+      } else {
+        showToastMsg('error', `Could not register interest. Opening contact anyway...`, 3500);
+      }
+    }
+
+    if (method === 'phone' || method === 'email') {
+      window.location.href = targetUrl;
+    } else {
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const continueWithContactMethod = (method: ContactMethod) => {
+    setSelectedContactMethod(method);
+    setShowContactOptionsModal(false);
+
+    const accepted = localStorage.getItem('safety_terms_accepted') === 'true';
+    if (accepted) {
+      void openContactMethod(method);
+    } else {
+      setShowContactWarning(true);
     }
   };
 
@@ -665,42 +739,29 @@ const AdDetails = () => {
       return;
     }
     if (ad?.adStatus === 'sold' || ad?.status === 'sold') {
-      showToastMsg('error', 'Este anúncio já foi vendido. Não é possível contactar o vendedor.');
+      showToastMsg('error', 'This listing has been sold. The seller cannot be contacted.');
       return;
     }
     if (!user) {
-      navigate(`/login?message=${encodeURIComponent('Para contactar o vendedor, faça login ou crie uma conta gratuita.')}`);
+      navigate(`/login?message=${encodeURIComponent('To contact the seller, please log in or create a free account.')}`);
       return;
     }
 
-    const accepted = localStorage.getItem('safety_terms_accepted') === 'true';
-    if (accepted && ad) {
-      console.log('[AdDetails] Safety terms already accepted. Registering interest directly.');
-      incrementWhatsappClicks();
-      showToastMsg('loading', 'A registar o seu interesse no anúncio...');
-      registerInterest().then((res: any) => {
-        if (res.success) {
-          if (res.bypassed) {
-            showToastMsg('success', hasSourceUrl ? 'A abrir o link de contacto...' : 'A abrir o WhatsApp...', 2000);
-          } else {
-            showToastMsg('success', hasSourceUrl ? '👥 Interesse registado! A abrir o contacto...' : '👥 Interesse registado! A abrir o WhatsApp...', 3000);
-          }
-          setTimeout(() => {
-            window.open(getTargetContactUrl(), '_blank', 'noopener,noreferrer');
-          }, 1000);
-        } else {
-          showToastMsg('error', `⚠️ Erro na BD: ${res.error || 'Falha ao registar'}. A abrir contacto...`, 6000);
-          setTimeout(() => {
-            window.open(getTargetContactUrl(), '_blank', 'noopener,noreferrer');
-          }, 2500);
-        }
-      });
-    } else {
-      setShowContactWarning(true);
+    const methods = getContactMethods();
+    if (methods.length === 0) {
+      showToastMsg('error', 'No contact method is currently available for this listing.');
+      return;
     }
+
+    if (methods.length === 1) {
+      continueWithContactMethod(methods[0]);
+      return;
+    }
+
+    setShowContactOptionsModal(true);
   };
 
-  const registerInterest = async (): Promise<{ success: boolean; error?: string; bypassed?: boolean }> => {
+  const registerInterest = async (method: ContactMethod = 'whatsapp'): Promise<{ success: boolean; error?: string; bypassed?: boolean }> => {
     if (!user || !ad) {
       console.warn('[AdDetails] Cannot register interest: user or ad is missing.');
       return { success: false, error: 'Sessão expirada ou anúncio indisponível.' };
@@ -724,7 +785,7 @@ const AdDetails = () => {
       interestedUserId: user.uid,
       interestedUserName: truncatedName,
       createdAt: serverTimestamp(),
-      source: 'whatsapp'
+      source: method
     };
     
     // 5. Logs obrigatórios
@@ -750,11 +811,11 @@ const AdDetails = () => {
           const notifData = {
             userId: ad.sellerId.trim(),
             title: 'Novo interesse em ' + ad.title.substring(0, 25) + '...',
-            message: `${truncatedName} clicou no botão para o contactar via WhatsApp para o anúncio "${ad.title}".`,
+            message: `${truncatedName} used ${getContactMethodLabel(method)} for the listing "${ad.title}".`,
             createdAt: serverTimestamp(),
             read: false,
             adId: ad.id,
-            type: 'whatsapp_interest'
+            type: 'contact_interest'
           };
           console.log('[AdDetails] Tentando criar notificação em bloco separado:', notifData);
           await setDoc(doc(db, 'notifications', notifId), notifData);
@@ -772,37 +833,17 @@ const AdDetails = () => {
     }
   };
 
-  const handleConfirmWhatsapp = async () => {
+  const handleConfirmContact = async () => {
     if (ad?.adStatus === 'sold' || ad?.status === 'sold') {
-      showToastMsg('error', 'Este anúncio já foi vendido. Não é possível contactar o vendedor.');
+      showToastMsg('error', 'This listing has been sold. The seller cannot be contacted.');
       return;
     }
-    if (acceptedContactTerms && ad) {
-      localStorage.setItem('safety_terms_accepted', 'true');
-      incrementWhatsappClicks();
-      if (user) {
-        showToastMsg('loading', 'A registar o seu interesse no anúncio...');
-        const res = await registerInterest();
-        if (res.success) {
-          if (res.bypassed) {
-            showToastMsg('success', hasSourceUrl ? 'A abrir o link de contacto...' : 'A abrir o WhatsApp...', 2000);
-          } else {
-            showToastMsg('success', hasSourceUrl ? '👥 Interesse registado! A abrir o contacto...' : '👥 Interesse registado! A abrir o WhatsApp...', 3000);
-          }
-          setTimeout(() => {
-            window.open(getTargetContactUrl(), '_blank', 'noopener,noreferrer');
-          }, 1000);
-        } else {
-          showToastMsg('error', `⚠️ Erro na BD: ${res.error || 'Falha ao registar'}. A abrir contacto...`, 6000);
-          setTimeout(() => {
-            window.open(getTargetContactUrl(), '_blank', 'noopener,noreferrer');
-          }, 2500);
-        }
-      } else {
-        window.open(getTargetContactUrl(), '_blank', 'noopener,noreferrer');
-      }
-      setShowContactWarning(false);
-    }
+
+    if (!acceptedContactTerms || !selectedContactMethod) return;
+
+    localStorage.setItem('safety_terms_accepted', 'true');
+    setShowContactWarning(false);
+    await openContactMethod(selectedContactMethod);
   };
 
   useEffect(() => {
@@ -1745,38 +1786,6 @@ const AdDetails = () => {
                     </a>
                   )}
 
-                {showWhatsappContact && (
-                  <button
-                    onClick={handleContactClick}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-emerald-600 active:scale-[0.98]"
-                  >
-                    <MessageCircle size={19} className="shrink-0" />
-                    <span className="leading-tight">Contact via WhatsApp</span>
-                  </button>
-                )}
-
-                {showPhoneContact && (
-                  <button
-                    type="button"
-                    onClick={() => handleDirectContact('phone')}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-sky-700 active:scale-[0.98]"
-                  >
-                    <Phone size={19} className="shrink-0" />
-                    <span className="leading-tight">Call Seller</span>
-                  </button>
-                )}
-
-                {showEmailContact && (
-                  <button
-                    type="button"
-                    onClick={() => handleDirectContact('email')}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-500 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-indigo-600 active:scale-[0.98]"
-                  >
-                    <Mail size={19} className="shrink-0" />
-                    <span className="leading-tight">Email Seller</span>
-                  </button>
-                )}
-
                 {ad.demoListing ? (
                   <div className="flex items-center justify-center gap-2 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3.5 text-center text-xs font-extrabold text-amber-800">
                     <Tag size={16} className="shrink-0 text-amber-600" />
@@ -1801,11 +1810,25 @@ const AdDetails = () => {
                         : 'Awaiting Owner Claim'}
                     </span>
                   </button>
-                ) : !showWhatsappContact && !showPhoneContact && !showEmailContact ? (
-                  <div className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-center text-sm font-bold text-slate-500">
-                    <span>No direct contact method selected</span>
-                  </div>
-                ) : null}
+                ) : (
+                  <button
+                    onClick={handleContactClick}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-emerald-600 active:scale-[0.98]"
+                  >
+                    {(() => {
+                      const methods = getContactMethods();
+                      const method = methods.length === 1 ? methods[0] : null;
+                      const Icon = method ? getContactMethodIcon(method) : MessageCircle;
+                      return <Icon size={19} className="shrink-0" />;
+                    })()}
+                    <span className="leading-tight">
+                      {(() => {
+                        const methods = getContactMethods();
+                        return methods.length === 1 ? getContactMethodLabel(methods[0]) : 'Contact';
+                      })()}
+                    </span>
+                  </button>
+                )}
 
                 <div className="grid grid-cols-3 gap-2">
                   <button
@@ -2568,15 +2591,7 @@ const AdDetails = () => {
         </button>
 
         <button
-          onClick={() => {
-            if (isUnclaimed) {
-              setShowUnclaimedContactModal(true);
-            } else if (acceptedContactTerms) {
-              handleConfirmWhatsapp();
-            } else {
-              setShowContactWarning(true);
-            }
-          }}
+          onClick={handleContactClick}
           disabled={ad.adStatus === 'sold' || ad.status === 'sold'}
           className={`flex-1 min-w-0 h-10 px-3 rounded-xl font-black text-[11px] text-white shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
             ad.adStatus === 'sold' || ad.status === 'sold'
@@ -2591,10 +2606,20 @@ const AdDetails = () => {
           {isUnclaimed ? (
             <ShieldAlert size={15} className="shrink-0" />
           ) : (
-            <MessageCircle size={15} className="shrink-0" />
+            (() => {
+              const methods = getContactMethods();
+              const method = methods.length === 1 ? methods[0] : null;
+              const Icon = method ? getContactMethodIcon(method) : MessageCircle;
+              return <Icon size={15} className="shrink-0" />;
+            })()
           )}
           <span className="truncate">
-            {isUnclaimed ? 'Awaiting Owner Claim' : hasSourceUrl ? 'Contact Seller' : 'Contact'}
+            {isUnclaimed
+              ? 'Awaiting Owner Claim'
+              : (() => {
+                  const methods = getContactMethods();
+                  return methods.length === 1 ? getContactMethodLabel(methods[0]) : 'Contact';
+                })()}
           </span>
         </button>
       </div>
@@ -2754,7 +2779,62 @@ const AdDetails = () => {
         title={ad?.title}
       />
 
-      {/* Aviso de Contacto WhatsApp */}
+      {/* Contact method chooser */}
+      <AnimatePresence>
+        {showContactOptionsModal && (
+          <div className="fixed inset-0 z-[195] flex items-center justify-center p-4">
+            <motion.button
+              type="button"
+              aria-label="Close contact options"
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowContactOptionsModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              className="relative z-10 w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl"
+            >
+              <div className="mb-5 text-center">
+                <h3 className="text-xl font-black text-slate-950">Contact Seller</h3>
+                <p className="mt-1 text-sm text-slate-500">Choose how you would like to contact the seller.</p>
+              </div>
+
+              <div className="space-y-2.5">
+                {getContactMethods().map((method) => {
+                  const Icon = getContactMethodIcon(method);
+                  return (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => continueWithContactMethod(method)}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left font-black text-slate-800 transition hover:border-indigo-200 hover:bg-indigo-50 active:scale-[0.99]"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-indigo-600">
+                        <Icon size={20} />
+                      </span>
+                      <span>{getContactMethodLabel(method)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowContactOptionsModal(false)}
+                className="mt-4 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Contact safety notice */}
       <AnimatePresence>
         {showContactWarning && (
           <div className="fixed inset-0 z-[190] flex items-center justify-center p-4">
@@ -2762,7 +2842,7 @@ const AdDetails = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowContactWarning(false)}
+              onClick={() => { setShowContactWarning(false); setSelectedContactMethod(null); }}
               className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
             />
             <motion.div
@@ -2788,21 +2868,21 @@ const AdDetails = () => {
                 </label>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setShowContactWarning(false)}
+                    onClick={() => { setShowContactWarning(false); setSelectedContactMethod(null); }}
                     className="flex-1 py-3 text-sm font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition"
                   >
                     Back
                   </button>
                   <button
                     disabled={!acceptedContactTerms}
-                    onClick={handleConfirmWhatsapp}
+                    onClick={handleConfirmContact}
                     className={`flex-1 py-3 text-sm font-bold rounded-xl transition ${
                       acceptedContactTerms 
-                        ? hasSourceUrl ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md'
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md'
                         : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                     }`}
                   >
-                    {hasSourceUrl ? 'Open Contact' : 'Open WhatsApp'}
+                    {selectedContactMethod ? `Continue to ${getContactMethodLabel(selectedContactMethod)}` : 'Continue'}
                   </button>
                 </div>
               </div>
