@@ -43,7 +43,7 @@ const FAQ = () => {
     },
     {
       question: 'How do I contact a seller?',
-      answer: 'Each listing page features direct contact buttons for WhatsApp or phone inquiries, allowing you to get in touch with sellers instantly.'
+      answer: 'Each listing page shows the contact options made available by the seller, which may include WhatsApp, phone or email, allowing you to contact them directly.'
     },
     {
       question: 'How does listing promotion work?',
