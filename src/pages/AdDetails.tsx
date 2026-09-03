@@ -1293,7 +1293,7 @@ const AdDetails = () => {
         </div>
       )}
 
-      {/* Sponsored carousel — Back | advertising | AD */}
+      {/* Sponsored advertising carousel — each campaign remains active for its purchased display time */}
       <section className="relative mt-1 mb-1 bg-transparent lg:-mt-[28px]">
         <div className="flex items-center gap-1 lg:gap-3 overflow-hidden py-0 px-1 lg:px-0">
           <button
@@ -1306,45 +1306,59 @@ const AdDetails = () => {
 
           <div className="relative z-10 min-w-0 flex-1 overflow-hidden">
             {listingAdCampaigns.length > 0 ? (
-              <div className="flex items-center overflow-hidden py-0">
-                <div className="connectboat-ad-marquee flex w-max items-center gap-1.5 sm:gap-2 will-change-transform">
-                  {[...listingAdCampaigns, ...listingAdCampaigns].map((campaign, index) => (
-                    <React.Fragment key={`${campaign.id}-${index}`}>
-                      {campaign.targetUrl ? (
-                        <a
-                          href={campaign.targetUrl}
-                          target="_blank"
-                          rel="noopener noreferrer sponsored"
-                          onClick={() => handleAdvertisingClick(campaign)}
-                          className="group block shrink-0 w-[42vw] max-w-[170px] sm:w-[200px] sm:max-w-none lg:w-[240px] aspect-video overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl"
-                          aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
-                        >
-                          <img
-                            src={campaign.imageUrl}
-                            alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                            loading={index < 4 ? 'eager' : 'lazy'}
-                          />
-                        </a>
-                      ) : (
-                        <div className="shrink-0 w-[42vw] max-w-[170px] sm:w-[200px] sm:max-w-none lg:w-[240px] aspect-video overflow-hidden rounded-2xl border border-white/80 bg-white shadow-xl">
-                          <img
-                            src={campaign.imageUrl}
-                            alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'}
-                            className="h-full w-full object-cover"
-                            loading={index < 4 ? 'eager' : 'lazy'}
+              <div className="min-h-[92px] sm:min-h-[118px] lg:min-h-[135px] flex items-center justify-center overflow-hidden py-0 px-1">
+                <AnimatePresence mode="wait" initial={false}>
+                  {(() => {
+                    const campaign = listingAdCampaigns[listingAdIndex];
+                    if (!campaign) return null;
+
+                    const displaySeconds = Math.min(
+                      60,
+                      Math.max(2, Number(campaign.displaySeconds || 4))
+                    );
+
+                    const content = (
+                      <motion.div
+                        key={campaign.id}
+                        initial={{ opacity: 0, x: 24, scale: 0.985 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: -24, scale: 0.985 }}
+                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        className="relative group block w-[82vw] max-w-[270px] sm:w-[340px] sm:max-w-[340px] lg:w-[420px] lg:max-w-[420px] aspect-video overflow-hidden rounded-2xl border border-white/85 bg-white shadow-xl"
+                        aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
+                      >
+                        <img
+                          src={campaign.imageUrl}
+                          alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                          loading="eager"
+                        />
+
+                        {/* Visual countdown bar for the active paid placement. */}
+                        <div className="absolute inset-x-0 bottom-0 h-1 bg-black/15 overflow-hidden" aria-hidden="true">
+                          <div
+                            key={`${campaign.id}-${listingAdIndex}-${displaySeconds}`}
+                            className="h-full bg-white/90 origin-left connectboat-ad-progress"
+                            style={{ animationDuration: `${displaySeconds}s` }}
                           />
                         </div>
-                      )}
-                      <div
-                        className="shrink-0 h-7 w-7 sm:h-8 sm:w-8 lg:h-8 lg:w-8 rounded-full bg-[#0b1930]/95 border border-white/70 shadow-md flex items-center justify-center p-0.5"
-                        aria-hidden="true"
+                      </motion.div>
+                    );
+
+                    return campaign.targetUrl ? (
+                      <a
+                        key={`link-${campaign.id}`}
+                        href={campaign.targetUrl}
+                        target="_blank"
+                        rel="noopener noreferrer sponsored"
+                        onClick={() => handleAdvertisingClick(campaign)}
+                        className="block"
                       >
-                        <ConnectBoatLogo className="h-5 w-auto sm:h-6 shrink-0 text-white" />
-                      </div>
-                    </React.Fragment>
-                  ))}
-                </div>
+                        {content}
+                      </a>
+                    ) : content;
+                  })()}
+                </AnimatePresence>
               </div>
             ) : (
               <div className="min-h-[92px] sm:min-h-[118px] lg:min-h-[135px] flex items-center justify-center px-6 text-center text-white">
@@ -1365,15 +1379,14 @@ const AdDetails = () => {
         </div>
 
         <style>{`
-          @keyframes connectboat-ad-marquee-right {
-            from { transform: translateX(-50%); }
-            to { transform: translateX(0); }
+          @keyframes connectboat-ad-progress-fill {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
           }
-          .connectboat-ad-marquee {
-            animation: connectboat-ad-marquee-right 70s linear infinite;
-          }
-          .connectboat-ad-marquee:hover {
-            animation-play-state: paused;
+          .connectboat-ad-progress {
+            animation-name: connectboat-ad-progress-fill;
+            animation-timing-function: linear;
+            animation-fill-mode: forwards;
           }
           .seller-more-card {
             flex-basis: calc((100% - 0.75rem) / 2);
@@ -1386,7 +1399,7 @@ const AdDetails = () => {
             }
           }
           @media (prefers-reduced-motion: reduce) {
-            .connectboat-ad-marquee { animation: none; }
+            .connectboat-ad-progress { animation: none; }
           }
         `}</style>
       </section>
