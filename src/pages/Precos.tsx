@@ -290,7 +290,7 @@ export default function Precos() {
 
             <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium flex-1">
               <li>📷 <strong>Up to {getMaxPhotosForPlan('standard')} Photos</strong></li>
-              <li>💬 Direct WhatsApp Contact</li>
+              <li>💬 Direct Contact Options</li>
               <li>🔍 Standard Search & Category</li>
             </ul>
 
@@ -401,7 +401,7 @@ export default function Precos() {
               Ready to promote your business or boost listing visibility?
             </h2>
             <p className="text-slate-350 text-sm font-medium mb-8 max-w-lg">
-              In just a few minutes, set up your showcase or activate features to receive inquiries directly on WhatsApp.
+             In just a few minutes, set up your showcase or activate features to receive inquiries through your available contact options.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
