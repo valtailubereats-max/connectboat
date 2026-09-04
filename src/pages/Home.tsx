@@ -2005,7 +2005,7 @@ const Home = () => {
                       Are you a boat owner or charter operator?
                     </p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-md">
-                      List your yacht, powerboat or RIB for hire on ConnectBoat and connect directly with interested clients via WhatsApp.
+                      List your yacht, powerboat or RIB for hire on ConnectBoat and connect directly with interested clients using your available contact options.
                     </p>
                     <Link
                       to="/criar-anuncio"
