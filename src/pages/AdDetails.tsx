@@ -1434,7 +1434,7 @@ const AdDetails = () => {
           </div>
 
           <div 
-            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group [touch-action:pan-y_pinch-zoom] flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -2139,7 +2139,7 @@ const AdDetails = () => {
           </div>
 
           <div 
-            className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden border-2 border-white/85 shadow-[0_10px_26px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden border-2 border-white/85 shadow-[0_10px_26px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group [touch-action:pan-y_pinch-zoom] flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
