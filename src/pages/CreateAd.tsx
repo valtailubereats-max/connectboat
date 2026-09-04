@@ -2204,7 +2204,7 @@ const CreateAd = () => {
               This listing has an <strong>active feature status for over 24 hours</strong>. To ensure community safety and integrity (preventing post-payment product swaps), key fields such as <strong>Title, Images, Category, Location, and Featured Plan</strong> are locked.
             </p>
             <p className="text-xs sm:text-sm text-amber-700 mt-2 leading-relaxed">
-              You can still freely modify the <strong>Description, Phone/WhatsApp contact info, or mark as Sold/Closed</strong>. Thank you for your understanding.
+              You can still freely modify the Description, contact options, or mark as Sold/Closed. Thank you for your understanding.
             </p>
           </div>
         )}
