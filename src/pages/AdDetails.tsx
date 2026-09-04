@@ -2090,6 +2090,62 @@ const AdDetails = () => {
         
         {/* CAROUSEL FLOW */}
         <div className="space-y-3">
+          {/* MOBILE: title, city/country + price, views + created */}
+          <div className="px-1 pt-1 pb-0.5 text-left">
+            <h1
+              className="text-[1.65rem] sm:text-[1.9rem] font-semibold leading-[1.08] tracking-[-0.02em] text-[#08264a]"
+              style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+            >
+              {ad.title}
+            </h1>
+
+            <div className="mt-2 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
+                  <MapPin size={14} className="text-cyan-600 shrink-0" />
+                  <span className="truncate">
+                    {isService && ad.serviceCoverage === 'online'
+                      ? 'Online Service'
+                      : isService && ad.serviceCoverage === 'uk'
+                        ? 'Entire UK'
+                        : isService && ad.serviceCoverage === 'portugal'
+                          ? 'Entire Portugal'
+                          : `${ad.city || getAdLocationLabel(ad)}${ad.country ? `, ${ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country}` : ''}`}
+                  </span>
+                </div>
+
+                <div className="mt-1.5 flex items-center gap-3 text-[11px] font-semibold text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Eye size={13} />
+                    {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock size={13} />
+                    {timeStr}
+                  </span>
+                </div>
+              </div>
+
+              <div className="shrink-0 text-right">
+                {ad.category === '💚 Doações & Solidariedade' ? (
+                  <span className="text-xl font-black leading-none text-emerald-600">
+                    Free 💚
+                  </span>
+                ) : (
+                  <span className={`font-black leading-none text-[#08264a] ${
+                    (ad as any).priceOnRequest || !hasPrice
+                      ? 'text-sm uppercase'
+                      : 'text-xl sm:text-2xl'
+                  }`}>
+                    {(ad as any).priceOnRequest || !hasPrice
+                      ? 'On Request'
+                      : formatPrice(ad.price, ad.country)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div 
             className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden border-2 border-white/85 shadow-[0_10px_26px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group touch-pan-y flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
@@ -2242,19 +2298,11 @@ const AdDetails = () => {
         {/* SECTION CARD 1: Descrição com valor, cidade e país + Dados e CTAs */}
         <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] rounded-3xl p-4 sm:p-5 space-y-4 text-left">
           
-          {/* Categoria, views & time */}
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100/70 pb-2.5">
+          {/* Categoria */}
+          <div className="flex items-center gap-2 border-b border-slate-100/70 pb-2.5">
             <span className="bg-indigo-50 text-indigo-600 text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border border-indigo-100">
               {ad.category}
             </span>
-            <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
-              <span className="flex items-center gap-1">
-                <Eye size={12} /> {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
-              </span>
-              <span className="flex items-center gap-1">
-                <Clock size={12} /> {timeStr}
-              </span>
-            </div>
           </div>
 
           {/* Selos de Negócio Reivindicável no Mobile */}
@@ -2277,42 +2325,6 @@ const AdDetails = () => {
               )}
             </div>
           )}
-
-          {/* Title, Country/City, Price */}
-          <div className="space-y-1.5">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 leading-snug">
-              {ad.title}
-            </h1>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-1 text-slate-500 font-bold text-xs truncate">
-                {isService && ad.serviceCoverage === 'online' ? (
-                  <span className="truncate">💻 Online Service</span>
-                ) : isService && ad.serviceCoverage === 'uk' ? (
-                  <span className="truncate">🌍 Entire UK</span>
-                ) : isService && ad.serviceCoverage === 'portugal' ? (
-                  <span className="truncate">🇵🇹 Entire Portugal</span>
-                ) : (
-                  <>
-                    <MapPin size={13} className="text-indigo-600 shrink-0" />
-                    <span className="truncate">{getAdLocationLabel(ad)}</span>
-                  </>
-                )}
-              </div>
-              {ad.category === '💚 Doações & Solidariedade' ? (
-                <div className="text-lg sm:text-xl font-black text-emerald-600 bg-emerald-50 py-0.5 px-2.5 rounded-lg border border-emerald-200 flex-shrink-0">
-                  Free 💚
-                </div>
-              ) : (ad as any).priceOnRequest || !hasPrice ? (
-                <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-100 flex-shrink-0">
-                  Price on Request
-                </span>
-              ) : (
-                <div className="text-lg sm:text-xl font-black text-indigo-600 bg-indigo-50/50 py-0.5 px-2.5 rounded-lg border border-indigo-100/30 flex-shrink-0">
-                  {formatPrice(ad.price, ad.country)}
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Descrição detalhada compacta */}
           <div className="space-y-1">
