@@ -979,7 +979,7 @@ export default function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
-            <footer className="bg-slate-50 border-t border-slate-200 pt-16 pb-12 mt-20 font-sans">
+            <footer className="relative z-20 bg-slate-50 border-t border-slate-200 pt-16 pb-12 mt-20 font-sans">
               <div className="max-w-[1536px] mx-auto px-6 md:px-8">
                 
                 {/* Main 4-column Grid */}
