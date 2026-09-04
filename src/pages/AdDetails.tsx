@@ -1306,16 +1306,11 @@ const AdDetails = () => {
 
           <div className="relative z-10 min-w-0 flex-1 overflow-hidden">
             {listingAdCampaigns.length > 0 ? (
-              <div className="min-h-[92px] sm:min-h-[118px] lg:min-h-[135px] flex items-center justify-center overflow-hidden py-0 px-1">
+              <div className="min-h-[83px] sm:min-h-[106px] lg:min-h-[122px] flex items-center justify-center overflow-hidden py-0 px-1">
                 <AnimatePresence mode="wait" initial={false}>
                   {(() => {
                     const campaign = listingAdCampaigns[listingAdIndex];
                     if (!campaign) return null;
-
-                    const displaySeconds = Math.min(
-                      60,
-                      Math.max(2, Number(campaign.displaySeconds || 4))
-                    );
 
                     const content = (
                       <motion.div
@@ -1324,7 +1319,7 @@ const AdDetails = () => {
                         animate={{ opacity: 1, x: 0, scale: 1 }}
                         exit={{ opacity: 0, x: -24, scale: 0.985 }}
                         transition={{ duration: 0.35, ease: 'easeOut' }}
-                        className="relative group block w-[82vw] max-w-[270px] sm:w-[340px] sm:max-w-[340px] lg:w-[420px] lg:max-w-[420px] aspect-video overflow-hidden rounded-2xl border border-white/85 bg-white shadow-xl"
+                        className="relative group block w-[74vw] max-w-[243px] sm:w-[306px] sm:max-w-[306px] lg:w-[378px] lg:max-w-[378px] aspect-video overflow-hidden rounded-2xl border border-white/85 bg-white shadow-xl"
                         aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
                       >
                         <img
@@ -1334,14 +1329,6 @@ const AdDetails = () => {
                           loading="eager"
                         />
 
-                        {/* Visual countdown bar for the active paid placement. */}
-                        <div className="absolute inset-x-0 bottom-0 h-1 bg-black/15 overflow-hidden" aria-hidden="true">
-                          <div
-                            key={`${campaign.id}-${listingAdIndex}-${displaySeconds}`}
-                            className="h-full bg-white/90 origin-left connectboat-ad-progress"
-                            style={{ animationDuration: `${displaySeconds}s` }}
-                          />
-                        </div>
                       </motion.div>
                     );
 
@@ -1361,7 +1348,7 @@ const AdDetails = () => {
                 </AnimatePresence>
               </div>
             ) : (
-              <div className="min-h-[92px] sm:min-h-[118px] lg:min-h-[135px] flex items-center justify-center px-6 text-center text-white">
+              <div className="min-h-[83px] sm:min-h-[106px] lg:min-h-[122px] flex items-center justify-center px-6 text-center text-white">
                 <div className="rounded-2xl bg-transparent border border-white/20 px-6 py-5">
                   <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-200">ConnectBoat Advertising</div>
                   <div className="mt-2 text-xl sm:text-2xl font-black">Your marine brand could be here</div>
