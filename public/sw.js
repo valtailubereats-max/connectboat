@@ -1,7 +1,6 @@
-const CACHE_NAME = 'connectboat-pwa-v3';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
+const CACHE_NAME = 'connectboat-pwa-v4';
+
+const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/favicon.ico',
   '/icons/icon-72.png',
@@ -12,64 +11,106 @@ const ASSETS_TO_CACHE = [
   '/icons/icon-192.png',
   '/icons/icon-384.png',
   '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png'
+  '/icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ASSETS_TO_CACHE))
+    caches
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
       .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : undefined)))
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith('connectboat-pwa-') && key !== CACHE_NAME)
+            .map((key) => caches.delete(key))
+        )
+      )
       .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  if (!event.request || event.request.method !== 'GET') return;
+  const request = event.request;
 
+  if (!request || request.method !== 'GET') return;
+
+  let url;
   try {
-    const url = new URL(event.request.url);
-    if (url.pathname.startsWith('/api/') || !url.protocol.startsWith('http')) return;
+    url = new URL(request.url);
   } catch {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse.clone()));
-            }
-          })
-          .catch(() => {});
-        return cachedResponse;
-      }
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;
 
-      return fetch(event.request)
-        .then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-            return networkResponse;
+  // SPA/navigation requests must prefer the network.
+  // This prevents an installed PWA from being stuck on an old deployment.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put('/index.html', clone).catch(() => {});
+            });
           }
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
-          return networkResponse;
+          return response;
         })
-        .catch(async (error) => {
-          if (event.request.mode === 'navigate') {
-            const fallback = await caches.match('/index.html') || await caches.match('/');
-            if (fallback) return fallback;
+        .catch(async () => {
+          const cachedIndex =
+            (await caches.match('/index.html')) ||
+            (await caches.match('/'));
+
+          if (cachedIndex) return cachedIndex;
+          return Response.error();
+        })
+    );
+    return;
+  }
+
+  // Versioned JS/CSS produced by Vite should also prefer the network.
+  if (
+    url.pathname.startsWith('/assets/') ||
+    request.destination === 'script' ||
+    request.destination === 'style'
+  ) {
+    event.respondWith(
+      fetch(request).catch(async () => {
+        const cached = await caches.match(request);
+        return cached || Response.error();
+      })
+    );
+    return;
+  }
+
+  // Images, icons, fonts and other static resources:
+  // show cached copy quickly and refresh it in the background.
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      const network = fetch(request)
+        .then((response) => {
+          if (response && response.ok && response.type === 'basic') {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, clone).catch(() => {});
+            });
           }
-          throw error;
-        });
+          return response;
+        })
+        .catch(() => cached || Response.error());
+
+      return cached || network;
     })
   );
 });
