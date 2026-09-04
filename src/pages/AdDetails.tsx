@@ -1408,37 +1408,25 @@ const AdDetails = () => {
       <div className="hidden lg:grid lg:grid-cols-12 gap-4 xl:gap-5">
         {/* LADO ESQUERDO: Imagens e Galeria */}
         <div className="lg:col-span-9 space-y-4">
-          {/* TITLE + LOCATION / PRICE + VIEWS / CREATED */}
-          <div className="px-1 pt-1 pb-1 text-left">
-            <h1
-              className="text-[2.35rem] xl:text-[2.7rem] font-semibold leading-[1.05] tracking-[-0.025em] text-[#08264a]"
-              style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-            >
+          {/* Compact listing header above main image */}
+          <div className="rounded-2xl border border-white/80 bg-white/92 backdrop-blur-sm shadow-[0_8px_24px_rgba(4,18,38,0.12)] px-5 py-4">
+            <h1 className="text-2xl xl:text-[2rem] font-black leading-tight text-slate-900">
               {ad.title}
             </h1>
 
-            <div className="mt-2 flex items-end justify-between gap-4">
+            <div className="mt-2 flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-1.5 text-[15px] xl:text-base font-semibold text-slate-600">
-                  <MapPin size={15} className="text-cyan-600 shrink-0" />
-                  <span className="truncate">
-                    {isService && ad.serviceCoverage === 'online'
-                      ? 'Online Service'
-                      : isService && ad.serviceCoverage === 'uk'
-                        ? 'Entire UK'
-                        : isService && ad.serviceCoverage === 'portugal'
-                          ? 'Entire Portugal'
-                          : `${ad.city || getAdLocationLabel(ad)}${ad.country ? `, ${ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country}` : ''}`}
-                  </span>
+                <div className="flex items-center gap-1.5 text-sm font-bold text-slate-600">
+                  <MapPin size={15} className="text-sky-600 shrink-0" />
+                  <span className="truncate">{getAdLocationLabel(ad)}</span>
                 </div>
-
-                <div className="mt-1.5 flex items-center gap-3 text-[12px] font-semibold text-slate-400">
+                <div className="mt-1.5 flex items-center gap-3 text-xs font-semibold text-slate-400">
                   <span className="flex items-center gap-1">
-                    <Eye size={14} />
+                    <Eye size={13} />
                     {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Clock size={14} />
+                    <Clock size={13} />
                     {timeStr}
                   </span>
                 </div>
@@ -1446,18 +1434,12 @@ const AdDetails = () => {
 
               <div className="shrink-0 text-right">
                 {ad.category === '💚 Doações & Solidariedade' ? (
-                  <span className="text-2xl md:text-3xl font-black leading-none text-emerald-600">
-                    Free 💚
-                  </span>
+                  <span className="text-2xl font-black text-emerald-600">Free 💚</span>
+                ) : (ad as any).priceOnRequest || !hasPrice ? (
+                  <span className="text-sm font-black uppercase tracking-wide text-slate-700">On Request</span>
                 ) : (
-                  <span className={`font-black leading-none text-[#08264a] ${
-                    (ad as any).priceOnRequest || !hasPrice
-                      ? 'text-lg md:text-xl uppercase'
-                      : 'text-2xl md:text-3xl'
-                  }`}>
-                    {(ad as any).priceOnRequest || !hasPrice
-                      ? 'On Request'
-                      : formatPrice(ad.price, ad.country)}
+                  <span className="text-2xl xl:text-[1.9rem] font-black text-indigo-700">
+                    {formatPrice(ad.price, ad.country)}
                   </span>
                 )}
               </div>
@@ -1621,11 +1603,24 @@ const AdDetails = () => {
           )}
 
 
-          {/* External / demo notices only — title information is now above the main image */}
-          {(ad.externalListing || ad.demoListing) && (
-            <div className="space-y-3 mt-4">
+          {/* TITLE CARD — directly below thumbnails */}
+          <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-7 mt-4 text-left space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <span className="bg-indigo-50 text-indigo-600 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-indigo-100">
+                {ad.category}
+              </span>
+              <div className="flex items-center gap-3 text-slate-400 text-xs font-semibold">
+                <span className="flex items-center gap-1">
+                  <Eye size={14} /> {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock size={14} /> {timeStr}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2">
               {ad.externalListing && (
-                <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl p-4 flex items-start gap-3">
+                <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl p-4 flex items-start gap-3 mb-2">
                   <div className="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5">
                     <ExternalLink size={18} />
                   </div>
@@ -1639,9 +1634,8 @@ const AdDetails = () => {
                   </div>
                 </div>
               )}
-
               {ad.demoListing && (
-                <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3">
+                <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3 mb-2">
                   <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
                     <Tag size={18} />
                   </div>
@@ -1655,8 +1649,37 @@ const AdDetails = () => {
                   </div>
                 </div>
               )}
+              <div className="flex items-center justify-end flex-wrap gap-2">
+                {ad.category === '💚 Doações & Solidariedade' ? (
+                  <div className="min-w-[150px] rounded-2xl border border-emerald-200 bg-white/85 px-5 py-3 text-right shadow-sm">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-emerald-500">
+                      Price
+                    </span>
+                    <span className="mt-1 block text-2xl md:text-3xl font-black leading-none text-emerald-600">
+                      Free 💚
+                    </span>
+                  </div>
+                ) : (
+                  <div className="min-w-[150px] rounded-2xl border border-indigo-200/80 bg-white/88 px-5 py-3 text-right shadow-[0_8px_22px_rgba(79,70,229,0.10)]">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                      Price
+                    </span>
+                    <span className={`mt-1 block font-black leading-none text-indigo-600 ${
+                      (ad as any).priceOnRequest || !hasPrice
+                        ? 'text-lg md:text-xl uppercase'
+                        : 'text-2xl md:text-3xl'
+                    }`}>
+                      {(ad as any).priceOnRequest || !hasPrice
+                        ? 'On Request'
+                        : formatPrice(ad.price, ad.country)}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-          )}
+
+
+          </div>
 
           {/* DESCRIPTION CARD — separate from title and seller */}
           <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-7 mt-4 text-left">
@@ -2090,56 +2113,38 @@ const AdDetails = () => {
         
         {/* CAROUSEL FLOW */}
         <div className="space-y-3">
-          {/* MOBILE: title, city/country + price, views + created */}
-          <div className="px-1 pt-1 pb-0.5 text-left">
-            <h1
-              className="text-[1.65rem] sm:text-[1.9rem] font-semibold leading-[1.08] tracking-[-0.02em] text-[#08264a]"
-              style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
-            >
+          {/* Compact listing header above main image */}
+          <div className="mx-1 rounded-2xl border border-white/85 bg-white/95 backdrop-blur-sm shadow-[0_8px_22px_rgba(4,18,38,0.14)] px-4 py-3.5">
+            <h1 className="text-[1.35rem] sm:text-2xl font-black leading-snug text-slate-900">
               {ad.title}
             </h1>
 
             <div className="mt-2 flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-600">
-                  <MapPin size={14} className="text-cyan-600 shrink-0" />
-                  <span className="truncate">
-                    {isService && ad.serviceCoverage === 'online'
-                      ? 'Online Service'
-                      : isService && ad.serviceCoverage === 'uk'
-                        ? 'Entire UK'
-                        : isService && ad.serviceCoverage === 'portugal'
-                          ? 'Entire Portugal'
-                          : `${ad.city || getAdLocationLabel(ad)}${ad.country ? `, ${ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country}` : ''}`}
-                  </span>
+                <div className="flex items-center gap-1.5 text-[13px] font-bold text-slate-600">
+                  <MapPin size={14} className="text-sky-600 shrink-0" />
+                  <span className="truncate">{getAdLocationLabel(ad)}</span>
                 </div>
-
                 <div className="mt-1.5 flex items-center gap-3 text-[11px] font-semibold text-slate-400">
                   <span className="flex items-center gap-1">
-                    <Eye size={13} />
+                    <Eye size={12} />
                     {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Clock size={13} />
+                    <Clock size={12} />
                     {timeStr}
                   </span>
                 </div>
               </div>
 
-              <div className="shrink-0 text-right">
+              <div className="shrink-0 text-right pt-0.5">
                 {ad.category === '💚 Doações & Solidariedade' ? (
-                  <span className="text-xl font-black leading-none text-emerald-600">
-                    Free 💚
-                  </span>
+                  <span className="text-lg font-black text-emerald-600">Free 💚</span>
+                ) : (ad as any).priceOnRequest || !hasPrice ? (
+                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-700">On Request</span>
                 ) : (
-                  <span className={`font-black leading-none text-[#08264a] ${
-                    (ad as any).priceOnRequest || !hasPrice
-                      ? 'text-sm uppercase'
-                      : 'text-xl sm:text-2xl'
-                  }`}>
-                    {(ad as any).priceOnRequest || !hasPrice
-                      ? 'On Request'
-                      : formatPrice(ad.price, ad.country)}
+                  <span className="text-lg sm:text-xl font-black text-indigo-700">
+                    {formatPrice(ad.price, ad.country)}
                   </span>
                 )}
               </div>
@@ -2298,11 +2303,19 @@ const AdDetails = () => {
         {/* SECTION CARD 1: Descrição com valor, cidade e país + Dados e CTAs */}
         <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] rounded-3xl p-4 sm:p-5 space-y-4 text-left">
           
-          {/* Categoria */}
-          <div className="flex items-center gap-2 border-b border-slate-100/70 pb-2.5">
+          {/* Categoria, views & time */}
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100/70 pb-2.5">
             <span className="bg-indigo-50 text-indigo-600 text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border border-indigo-100">
               {ad.category}
             </span>
+            <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
+              <span className="flex items-center gap-1">
+                <Eye size={12} /> {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock size={12} /> {timeStr}
+              </span>
+            </div>
           </div>
 
           {/* Selos de Negócio Reivindicável no Mobile */}
