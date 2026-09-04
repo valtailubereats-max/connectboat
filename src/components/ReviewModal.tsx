@@ -384,7 +384,7 @@ const ReviewModal: React.FC<ReviewModalProps> = ({
                         <div className="flex items-start gap-2">
                           <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
                           <p className="text-xs font-bold leading-relaxed">
-                            No registered enquiries found for this listing yet. Buyers need to contact you via WhatsApp while logged in before you can mark it as sold.
+                            No registered enquiries found for this listing yet. Buyers need to use one of the available contact options while logged in before you can mark it as sold.
                           </p>
                         </div>
                       </div>
