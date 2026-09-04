@@ -1,85 +1,73 @@
 /// <reference types="vite/client" />
-import {StrictMode} from 'react';
-import {createRoot} from 'react-dom/client';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-const CACHE_NAME = 'connectboat-pwa-v1';
-
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   if (import.meta.env.PROD) {
-    // ----------------------------------------------------
-    // Production Mode: Register Service Worker & Manage Cache
-    // ----------------------------------------------------
-    if ('serviceWorker' in navigator) {
-      const registerSW = () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then((reg) => {
-            console.log('[PWA] Service Worker registered successfully:', reg.scope);
-            reg.onupdatefound = () => {
-              const installingWorker = reg.installing;
-              if (installingWorker) {
-                installingWorker.onstatechange = () => {
-                  if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    console.log('[PWA] New version available! Reloading...');
-                    window.location.reload();
-                  }
-                };
-              }
-            };
-          })
-          .catch((err) => {
-            console.error('[PWA] Service Worker registration failed:', err);
-          });
-      };
+    const registerServiceWorker = async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js', {
+          scope: '/',
+          updateViaCache: 'none',
+        });
 
-      if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        registerSW();
-      } else {
-        window.addEventListener('load', registerSW);
-      }
-    }
+        console.log('[PWA] Service Worker registered:', registration.scope);
 
-    // Clear stale caches in production while keeping CACHE_NAME
-    if ('caches' in window) {
-      caches.keys().then((keys) => {
-        return Promise.all(keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log(`[CacheCleaner] Removing stale cache in production: ${key}`);
-            return caches.delete(key);
-          }
-        }));
-      }).catch((err) => {
-        console.error('[CacheCleaner] Error clearing caches:', err);
-      });
-    }
-  } else {
-    // ----------------------------------------------------
-    // Preview / Development Mode: Unregister SW & Purge Caches
-    // ----------------------------------------------------
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        for (const registration of registrations) {
-          registration.unregister().then((success) => {
-            if (success) {
-              console.log('[PWA] Unregistered Service Worker in Preview/Dev:', registration.scope);
+        // Always ask the browser to check whether a newer SW exists.
+        registration.update().catch(() => {});
+
+        registration.addEventListener('updatefound', () => {
+          const worker = registration.installing;
+          if (!worker) return;
+
+          worker.addEventListener('statechange', () => {
+            if (
+              worker.state === 'installed' &&
+              navigator.serviceWorker.controller
+            ) {
+              console.log('[PWA] New version installed and ready.');
             }
           });
-        }
-      }).catch((err) => {
-        console.error('[PWA] Error unregistering service workers:', err);
-      });
+        });
+      } catch (error) {
+        console.error('[PWA] Service Worker registration failed:', error);
+      }
+    };
+
+    if (document.readyState === 'complete') {
+      registerServiceWorker();
+    } else {
+      window.addEventListener('load', registerServiceWorker, { once: true });
     }
 
-    if ('caches' in window) {
-      caches.keys().then((keys) => {
-        return Promise.all(keys.map((key) => {
-          console.log(`[CacheCleaner] Purging cache in Preview/Dev: ${key}`);
-          return caches.delete(key);
-        }));
-      }).catch((err) => {
-        console.error('[CacheCleaner] Error clearing caches:', err);
+    // When the new SW takes control, reload once so the current tab is
+    // immediately served by the new application version.
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+  } else {
+    // Development / preview should not keep a production PWA installed.
+    navigator.serviceWorker
+      .getRegistrations()
+      .then((registrations) =>
+        Promise.all(registrations.map((registration) => registration.unregister()))
+      )
+      .catch((error) => {
+        console.error('[PWA] Error unregistering Service Workers:', error);
       });
+
+    if ('caches' in window) {
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        .catch((error) => {
+          console.error('[PWA] Error clearing development caches:', error);
+        });
     }
   }
 }
