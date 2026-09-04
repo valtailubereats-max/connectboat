@@ -1315,10 +1315,10 @@ const AdDetails = () => {
                     const content = (
                       <motion.div
                         key={campaign.id}
-                        initial={{ opacity: 0, x: 24, scale: 0.985 }}
+                        initial={{ opacity: 0, x: 18, scale: 0.99 }}
                         animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, x: -24, scale: 0.985 }}
-                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                        exit={{ opacity: 0, x: -18, scale: 0.99 }}
+                        transition={{ duration: 0.8, ease: 'easeInOut' }}
                         className="relative group block w-[74vw] max-w-[243px] sm:w-[306px] sm:max-w-[306px] lg:w-[378px] lg:max-w-[378px] aspect-video overflow-hidden rounded-2xl border border-white/85 bg-white shadow-xl"
                         aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
                       >
