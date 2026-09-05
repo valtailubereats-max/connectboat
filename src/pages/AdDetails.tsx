@@ -1396,7 +1396,7 @@ const AdDetails = () => {
         {/* LADO ESQUERDO: Imagens e Galeria */}
         <div className="lg:col-span-9 space-y-4">
           {/* Compact listing header above main image */}
-          <div className="rounded-2xl border border-white/80 bg-white/92 backdrop-blur-sm shadow-[0_8px_24px_rgba(4,18,38,0.12)] px-5 py-4">
+          <div className="rounded-2xl border border-white/80 bg-white/92 backdrop-blur-sm shadow-[0_8px_24px_rgba(4,18,38,0.12)] px-5 py-3">
             <h1 className="text-2xl xl:text-[2rem] font-black leading-tight text-slate-900">
               {ad.title}
             </h1>
@@ -2060,7 +2060,7 @@ const AdDetails = () => {
         {/* CAROUSEL FLOW */}
         <div className="space-y-3">
           {/* Compact listing header above main image */}
-          <div className="mx-1 rounded-2xl border border-white/85 bg-white/95 backdrop-blur-sm shadow-[0_8px_22px_rgba(4,18,38,0.14)] px-4 py-3.5">
+          <div className="mx-1 rounded-2xl border border-white/85 bg-white/95 backdrop-blur-sm shadow-[0_8px_22px_rgba(4,18,38,0.14)] px-4 py-2.5">
             <h1 className="text-[1.35rem] sm:text-2xl font-black leading-snug text-slate-900">
               {ad.title}
             </h1>
