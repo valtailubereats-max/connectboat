@@ -48,6 +48,19 @@ const AdminDashboard = () => {
   const [pendingAds, setPendingAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
+  const [ga4Test, setGa4Test] = useState<{
+    loading: boolean;
+    success: boolean | null;
+    message: string;
+    visitors: number;
+    pageViews: number;
+  }>({
+    loading: false,
+    success: null,
+    message: '',
+    visitors: 0,
+    pageViews: 0,
+  });
   const [backupLoading, setBackupLoading] = useState(false);
   const [financeModalOpen, setFinanceModalOpen] = useState(false);
   const [financePassword, setFinancePassword] = useState('');
@@ -86,6 +99,77 @@ const AdminDashboard = () => {
   ]);
   const isFinanceOwner = financeOwnerEmails.has((currentUser?.email || '').trim().toLowerCase());
   const canRequestFinanceAccess = isFinanceOwner || (profile?.role === 'admin' && profile?.financeAccess === true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const testGa4Connection = async () => {
+      if (!currentUser || !isAdmin) {
+        setGa4Test({
+          loading: false,
+          success: null,
+          message: '',
+          visitors: 0,
+          pageViews: 0,
+        });
+        return;
+      }
+
+      setGa4Test((previous) => ({ ...previous, loading: true, message: '' }));
+
+      try {
+        const token = await currentUser.getIdToken();
+        const response = await fetch(`/api/admin/analytics?range=${timeRange}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: 'no-store',
+        });
+
+        const rawBody = await response.text();
+        let data: any = {};
+        try {
+          data = rawBody ? JSON.parse(rawBody) : {};
+        } catch {
+          data = {};
+        }
+
+        if (!response.ok || data?.success !== true) {
+          throw new Error(
+            data?.message || data?.error || `Analytics request failed (HTTP ${response.status}).`
+          );
+        }
+
+        if (cancelled) return;
+
+        setGa4Test({
+          loading: false,
+          success: true,
+          message: `Connected to GA4 property ${data?.propertyId || '548217388'}.`,
+          visitors: Number(data?.summary?.visitors || 0),
+          pageViews: Number(data?.summary?.pageViews || 0),
+        });
+      } catch (error: any) {
+        if (cancelled) return;
+
+        console.error('[Admin Dashboard] GA4 connection test failed:', error);
+        setGa4Test({
+          loading: false,
+          success: false,
+          message: error?.message || 'Unable to connect to Google Analytics.',
+          visitors: 0,
+          pageViews: 0,
+        });
+      }
+    };
+
+    void testGa4Connection();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, isAdmin, timeRange]);
 
   const loadFinanceData = async () => {
     setFinanceDataLoading(true);
@@ -1280,6 +1364,41 @@ const AdminDashboard = () => {
               </button>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Temporary GA4 connection test. Keep this visible until the backend handshake is confirmed. */}
+      <div
+        className={`rounded-2xl border px-5 py-4 shadow-sm ${
+          ga4Test.loading
+            ? 'bg-slate-50 border-slate-200'
+            : ga4Test.success === true
+              ? 'bg-emerald-50 border-emerald-200'
+              : ga4Test.success === false
+                ? 'bg-rose-50 border-rose-200'
+                : 'bg-slate-50 border-slate-200'
+        }`}
+      >
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <p className="text-sm font-black text-slate-900">Google Analytics connection test</p>
+            <p className="text-xs font-medium text-slate-600 mt-1">
+              {ga4Test.loading
+                ? 'Connecting securely to GA4…'
+                : ga4Test.success === true
+                  ? ga4Test.message
+                  : ga4Test.success === false
+                    ? `Connection failed: ${ga4Test.message}`
+                    : 'Waiting for an authenticated administrator session.'}
+            </p>
+          </div>
+
+          {ga4Test.success === true && (
+            <div className="flex items-center gap-5 text-xs font-bold text-slate-700">
+              <span>Visitors: {ga4Test.visitors.toLocaleString('en-GB')}</span>
+              <span>Page Views: {ga4Test.pageViews.toLocaleString('en-GB')}</span>
+            </div>
+          )}
         </div>
       </div>
 
