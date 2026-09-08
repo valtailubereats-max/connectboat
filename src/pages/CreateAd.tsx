@@ -2589,6 +2589,9 @@ const CreateAd = () => {
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
                         {getPhotoLimit('Boats for Sale', 'standard')} photos
                       </p>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
+                        30 days
+                      </p>
                     </div>
                     <p className="font-black text-emerald-700 text-xs sm:text-sm mt-1">
                       £{getPlanPrice('standard').toFixed(2)}
@@ -2622,6 +2625,9 @@ const CreateAd = () => {
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
                         {getPhotoLimit('Boats for Sale', 'featured')} photos
                       </p>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
+                        30 days
+                      </p>
                     </div>
                     <p className="font-black text-amber-600 text-xs sm:text-sm mt-1">
                       £{getPlanPrice('featured').toFixed(2)}
@@ -2651,6 +2657,9 @@ const CreateAd = () => {
                       <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Premium</p>
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
                         {getPhotoLimit('Boats for Sale', 'premium')} photos
+                      </p>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
+                        30 days
                       </p>
                     </div>
                     <p className="font-black text-indigo-600 text-xs sm:text-sm mt-1">
@@ -2699,6 +2708,9 @@ const CreateAd = () => {
                         {hasMarketplaceFreeBenefit() ? 'Free Marketplace' : 'Marketplace'}
                       </p>
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">Up to 3 photos</p>
+                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
+                        30 days
+                      </p>
                     </div>
                     <p className="font-black text-xs sm:text-sm mt-1 text-emerald-700">
                       {hasMarketplaceFreeBenefit()
