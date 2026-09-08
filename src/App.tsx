@@ -837,8 +837,6 @@ const ScrollToTop = () => {
 
 export default function App() {
   const mainRef = React.useRef<HTMLDivElement>(null);
-  const location = useLocation();
-  const isAdDetailsPage = /^\/(anuncio|listing)\//.test(location.pathname);
 
   React.useEffect(() => {
     try {
@@ -980,13 +978,7 @@ export default function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
-            <footer
-              className={`relative z-20 bg-slate-50 border-t border-slate-200 pt-16 mt-20 font-sans ${
-                isAdDetailsPage
-                  ? 'pb-32 lg:pb-12'
-                  : 'pb-12'
-              }`}
-            >
+            <footer className="relative z-20 bg-slate-50 border-t border-slate-200 pt-16 pb-32 lg:pb-12 mt-20 font-sans">
               <div className="max-w-[1536px] mx-auto px-6 md:px-8">
                 
                 {/* Main 4-column Grid */}
