@@ -17,6 +17,10 @@
       "destination": "/api/og-image"
     },
     {
+      "source": "/api/admin/analytics",
+      "destination": "/api/admin/create-assisted-payment?mode=analytics"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
