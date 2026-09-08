@@ -86,8 +86,6 @@ const Navbar = () => {
   };
   const { settings } = useSettings();
   const navigate = useNavigate();
-  const location = useLocation();
-  const isAdDetailsPage = /^\/(anuncio|listing)\//.test(location.pathname);
   const [isOpen, setIsOpen] = React.useState(false);
   const [adminNotificationCount, setAdminNotificationCount] = React.useState(0);
   const [adminPendingAds, setAdminPendingAds] = React.useState<any[]>([]);
@@ -839,6 +837,8 @@ const ScrollToTop = () => {
 
 export default function App() {
   const mainRef = React.useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const isAdDetailsPage = /^\/(anuncio|listing)\//.test(location.pathname);
 
   React.useEffect(() => {
     try {
