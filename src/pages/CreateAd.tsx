@@ -15,7 +15,7 @@ import { compressImage } from '../lib/imageUtils';
 import { normalizeDescription } from '../utils/textFormatter';
 import { parsePrice, formatPrice } from '../utils';
 import { getSourceSiteFromUrl, getSupportedMarketplace, getSupportedMarketplacesMessage } from '../utils/marketplaces';
-import { isImportedOrExternalAd, normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
+import { normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSanitizer';
 import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../utils/imageFraming';
 import { evaluateListingDuplicates, DuplicateCheckResult } from '../utils/duplicateDetector';
 import { saveCustomCity } from '../utils/locationService';
@@ -151,6 +151,13 @@ const buildInternationalContactNumber = (countryIso: string, localNumber?: strin
 
   // Deliberately preserves every digit entered by the user, including a leading 0.
   return localDigits ? `${country.dialCode}${localDigits}` : '';
+};
+
+
+const normalizeExternalListingUrl = (value?: string | null): string => {
+  const raw = (value || '').trim();
+  if (!raw) return '';
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 };
 
 const isMarketplaceListingCategory = (category?: string): boolean =>
@@ -330,14 +337,54 @@ const CreateAd = () => {
     videoPaid: false
   });
 
+
+  const isStaffForExternalListing = isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator';
+
+  const externalOriginalUrl = useMemo(() => {
+    if (!isStaffForExternalListing) return '';
+    const importedSourceUrl = normalizeExternalListingUrl(formData.sourceUrl);
+    const adminExternalUrl = normalizeExternalListingUrl(formData.moreInfoUrl);
+    return importedSourceUrl || adminExternalUrl;
+  }, [isStaffForExternalListing, formData.sourceUrl, formData.moreInfoUrl]);
+
+  const isExternalSourceListing = !!externalOriginalUrl;
+
   useEffect(() => {
-    if (!id && profile?.phone) {
+    if (!isExternalSourceListing) return;
+
+    setFormData(prev => {
+      const alreadyClean =
+        !prev.contactWhatsapp &&
+        !prev.contactPhone &&
+        !prev.contactEmail &&
+        !prev.showWhatsapp &&
+        !prev.showPhone &&
+        !prev.showEmail;
+
+      if (alreadyClean) return prev;
+
+      return {
+        ...prev,
+        contactWhatsapp: '',
+        contactPhone: '',
+        contactEmail: '',
+        sellerPhone: '',
+        showWhatsapp: false,
+        showPhone: false,
+        showEmail: false,
+        useProfilePhone: false,
+      };
+    });
+  }, [isExternalSourceListing]);
+
+  useEffect(() => {
+    if (!id && profile?.phone && !isExternalSourceListing) {
       setFormData(prev => ({
         ...prev,
         contactWhatsapp: prev.contactWhatsapp || profile.phone || ''
       }));
     }
-  }, [id, profile?.phone]);
+  }, [id, profile?.phone, isExternalSourceListing]);
 
   // Media Boost Upload States & Handlers
   const [videoUploading, setVideoUploading] = useState(false);
@@ -491,29 +538,31 @@ const CreateAd = () => {
       showValidationError('Please select a city/region.');
       return false;
     }
-    const selectedContactCount = [
-      formData.showWhatsapp && !!formData.contactWhatsapp?.trim(),
-      formData.showPhone && !!formData.contactPhone?.trim(),
-      formData.showEmail && !!formData.contactEmail?.trim()
-    ].filter(Boolean).length;
+    if (!isExternalSourceListing) {
+      const selectedContactCount = [
+        formData.showWhatsapp && !!formData.contactWhatsapp?.trim(),
+        formData.showPhone && !!formData.contactPhone?.trim(),
+        formData.showEmail && !!formData.contactEmail?.trim()
+      ].filter(Boolean).length;
 
-    if (selectedContactCount === 0) {
-      showValidationError('Please select at least one contact option and enter its details.', 'contact-options-section');
-      return false;
-    }
-    if (formData.showWhatsapp && !formData.contactWhatsapp?.trim()) {
-      showValidationError('Please enter the WhatsApp number or untick WhatsApp.', 'txt-contact-whatsapp');
-      return false;
-    }
-    if (formData.showPhone && !formData.contactPhone?.trim()) {
-      showValidationError('Please enter the phone number or untick Phone.', 'txt-contact-phone');
-      return false;
-    }
-    if (formData.showEmail) {
-      const email = formData.contactEmail?.trim() || '';
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showValidationError('Please enter a valid email address or untick Email.', 'txt-contact-email');
+      if (selectedContactCount === 0) {
+        showValidationError('Please select at least one contact option and enter its details.', 'contact-options-section');
         return false;
+      }
+      if (formData.showWhatsapp && !formData.contactWhatsapp?.trim()) {
+        showValidationError('Please enter the WhatsApp number or untick WhatsApp.', 'txt-contact-whatsapp');
+        return false;
+      }
+      if (formData.showPhone && !formData.contactPhone?.trim()) {
+        showValidationError('Please enter the phone number or untick Phone.', 'txt-contact-phone');
+        return false;
+      }
+      if (formData.showEmail) {
+        const email = formData.contactEmail?.trim() || '';
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showValidationError('Please enter a valid email address or untick Email.', 'txt-contact-email');
+          return false;
+        }
       }
     }
     if (formData.mediaBoostEnabled) {
@@ -539,8 +588,7 @@ const CreateAd = () => {
   };
 
   const checkRequiresPayment = (): boolean => {
-    const isStaff = isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator';
-    if (isStaff) return false;
+      if (isStaff) return false;
     if (formData.isPermanentFeatured) return false;
 
     const isPaidBoatListing = isPaidBoatListingCategory(formData.category);
@@ -1619,32 +1667,32 @@ const CreateAd = () => {
 
     const isJob = formData.category === 'Trabalho/Empregos' || formData.category === 'Boat Jobs';
     const isSpecialCategory = formData.category === 'Imigração' || isJob;
-    const isImportedAd = isImportedOrExternalAd(formData) || isImportedOrExternalAd(originalAd) || isAdmin || isModerator;
+    // External listings use the original source link instead of direct contact details.
+    if (!isExternalSourceListing) {
+      const selectedContactCount = [
+        formData.showWhatsapp && !!formData.contactWhatsapp?.trim(),
+        formData.showPhone && !!formData.contactPhone?.trim(),
+        formData.showEmail && !!formData.contactEmail?.trim()
+      ].filter(Boolean).length;
 
-    // Contact options validation
-    const selectedContactCount = [
-      formData.showWhatsapp && !!formData.contactWhatsapp?.trim(),
-      formData.showPhone && !!formData.contactPhone?.trim(),
-      formData.showEmail && !!formData.contactEmail?.trim()
-    ].filter(Boolean).length;
-
-    if (selectedContactCount === 0) {
-      showValidationError('Please select at least one contact option and enter its details.', 'contact-options-section');
-      return;
-    }
-    if (formData.showWhatsapp && !formData.contactWhatsapp?.trim()) {
-      showValidationError('Please enter the WhatsApp number or untick WhatsApp.', 'txt-contact-whatsapp');
-      return;
-    }
-    if (formData.showPhone && !formData.contactPhone?.trim()) {
-      showValidationError('Please enter the phone number or untick Phone.', 'txt-contact-phone');
-      return;
-    }
-    if (formData.showEmail) {
-      const email = formData.contactEmail?.trim() || '';
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showValidationError('Please enter a valid email address or untick Email.', 'txt-contact-email');
+      if (selectedContactCount === 0) {
+        showValidationError('Please select at least one contact option and enter its details.', 'contact-options-section');
         return;
+      }
+      if (formData.showWhatsapp && !formData.contactWhatsapp?.trim()) {
+        showValidationError('Please enter the WhatsApp number or untick WhatsApp.', 'txt-contact-whatsapp');
+        return;
+      }
+      if (formData.showPhone && !formData.contactPhone?.trim()) {
+        showValidationError('Please enter the phone number or untick Phone.', 'txt-contact-phone');
+        return;
+      }
+      if (formData.showEmail) {
+        const email = formData.contactEmail?.trim() || '';
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showValidationError('Please enter a valid email address or untick Email.', 'txt-contact-email');
+          return;
+        }
       }
     }
 
@@ -1693,15 +1741,22 @@ const CreateAd = () => {
       expirationDate.setDate(expirationDate.getDate() + days);
 
       const validSourceUrl = (formData.sourceUrl && /^https?:\/\//i.test(formData.sourceUrl)) ? formData.sourceUrl.trim() : null;
+      const normalizedMoreInfoUrl = isStaffForExternalListing ? normalizeExternalListingUrl(formData.moreInfoUrl) : '';
+      const finalSourceUrl = validSourceUrl || normalizedMoreInfoUrl || (originalAd?.sourceUrl || null);
+      const isExternalListingForSave = isStaffForExternalListing && !!finalSourceUrl;
 
       const useProfilePhoneValue = false;
-      const contactWhatsappValue = buildInternationalContactNumber(whatsappCountryIso, formData.contactWhatsapp);
-      const contactPhoneValue = buildInternationalContactNumber(phoneCountryIso, formData.contactPhone);
-      const contactEmailValue = formData.contactEmail.trim();
-      // sellerPhone remains populated for backward compatibility with older cards/pages.
-      const finalSellerPhoneValue = contactWhatsappValue || contactPhoneValue || profile.phone || '';
-
-      const isStaff = isAdmin || isModerator;
+      const contactWhatsappValue = isExternalListingForSave
+        ? ''
+        : buildInternationalContactNumber(whatsappCountryIso, formData.contactWhatsapp);
+      const contactPhoneValue = isExternalListingForSave
+        ? ''
+        : buildInternationalContactNumber(phoneCountryIso, formData.contactPhone);
+      const contactEmailValue = isExternalListingForSave ? '' : formData.contactEmail.trim();
+      // sellerPhone remains populated only for direct-contact listings.
+      const finalSellerPhoneValue = isExternalListingForSave
+        ? ''
+        : (contactWhatsappValue || contactPhoneValue || profile.phone || '');
 
       const adData: any = {
         id: adId,
@@ -1720,13 +1775,13 @@ const CreateAd = () => {
         userEmail: id && originalAd
           ? (Object.prototype.hasOwnProperty.call(originalAd, 'userEmail') ? originalAd.userEmail : '')
           : (user?.email || profile?.email || ''),
-        sellerPhone: finalSellerPhoneValue || (originalAd?.sellerPhone || ''),
+        sellerPhone: isExternalListingForSave ? '' : (finalSellerPhoneValue || (originalAd?.sellerPhone || '')),
         contactWhatsapp: contactWhatsappValue,
         contactPhone: contactPhoneValue,
         contactEmail: contactEmailValue,
-        showWhatsapp: !!formData.showWhatsapp,
-        showPhone: !!formData.showPhone,
-        showEmail: !!formData.showEmail,
+        showWhatsapp: isExternalListingForSave ? false : !!formData.showWhatsapp,
+        showPhone: isExternalListingForSave ? false : !!formData.showPhone,
+        showEmail: isExternalListingForSave ? false : !!formData.showEmail,
         useProfilePhone: useProfilePhoneValue,
         sellerName: id && originalAd ? (originalAd.sellerName || profile.name || 'ConnectBoat') : (profile.name || 'ConnectBoat'),
         status: isStaff && id ? (originalAd?.status || 'approved') : 'pending',
@@ -1748,11 +1803,9 @@ const CreateAd = () => {
         updatedAt: serverTimestamp(),
         externalUrl: (formData.category === 'Imigração' || isJob) ? (formData.externalUrl || '') : (originalAd?.externalUrl || ''),
         moreInfoUrl: isStaff
-          ? (formData.moreInfoUrl.trim()
-              ? (/^https?:\/\//i.test(formData.moreInfoUrl.trim()) ? formData.moreInfoUrl.trim() : `https://${formData.moreInfoUrl.trim()}`)
-              : '')
+          ? normalizedMoreInfoUrl
           : ((originalAd as any)?.moreInfoUrl || ''),
-        sourceUrl: validSourceUrl || (originalAd?.sourceUrl || null),
+        sourceUrl: finalSourceUrl,
         imagePositionX: imagePositionX,
         imagePositionY: imagePositionY,
         imageZoom: imageZoom,
@@ -2146,6 +2199,14 @@ const CreateAd = () => {
             category: matchedCategory || prev.category, // fallback nicely but keep empty choice as principal
             images: images && Array.isArray(images) && images.length > 0 ? images : prev.images,
             sourceUrl: importUrl,
+            contactWhatsapp: '',
+            contactPhone: '',
+            contactEmail: '',
+            sellerPhone: '',
+            showWhatsapp: false,
+            showPhone: false,
+            showEmail: false,
+            useProfilePhone: false,
             boatType: result.data.boatType !== undefined && result.data.boatType !== null ? result.data.boatType : (prev.boatType || ''),
             manufacturer: result.data.manufacturer ?? '',
             model: result.data.model ?? '',
@@ -3026,18 +3087,18 @@ const CreateAd = () => {
                 <div className="space-y-2 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
                   <label className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
                     <ExternalLink size={16} className="text-indigo-600" />
-                    Ver Mais — External URL
+                    Original Listing URL
                     <span className="text-[10px] normal-case tracking-normal text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">Admin / Moderator</span>
                   </label>
                   <input
                     type="url"
                     value={formData.moreInfoUrl}
                     onChange={(e) => setFormData({ ...formData, moreInfoUrl: e.target.value })}
-                    placeholder="https://youtube.com/... ou https://outra-plataforma.com/..."
+                    placeholder="https://original-marketplace.com/listing/..."
                     className="w-full px-3 py-2.5 bg-white border-2 border-slate-100 rounded-xl focus:border-indigo-600 outline-none transition-all font-medium"
                   />
                   <p className="text-[11px] text-slate-500 font-medium">
-                    When filled in, the listing will show a public <strong>Ver Mais</strong> button on the details page. The link opens in a new tab.
+                    When filled in, this listing is treated as external. WhatsApp, Phone and Email are disabled, and visitors are directed to the original listing.
                   </p>
                 </div>
               )}
@@ -3186,10 +3247,21 @@ const CreateAd = () => {
               <div id="contact-options-section" className="space-y-3 p-3.5 bg-slate-50 border-2 border-slate-100 rounded-xl">
                 <div className="flex items-center justify-between gap-3">
                   <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Contact Options</h4>
-                  <span className="text-[10px] font-semibold text-slate-500">Tick the methods you want shown publicly</span>
+                  <span className="text-[10px] font-semibold text-slate-500">
+                    {isExternalSourceListing ? 'External listing — direct contacts disabled' : 'Tick the methods you want shown publicly'}
+                  </span>
                 </div>
 
-                <div className="space-y-2">
+                {isExternalSourceListing && (
+                  <div className="flex items-start gap-2.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-xs font-semibold text-indigo-800">
+                    <ExternalLink size={16} className="mt-0.5 shrink-0 text-indigo-600" />
+                    <span>
+                      This is an external listing. WhatsApp, Phone and Email are disabled; visitors will be directed to the original listing.
+                    </span>
+                  </div>
+                )}
+
+                <div className={`space-y-2 ${isExternalSourceListing ? 'opacity-60' : ''}`}>
                   <div className="grid grid-cols-[90px_minmax(0,1fr)_28px] items-center gap-2">
                     <label htmlFor="txt-contact-whatsapp" className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
                       <MessageCircle size={15} className="text-emerald-600" />
@@ -3200,7 +3272,8 @@ const CreateAd = () => {
                         aria-label="WhatsApp country code"
                         value={whatsappCountryIso}
                         onChange={(e) => setWhatsappCountryIso(e.target.value)}
-                        className="w-[132px] sm:w-[190px] shrink-0 px-2.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-sm font-semibold text-slate-700"
+                        disabled={isExternalSourceListing}
+                        className="w-[132px] sm:w-[190px] shrink-0 px-2.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-sm font-semibold text-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                       >
                         {CONTACT_COUNTRIES.map(country => (
                           <option key={`whatsapp-${country.iso}`} value={country.iso}>
@@ -3214,7 +3287,8 @@ const CreateAd = () => {
                         inputMode="tel"
                         value={formData.contactWhatsapp}
                         onChange={(e) => setFormData(prev => ({ ...prev, contactWhatsapp: e.target.value }))}
-                        className="min-w-0 flex-1 px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-sm"
+                        disabled={isExternalSourceListing}
+                        className="min-w-0 flex-1 px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-sm disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                         placeholder="7508 309536"
                       />
                     </div>
@@ -3223,6 +3297,7 @@ const CreateAd = () => {
                       type="checkbox"
                       checked={formData.showWhatsapp}
                       onChange={(e) => setFormData(prev => ({ ...prev, showWhatsapp: e.target.checked }))}
+                      disabled={isExternalSourceListing}
                       className="w-5 h-5 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer"
                     />
                   </div>
@@ -3237,7 +3312,8 @@ const CreateAd = () => {
                         aria-label="Phone country code"
                         value={phoneCountryIso}
                         onChange={(e) => setPhoneCountryIso(e.target.value)}
-                        className="w-[132px] sm:w-[190px] shrink-0 px-2.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none text-sm font-semibold text-slate-700"
+                        disabled={isExternalSourceListing}
+                        className="w-[132px] sm:w-[190px] shrink-0 px-2.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none text-sm font-semibold text-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                       >
                         {CONTACT_COUNTRIES.map(country => (
                           <option key={`phone-${country.iso}`} value={country.iso}>
@@ -3251,7 +3327,8 @@ const CreateAd = () => {
                         inputMode="tel"
                         value={formData.contactPhone}
                         onChange={(e) => setFormData(prev => ({ ...prev, contactPhone: e.target.value }))}
-                        className="min-w-0 flex-1 px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none text-sm"
+                        disabled={isExternalSourceListing}
+                        className="min-w-0 flex-1 px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none text-sm disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                         placeholder="23 9999 9999"
                       />
                     </div>
@@ -3260,6 +3337,7 @@ const CreateAd = () => {
                       type="checkbox"
                       checked={formData.showPhone}
                       onChange={(e) => setFormData(prev => ({ ...prev, showPhone: e.target.checked }))}
+                      disabled={isExternalSourceListing}
                       className="w-5 h-5 rounded text-sky-600 border-slate-300 focus:ring-sky-500 cursor-pointer"
                     />
                   </div>
@@ -3274,7 +3352,8 @@ const CreateAd = () => {
                       type="email"
                       value={formData.contactEmail}
                       onChange={(e) => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
-                      className="min-w-0 w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-indigo-500 focus:outline-none text-sm"
+                      disabled={isExternalSourceListing}
+                      className="min-w-0 w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-indigo-500 focus:outline-none text-sm disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                       placeholder="seller@example.com"
                     />
                     <input
@@ -3282,6 +3361,7 @@ const CreateAd = () => {
                       type="checkbox"
                       checked={formData.showEmail}
                       onChange={(e) => setFormData(prev => ({ ...prev, showEmail: e.target.checked }))}
+                      disabled={isExternalSourceListing}
                       className="w-5 h-5 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer"
                     />
                   </div>
@@ -3866,8 +3946,14 @@ const CreateAd = () => {
                     <span className="font-bold text-slate-800">{formData.region ? `${formData.region} • ` : ''}{formData.city || '—'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block font-semibold">Contact Phone</span>
-                    <span className="font-bold text-slate-800">{formData.useProfilePhone ? (profile?.phone || 'Profile Phone') : (formData.contactPhone || '—')}</span>
+                    <span className="text-slate-400 block font-semibold">
+                      {isExternalSourceListing ? 'Contact Destination' : 'Contact Phone'}
+                    </span>
+                    <span className="font-bold text-slate-800 break-all">
+                      {isExternalSourceListing
+                        ? 'Original listing'
+                        : (formData.useProfilePhone ? (profile?.phone || 'Profile Phone') : (formData.contactPhone || '—'))}
+                    </span>
                   </div>
                   {formData.year && (
                     <div>
