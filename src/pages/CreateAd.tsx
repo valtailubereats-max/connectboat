@@ -3262,18 +3262,18 @@ const CreateAd = () => {
                 )}
 
                 <div className={`space-y-2 ${isExternalSourceListing ? 'opacity-60' : ''}`}>
-                  <div className="grid grid-cols-[90px_minmax(0,1fr)_28px] items-center gap-2">
-                    <label htmlFor="txt-contact-whatsapp" className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                  <div className="grid grid-cols-[minmax(0,1fr)_28px] sm:grid-cols-[90px_minmax(0,1fr)_28px] items-center gap-2">
+                    <label htmlFor="txt-contact-whatsapp" className="col-span-2 sm:col-span-1 flex items-center gap-1.5 text-xs font-bold text-slate-700">
                       <MessageCircle size={15} className="text-emerald-600" />
                       WhatsApp
                     </label>
-                    <div className="min-w-0 flex gap-2">
+                    <div className="min-w-0 grid grid-cols-[106px_minmax(0,1fr)] sm:flex gap-2">
                       <select
                         aria-label="WhatsApp country code"
                         value={whatsappCountryIso}
                         onChange={(e) => setWhatsappCountryIso(e.target.value)}
                         disabled={isExternalSourceListing}
-                        className="w-[132px] sm:w-[190px] shrink-0 px-2.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-sm font-semibold text-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        className="w-full sm:w-[190px] shrink-0 px-2 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-xs sm:text-sm font-semibold text-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                       >
                         {CONTACT_COUNTRIES.map(country => (
                           <option key={`whatsapp-${country.iso}`} value={country.iso}>
@@ -3302,18 +3302,18 @@ const CreateAd = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-[90px_minmax(0,1fr)_28px] items-center gap-2">
-                    <label htmlFor="txt-contact-phone" className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                  <div className="grid grid-cols-[minmax(0,1fr)_28px] sm:grid-cols-[90px_minmax(0,1fr)_28px] items-center gap-2">
+                    <label htmlFor="txt-contact-phone" className="col-span-2 sm:col-span-1 flex items-center gap-1.5 text-xs font-bold text-slate-700">
                       <Phone size={15} className="text-sky-600" />
                       Phone
                     </label>
-                    <div className="min-w-0 flex gap-2">
+                    <div className="min-w-0 grid grid-cols-[106px_minmax(0,1fr)] sm:flex gap-2">
                       <select
                         aria-label="Phone country code"
                         value={phoneCountryIso}
                         onChange={(e) => setPhoneCountryIso(e.target.value)}
                         disabled={isExternalSourceListing}
-                        className="w-[132px] sm:w-[190px] shrink-0 px-2.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none text-sm font-semibold text-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        className="w-full sm:w-[190px] shrink-0 px-2 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none text-xs sm:text-sm font-semibold text-slate-700 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                       >
                         {CONTACT_COUNTRIES.map(country => (
                           <option key={`phone-${country.iso}`} value={country.iso}>
