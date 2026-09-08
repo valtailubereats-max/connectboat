@@ -41,7 +41,6 @@ const AdDetails = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [listingAdCampaigns, setListingAdCampaigns] = useState<any[]>([]);
   const [listingAdIndex, setListingAdIndex] = useState(0);
-
   const [listingPageBackground, setListingPageBackground] = useState<{
     enabled: boolean;
     type: 'image' | 'video';
@@ -2657,7 +2656,7 @@ const AdDetails = () => {
       )}
 
       {/* STICKY MOBILE ACTION BAR */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2.5 py-2.5 shadow-2xl flex items-center gap-2">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[140] bg-white/95 backdrop-blur-md border-t border-slate-200 px-2.5 py-2.5 shadow-2xl flex items-center gap-2">
         <div className="flex flex-col shrink-0 min-w-[68px]">
           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Price</span>
           <span className="text-xs sm:text-sm font-black text-indigo-600 leading-tight">
