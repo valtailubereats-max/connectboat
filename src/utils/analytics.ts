@@ -1,4 +1,6 @@
 export const GA_MEASUREMENT_ID = 'G-B0BPV9R463';
+export const GOOGLE_ADS_ID = 'AW-18437934848';
+export const GOOGLE_ADS_SIGNUP_SEND_TO = 'AW-18437934848/iOpbCL2rmPEcEICe8tdE';
 
 export const ANALYTICS_CONSENT_STORAGE_KEY = 'connectboat_cookie_consent';
 
@@ -113,6 +115,15 @@ export const initGA = (): boolean => {
     });
   }
 
+  // Configure Google Ads on the same Google tag, but only after Analytics consent.
+  // A window flag prevents duplicate config calls when initGA() runs more than once.
+  const adsConfiguredFlag = '__connectboatGoogleAdsConfigured';
+  const adsWindow = window as typeof window & Record<string, any>;
+  if (!adsWindow[adsConfiguredFlag] && typeof window.gtag === 'function') {
+    window.gtag('config', GOOGLE_ADS_ID);
+    adsWindow[adsConfiguredFlag] = true;
+  }
+
   return true;
 };
 
@@ -137,6 +148,26 @@ export const sendGAPageView = (pagePath: string, pageTitle?: string) => {
       page_path: pagePath,
       page_title: pageTitle || document.title,
       send_to: GA_MEASUREMENT_ID,
+    });
+  }
+};
+
+
+/**
+ * Reports a completed new-user registration to Google Ads.
+ * It is intentionally called only from successful registration flows.
+ */
+export const sendGoogleAdsSignupConversion = () => {
+  if (typeof window === 'undefined') return;
+  if (!hasAnalyticsConsent()) return;
+
+  initGA();
+
+  if (typeof window.gtag === 'function') {
+    window.gtag('event', 'conversion', {
+      send_to: GOOGLE_ADS_SIGNUP_SEND_TO,
+      value: 1.0,
+      currency: 'GBP',
     });
   }
 };
