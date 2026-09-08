@@ -23,6 +23,136 @@ import { saveCustomCity } from '../utils/locationService';
 const PAID_BOAT_LISTING_CATEGORIES = new Set(['Boats for Sale', 'Boats for Hire']);
 const MARKETPLACE_LISTING_CATEGORIES = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Boat Services', 'Accessories', 'Wanted']);
 
+type ContactCountryOption = {
+  iso: string;
+  name: string;
+  dialCode: string;
+};
+
+const CONTACT_COUNTRIES: ContactCountryOption[] = [
+  { iso: 'GB', name: 'United Kingdom', dialCode: '+44' },
+  { iso: 'IE', name: 'Ireland', dialCode: '+353' },
+  { iso: 'PT', name: 'Portugal', dialCode: '+351' },
+  { iso: 'BR', name: 'Brazil', dialCode: '+55' },
+  { iso: 'IT', name: 'Italy', dialCode: '+39' },
+  { iso: 'ES', name: 'Spain', dialCode: '+34' },
+  { iso: 'FR', name: 'France', dialCode: '+33' },
+  { iso: 'DE', name: 'Germany', dialCode: '+49' },
+  { iso: 'NL', name: 'Netherlands', dialCode: '+31' },
+  { iso: 'BE', name: 'Belgium', dialCode: '+32' },
+  { iso: 'LU', name: 'Luxembourg', dialCode: '+352' },
+  { iso: 'CH', name: 'Switzerland', dialCode: '+41' },
+  { iso: 'AT', name: 'Austria', dialCode: '+43' },
+  { iso: 'DK', name: 'Denmark', dialCode: '+45' },
+  { iso: 'SE', name: 'Sweden', dialCode: '+46' },
+  { iso: 'NO', name: 'Norway', dialCode: '+47' },
+  { iso: 'FI', name: 'Finland', dialCode: '+358' },
+  { iso: 'IS', name: 'Iceland', dialCode: '+354' },
+  { iso: 'PL', name: 'Poland', dialCode: '+48' },
+  { iso: 'CZ', name: 'Czech Republic', dialCode: '+420' },
+  { iso: 'SK', name: 'Slovakia', dialCode: '+421' },
+  { iso: 'HU', name: 'Hungary', dialCode: '+36' },
+  { iso: 'RO', name: 'Romania', dialCode: '+40' },
+  { iso: 'BG', name: 'Bulgaria', dialCode: '+359' },
+  { iso: 'GR', name: 'Greece', dialCode: '+30' },
+  { iso: 'HR', name: 'Croatia', dialCode: '+385' },
+  { iso: 'SI', name: 'Slovenia', dialCode: '+386' },
+  { iso: 'RS', name: 'Serbia', dialCode: '+381' },
+  { iso: 'BA', name: 'Bosnia & Herzegovina', dialCode: '+387' },
+  { iso: 'ME', name: 'Montenegro', dialCode: '+382' },
+  { iso: 'MK', name: 'North Macedonia', dialCode: '+389' },
+  { iso: 'AL', name: 'Albania', dialCode: '+355' },
+  { iso: 'EE', name: 'Estonia', dialCode: '+372' },
+  { iso: 'LV', name: 'Latvia', dialCode: '+371' },
+  { iso: 'LT', name: 'Lithuania', dialCode: '+370' },
+  { iso: 'CY', name: 'Cyprus', dialCode: '+357' },
+  { iso: 'MT', name: 'Malta', dialCode: '+356' },
+  { iso: 'TR', name: 'Turkey', dialCode: '+90' },
+  { iso: 'UA', name: 'Ukraine', dialCode: '+380' },
+  { iso: 'MD', name: 'Moldova', dialCode: '+373' },
+  { iso: 'GE', name: 'Georgia', dialCode: '+995' },
+  { iso: 'US', name: 'United States', dialCode: '+1' },
+  { iso: 'CA', name: 'Canada', dialCode: '+1' },
+  { iso: 'MX', name: 'Mexico', dialCode: '+52' },
+  { iso: 'AR', name: 'Argentina', dialCode: '+54' },
+  { iso: 'CL', name: 'Chile', dialCode: '+56' },
+  { iso: 'CO', name: 'Colombia', dialCode: '+57' },
+  { iso: 'PE', name: 'Peru', dialCode: '+51' },
+  { iso: 'UY', name: 'Uruguay', dialCode: '+598' },
+  { iso: 'PY', name: 'Paraguay', dialCode: '+595' },
+  { iso: 'BO', name: 'Bolivia', dialCode: '+591' },
+  { iso: 'EC', name: 'Ecuador', dialCode: '+593' },
+  { iso: 'VE', name: 'Venezuela', dialCode: '+58' },
+  { iso: 'AU', name: 'Australia', dialCode: '+61' },
+  { iso: 'NZ', name: 'New Zealand', dialCode: '+64' },
+  { iso: 'ZA', name: 'South Africa', dialCode: '+27' },
+  { iso: 'AE', name: 'United Arab Emirates', dialCode: '+971' },
+  { iso: 'SA', name: 'Saudi Arabia', dialCode: '+966' },
+  { iso: 'QA', name: 'Qatar', dialCode: '+974' },
+  { iso: 'KW', name: 'Kuwait', dialCode: '+965' },
+  { iso: 'BH', name: 'Bahrain', dialCode: '+973' },
+  { iso: 'OM', name: 'Oman', dialCode: '+968' },
+  { iso: 'IL', name: 'Israel', dialCode: '+972' },
+  { iso: 'IN', name: 'India', dialCode: '+91' },
+  { iso: 'PK', name: 'Pakistan', dialCode: '+92' },
+  { iso: 'BD', name: 'Bangladesh', dialCode: '+880' },
+  { iso: 'LK', name: 'Sri Lanka', dialCode: '+94' },
+  { iso: 'CN', name: 'China', dialCode: '+86' },
+  { iso: 'HK', name: 'Hong Kong', dialCode: '+852' },
+  { iso: 'SG', name: 'Singapore', dialCode: '+65' },
+  { iso: 'MY', name: 'Malaysia', dialCode: '+60' },
+  { iso: 'TH', name: 'Thailand', dialCode: '+66' },
+  { iso: 'ID', name: 'Indonesia', dialCode: '+62' },
+  { iso: 'PH', name: 'Philippines', dialCode: '+63' },
+  { iso: 'JP', name: 'Japan', dialCode: '+81' },
+  { iso: 'KR', name: 'South Korea', dialCode: '+82' },
+];
+
+const countryFlag = (iso: string) =>
+  iso
+    .toUpperCase()
+    .replace(/./g, char => String.fromCodePoint(127397 + char.charCodeAt(0)));
+
+const getContactCountry = (iso: string) =>
+  CONTACT_COUNTRIES.find(country => country.iso === iso) || CONTACT_COUNTRIES[0];
+
+const splitContactNumber = (rawValue?: string, fallbackIso = 'GB') => {
+  const raw = (rawValue || '').trim();
+  if (!raw) return { countryIso: fallbackIso, localNumber: '' };
+
+  if (raw.startsWith('+')) {
+    const compact = raw.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+    const match = [...CONTACT_COUNTRIES]
+      .sort((a, b) => b.dialCode.length - a.dialCode.length)
+      .find(country => compact.startsWith(country.dialCode));
+
+    if (match) {
+      return {
+        countryIso: match.iso,
+        localNumber: compact.slice(match.dialCode.length),
+      };
+    }
+  }
+
+  return { countryIso: fallbackIso, localNumber: raw };
+};
+
+const buildInternationalContactNumber = (countryIso: string, localNumber?: string) => {
+  const raw = (localNumber || '').trim();
+  if (!raw) return '';
+
+  // If a complete international number was pasted, keep it as supplied.
+  if (raw.startsWith('+')) {
+    return raw.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+  }
+
+  const country = getContactCountry(countryIso);
+  const localDigits = raw.replace(/\D/g, '');
+
+  // Deliberately preserves every digit entered by the user, including a leading 0.
+  return localDigits ? `${country.dialCode}${localDigits}` : '';
+};
+
 const isMarketplaceListingCategory = (category?: string): boolean =>
   MARKETPLACE_LISTING_CATEGORIES.has((category || '').trim());
 
@@ -107,12 +237,17 @@ const CreateAd = () => {
 
   const prefill = location.state?.prefill;
   const urlCategory = new URLSearchParams(location.search).get('category');
+  const initialWhatsappContact = splitContactNumber(prefill?.contactWhatsapp || prefill?.sellerPhone || '', 'GB');
+  const initialPhoneContact = splitContactNumber(prefill?.contactPhone || '', 'GB');
 
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/login');
     }
   }, [user, authLoading]);
+
+  const [whatsappCountryIso, setWhatsappCountryIso] = useState(initialWhatsappContact.countryIso);
+  const [phoneCountryIso, setPhoneCountryIso] = useState(initialPhoneContact.countryIso);
 
   const [formData, setFormData] = useState({
     title: prefill?.title || '',
@@ -130,8 +265,8 @@ const CreateAd = () => {
     plan: 'standard' as 'standard' | 'free' | 'local' | 'national' | 'highlight' | 'featured' | 'premium',
     duration: 30, // Default for standard
     contactEmail: prefill?.contactEmail || '',
-    contactWhatsapp: prefill?.contactWhatsapp || prefill?.sellerPhone || '',
-    contactPhone: prefill?.contactPhone || '',
+    contactWhatsapp: initialWhatsappContact.localNumber,
+    contactPhone: initialPhoneContact.localNumber,
     showWhatsapp: prefill?.showWhatsapp !== undefined ? !!prefill.showWhatsapp : true,
     showPhone: prefill?.showPhone !== undefined ? !!prefill.showPhone : false,
     showEmail: prefill?.showEmail !== undefined ? !!prefill.showEmail : false,
@@ -960,6 +1095,10 @@ const CreateAd = () => {
         }
         setOriginalAd(data);
         const fetchedImages = normalizeAndLimitImages(data.images || (data.imageUrl ? [data.imageUrl] : []), getPhotoLimit(data.category, data.plan || 'standard'));
+        const loadedWhatsappContact = splitContactNumber((data as any).contactWhatsapp || data.sellerPhone || '', 'GB');
+        const loadedPhoneContact = splitContactNumber(data.contactPhone || '', 'GB');
+        setWhatsappCountryIso(loadedWhatsappContact.countryIso);
+        setPhoneCountryIso(loadedPhoneContact.countryIso);
         setFormData({
           title: data.title,
           description: data.description,
@@ -971,8 +1110,8 @@ const CreateAd = () => {
           plan: data.plan || 'free',
           duration: 30, // Duration is only used for calculation on submit
           contactEmail: data.contactEmail || '',
-          contactWhatsapp: (data as any).contactWhatsapp || data.sellerPhone || '',
-          contactPhone: data.contactPhone || '',
+          contactWhatsapp: loadedWhatsappContact.localNumber,
+          contactPhone: loadedPhoneContact.localNumber,
           showWhatsapp: (data as any).showWhatsapp !== undefined ? !!(data as any).showWhatsapp : true,
           showPhone: (data as any).showPhone !== undefined ? !!(data as any).showPhone : false,
           showEmail: (data as any).showEmail !== undefined ? !!(data as any).showEmail : false,
@@ -1556,8 +1695,8 @@ const CreateAd = () => {
       const validSourceUrl = (formData.sourceUrl && /^https?:\/\//i.test(formData.sourceUrl)) ? formData.sourceUrl.trim() : null;
 
       const useProfilePhoneValue = false;
-      const contactWhatsappValue = formData.contactWhatsapp.replace(/\s+/g, ' ').trim();
-      const contactPhoneValue = formData.contactPhone.replace(/\s+/g, ' ').trim();
+      const contactWhatsappValue = buildInternationalContactNumber(whatsappCountryIso, formData.contactWhatsapp);
+      const contactPhoneValue = buildInternationalContactNumber(phoneCountryIso, formData.contactPhone);
       const contactEmailValue = formData.contactEmail.trim();
       // sellerPhone remains populated for backward compatibility with older cards/pages.
       const finalSellerPhoneValue = contactWhatsappValue || contactPhoneValue || profile.phone || '';
@@ -3056,14 +3195,29 @@ const CreateAd = () => {
                       <MessageCircle size={15} className="text-emerald-600" />
                       WhatsApp
                     </label>
-                    <input
-                      id="txt-contact-whatsapp"
-                      type="tel"
-                      value={formData.contactWhatsapp}
-                      onChange={(e) => setFormData(prev => ({ ...prev, contactWhatsapp: e.target.value }))}
-                      className="min-w-0 w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-sm"
-                      placeholder="+44 7508 309536"
-                    />
+                    <div className="min-w-0 flex gap-2">
+                      <select
+                        aria-label="WhatsApp country code"
+                        value={whatsappCountryIso}
+                        onChange={(e) => setWhatsappCountryIso(e.target.value)}
+                        className="w-[132px] sm:w-[190px] shrink-0 px-2.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-sm font-semibold text-slate-700"
+                      >
+                        {CONTACT_COUNTRIES.map(country => (
+                          <option key={`whatsapp-${country.iso}`} value={country.iso}>
+                            {countryFlag(country.iso)} {country.name} {country.dialCode}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        id="txt-contact-whatsapp"
+                        type="tel"
+                        inputMode="tel"
+                        value={formData.contactWhatsapp}
+                        onChange={(e) => setFormData(prev => ({ ...prev, contactWhatsapp: e.target.value }))}
+                        className="min-w-0 flex-1 px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-sm"
+                        placeholder="7508 309536"
+                      />
+                    </div>
                     <input
                       aria-label="Show WhatsApp on listing"
                       type="checkbox"
@@ -3078,14 +3232,29 @@ const CreateAd = () => {
                       <Phone size={15} className="text-sky-600" />
                       Phone
                     </label>
-                    <input
-                      id="txt-contact-phone"
-                      type="tel"
-                      value={formData.contactPhone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, contactPhone: e.target.value }))}
-                      className="min-w-0 w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none text-sm"
-                      placeholder="+44 23 9999 9999"
-                    />
+                    <div className="min-w-0 flex gap-2">
+                      <select
+                        aria-label="Phone country code"
+                        value={phoneCountryIso}
+                        onChange={(e) => setPhoneCountryIso(e.target.value)}
+                        className="w-[132px] sm:w-[190px] shrink-0 px-2.5 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none text-sm font-semibold text-slate-700"
+                      >
+                        {CONTACT_COUNTRIES.map(country => (
+                          <option key={`phone-${country.iso}`} value={country.iso}>
+                            {countryFlag(country.iso)} {country.name} {country.dialCode}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        id="txt-contact-phone"
+                        type="tel"
+                        inputMode="tel"
+                        value={formData.contactPhone}
+                        onChange={(e) => setFormData(prev => ({ ...prev, contactPhone: e.target.value }))}
+                        className="min-w-0 flex-1 px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:border-sky-500 focus:outline-none text-sm"
+                        placeholder="23 9999 9999"
+                      />
+                    </div>
                     <input
                       aria-label="Show phone on listing"
                       type="checkbox"
