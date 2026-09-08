@@ -44,6 +44,7 @@ const AdminDashboard = () => {
   const { isAdmin, loading: authLoading, profile, user: currentUser } = useAuth();
   const navigate = useNavigate();
   const [metrics, setMetrics] = useState<DailyMetric[]>([]);
+  const [hasStoredMetricHistory, setHasStoredMetricHistory] = useState(false);
   const [pendingAds, setPendingAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
@@ -669,98 +670,112 @@ const AdminDashboard = () => {
       // C. Try fetching pre-aggregated daily metrics history
       let parsedMetrics: DailyMetric[] = [];
       try {
-        let q = query(collection(db, 'metrics'), orderBy('date', 'desc'), limit(5));
+        const historyLimit = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 365;
+        let q = query(collection(db, 'metrics'), orderBy('date', 'desc'), limit(historyLimit));
         const snap = await getDocsWithCacheFallback(q, `admin/metrics-${timeRange}`);
         parsedMetrics = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyMetric));
       } catch (err) {
         console.warn('[Dashboard] Fallback check: Stored metrics snapshot empty or restricted by rules. Constructing real-time timeline series.', err);
       }
 
+      const storedHistoryAvailable = parsedMetrics.length > 0;
+      setHasStoredMetricHistory(storedHistoryAvailable);
       let finalMetrics = [...parsedMetrics];
 
-      // D. Fallback: If metrics collection has zero documents, dynamically construct daily time-series from real DB logs
+      // D. Fallback: when there is no stored daily metrics history, build ONLY values that can
+      // be derived truthfully from persisted records. We never invent engagement, activity,
+      // warning or renewal numbers to make the charts look populated.
       if (finalMetrics.length === 0) {
         const metricsArray: DailyMetric[] = [];
-        const numDays = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 15;
-        
-        let totalAccumulatedViews = 0;
-        let totalAccumulatedClicks = 0;
-        adsList.forEach(a => {
-          totalAccumulatedViews += Number(a.views || 0);
-          totalAccumulatedClicks += Number(a.whatsappClicks || 0);
-        });
+
+        const createdTimes = [
+          ...usersList.map((u) => u.createdAt),
+          ...adsList.map((a) => a.createdAt),
+        ]
+          .map((value: any) => {
+            if (!value) return 0;
+            if (typeof value.toDate === 'function') return value.toDate().getTime();
+            const parsed = new Date(value).getTime();
+            return Number.isNaN(parsed) ? 0 : parsed;
+          })
+          .filter((value) => value > 0);
+
+        const requestedDays = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : null;
+        const earliestTime = createdTimes.length ? Math.min(...createdTimes) : Date.now();
+        const naturalDays = Math.max(1, Math.ceil((Date.now() - earliestTime) / (24 * 60 * 60 * 1000)) + 1);
+        const numDays = requestedDays ?? Math.min(naturalDays, 365);
 
         for (let i = numDays - 1; i >= 0; i--) {
           const d = new Date();
           d.setDate(d.getDate() - i);
           d.setHours(0, 0, 0, 0);
           const dateStr = d.toISOString().split('T')[0];
-          const dayTime = d.getTime();
-          
-          const usersUpToDay = usersList.filter(u => {
+          const startOfDay = d.getTime();
+          const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+
+          const usersUpToDay = usersList.filter((u) => {
             const uDate = u.createdAt ? (typeof u.createdAt.toDate === 'function' ? u.createdAt.toDate().getTime() : new Date(u.createdAt).getTime()) : 0;
-            return uDate <= dayTime;
+            return uDate > 0 && uDate < endOfDay;
           });
 
-          const adsUpToDay = adsList.filter(a => {
+          const adsUpToDay = adsList.filter((a) => {
             const aDate = a.createdAt ? (typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime()) : 0;
-            return aDate <= dayTime;
+            return aDate > 0 && aDate < endOfDay;
           });
 
-          const adsCreatedOnDay = adsList.filter(a => {
+          const adsCreatedOnDay = adsList.filter((a) => {
             const aDate = a.createdAt ? (typeof a.createdAt.toDate === 'function' ? a.createdAt.toDate().getTime() : new Date(a.createdAt).getTime()) : 0;
-            const startOfToday = d.getTime();
-            const endOfToday = startOfToday + 24 * 60 * 60 * 1000;
-            return aDate >= startOfToday && aDate < endOfToday;
+            return aDate >= startOfDay && aDate < endOfDay;
           });
+
+          const usersCreatedLast7Days = usersList.filter((u) => {
+            const uDate = u.createdAt ? (typeof u.createdAt.toDate === 'function' ? u.createdAt.toDate().getTime() : new Date(u.createdAt).getTime()) : 0;
+            return uDate >= endOfDay - 7 * 24 * 60 * 60 * 1000 && uDate < endOfDay;
+          }).length;
 
           const distributionByCity: Record<string, number> = {};
-          usersUpToDay.forEach(u => {
+          usersUpToDay.forEach((u) => {
             const city = u.city || 'Outros';
             distributionByCity[city] = (distributionByCity[city] || 0) + 1;
           });
 
           const byStatus: Record<string, number> = {};
-          adsUpToDay.forEach(a => {
+          adsUpToDay.forEach((a) => {
             const status = a.status || 'pending';
             byStatus[status] = (byStatus[status] || 0) + 1;
           });
 
           const byCategory: Record<string, number> = {};
-          adsUpToDay.forEach(a => {
+          adsUpToDay.forEach((a) => {
             const category = a.category || 'Outros';
             byCategory[category] = (byCategory[category] || 0) + 1;
           });
 
-          const progressionFactor = (numDays - i) / numDays;
-          const currentViews = Math.round(totalAccumulatedViews * 0.4 + (totalAccumulatedViews * 0.6 * progressionFactor));
-          const currentClicks = Math.round(totalAccumulatedClicks * 0.4 + (totalAccumulatedClicks * 0.6 * progressionFactor));
-
           metricsArray.push({
             id: dateStr,
-            date: { toDate: () => d },
+            date: { toDate: () => new Date(d) },
             users: {
               total: usersUpToDay.length,
-              activeLast7Days: Math.round(usersUpToDay.length * 0.7) || 1,
-              distributionByCity
+              activeLast7Days: usersCreatedLast7Days,
+              distributionByCity,
             },
             ads: {
               total: adsUpToDay.length,
               byStatus,
               byCategory,
-              createdToday: adsCreatedOnDay.length
+              createdToday: adsCreatedOnDay.length,
             },
             interactions: {
-              whatsappClicks: currentClicks,
-              views: currentViews,
-              renewals: adInterestsList.length,
-              favorites: showcaseInterestsList.length
+              whatsappClicks: 0,
+              views: 0,
+              renewals: 0,
+              favorites: 0,
             },
             notifications: {
-              warningsSent: Math.round(adsUpToDay.length * 0.15) || 0,
-              renewalsAfterWarning: Math.round(adsUpToDay.length * 0.08) || 0,
-              ignoresAfterWarning: Math.round(adsUpToDay.length * 0.05) || 0
-            }
+              warningsSent: 0,
+              renewalsAfterWarning: 0,
+              ignoresAfterWarning: 0,
+            },
           });
         }
         finalMetrics = metricsArray;
@@ -775,8 +790,8 @@ const AdminDashboard = () => {
           total: usersList.length,
           activeLast7Days: usersList.filter(u => {
             const uDate = u.createdAt ? (typeof u.createdAt.toDate === 'function' ? u.createdAt.toDate().getTime() : new Date(u.createdAt).getTime()) : 0;
-            return (Date.now() - uDate) <= 7 * 24 * 60 * 60 * 1000;
-          }).length || 1,
+            return uDate > 0 && (Date.now() - uDate) <= 7 * 24 * 60 * 60 * 1000;
+          }).length,
           distributionByCity: usersList.reduce((acc: any, u) => {
             const city = u.city || 'Outros';
             acc[city] = (acc[city] || 0) + 1;
@@ -809,9 +824,9 @@ const AdminDashboard = () => {
           favorites: showcaseInterestsList.length
         },
         notifications: {
-          warningsSent: Math.round(adsList.length * 0.15) || 0,
-          renewalsAfterWarning: Math.round(adsList.length * 0.08) || 0,
-          ignoresAfterWarning: Math.round(adsList.length * 0.05) || 0
+          warningsSent: 0,
+          renewalsAfterWarning: 0,
+          ignoresAfterWarning: 0
         }
       };
 
@@ -858,7 +873,8 @@ const AdminDashboard = () => {
     ads: m.ads.total
   }));
 
-  const interactionData = metrics.map(m => ({
+  const interactionSource = hasStoredMetricHistory ? metrics : (latest ? [latest] : []);
+  const interactionData = interactionSource.map(m => ({
     date: m.date ? format(m.date.toDate(), 'dd/MM') : m.id.split('-').reverse().slice(0, 2).join('/'),
     clicks: m.interactions.whatsappClicks,
     views: m.interactions.views
@@ -868,9 +884,7 @@ const AdminDashboard = () => {
     ? ((latest.interactions.whatsappClicks / latest.interactions.views) * 100).toFixed(1) 
     : 0;
 
-  const notificationEfficiency = latest && latest.notifications.warningsSent > 0
-    ? ((latest.notifications.renewalsAfterWarning / latest.notifications.warningsSent) * 100).toFixed(1)
-    : 0;
+  const totalRecordedLeads = latest ? latest.interactions.renewals + latest.interactions.favorites : 0;
 
   const financeDate = (value: any): Date | null => {
     if (!value) return null;
@@ -1483,7 +1497,7 @@ const AdminDashboard = () => {
               value={latest.users.total} 
               icon={<Users />} 
               color="indigo"
-              subtitle={`${latest.users.activeLast7Days} active (7d)`}
+              subtitle={`${latest.users.activeLast7Days} new users (7d)`}
             />
             <MetricCard 
               title="Total Listings" 
@@ -1500,11 +1514,11 @@ const AdminDashboard = () => {
               subtitle={`Conversion rate: ${conversionRate}%`}
             />
             <MetricCard 
-              title="Warnings Sent" 
-              value={latest.notifications.warningsSent} 
+              title="Recorded Leads" 
+              value={totalRecordedLeads} 
               icon={<Bell />} 
               color="rose"
-              subtitle={`Efficiency: ${notificationEfficiency}%`}
+              subtitle="Real interest records"
             />
           </div>
 
@@ -1527,7 +1541,7 @@ const AdminDashboard = () => {
             </ChartContainer>
 
             {/* Interaction Chart */}
-            <ChartContainer title="Daily Engagement" icon={<MousePointer2 />}>
+            <ChartContainer title={hasStoredMetricHistory ? "Daily Engagement" : "Recorded Engagement (Current Total)"} icon={<MousePointer2 />}>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={interactionData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -1589,29 +1603,34 @@ const AdminDashboard = () => {
             </ChartContainer>
           </div>
 
-          {/* Detailed Stats Section */}
+          {/* Detailed real-data section */}
           <div className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100">
             <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
               <TrendingUp className="text-indigo-600" />
-              Notification Efficiency
+              Recorded Interest Activity
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Renewals after Warning</p>
-                <p className="text-3xl font-black text-emerald-600">{latest.notifications.renewalsAfterWarning}</p>
-                <p className="text-xs text-slate-500 mt-1">Users who relisted after receiving alert.</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Boat Enquiries / Interests</p>
+                <p className="text-3xl font-black text-emerald-600">{latest.interactions.renewals}</p>
+                <p className="text-xs text-slate-500 mt-1">Real records stored in adInterests.</p>
               </div>
               <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Ignored Warnings</p>
-                <p className="text-3xl font-black text-rose-600">{latest.notifications.ignoresAfterWarning}</p>
-                <p className="text-xs text-slate-500 mt-1">Listings that expired without user action.</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Showcase Interests</p>
+                <p className="text-3xl font-black text-rose-600">{latest.interactions.favorites}</p>
+                <p className="text-xs text-slate-500 mt-1">Real records stored in showcaseProductInterests.</p>
               </div>
               <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Total Renewals</p>
-                <p className="text-3xl font-black text-indigo-600">{latest.interactions.renewals}</p>
-                <p className="text-xs text-slate-500 mt-1">Total renewal history across platform.</p>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Total Recorded Leads</p>
+                <p className="text-3xl font-black text-indigo-600">{totalRecordedLeads}</p>
+                <p className="text-xs text-slate-500 mt-1">No estimated or synthetic values.</p>
               </div>
             </div>
+            {!hasStoredMetricHistory && (
+              <p className="mt-5 text-xs text-slate-500">
+                Historical engagement is not shown because no verified daily metrics snapshots are stored yet. Current views and WhatsApp clicks are real cumulative totals from listings.
+              </p>
+            )}
           </div>
         </>
       )}
