@@ -16,6 +16,7 @@ import { ShieldCheck, Mail, Lock, User as UserIcon, ArrowRight, Github, Eye, Eye
 import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import { sendGoogleAdsSignupConversion } from '../utils/analytics';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -153,6 +154,7 @@ const Login = () => {
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, `users/${user.uid}`);
         }
+        sendGoogleAdsSignupConversion();
         await handleRedirectAfterAuth(true);
       } else {
         await handleRedirectAfterAuth(false);
@@ -241,6 +243,7 @@ const Login = () => {
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, `users/${user.uid}`);
         }
+        sendGoogleAdsSignupConversion();
         await handleRedirectAfterAuth(true);
       } else {
         await signInWithEmailAndPassword(auth, email, password);
