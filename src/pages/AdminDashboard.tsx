@@ -48,18 +48,26 @@ const AdminDashboard = () => {
   const [pendingAds, setPendingAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
-  const [ga4Test, setGa4Test] = useState<{
+  const [ga4Analytics, setGa4Analytics] = useState<{
     loading: boolean;
     success: boolean | null;
     message: string;
     visitors: number;
     pageViews: number;
+    sessions: number;
+    newUsers: number;
+    trafficSources: Array<{ name: string; sessions: number }>;
+    topPages: Array<{ path: string; pageViews: number }>;
   }>({
     loading: false,
     success: null,
     message: '',
     visitors: 0,
     pageViews: 0,
+    sessions: 0,
+    newUsers: 0,
+    trafficSources: [],
+    topPages: [],
   });
   const [backupLoading, setBackupLoading] = useState(false);
   const [financeModalOpen, setFinanceModalOpen] = useState(false);
@@ -103,72 +111,56 @@ const AdminDashboard = () => {
   useEffect(() => {
     let cancelled = false;
 
-    const testGa4Connection = async () => {
+    const loadGa4Analytics = async () => {
       if (!currentUser || !isAdmin) {
-        setGa4Test({
-          loading: false,
-          success: null,
-          message: '',
-          visitors: 0,
-          pageViews: 0,
-        });
+        setGa4Analytics((previous) => ({ ...previous, loading: false, success: null, message: '' }));
         return;
       }
 
-      setGa4Test((previous) => ({ ...previous, loading: true, message: '' }));
+      setGa4Analytics((previous) => ({ ...previous, loading: true, message: '' }));
 
       try {
         const token = await currentUser.getIdToken();
         const response = await fetch(`/api/admin/analytics?range=${timeRange}`, {
           method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
         });
 
         const rawBody = await response.text();
         let data: any = {};
-        try {
-          data = rawBody ? JSON.parse(rawBody) : {};
-        } catch {
-          data = {};
-        }
+        try { data = rawBody ? JSON.parse(rawBody) : {}; } catch { data = {}; }
 
         if (!response.ok || data?.success !== true) {
-          throw new Error(
-            data?.message || data?.error || `Analytics request failed (HTTP ${response.status}).`
-          );
+          throw new Error(data?.message || data?.error || `Analytics request failed (HTTP ${response.status}).`);
         }
-
         if (cancelled) return;
 
-        setGa4Test({
+        setGa4Analytics({
           loading: false,
           success: true,
-          message: `Connected to GA4 property ${data?.propertyId || '548217388'}.`,
+          message: '',
           visitors: Number(data?.summary?.visitors || 0),
           pageViews: Number(data?.summary?.pageViews || 0),
+          sessions: Number(data?.summary?.sessions || 0),
+          newUsers: Number(data?.summary?.newUsers || 0),
+          trafficSources: Array.isArray(data?.trafficSources) ? data.trafficSources : [],
+          topPages: Array.isArray(data?.topPages) ? data.topPages : [],
         });
       } catch (error: any) {
         if (cancelled) return;
-
-        console.error('[Admin Dashboard] GA4 connection test failed:', error);
-        setGa4Test({
+        console.error('[Admin Dashboard] GA4 analytics failed:', error);
+        setGa4Analytics((previous) => ({
+          ...previous,
           loading: false,
           success: false,
-          message: error?.message || 'Unable to connect to Google Analytics.',
-          visitors: 0,
-          pageViews: 0,
-        });
+          message: error?.message || 'Google Analytics data is unavailable.',
+        }));
       }
     };
 
-    void testGa4Connection();
-
-    return () => {
-      cancelled = true;
-    };
+    void loadGa4Analytics();
+    return () => { cancelled = true; };
   }, [currentUser, isAdmin, timeRange]);
 
   const loadFinanceData = async () => {
@@ -1367,37 +1359,70 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Temporary GA4 connection test. Keep this visible until the backend handshake is confirmed. */}
-      <div
-        className={`rounded-2xl border px-5 py-4 shadow-sm ${
-          ga4Test.loading
-            ? 'bg-slate-50 border-slate-200'
-            : ga4Test.success === true
-              ? 'bg-emerald-50 border-emerald-200'
-              : ga4Test.success === false
-                ? 'bg-rose-50 border-rose-200'
-                : 'bg-slate-50 border-slate-200'
-        }`}
-      >
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <p className="text-sm font-black text-slate-900">Google Analytics connection test</p>
-            <p className="text-xs font-medium text-slate-600 mt-1">
-              {ga4Test.loading
-                ? 'Connecting securely to GA4…'
-                : ga4Test.success === true
-                  ? ga4Test.message
-                  : ga4Test.success === false
-                    ? `Connection failed: ${ga4Test.message}`
-                    : 'Waiting for an authenticated administrator session.'}
+      {/* Real Google Analytics data. No synthetic fallbacks. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          ['Visitors', ga4Analytics.visitors],
+          ['Page Views', ga4Analytics.pageViews],
+          ['Sessions', ga4Analytics.sessions],
+          ['New Users', ga4Analytics.newUsers],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+            <p className="mt-2 text-2xl font-black text-slate-900">
+              {ga4Analytics.loading ? '…' : ga4Analytics.success === true ? Number(value).toLocaleString('en-GB') : 'No data'}
             </p>
+            <p className="mt-1 text-[10px] font-bold text-slate-400">Google Analytics · {timeRange === '7d' ? '7 days' : timeRange === '30d' ? '30 days' : 'All'}</p>
           </div>
+        ))}
+      </div>
 
-          {ga4Test.success === true && (
-            <div className="flex items-center gap-5 text-xs font-bold text-slate-700">
-              <span>Visitors: {ga4Test.visitors.toLocaleString('en-GB')}</span>
-              <span>Page Views: {ga4Test.pageViews.toLocaleString('en-GB')}</span>
+      {ga4Analytics.success === false && (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-bold text-rose-700">
+          Google Analytics data unavailable: {ga4Analytics.message}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-[28px] border border-slate-100 p-6 shadow-sm">
+          <div className="mb-5">
+            <h2 className="text-base font-black text-slate-900">Traffic Sources</h2>
+            <p className="text-xs font-medium text-slate-400 mt-1">Real sessions recorded by Google Analytics.</p>
+          </div>
+          {ga4Analytics.loading ? (
+            <p className="text-sm font-bold text-slate-400">Loading…</p>
+          ) : ga4Analytics.success === true ? (
+            <div className="space-y-3">
+              {ga4Analytics.trafficSources.map((source) => (
+                <div key={source.name} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                  <span className="text-sm font-bold text-slate-700">{source.name}</span>
+                  <span className="text-sm font-black text-slate-900">{Number(source.sessions || 0).toLocaleString('en-GB')}</span>
+                </div>
+              ))}
             </div>
+          ) : (
+            <p className="text-sm font-bold text-slate-400">No data</p>
+          )}
+        </div>
+
+        <div className="bg-white rounded-[28px] border border-slate-100 p-6 shadow-sm">
+          <div className="mb-5">
+            <h2 className="text-base font-black text-slate-900">Most Viewed Pages</h2>
+            <p className="text-xs font-medium text-slate-400 mt-1">Top pages by real GA4 page views.</p>
+          </div>
+          {ga4Analytics.loading ? (
+            <p className="text-sm font-bold text-slate-400">Loading…</p>
+          ) : ga4Analytics.success === true && ga4Analytics.topPages.length > 0 ? (
+            <div className="space-y-2">
+              {ga4Analytics.topPages.map((page, index) => (
+                <div key={`${page.path}-${index}`} className="flex items-center justify-between gap-4 border-b border-slate-100 py-2.5 last:border-0">
+                  <span className="min-w-0 truncate text-xs font-bold text-slate-600" title={page.path}>{page.path}</span>
+                  <span className="shrink-0 text-xs font-black text-slate-900">{Number(page.pageViews || 0).toLocaleString('en-GB')}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm font-bold text-slate-400">No data</p>
           )}
         </div>
       </div>
