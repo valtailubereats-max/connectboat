@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, limit, getDocs, where, doc, setDoc } from 'firebase/firestore';
+import { collection, query, limit, getDocs, where, doc, setDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { db, handleFirestoreError, OperationType, getDocsWithCacheFallback, auth } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -667,25 +667,20 @@ const AdminDashboard = () => {
         loading: false
       });
 
-      // C. Try fetching pre-aggregated daily metrics history
-      let parsedMetrics: DailyMetric[] = [];
-      try {
-        const historyLimit = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 365;
-        let q = query(collection(db, 'metrics'), orderBy('date', 'desc'), limit(historyLimit));
-        const snap = await getDocsWithCacheFallback(q, `admin/metrics-${timeRange}`);
-        parsedMetrics = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as DailyMetric));
-      } catch (err) {
-        console.warn('[Dashboard] Fallback check: Stored metrics snapshot empty or restricted by rules. Constructing real-time timeline series.', err);
-      }
+      // C. Legacy metrics snapshots are intentionally ignored here because older records may
+      // contain synthetic/estimated values from the previous dashboard implementation.
 
-      const storedHistoryAvailable = parsedMetrics.length > 0;
-      setHasStoredMetricHistory(storedHistoryAvailable);
-      let finalMetrics = [...parsedMetrics];
+      // IMPORTANT: Do not use the legacy `metrics` collection for Platform Growth.
+      // Older snapshots may contain synthetic/estimated values from the previous dashboard
+      // implementation, which can make the chart disagree with the live Firestore totals.
+      // Until a new audited daily-history pipeline exists, rebuild the timeline only from
+      // real users.createdAt and ads.createdAt records.
+      setHasStoredMetricHistory(false);
+      let finalMetrics: DailyMetric[] = [];
 
-      // D. Fallback: when there is no stored daily metrics history, build ONLY values that can
-      // be derived truthfully from persisted records. We never invent engagement, activity,
-      // warning or renewal numbers to make the charts look populated.
-      if (finalMetrics.length === 0) {
+      // D. Build ONLY values that can be derived truthfully from persisted records.
+      // We never invent engagement, activity, warning or renewal numbers to populate charts.
+      {
         const metricsArray: DailyMetric[] = [];
 
         const createdTimes = [
