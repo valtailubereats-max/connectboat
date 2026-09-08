@@ -87,6 +87,7 @@ const Navbar = () => {
   const { settings } = useSettings();
   const navigate = useNavigate();
   const location = useLocation();
+  const isAdDetailsPage = /^\/(anuncio|listing)\//.test(location.pathname);
   const [isOpen, setIsOpen] = React.useState(false);
   const [adminNotificationCount, setAdminNotificationCount] = React.useState(0);
   const [adminPendingAds, setAdminPendingAds] = React.useState<any[]>([]);
@@ -979,7 +980,13 @@ export default function App() {
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
-            <footer className="relative z-20 bg-slate-50 border-t border-slate-200 pt-16 pb-12 mt-20 font-sans">
+            <footer
+              className={`relative z-20 bg-slate-50 border-t border-slate-200 pt-16 mt-20 font-sans ${
+                isAdDetailsPage
+                  ? 'pb-32 lg:pb-12'
+                  : 'pb-12'
+              }`}
+            >
               <div className="max-w-[1536px] mx-auto px-6 md:px-8">
                 
                 {/* Main 4-column Grid */}
