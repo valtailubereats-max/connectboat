@@ -574,35 +574,35 @@ function rowMetricValue(report: GaReport, row: GaRow, metricName: string): numbe
   return numericValue(row.metricValues?.[index]?.value);
 }
 
-function classifyTrafficSource(source: string, medium: string, channel: string) {
-  const sourceLower = source.toLowerCase();
-  const mediumLower = medium.toLowerCase();
-  const channelLower = channel.toLowerCase();
+function classifyTrafficSource(source: string, medium: string) {
+  const sourceLower = source.trim().toLowerCase();
+  const mediumLower = medium.trim().toLowerCase();
 
-  if (
-    sourceLower.includes('google') &&
-    (/(cpc|ppc|paid|paidsearch)/i.test(mediumLower) ||
-      channelLower.includes('paid search') ||
-      channelLower.includes('cross-network') ||
-      channelLower.includes('display'))
-  ) {
-    return 'Google Ads';
-  }
+  const isNotSetSource = !sourceLower || sourceLower === '(not set)';
+  const isNotSetMedium = !mediumLower || mediumLower === '(not set)' || mediumLower === 'unassigned';
 
-  if (
-    sourceLower.includes('google') &&
-    (mediumLower.includes('organic') || channelLower.includes('organic search'))
-  ) {
-    return 'Google Organic';
+  if (isNotSetSource && isNotSetMedium) {
+    return 'Unassigned';
   }
 
   if (
     sourceLower === '(direct)' ||
     sourceLower === 'direct' ||
     mediumLower === '(none)' ||
-    channelLower === 'direct'
+    mediumLower === 'none'
   ) {
     return 'Direct';
+  }
+
+  if (
+    sourceLower.includes('google') &&
+    /(cpc|ppc|paid|paidsearch|paid_search|cross-network|display)/i.test(mediumLower)
+  ) {
+    return 'Google Ads';
+  }
+
+  if (sourceLower.includes('google') && mediumLower.includes('organic')) {
+    return 'Google Organic';
   }
 
   const commonSocialSources = [
@@ -618,10 +618,18 @@ function classifyTrafficSource(source: string, medium: string, channel: string) 
   ];
 
   if (
-    channelLower.includes('social') ||
+    mediumLower.includes('social') ||
     commonSocialSources.some((name) => sourceLower.includes(name))
   ) {
     return 'Social';
+  }
+
+  if (mediumLower === 'referral' || mediumLower.includes('referral')) {
+    return 'Referral';
+  }
+
+  if (isNotSetSource || isNotSetMedium) {
+    return 'Unassigned';
   }
 
   return 'Other';
@@ -633,15 +641,16 @@ function buildTrafficSources(report: GaReport) {
     ['Google Organic', 0],
     ['Direct', 0],
     ['Social', 0],
+    ['Referral', 0],
+    ['Unassigned', 0],
     ['Other', 0],
   ]);
 
   for (const row of report.rows || []) {
     const source = dimensionValue(report, row, 'sessionSource');
     const medium = dimensionValue(report, row, 'sessionMedium');
-    const channel = dimensionValue(report, row, 'sessionDefaultChannelGroup');
     const sessions = rowMetricValue(report, row, 'sessions');
-    const bucket = classifyTrafficSource(source, medium, channel);
+    const bucket = classifyTrafficSource(source, medium);
     totals.set(bucket, (totals.get(bucket) || 0) + sessions);
   }
 
@@ -649,28 +658,6 @@ function buildTrafficSources(report: GaReport) {
     name,
     sessions,
   }));
-}
-
-function buildOtherTrafficBreakdown(report: GaReport) {
-  return (report.rows || [])
-    .map((row) => {
-      const source = dimensionValue(report, row, 'sessionSource') || '(not set)';
-      const medium = dimensionValue(report, row, 'sessionMedium') || '(not set)';
-      const channel = dimensionValue(report, row, 'sessionDefaultChannelGroup') || '(not set)';
-      const sessions = rowMetricValue(report, row, 'sessions');
-      const bucket = classifyTrafficSource(source, medium, channel);
-
-      return { source, medium, channel, sessions, bucket };
-    })
-    .filter((item) => item.bucket === 'Other' && item.sessions > 0)
-    .sort((a, b) => b.sessions - a.sessions)
-    .slice(0, 20)
-    .map(({ source, medium, channel, sessions }) => ({
-      source,
-      medium,
-      channel,
-      sessions,
-    }));
 }
 
 function buildTopPages(report: GaReport) {
@@ -740,9 +727,9 @@ export default async function createAssistedPaymentHandler(
           dimensions: [
             { name: 'sessionSource' },
             { name: 'sessionMedium' },
-            { name: 'sessionDefaultChannelGroup' },
           ],
           metrics: [{ name: 'sessions' }],
+          metricAggregations: ['TOTAL'],
           limit: '10000',
         }),
         runGa4Report(analyticsAccessToken, {
@@ -772,7 +759,6 @@ export default async function createAssistedPaymentHandler(
           newUsers: metricTotal(summaryReport, 'newUsers'),
         },
         trafficSources: buildTrafficSources(trafficReport),
-        otherTrafficBreakdown: buildOtherTrafficBreakdown(trafficReport),
         topPages: buildTopPages(topPagesReport),
       });
     } catch (error) {
