@@ -57,6 +57,7 @@ const AdminDashboard = () => {
     sessions: number;
     newUsers: number;
     trafficSources: Array<{ name: string; sessions: number }>;
+    otherTrafficBreakdown: Array<{ source: string; medium: string; channel: string; sessions: number }>;
     topPages: Array<{ path: string; pageViews: number }>;
   }>({
     loading: false,
@@ -67,6 +68,7 @@ const AdminDashboard = () => {
     sessions: 0,
     newUsers: 0,
     trafficSources: [],
+    otherTrafficBreakdown: [],
     topPages: [],
   });
   const [backupLoading, setBackupLoading] = useState(false);
@@ -145,6 +147,7 @@ const AdminDashboard = () => {
           sessions: Number(data?.summary?.sessions || 0),
           newUsers: Number(data?.summary?.newUsers || 0),
           trafficSources: Array.isArray(data?.trafficSources) ? data.trafficSources : [],
+          otherTrafficBreakdown: Array.isArray(data?.otherTrafficBreakdown) ? data.otherTrafficBreakdown : [],
           topPages: Array.isArray(data?.topPages) ? data.topPages : [],
         });
       } catch (error: any) {
@@ -1399,6 +1402,25 @@ const AdminDashboard = () => {
                   <span className="text-sm font-black text-slate-900">{Number(source.sessions || 0).toLocaleString('en-GB')}</span>
                 </div>
               ))}
+
+              {ga4Analytics.otherTrafficBreakdown.length > 0 && (
+                <div className="mt-5 border-t border-slate-100 pt-4">
+                  <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Other breakdown</p>
+                  <div className="space-y-2">
+                    {ga4Analytics.otherTrafficBreakdown.map((item, index) => (
+                      <div key={`${item.source}-${item.medium}-${index}`} className="rounded-xl border border-slate-100 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="min-w-0 truncate text-xs font-black text-slate-800" title={item.source}>{item.source}</span>
+                          <span className="shrink-0 text-xs font-black text-slate-900">{Number(item.sessions || 0).toLocaleString('en-GB')}</span>
+                        </div>
+                        <p className="mt-1 truncate text-[10px] font-semibold text-slate-400" title={`${item.medium} · ${item.channel}`}>
+                          {item.medium} · {item.channel}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-sm font-bold text-slate-400">No data</p>
