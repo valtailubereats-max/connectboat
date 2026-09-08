@@ -651,6 +651,28 @@ function buildTrafficSources(report: GaReport) {
   }));
 }
 
+function buildOtherTrafficBreakdown(report: GaReport) {
+  return (report.rows || [])
+    .map((row) => {
+      const source = dimensionValue(report, row, 'sessionSource') || '(not set)';
+      const medium = dimensionValue(report, row, 'sessionMedium') || '(not set)';
+      const channel = dimensionValue(report, row, 'sessionDefaultChannelGroup') || '(not set)';
+      const sessions = rowMetricValue(report, row, 'sessions');
+      const bucket = classifyTrafficSource(source, medium, channel);
+
+      return { source, medium, channel, sessions, bucket };
+    })
+    .filter((item) => item.bucket === 'Other' && item.sessions > 0)
+    .sort((a, b) => b.sessions - a.sessions)
+    .slice(0, 20)
+    .map(({ source, medium, channel, sessions }) => ({
+      source,
+      medium,
+      channel,
+      sessions,
+    }));
+}
+
 function buildTopPages(report: GaReport) {
   return (report.rows || []).map((row) => ({
     path: dimensionValue(report, row, 'pagePath') || '/',
@@ -750,6 +772,7 @@ export default async function createAssistedPaymentHandler(
           newUsers: metricTotal(summaryReport, 'newUsers'),
         },
         trafficSources: buildTrafficSources(trafficReport),
+        otherTrafficBreakdown: buildOtherTrafficBreakdown(trafficReport),
         topPages: buildTopPages(topPagesReport),
       });
     } catch (error) {
