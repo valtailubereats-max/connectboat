@@ -379,9 +379,14 @@ const CreateAd = () => {
 
   useEffect(() => {
     if (!id && profile?.phone && !isExternalSourceListing) {
+      const profileWhatsapp = splitContactNumber(profile.phone, 'GB');
+
+      setWhatsappCountryIso(profileWhatsapp.countryIso);
       setFormData(prev => ({
         ...prev,
-        contactWhatsapp: prev.contactWhatsapp || profile.phone || ''
+        // Keep the international dial code in the country dropdown
+        // and show only the local/national part in the input.
+        contactWhatsapp: prev.contactWhatsapp || profileWhatsapp.localNumber
       }));
     }
   }, [id, profile?.phone, isExternalSourceListing]);
