@@ -970,8 +970,31 @@ const Home = () => {
 
   const selectableCitiesOnHome = useMemo(() => {
     const defaultCities = country === 'Portugal' ? PORTUGAL_CITIES : UK_CITIES;
-    return combineAndSortCities(defaultCities, customLocations);
-  }, [country, customLocations]);
+
+    // Also derive locations from listings that are already public on the Home.
+    // This makes the dropdown self-healing for older listings whose city was saved
+    // on the ad but, for any reason, was not persisted in the global `locations`
+    // collection (for example: Dorchester).
+    const publicListingLocations: LocationDoc[] = [
+      ...ads,
+      ...featuredAds,
+      ...saleSectionAds,
+      ...hireSectionAds,
+    ]
+      .filter((ad) => !ad.isHidden && ad.status === 'approved' && Boolean(ad.city?.trim()))
+      .map((ad) => ({
+        id: `ad-${ad.id || ad.city}`,
+        name: ad.city!.trim(),
+        normalizedName: ad.city!.trim().toLowerCase(),
+        region: ad.region || getRegionForCity(ad.city),
+        country: ad.country,
+      }));
+
+    return combineAndSortCities(defaultCities, [
+      ...customLocations,
+      ...publicListingLocations,
+    ]);
+  }, [country, customLocations, ads, featuredAds, saleSectionAds, hireSectionAds]);
 
   const filteredFeaturedAds = useMemo(() => {
     const now = new Date();
@@ -1641,7 +1664,8 @@ const Home = () => {
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
+                translate="no"
+                className="notranslate w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
               >
                 <option value="Todas" className="bg-white text-slate-900 font-medium">All Locations</option>
                 {selectableCitiesOnHome.map((c, i) => (
@@ -2227,7 +2251,8 @@ const Home = () => {
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
+                translate="no"
+                className="notranslate w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
               >
                 <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
                 {selectableCitiesOnHome.map((c, i) => (
