@@ -627,18 +627,13 @@ const AdDetails = () => {
 
   const hasSourceUrl = !!(ad && ad.sourceUrl && /^https?:\/\//i.test(ad.sourceUrl));
 
-  // External/imported listings are controlled by the original marketplace, not by
-  // the ConnectBoat admin account that imported them. Keep this flag shared across
-  // the page so those listings never expose the admin's other imported listings as
+  // Any non-demo listing with a valid sourceUrl is an external listing.
+  // Admin/Moderator-created listings using "Original Listing URL" are saved with
+  // sourceUrl even when legacy flags such as externalListing/importedBy are absent.
+  // Treating sourceUrl as the source of truth keeps Contact/WhatsApp pointing to the
+  // original marketplace and prevents imported ads from exposing staff listings in
   // "More From This Seller".
-  const adAny = ad as any;
-  const isExternalImportedListing =
-    !!ad &&
-    hasSourceUrl &&
-    (ad.externalListing === true ||
-      adAny.listingMode === 'external' ||
-      !!adAny.importedAt ||
-      !!adAny.importedBy);
+  const isExternalImportedListing = !!ad && hasSourceUrl && !ad.demoListing;
 
   type ContactMethod = 'whatsapp' | 'phone' | 'email' | 'source';
 
@@ -2794,7 +2789,9 @@ const AdDetails = () => {
             (() => {
               const methods = getContactMethods();
               const method = methods.length === 1 ? methods[0] : null;
-              const Icon = method ? getContactMethodIcon(method) : MessageCircle;
+              // External listings created/imported by staff should clearly
+              // advertise that this action opens the original source listing.
+              const Icon = method === 'source' ? ExternalLink : (method ? getContactMethodIcon(method) : MessageCircle);
               return <Icon size={15} className="shrink-0" />;
             })()
           )}
@@ -2803,6 +2800,7 @@ const AdDetails = () => {
               ? 'Awaiting Owner Claim'
               : (() => {
                   const methods = getContactMethods();
+                  if (methods.length === 1 && methods[0] === 'source') return 'View Original Listing';
                   return methods.length === 1 ? getContactMethodLabel(methods[0]) : 'Contact';
                 })()}
           </span>
