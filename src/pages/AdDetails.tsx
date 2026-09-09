@@ -15,7 +15,7 @@ import { Ad, UserProfile, Review, getRegionForCity } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice, getAdUrl, extractIdFromSlug, getAdLocationLabel } from '../utils';
 import { formatDistanceToNow } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { enGB } from 'date-fns/locale';
 import ReviewModal from '../components/ReviewModal';
 import AdCard from '../components/AdCard';
 import ImageLightboxModal from '../components/ImageLightboxModal';
@@ -1231,7 +1231,7 @@ const AdDetails = () => {
 
   const dateObject = parseFirestoreDate(ad.createdAt);
   const timeStr = dateObject 
-    ? formatDistanceToNow(dateObject, { addSuffix: true, locale: pt }) 
+    ? formatDistanceToNow(dateObject, { addSuffix: true, locale: enGB }) 
     : 'data indisponível';
 
   const isUnclaimed =
@@ -2868,7 +2868,7 @@ const AdDetails = () => {
                         {rev.comment && <p className="text-slate-600 italic leading-relaxed">“{rev.comment}”</p>}
                         <div className="text-[9px] text-slate-400 mt-2 flex justify-between gap-3">
                           <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
-                          <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
+                          <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: enGB }) : 'Recently'}</span>
                         </div>
                       </div>
                     ))}
