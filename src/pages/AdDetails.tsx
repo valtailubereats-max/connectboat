@@ -1451,16 +1451,39 @@ const AdDetails = () => {
                 </div>
               </div>
 
-              <div className="shrink-0 text-right">
-                {ad.category === '💚 Doações & Solidariedade' ? (
-                  <span className="text-2xl font-black text-emerald-600">Free 💚</span>
-                ) : (ad as any).priceOnRequest || !hasPrice ? (
-                  <span className="text-sm font-black uppercase tracking-wide text-slate-700">On Request</span>
-                ) : (
-                  <span className="text-2xl xl:text-[1.9rem] font-black text-indigo-700">
-                    {formatPrice(ad.price, ad.country)}
-                  </span>
-                )}
+              <div className="shrink-0">
+                <div className="relative min-w-[205px] overflow-hidden rounded-2xl border-2 border-cyan-100/90 bg-gradient-to-br from-[#0a467d] via-[#063b70] to-[#082d58] px-4 py-3 shadow-[0_10px_26px_rgba(5,35,70,0.28),inset_0_0_0_1px_rgba(255,255,255,0.35),inset_0_1px_10px_rgba(255,255,255,0.08)]">
+                  <div className="pointer-events-none absolute inset-[4px] rounded-[12px] border border-white/45" />
+                  <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-cyan-100/90 to-transparent" />
+                  <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-sky-300/10 blur-2xl" />
+
+                  <div className="relative z-10 flex items-center gap-3.5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/5">
+                      <Anchor size={30} strokeWidth={2.15} className="text-white drop-shadow-[0_2px_5px_rgba(0,0,0,0.22)]" />
+                    </div>
+
+                    <div className="min-w-0 text-right">
+                      <div className="text-[11px] font-extrabold uppercase tracking-[0.20em] text-cyan-50/95">
+                        Price
+                      </div>
+                      <div className="mt-0.5 whitespace-nowrap">
+                        {ad.category === '💚 Doações & Solidariedade' ? (
+                          <span className="block text-2xl xl:text-[1.8rem] font-black leading-none tracking-tight text-emerald-200 drop-shadow-sm">
+                            Free 💚
+                          </span>
+                        ) : (ad as any).priceOnRequest || !hasPrice ? (
+                          <span className="block text-lg xl:text-xl font-black leading-none tracking-tight text-white drop-shadow-sm">
+                            On Request
+                          </span>
+                        ) : (
+                          <span className="block text-2xl xl:text-[2rem] font-black leading-none tracking-[-0.035em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.24)]">
+                            {formatPrice(ad.price, ad.country)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
