@@ -1233,7 +1233,7 @@ const AdDetails = () => {
   const dateObject = parseFirestoreDate(ad.createdAt);
   const timeStr = dateObject 
     ? formatDistanceToNow(dateObject, { addSuffix: true, locale: enGB }) 
-    : 'data indisponível';
+    : 'Date unavailable';
 
   const isUnclaimed =
     (ad.isClaimableBusiness === true ||
@@ -1439,7 +1439,7 @@ const AdDetails = () => {
                     <Eye size={13} />
                     {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
                   </span>
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 notranslate" translate="no">
                     <Clock size={13} />
                     {timeStr}
                   </span>
@@ -2126,7 +2126,7 @@ const AdDetails = () => {
                     <Eye size={12} />
                     {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
                   </span>
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 notranslate" translate="no">
                     <Clock size={12} />
                     {timeStr}
                   </span>
@@ -2330,7 +2330,7 @@ const AdDetails = () => {
               <span className="flex items-center gap-1">
                 <Eye size={12} /> {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
               </span>
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 notranslate" translate="no">
                 <Clock size={12} /> {timeStr}
               </span>
             </div>
@@ -2918,7 +2918,7 @@ const AdDetails = () => {
                         {rev.comment && <p className="text-slate-600 italic leading-relaxed">“{rev.comment}”</p>}
                         <div className="text-[9px] text-slate-400 mt-2 flex justify-between gap-3">
                           <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
-                          <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: enGB }) : 'Recently'}</span>
+                          <span className="notranslate" translate="no">{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: enGB }) : 'Recently'}</span>
                         </div>
                       </div>
                     ))}
