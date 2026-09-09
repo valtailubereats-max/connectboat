@@ -562,8 +562,10 @@ const AdminAds = () => {
       setAds(prevAds => prevAds.map(ad => ad.id === adId ? {
         ...ad,
         status,
-        ...(isPaidAssistedAwaitingActivation ? {
+        ...(isPaidPendingApproval ? {
           awaitingAdminActivation: false,
+          awaitingAdminApproval: false,
+          adStatus: 'active',
           activatedAt: new Date(),
           expirationDate: addDays(new Date(), 30),
           featuredUntil: addDays(new Date(), 30),
@@ -574,8 +576,10 @@ const AdminAds = () => {
       setSelectedAd(prev => prev && prev.id === adId ? {
         ...prev,
         status: status as any,
-        ...(isPaidAssistedAwaitingActivation ? {
+        ...(isPaidPendingApproval ? {
           awaitingAdminActivation: false,
+          awaitingAdminApproval: false,
+          adStatus: 'active',
           activatedAt: new Date(),
           expirationDate: addDays(new Date(), 30),
           featuredUntil: addDays(new Date(), 30)
@@ -1037,6 +1041,16 @@ const AdminAds = () => {
   });
 
   const totalPages = Math.ceil(filteredAds.length / pageSize) || 1;
+
+  // Keep pagination valid when an action (for example approving a pending listing)
+  // removes the last item from the current filtered page. Without this, currentPage
+  // can point past totalPages and the list area appears blank until a full refresh.
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const pagedAds = filteredAds.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const stats = {
