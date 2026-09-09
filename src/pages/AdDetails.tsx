@@ -1321,7 +1321,7 @@ const AdDetails = () => {
       )}
 
       {/* Sponsored advertising carousel — each campaign remains active for its purchased display time */}
-      <section className="relative mt-1 mb-1 bg-transparent lg:-mt-[28px]">
+      <section className="relative mt-1 mb-2 lg:mb-1 bg-transparent lg:-mt-[28px]">
         <div className="flex items-center gap-1 lg:gap-3 overflow-hidden py-0 px-1 lg:px-0">
           <button
             onClick={() => navigate(-1)}
@@ -2108,20 +2108,20 @@ const AdDetails = () => {
       <div className="block lg:hidden space-y-5">
         
         {/* CAROUSEL FLOW */}
-        <div className="space-y-3">
+        <div className="space-y-2">
           {/* Compact listing header above main image */}
-          <div className="mx-1 rounded-2xl border border-white/85 bg-white/95 backdrop-blur-sm shadow-[0_8px_22px_rgba(4,18,38,0.14)] px-4 py-2.5">
-            <h1 className="text-[1.35rem] sm:text-2xl font-black leading-snug text-slate-900">
+          <div className="mx-1 rounded-2xl border border-white/85 bg-white/95 backdrop-blur-sm shadow-[0_8px_22px_rgba(4,18,38,0.14)] px-4 py-1.5">
+            <h1 className="text-[1.35rem] sm:text-2xl font-black leading-[1.12] text-slate-900">
               {ad.title}
             </h1>
 
-            <div className="mt-2 flex items-start justify-between gap-3">
+            <div className="mt-1.5 flex items-end justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-[13px] font-bold text-slate-600">
                   <MapPin size={14} className="text-sky-600 shrink-0" />
                   <span className="truncate">{getAdLocationLabel(ad)}</span>
                 </div>
-                <div className="mt-1.5 flex items-center gap-3 text-[11px] font-semibold text-slate-400">
+                <div className="mt-1 flex items-center gap-3 text-[11px] font-semibold text-slate-400">
                   <span className="flex items-center gap-1">
                     <Eye size={12} />
                     {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
@@ -2134,7 +2134,7 @@ const AdDetails = () => {
               </div>
 
               <div className="shrink-0">
-                <div className="relative min-w-[138px] overflow-hidden rounded-xl border-2 border-cyan-100/90 bg-gradient-to-br from-[#0a467d] via-[#063b70] to-[#082d58] px-2.5 py-2 shadow-[0_7px_18px_rgba(5,35,70,0.24),inset_0_0_0_1px_rgba(255,255,255,0.32)]">
+                <div className="relative min-w-[138px] overflow-hidden rounded-xl border-2 border-cyan-100/90 bg-gradient-to-br from-[#0a467d] via-[#063b70] to-[#082d58] px-2.5 py-1.5 shadow-[0_7px_18px_rgba(5,35,70,0.24),inset_0_0_0_1px_rgba(255,255,255,0.32)]">
                   <div className="pointer-events-none absolute inset-[3px] rounded-[8px] border border-white/40" />
                   <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-cyan-100/90 to-transparent" />
 
