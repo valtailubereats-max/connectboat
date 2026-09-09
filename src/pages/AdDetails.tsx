@@ -627,6 +627,19 @@ const AdDetails = () => {
 
   const hasSourceUrl = !!(ad && ad.sourceUrl && /^https?:\/\//i.test(ad.sourceUrl));
 
+  // External/imported listings are controlled by the original marketplace, not by
+  // the ConnectBoat admin account that imported them. Keep this flag shared across
+  // the page so those listings never expose the admin's other imported listings as
+  // "More From This Seller".
+  const adAny = ad as any;
+  const isExternalImportedListing =
+    !!ad &&
+    hasSourceUrl &&
+    (ad.externalListing === true ||
+      adAny.listingMode === 'external' ||
+      !!adAny.importedAt ||
+      !!adAny.importedBy);
+
   type ContactMethod = 'whatsapp' | 'phone' | 'email' | 'source';
 
   const getContactMethods = (): ContactMethod[] => {
@@ -636,13 +649,6 @@ const AdDetails = () => {
 
     // External/imported listings must always contact through the original source.
     // This prevents an admin/profile phone number from overriding sourceUrl.
-    const isExternalImportedListing =
-      hasSourceUrl &&
-      (ad.externalListing === true ||
-        a.listingMode === 'external' ||
-        !!a.importedAt ||
-        !!a.importedBy);
-
     if (isExternalImportedListing) {
       return ['source'];
     }
@@ -998,7 +1004,7 @@ const AdDetails = () => {
       !!ad?.isClaimableBusiness &&
       ad?.claimStatus !== 'claimed';
 
-    if (!ad?.sellerId || isAwaitingClaim) {
+    if (!ad?.sellerId || isAwaitingClaim || isExternalImportedListing) {
       setSellerAds([]);
       return;
     }
@@ -1052,7 +1058,7 @@ const AdDetails = () => {
     };
 
     fetchSellerListings();
-  }, [ad?.id, ad?.sellerId, ad?.isClaimableBusiness, ad?.claimStatus]);
+  }, [ad?.id, ad?.sellerId, ad?.isClaimableBusiness, ad?.claimStatus, isExternalImportedListing]);
 
   // Fetch and similarity-score related listings
   useEffect(() => {
@@ -2611,6 +2617,7 @@ const AdDetails = () => {
 
       {/* MORE FROM THIS SELLER */}
       {sellerAds.length > 0 &&
+        !isExternalImportedListing &&
         !(ad.isClaimableBusiness && ad.claimStatus !== 'claimed') && (
         <section className="mt-10 sm:mt-12 rounded-[1.75rem] sm:rounded-[2rem] border border-white/70 bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] shadow-[0_12px_32px_rgba(3,24,46,0.18)] overflow-hidden text-left">
           <div className="px-4 sm:px-6 lg:px-7 py-5 sm:py-6 border-b border-white/60 bg-white/10">
