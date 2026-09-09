@@ -633,6 +633,20 @@ const AdDetails = () => {
     if (!ad) return [];
 
     const a = ad as any;
+
+    // External/imported listings must always contact through the original source.
+    // This prevents an admin/profile phone number from overriding sourceUrl.
+    const isExternalImportedListing =
+      hasSourceUrl &&
+      (ad.externalListing === true ||
+        a.listingMode === 'external' ||
+        !!a.importedAt ||
+        !!a.importedBy);
+
+    if (isExternalImportedListing) {
+      return ['source'];
+    }
+
     const hasNewVisibilityFlags =
       typeof a.showWhatsapp === 'boolean' ||
       typeof a.showPhone === 'boolean' ||
@@ -770,12 +784,26 @@ const AdDetails = () => {
       showToastMsg('error', 'This listing has been sold. The seller cannot be contacted.');
       return;
     }
+
+    const methods = getContactMethods();
+
+    // Imported/external listings are discovery listings: Contact must open
+    // the original advert directly, just like "View Original Listing".
+    if (methods.length === 1 && methods[0] === 'source') {
+      const targetUrl = getTargetContactUrl('source');
+      if (targetUrl) {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        showToastMsg('error', 'The original listing link is not available.');
+      }
+      return;
+    }
+
     if (!user) {
       navigate(`/login?message=${encodeURIComponent('To contact the seller, please log in or create a free account.')}`);
       return;
     }
 
-    const methods = getContactMethods();
     if (methods.length === 0) {
       showToastMsg('error', 'No contact method is currently available for this listing.');
       return;
