@@ -58,6 +58,7 @@ const AdDetails = () => {
   // Imagens e galeria
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showFullImage, setShowFullImage] = useState(false);
+  const [showMobileFullTitle, setShowMobileFullTitle] = useState(false);
   const mainVideoRef = useRef<HTMLVideoElement | null>(null);
   const mobileVideoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -127,6 +128,12 @@ const AdDetails = () => {
     if (mainVideoRef.current) mainVideoRef.current.pause();
     if (mobileVideoRef.current) mobileVideoRef.current.pause();
   };
+
+  useEffect(() => {
+    if (!showMobileFullTitle) return;
+    const timer = window.setTimeout(() => setShowMobileFullTitle(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, [showMobileFullTitle]);
 
   useEffect(() => {
     pauseVideos();
@@ -1423,10 +1430,23 @@ const AdDetails = () => {
         {/* LADO ESQUERDO: Imagens e Galeria */}
         <div className="lg:col-span-9 space-y-4">
           {/* Compact listing header above main image */}
-          <div className="rounded-2xl border border-white/80 bg-white/92 backdrop-blur-sm shadow-[0_8px_24px_rgba(4,18,38,0.12)] px-5 py-3">
-            <h1 className="text-2xl xl:text-[2rem] font-black leading-tight text-slate-900">
-              {ad.title}
-            </h1>
+          <div className="relative h-[142px] overflow-visible rounded-2xl border border-white/80 bg-white/92 backdrop-blur-sm shadow-[0_8px_24px_rgba(4,18,38,0.12)] px-5 py-3">
+            <div className="group/title relative min-w-0">
+              <h1
+                className="block w-full cursor-default truncate pr-1 text-2xl xl:text-[2rem] font-black leading-tight text-slate-900"
+                title={ad.title}
+                aria-label={`Full listing title: ${ad.title}`}
+              >
+                {ad.title}
+              </h1>
+
+              <div
+                role="tooltip"
+                className="pointer-events-none absolute left-0 top-[calc(100%+0.4rem)] z-[70] hidden max-w-[min(760px,85vw)] rounded-xl border border-slate-200/90 bg-slate-950/95 px-3.5 py-2.5 text-sm font-bold leading-snug text-white opacity-0 shadow-[0_12px_34px_rgba(2,8,23,0.32)] backdrop-blur-md transition-opacity duration-150 group-hover/title:block group-hover/title:opacity-100"
+              >
+                {ad.title}
+              </div>
+            </div>
 
             <div className="mt-2 flex items-center justify-between gap-4">
               <div className="min-w-0">
@@ -2110,10 +2130,37 @@ const AdDetails = () => {
         {/* CAROUSEL FLOW */}
         <div className="space-y-2">
           {/* Compact listing header above main image */}
-          <div className="mx-1 rounded-2xl border border-white/85 bg-white/95 backdrop-blur-sm shadow-[0_8px_22px_rgba(4,18,38,0.14)] px-4 py-1.5">
-            <h1 className="text-[1.35rem] sm:text-2xl font-black leading-[1.12] text-slate-900">
+          <div className="relative mx-1 h-[104px] sm:h-[110px] overflow-visible rounded-2xl border border-white/85 bg-white/95 backdrop-blur-sm shadow-[0_8px_22px_rgba(4,18,38,0.14)] px-4 py-2">
+            <h1
+              className="block w-full cursor-pointer truncate pr-1 text-[1.35rem] sm:text-2xl font-black leading-[1.12] text-slate-900 select-none"
+              title={ad.title}
+              role="button"
+              tabIndex={0}
+              aria-label={`Full listing title: ${ad.title}`}
+              onClick={() => setShowMobileFullTitle((current) => !current)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setShowMobileFullTitle((current) => !current);
+                }
+              }}
+            >
               {ad.title}
             </h1>
+
+            <AnimatePresence>
+              {showMobileFullTitle && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -3, scale: 0.985 }}
+                  transition={{ duration: 0.16 }}
+                  className="absolute left-3 right-3 top-[42px] z-[70] rounded-xl border border-slate-200/90 bg-slate-950/95 px-3 py-2.5 text-[13px] font-bold leading-snug text-white shadow-[0_10px_30px_rgba(2,8,23,0.30)] backdrop-blur-md"
+                >
+                  {ad.title}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="mt-1.5 flex items-end justify-between gap-3">
               <div className="min-w-0">
