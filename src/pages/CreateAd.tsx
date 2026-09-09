@@ -1539,9 +1539,14 @@ const CreateAd = () => {
           await setDoc(doc(db, 'ads', targetAdId), cleanPayload, { merge: true });
         }
         if (cleanPayload.city) {
-          saveCustomCity(cleanPayload.city, cleanPayload.region, cleanPayload.country).catch((err) => {
+          try {
+            await saveCustomCity(cleanPayload.city, cleanPayload.region, cleanPayload.country);
+          } catch (err) {
+            // The listing is already saved. Keep publishing available, but log the
+            // location persistence failure so it can be diagnosed instead of racing
+            // silently with the next navigation/payment step.
             console.error('[CreateAd] Error auto-saving custom city:', err);
-          });
+          }
         }
       } catch (saveErr: any) {
         console.error('[Ad Save Failure]', saveErr);
