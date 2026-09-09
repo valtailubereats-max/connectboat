@@ -68,6 +68,7 @@ export const saveCustomCity = async (
     }, { merge: true });
   } catch (err) {
     console.error('[LocationService] Error saving custom city to Firestore:', err);
+    throw err;
   }
 };
 
