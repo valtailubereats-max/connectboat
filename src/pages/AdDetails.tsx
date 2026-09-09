@@ -2138,16 +2138,38 @@ const AdDetails = () => {
                 </div>
               </div>
 
-              <div className="shrink-0 text-right pt-0.5">
-                {ad.category === '💚 Doações & Solidariedade' ? (
-                  <span className="text-lg font-black text-emerald-600">Free 💚</span>
-                ) : (ad as any).priceOnRequest || !hasPrice ? (
-                  <span className="text-[11px] font-black uppercase tracking-wide text-slate-700">On Request</span>
-                ) : (
-                  <span className="text-lg sm:text-xl font-black text-indigo-700">
-                    {formatPrice(ad.price, ad.country)}
-                  </span>
-                )}
+              <div className="shrink-0">
+                <div className="relative min-w-[138px] overflow-hidden rounded-xl border-2 border-cyan-100/90 bg-gradient-to-br from-[#0a467d] via-[#063b70] to-[#082d58] px-2.5 py-2 shadow-[0_7px_18px_rgba(5,35,70,0.24),inset_0_0_0_1px_rgba(255,255,255,0.32)]">
+                  <div className="pointer-events-none absolute inset-[3px] rounded-[8px] border border-white/40" />
+                  <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-cyan-100/90 to-transparent" />
+
+                  <div className="relative z-10 flex items-center gap-2">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5">
+                      <Anchor size={20} strokeWidth={2.15} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.22)]" />
+                    </div>
+
+                    <div className="min-w-0 text-right">
+                      <div className="text-[8px] font-extrabold uppercase tracking-[0.18em] text-cyan-50/95">
+                        Price
+                      </div>
+                      <div className="mt-0.5 whitespace-nowrap">
+                        {ad.category === '💚 Doações & Solidariedade' ? (
+                          <span className="block text-[14px] sm:text-[16px] font-black leading-none tracking-tight text-emerald-200 drop-shadow-sm">
+                            Free 💚
+                          </span>
+                        ) : (ad as any).priceOnRequest || !hasPrice ? (
+                          <span className="block text-[10px] sm:text-[11px] font-black leading-none tracking-tight text-white drop-shadow-sm">
+                            On Request
+                          </span>
+                        ) : (
+                          <span className="block text-[16px] sm:text-[18px] font-black leading-none tracking-[-0.035em] text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.24)]">
+                            {formatPrice(ad.price, ad.country)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
