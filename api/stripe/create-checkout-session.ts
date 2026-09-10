@@ -1371,7 +1371,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
       authenticatedUserId = decodedToken.uid;
       authenticatedUserEmail =
-        typeof decodedToken.email === 'string' ? decodedToken.email : '';
+        typeof decodedToken.email === 'string' ? decodedToken.email.trim().toLowerCase() : '';
 
       if (!adId || typeof adId !== 'string') {
         return res.status(400).json({
@@ -1395,7 +1395,17 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       authenticatedAdData = adData;
       const userSnapshot = await db.collection('users').doc(authenticatedUserId).get();
       authenticatedUserData = userSnapshot.exists ? (userSnapshot.data() || {}) : {};
-      if (adData.sellerId !== authenticatedUserId) {
+      const listingSellerId = String(adData.sellerId || '').trim();
+      const listingSellerEmail = String(adData.sellerEmail || '').trim().toLowerCase();
+      const listingUserEmail = String(adData.userEmail || '').trim().toLowerCase();
+      const ownsByUid = listingSellerId === authenticatedUserId;
+      const ownsLegacyByEmail = !!authenticatedUserEmail &&
+        (listingSellerEmail === authenticatedUserEmail || listingUserEmail === authenticatedUserEmail);
+
+      // Current listings are linked by Firebase UID. Legacy ConnectBoat listings
+      // may only contain the account email, so allow that verified ownership path
+      // as well. The email comes from the Firebase ID token, never from the browser body.
+      if (!ownsByUid && !ownsLegacyByEmail) {
         return res.status(403).json({
           success: false,
           error: 'AD_OWNERSHIP_MISMATCH',
