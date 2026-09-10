@@ -2056,6 +2056,32 @@ const CreateAd = () => {
     }
   };
 
+  const saveAdBeforeCheckout = async (finalAdData: any, targetAdId: string) => {
+    if (!user) {
+      throw new Error('You must be signed in to save this listing before payment.');
+    }
+
+    const cleanPayload = sanitizeFirestorePayload(finalAdData);
+    const idToken = await user.getIdToken();
+    const response = await fetch('/api/stripe/create-checkout-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({
+        action: 'listing_save',
+        adId: targetAdId,
+        adData: cleanPayload,
+      }),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result?.success !== true) {
+      throw new Error(result?.errorMessage || result?.error || `Listing save failed (HTTP ${response.status}).`);
+    }
+  };
+
   const handleStripeCheckout = async () => {
     if (!pendingAdData) return;
     setLoading(true);
@@ -2067,7 +2093,7 @@ const CreateAd = () => {
         : 'free';
       const payloadToSave = { ...pendingAdData, id: finalizedId, plan: activePlan, status: 'pending' };
       
-      await executeSaveAd(payloadToSave, finalizedId);
+      await saveAdBeforeCheckout(payloadToSave, finalizedId);
 
       // 2. Criar sessão de Stripe Hosted Checkout
       if (!user) {
@@ -2104,7 +2130,7 @@ const CreateAd = () => {
       }
     } catch (err: any) {
       console.error('[Stripe Checkout Error]', err);
-      alert('Ocorreu um erro ao ligar ao servidor de pagamentos Stripe.');
+      alert(err?.message || 'Ocorreu um erro ao ligar ao servidor de pagamentos Stripe.');
       setLoading(false);
     }
   };
