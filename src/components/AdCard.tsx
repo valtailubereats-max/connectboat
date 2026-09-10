@@ -26,6 +26,7 @@ interface AdCardProps {
   hideShareButton?: boolean;
   hideWhatsAppButton?: boolean;
   hideActions?: boolean;
+  imagePriority?: boolean;
 }
 
 const AdCard: React.FC<AdCardProps> = ({
@@ -36,6 +37,7 @@ const AdCard: React.FC<AdCardProps> = ({
   hideShareButton = false,
   hideWhatsAppButton = false,
   hideActions = false,
+  imagePriority = false,
 }) => {
   const { user, profile, favorites, toggleFavoriteGlobal } = useAuth();
   const { settings } = useSettings();
@@ -605,6 +607,9 @@ const AdCard: React.FC<AdCardProps> = ({
             <img
               src={ad.imageUrl}
               alt=""
+              loading={imagePriority ? 'eager' : 'lazy'}
+              fetchPriority="low"
+              decoding="async"
               className="absolute inset-0 w-full h-full object-cover blur-md opacity-40 scale-110 pointer-events-none z-0"
               referrerPolicy="no-referrer"
             />
@@ -612,6 +617,7 @@ const AdCard: React.FC<AdCardProps> = ({
           <OptimizedImage
             src={ad.imageUrl}
             alt={ad.title}
+            priority={imagePriority}
             className={`w-full h-full ${ad.listingType === 'informativo' ? 'object-contain' : 'object-cover'} transition-transform duration-500 relative z-10`}
             referrerPolicy="no-referrer"
             style={getCardFramingStyle(ad, { isHovered, listingType: ad.listingType })}
