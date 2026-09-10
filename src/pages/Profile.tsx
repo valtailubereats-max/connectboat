@@ -44,9 +44,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [ads, setAds] = useState<Ad[]>([]);
   const [adsLoading, setAdsLoading] = useState(true);
-  const [adminAds, setAdminAds] = useState<Ad[]>([]);
-  const [adminAdsLoading, setAdminAdsLoading] = useState(false);
-  const isAdminAccount = (profile as any)?.role === 'admin';
+  const [resumePaymentAdId, setResumePaymentAdId] = useState<string | null>(null);
   const [selectedAdForReview, setSelectedAdForReview] = useState<Ad | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -661,9 +659,6 @@ const Profile = () => {
       setShowcasePlan(profile.showcasePlan || 'premium');
       setShowcasePaid(profile.showcasePaid || false);
       fetchUserAds();
-      if (isAdminAccount) {
-        fetchAdminAds();
-      }
       fetchUserReviews(user?.uid || '');
       updateReferralStatsAndCredits();
       fetchShowcaseProducts();
@@ -824,62 +819,49 @@ const Profile = () => {
     }
   };
 
-  const fetchAdminAds = async () => {
-    if (!user || !isAdminAccount) {
-      setAdminAds([]);
-      return;
-    }
-
-    setAdminAdsLoading(true);
-    try {
-      // Admin-created/imported listings are not always owned by the Admin UID.
-      // Read the collection once and match the ownership/import metadata client-side
-      // so legacy records using importedBy='admin' are also included.
-      const snapshot = await getDocs(collection(db, 'ads'));
-      const uid = user.uid.trim().toLowerCase();
-      const email = (user.email || '').trim().toLowerCase();
-
-      const data = snapshot.docs
-        .map(docSnap => ({ ...docSnap.data(), id: docSnap.id } as Ad))
-        .filter((adItem: any) => {
-          const importedBy = String(adItem.importedBy || '').trim().toLowerCase();
-          const sellerId = String(adItem.sellerId || '').trim().toLowerCase();
-
-          return (
-            sellerId === uid ||
-            importedBy === uid ||
-            (!!email && importedBy === email) ||
-            importedBy === 'admin'
-          );
-        })
-        .sort((a: any, b: any) => {
-          const toMillis = (value: any) => {
-            if (value?.toMillis) return value.toMillis();
-            if (value?.seconds) return value.seconds * 1000;
-            const parsed = value ? new Date(value).getTime() : 0;
-            return Number.isFinite(parsed) ? parsed : 0;
-          };
-          return toMillis(b.createdAt || b.importedAt) - toMillis(a.createdAt || a.importedAt);
-        });
-
-      setAdminAds(data);
-    } catch (err) {
-      console.error('[Profile] Error loading Admin Listings:', err);
-      setAdminAds([]);
-      handleFirestoreError(err, OperationType.LIST, 'ads/admin-listings');
-    } finally {
-      setAdminAdsLoading(false);
-    }
-  };
-
   const fetchUserAds = async () => {
     if (!user) return;
     setAdsLoading(true);
     try {
-      const q = query(collection(db, 'ads'), where('sellerId', '==', user.uid), limit(100));
-      const querySnapshot = await getDocsWithCacheFallback(q, `ads/sellerId-${user.uid}`);
-      const adsData = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Ad));
-      setAds(adsData.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis()));
+      // Current listings are owned by sellerId === Firebase UID. Older ConnectBoat
+      // records can instead be linked by sellerEmail/userEmail, so load all safe
+      // ownership variants and merge them by document ID.
+      const email = (user.email || '').trim().toLowerCase();
+      const queries: Array<Promise<any>> = [
+        getDocs(query(collection(db, 'ads'), where('sellerId', '==', user.uid), limit(100)))
+      ];
+
+      if (email) {
+        queries.push(getDocs(query(collection(db, 'ads'), where('sellerEmail', '==', email), limit(100))));
+        queries.push(getDocs(query(collection(db, 'ads'), where('userEmail', '==', email), limit(100))));
+      }
+
+      const snapshots = await Promise.all(queries);
+      const merged = new Map<string, Ad>();
+      snapshots.forEach(snapshot => {
+        snapshot.docs.forEach((docSnap: any) => {
+          const data = docSnap.data() || {};
+          const sellerId = String(data.sellerId || '').trim();
+          const sellerEmail = String(data.sellerEmail || '').trim().toLowerCase();
+          const userEmail = String(data.userEmail || '').trim().toLowerCase();
+          const belongsToUser = sellerId === user.uid || (!!email && (sellerEmail === email || userEmail === email));
+          if (belongsToUser) merged.set(docSnap.id, { ...data, id: docSnap.id } as Ad);
+        });
+      });
+
+      const toMillis = (value: any): number => {
+        if (!value) return 0;
+        if (typeof value?.toMillis === 'function') return value.toMillis();
+        if (typeof value?.seconds === 'number') return value.seconds * 1000;
+        if (value instanceof Date) return value.getTime();
+        const parsed = new Date(value).getTime();
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const adsData = Array.from(merged.values()).sort((a: any, b: any) =>
+        toMillis(b.createdAt || b.updatedAt) - toMillis(a.createdAt || a.updatedAt)
+      );
+      setAds(adsData);
 
       // Clear notifications for these ads
       const unnotifiedAds = adsData.filter(ad => ad.userNotified === false && ad.status !== 'pending');
@@ -895,6 +877,72 @@ const Profile = () => {
       handleFirestoreError(err, OperationType.LIST, 'ads');
     } finally {
       setAdsLoading(false);
+    }
+  };
+
+  const getPendingPaymentAmount = (ad: any): number | null => {
+    const plan = String(ad?.plan || '').toLowerCase();
+    const category = String(ad?.category || '').trim();
+    const prices: any = settings?.planPrices || {};
+
+    if (category === 'Boat Services') {
+      if (plan === 'premium' || plan === 'national') return Number(prices.servicePremium ?? 14.99);
+      if (['featured', 'local', 'highlight', 'intermediate'].includes(plan)) return Number(prices.serviceFeatured ?? 7.99);
+      return null; // Boat Services Basic is free.
+    }
+
+    if (category === 'Boats for Sale' || category === 'Boats for Hire') {
+      if (plan === 'premium' || plan === 'national') return Number(prices.premium ?? 24.99);
+      if (['featured', 'local', 'highlight', 'intermediate'].includes(plan)) return Number(prices.featured ?? 14.99);
+      if (plan === 'standard') return Number(prices.standard ?? 7.99);
+      return null;
+    }
+
+    const marketplaceCategories = ['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Accessories', 'Wanted'];
+    if (marketplaceCategories.includes(category) && (ad?.marketplaceListingType === 'paid_additional' || plan === 'paid_additional')) {
+      return Number(prices.marketplaceAdditional ?? 1.99);
+    }
+
+    return null;
+  };
+
+  const handleResumeListingPayment = async (ad: any) => {
+    if (!user || !ad?.id) return;
+    const amount = getPendingPaymentAmount(ad);
+    if (amount === null || !Number.isFinite(amount) || amount <= 0) return;
+
+    setResumePaymentAdId(ad.id);
+    try {
+      const idToken = await user.getIdToken();
+      const plan = String(ad.plan || 'standard').toLowerCase();
+      const res = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          itemType: 'ad_listing',
+          plan,
+          country: ad.country || profile?.country || 'Reino Unido',
+          category: ad.category,
+          adId: ad.id,
+          marketplaceListingType: ad.marketplaceListingType || null,
+          mediaBoostEnabled: !!ad.mediaBoostEnabled && !ad.videoPaid,
+          successUrl: `${window.location.origin}/create-ad?stripe_success=true&ad_id=${ad.id}&plan=${plan}`,
+          cancelUrl: `${window.location.origin}/profile?tab=anuncios&highlight=${ad.id}`,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success || !data?.url) {
+        throw new Error(data?.errorMessage || data?.error || 'Unable to resume payment.');
+      }
+      window.location.href = data.url;
+    } catch (err: any) {
+      console.error('[Profile Resume Payment Error]', err);
+      alert(err?.message || 'Unable to resume payment. Please try again.');
+      setResumePaymentAdId(null);
     }
   };
 
@@ -1195,7 +1243,7 @@ const Profile = () => {
         <button
           onClick={() => navigate('/profile?tab=perfil')}
           className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-            currentTab === 'perfil' || !['perfil', 'anuncios', 'admin-listings', 'favorites', 'compras', 'reviews', 'reivindicacoes'].includes(currentTab)
+            currentTab === 'perfil' || !['perfil', 'anuncios', 'favorites', 'compras', 'reviews', 'reivindicacoes'].includes(currentTab)
               ? 'bg-white text-indigo-600 shadow-sm'
               : 'text-slate-500 hover:text-slate-800'
           }`}
@@ -1221,19 +1269,6 @@ const Profile = () => {
         >
           My Listings <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'anuncios' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{ads.length}</span>
         </button>
-        {isAdminAccount && (
-          <button
-            onClick={() => navigate('/profile?tab=admin-listings')}
-            className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              currentTab === 'admin-listings'
-                ? 'bg-white text-indigo-600 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-            id="btn-tab-admin-listings"
-          >
-            Admin Listings <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-1 scale-90 ${currentTab === 'admin-listings' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-200 text-slate-600'}`}>{adminAds.length}</span>
-          </button>
-        )}
         <button
           onClick={() => navigate('/profile?tab=reviews')}
           className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
@@ -1280,7 +1315,7 @@ const Profile = () => {
         </button>
       </div>
 
-      {(currentTab === 'perfil' || currentTab === 'vitrine' || !['perfil', 'vitrine', 'anuncios', 'admin-listings', 'favorites', 'compras', 'reviews', 'reivindicacoes'].includes(currentTab)) && (
+      {(currentTab === 'perfil' || currentTab === 'vitrine' || !['perfil', 'vitrine', 'anuncios', 'favorites', 'compras', 'reviews', 'reivindicacoes'].includes(currentTab)) && (
         <div className="space-y-12" id="profile-perfil-tab-content">
           <InstallButton variant="button" />
           <motion.div
@@ -1642,6 +1677,19 @@ const Profile = () => {
                         </span>
                       )}
                     </div>
+
+                    {ad.status === 'pending' && !paymentInfo.isPaid && getPendingPaymentAmount(ad) !== null && (
+                      <button
+                        onClick={() => handleResumeListingPayment(ad)}
+                        disabled={resumePaymentAdId === ad.id}
+                        className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-extrabold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-wait transition-all shadow-sm"
+                      >
+                        <CreditCard size={15} />
+                        {resumePaymentAdId === ad.id
+                          ? 'Opening Stripe...'
+                          : `Complete Payment — £${getPendingPaymentAmount(ad)!.toFixed(2)}`}
+                      </button>
+                    )}
                     
                     {ad.expirationDate && (
                       <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase tracking-wider">
@@ -1762,42 +1810,6 @@ const Profile = () => {
           </div>
         )}
       </div>
-        </div>
-      )}
-
-      {isAdminAccount && currentTab === 'admin-listings' && (
-        <div className="space-y-6" id="profile-admin-listings-tab-content">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                Admin Listings
-                <span className="bg-indigo-100 text-indigo-700 text-sm px-3 py-1 rounded-full">{adminAds.length}</span>
-              </h2>
-              <p className="text-sm text-slate-500 mt-1">
-                Listings created or imported through this Admin account, including legacy Admin imports.
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/admin/ads')}
-              className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all"
-            >
-              Manage All Listings
-            </button>
-          </div>
-
-          {adminAdsLoading ? (
-            <div className="text-center py-12 text-slate-400">Loading Admin listings...</div>
-          ) : adminAds.length === 0 ? (
-            <div className="bg-white p-12 rounded-3xl text-center border-2 border-dashed border-slate-200">
-              <p className="text-slate-500">No listings created or imported by this Admin account were found.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in" id="admin-listings-grid">
-              {adminAds.map((adminAd, idx) => (
-                <AdCard key={`admin-listing-${adminAd.id || idx}`} ad={adminAd} />
-              ))}
-            </div>
-          )}
         </div>
       )}
 
