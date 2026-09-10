@@ -21,7 +21,8 @@ import { evaluateListingDuplicates, DuplicateCheckResult } from '../utils/duplic
 import { saveCustomCity } from '../utils/locationService';
 
 const PAID_BOAT_LISTING_CATEGORIES = new Set(['Boats for Sale', 'Boats for Hire']);
-const MARKETPLACE_LISTING_CATEGORIES = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Boat Services', 'Accessories', 'Wanted']);
+const MARKETPLACE_LISTING_CATEGORIES = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Accessories', 'Wanted']);
+const SERVICE_LISTING_CATEGORY = 'Boat Services';
 
 type ContactCountryOption = {
   iso: string;
@@ -174,6 +175,12 @@ const looksLikeBoatSaleOrHire = (category: string, title: string, description: s
 
 const isPaidBoatListingCategory = (category?: string): boolean =>
   PAID_BOAT_LISTING_CATEGORIES.has((category || '').trim());
+
+const isBoatServiceCategory = (category?: string): boolean =>
+  (category || '').trim() === SERVICE_LISTING_CATEGORY;
+
+const isTieredListingCategory = (category?: string): boolean =>
+  isPaidBoatListingCategory(category) || isBoatServiceCategory(category);
 
 const CreateAd = () => {
   const { categories, settings: globalSettings } = useSettings();
@@ -597,11 +604,14 @@ const CreateAd = () => {
     if (formData.isPermanentFeatured) return false;
 
     const isPaidBoatListing = isPaidBoatListingCategory(formData.category);
+    const isServiceListing = isBoatServiceCategory(formData.category);
     const isEditing = Boolean(id && originalAd);
     const isNewMediaBoost = formData.mediaBoostEnabled && !originalAd?.videoPaid;
+    const currentTier = getPlanTier(formData.plan);
 
     if (!isEditing) {
       if (isPaidBoatListing) return true;
+      if (isServiceListing) return currentTier > 0 || formData.mediaBoostEnabled;
       if (isMarketplaceListingCategory(formData.category)) {
         const freeAlreadyUsed = profile?.marketplaceFreeListingUsed === true;
         return freeAlreadyUsed || formData.mediaBoostEnabled;
@@ -611,27 +621,35 @@ const CreateAd = () => {
 
     // When editing an existing ad:
     const isExpired = originalAd?.status === 'expired' || originalAd?.adStatus === 'expired';
-    if (isExpired) return isPaidBoatListing || isNewMediaBoost;
+    if (isExpired) return isPaidBoatListing || (isServiceListing && currentTier > 0) || isNewMediaBoost;
 
     const oldTier = getPlanTier(originalAd?.plan);
     const newTier = getPlanTier(formData.plan);
-    const isPlanUpgrade = isPaidBoatListing && newTier > oldTier;
+    const isPlanUpgrade = isTieredListingCategory(formData.category) && newTier > oldTier;
 
     return isPlanUpgrade || isNewMediaBoost;
   };
 
   const getPhotoLimit = (category: string | undefined, planKey: string): number => {
-    // Business rule: every category except Boats for Sale / Boats for Hire is free
-    // and is intentionally limited to 3 photos.
+    const normalizedPlan = normalizeListingPlan(planKey);
+
+    // Boat Services has its own freemium tiers.
+    if (isBoatServiceCategory(category)) {
+      if (normalizedPlan === 'premium') return 10;
+      if (normalizedPlan === 'featured') return 6;
+      return 3;
+    }
+
+    // Other Marketplace categories are intentionally limited to 3 photos.
     if (!isPaidBoatListingCategory(category)) return 3;
 
     // Legacy paid plan names are aliases only. They must never carry their old
     // photo limits forward, otherwise a Premium/National listing can get stuck at 6.
-    const normalizedPlan = (planKey || 'standard').toLowerCase();
+    const normalizedPlanKey = (planKey || 'standard').toLowerCase();
     const targetPlan: 'standard' | 'featured' | 'premium' =
-      ['premium', 'national'].includes(normalizedPlan)
+      ['premium', 'national'].includes(normalizedPlanKey)
         ? 'premium'
-        : ['featured', 'highlight', 'local', 'intermediate'].includes(normalizedPlan)
+        : ['featured', 'highlight', 'local', 'intermediate'].includes(normalizedPlanKey)
           ? 'featured'
           : 'standard';
 
@@ -665,6 +683,13 @@ const CreateAd = () => {
   const getMarketplaceAdditionalPrice = (): number =>
     Number(globalSettings?.planPrices?.marketplaceAdditional ?? 1.99);
 
+  const getServicePlanPrice = (planKey: string): number => {
+    const normalized = normalizeListingPlan(planKey);
+    if (normalized === 'premium') return Number(globalSettings?.planPrices?.servicePremium ?? 14.99);
+    if (normalized === 'featured') return Number(globalSettings?.planPrices?.serviceFeatured ?? 7.99);
+    return 0;
+  };
+
   const hasMarketplaceFreeBenefit = (): boolean =>
     !id && profile?.marketplaceFreeListingUsed !== true;
 
@@ -676,7 +701,9 @@ const CreateAd = () => {
     const activePlan = (formData.plan || 'standard').toLowerCase();
     const planBase = isPaidBoatListingCategory(formData.category)
       ? getPlanPrice(activePlan)
-      : (isMarketplaceListingCategory(formData.category) && !isFirstMarketplaceListingFree() ? getMarketplaceAdditionalPrice() : 0);
+      : isBoatServiceCategory(formData.category)
+        ? getServicePlanPrice(activePlan)
+        : (isMarketplaceListingCategory(formData.category) && !isFirstMarketplaceListingFree() ? getMarketplaceAdditionalPrice() : 0);
     const mediaBoostExtra = (formData.mediaBoostEnabled && !originalAd?.videoPaid) ? 2.00 : 0;
     return (planBase + mediaBoostExtra).toFixed(2);
   };
@@ -1053,8 +1080,8 @@ const CreateAd = () => {
 
   const handleBoatPlanCardClick = (plan: 'standard' | 'featured' | 'premium') => {
     if (!isAdmin && isEditLocked) return;
-    if (!isPaidBoatListingCategory(formData.category)) {
-      guideToCategory('Para usar este plano, escolha a categoria Barcos à Venda ou Barcos para Alugar.');
+    if (!isTieredListingCategory(formData.category)) {
+      guideToCategory('To use these plans, choose Boats for Sale, Boats for Hire or Boat Services.');
       return;
     }
     setPlanCategoryHint(null);
@@ -1278,7 +1305,7 @@ const CreateAd = () => {
   }, [formData.plan, formData.category, settings]);
 
   useEffect(() => {
-    if (!formData.category || isPaidBoatListingCategory(formData.category)) return;
+    if (!formData.category || isTieredListingCategory(formData.category)) return;
     if (formData.plan !== 'free' || formData.images.length > 3) {
       setFormData(prev => ({
         ...prev,
@@ -1306,8 +1333,8 @@ const CreateAd = () => {
     const remainingSlots = maxAllowed - currentImagesCount;
 
     if (remainingSlots <= 0) {
-      if (!isPaidBoatListingCategory(formData.category)) {
-        alert('Photo limit reached. Free category listings allow up to 3 photos.');
+      if (!isTieredListingCategory(formData.category)) {
+        alert('Photo limit reached. Marketplace category listings allow up to 3 photos.');
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (cameraInputRef.current) cameraInputRef.current.value = '';
         return;
@@ -1796,7 +1823,7 @@ const CreateAd = () => {
         sellerName: id && originalAd ? (originalAd.sellerName || profile.name || 'ConnectBoat') : (profile.name || 'ConnectBoat'),
         status: isStaff && id ? (originalAd?.status || 'approved') : 'pending',
         adStatus: id && originalAd ? originalAd.adStatus : 'active',
-        plan: isPaidBoatListingCategory(formData.category) ? formData.plan : 'free',
+        plan: isTieredListingCategory(formData.category) ? normalizeListingPlan(formData.plan) : 'free',
         marketplaceListingType: isMarketplaceListingCategory(formData.category)
           ? (id && originalAd
               ? ((originalAd as any).marketplaceListingType || 'paid_additional')
@@ -2035,8 +2062,8 @@ const CreateAd = () => {
     try {
       // 1. Guardar o anúncio base primeiro no Firestore para termos um ID válido
       const finalizedId = pendingAdData.id || `ad_${user?.uid?.substring(0, 5) || 'user'}_${Date.now()}`;
-      const activePlan = isPaidBoatListingCategory(formData.category)
-        ? (formData.plan || 'standard').toLowerCase()
+      const activePlan = isTieredListingCategory(formData.category)
+        ? normalizeListingPlan(formData.plan)
         : 'free';
       const payloadToSave = { ...pendingAdData, id: finalizedId, plan: activePlan, status: 'pending' };
       
@@ -2566,7 +2593,7 @@ const CreateAd = () => {
                     Choose Listing Plan
                   </label>
                   <span className="text-[10px] font-semibold text-slate-400">
-                    Boat plans and Marketplace are separate listing types
+                    Boat plans, Boat Services and Marketplace are separate listing types
                   </span>
                 </div>
 
@@ -2576,7 +2603,7 @@ const CreateAd = () => {
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => handleBoatPlanCardClick('standard')}
                     className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
-                      !isPaidBoatListingCategory(formData.category)
+                      !isTieredListingCategory(formData.category)
                         ? 'border-slate-200 bg-slate-50 opacity-70 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/40'
                         : normalizeListingPlan(formData.plan) === 'standard'
                           ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
@@ -2585,23 +2612,23 @@ const CreateAd = () => {
                   >
                     <div className="flex items-start justify-between gap-1">
                       <span className="text-base">🛥️</span>
-                      {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'standard' && (
+                      {isTieredListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'standard' && (
                         <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center">✓</span>
                       )}
                     </div>
                     <div className="mt-1">
-                      <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Standard</p>
+                      <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">{isBoatServiceCategory(formData.category) ? 'Basic' : 'Standard'}</p>
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
-                        {getPhotoLimit('Boats for Sale', 'standard')} photos
+                        {getPhotoLimit(formData.category || 'Boats for Sale', 'standard')} photos
                       </p>
                       <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
                         30 days
                       </p>
                     </div>
                     <p className="font-black text-emerald-700 text-xs sm:text-sm mt-1">
-                      £{getPlanPrice('standard').toFixed(2)}
+                      {isBoatServiceCategory(formData.category) ? 'FREE' : `£${getPlanPrice('standard').toFixed(2)}`}
                     </p>
-                    <p className="text-[8px] text-slate-400 mt-1">Boats for Sale / Hire</p>
+                    <p className="text-[8px] text-slate-400 mt-1">{isBoatServiceCategory(formData.category) ? 'Boat Services' : 'Boats for Sale / Hire'}</p>
                   </button>
 
                   <button
@@ -2609,7 +2636,7 @@ const CreateAd = () => {
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => handleBoatPlanCardClick('featured')}
                     className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
-                      !isPaidBoatListingCategory(formData.category)
+                      !isTieredListingCategory(formData.category)
                         ? 'border-slate-200 bg-slate-50 opacity-70 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/40'
                         : normalizeListingPlan(formData.plan) === 'featured'
                           ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-100'
@@ -2621,23 +2648,23 @@ const CreateAd = () => {
                     </div>
                     <div className="flex items-start justify-between gap-1">
                       <span className="text-base">⭐</span>
-                      {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'featured' && (
+                      {isTieredListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'featured' && (
                         <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center">✓</span>
                       )}
                     </div>
                     <div className="mt-1">
                       <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Featured</p>
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
-                        {getPhotoLimit('Boats for Sale', 'featured')} photos
+                        {getPhotoLimit(formData.category || 'Boats for Sale', 'featured')} photos
                       </p>
                       <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
                         30 days
                       </p>
                     </div>
                     <p className="font-black text-amber-600 text-xs sm:text-sm mt-1">
-                      £{getPlanPrice('featured').toFixed(2)}
+                      £{(isBoatServiceCategory(formData.category) ? getServicePlanPrice('featured') : getPlanPrice('featured')).toFixed(2)}
                     </p>
-                    <p className="text-[8px] text-slate-400 mt-1">Boats for Sale / Hire</p>
+                    <p className="text-[8px] text-slate-400 mt-1">{isBoatServiceCategory(formData.category) ? 'Boat Services' : 'Boats for Sale / Hire'}</p>
                   </button>
 
                   <button
@@ -2645,7 +2672,7 @@ const CreateAd = () => {
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => handleBoatPlanCardClick('premium')}
                     className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
-                      !isPaidBoatListingCategory(formData.category)
+                      !isTieredListingCategory(formData.category)
                         ? 'border-slate-200 bg-slate-50 opacity-70 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/40'
                         : normalizeListingPlan(formData.plan) === 'premium'
                           ? 'border-indigo-600 bg-indigo-50 ring-2 ring-indigo-100'
@@ -2654,23 +2681,23 @@ const CreateAd = () => {
                   >
                     <div className="flex items-start justify-between gap-1">
                       <span className="text-base">👑</span>
-                      {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'premium' && (
+                      {isTieredListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'premium' && (
                         <span className="w-4 h-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center">✓</span>
                       )}
                     </div>
                     <div className="mt-1">
                       <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Premium</p>
                       <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
-                        {getPhotoLimit('Boats for Sale', 'premium')} photos
+                        {getPhotoLimit(formData.category || 'Boats for Sale', 'premium')} photos
                       </p>
                       <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
                         30 days
                       </p>
                     </div>
                     <p className="font-black text-indigo-600 text-xs sm:text-sm mt-1">
-                      £{getPlanPrice('premium').toFixed(2)}
+                      £{(isBoatServiceCategory(formData.category) ? getServicePlanPrice('premium') : getPlanPrice('premium')).toFixed(2)}
                     </p>
-                    <p className="text-[8px] text-slate-400 mt-1">Boats for Sale / Hire</p>
+                    <p className="text-[8px] text-slate-400 mt-1">{isBoatServiceCategory(formData.category) ? 'Boat Services' : 'Boats for Sale / Hire'}</p>
                   </button>
 
                   <button
@@ -2688,13 +2715,13 @@ const CreateAd = () => {
                       if (!alreadyMarketplace) {
                         guideToCategory(
                           hasMarketplaceFreeBenefit()
-                            ? 'Free Marketplace is only for Parts, Engines, Electronics, Trailers, Accessories, Marinas, Services and Wanted. Choose one of these categories below.'
+                            ? 'Free Marketplace is only for Parts, Engines, Electronics, Trailers, Accessories, Marinas and Wanted. Choose one of these categories below.'
                             : `Marketplace listings are £${getMarketplaceAdditionalPrice().toFixed(2)} and are only for Marketplace categories. Choose the correct category below.`
                         );
                       }
                     }}
                     className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
-                      !isPaidBoatListingCategory(formData.category) && formData.plan === 'free'
+                      isMarketplaceListingCategory(formData.category) && formData.plan === 'free'
                         ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
                         : 'border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
                     }`}
@@ -2704,7 +2731,7 @@ const CreateAd = () => {
                     </div>
                     <div className="flex items-start justify-between gap-1">
                       <span className="text-base">🧰</span>
-                      {!isPaidBoatListingCategory(formData.category) && formData.plan === 'free' && (
+                      {isMarketplaceListingCategory(formData.category) && formData.plan === 'free' && (
                         <span className="w-4 h-4 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center">✓</span>
                       )}
                     </div>
@@ -2723,7 +2750,7 @@ const CreateAd = () => {
                         : `£${getMarketplaceAdditionalPrice().toFixed(2)} PER LISTING`}
                     </p>
                     <p className="text-[8px] font-semibold text-slate-500 mt-1 leading-tight">
-                      Parts, engines, electronics, trailers, accessories, marinas, services & wanted only
+                      Parts, engines, electronics, trailers, accessories, marinas & wanted only
                     </p>
                   </button>
                 </div>
@@ -2731,7 +2758,16 @@ const CreateAd = () => {
                 {isPaidBoatListingCategory(formData.category) ? (
                   <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2">
                     <p className="text-[10px] sm:text-xs font-bold text-indigo-800">
-                      🧰 Marketplace is for Parts, Engines, Electronics, Trailers, Accessories, Marinas, Services and Wanted only. Click the Marketplace card to switch, then choose the correct Marketplace category. Boats for Sale or Hire must use Standard, Featured or Premium.
+                      🧰 Marketplace is for Parts, Engines, Electronics, Trailers, Accessories, Marinas and Wanted only. Boat Services has its own Basic, Featured and Premium plans.
+                    </p>
+                  </div>
+                ) : isBoatServiceCategory(formData.category) ? (
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-sky-800">
+                      ⚙️ Boat Services: Basic is FREE. Featured is £{getServicePlanPrice('featured').toFixed(2)} and Premium is £{getServicePlanPrice('premium').toFixed(2)} for 30 days.
+                    </p>
+                    <p className="text-[9px] sm:text-[10px] text-sky-700 mt-0.5">
+                      Basic: 3 photos • Featured: 6 photos • Premium: 10 photos. Paid tiers receive higher priority in Boat Services results.
                     </p>
                   </div>
                 ) : (
@@ -2742,7 +2778,7 @@ const CreateAd = () => {
                         : `✓ Your free Marketplace listing has already been used. Marketplace listings are £${getMarketplaceAdditionalPrice().toFixed(2)} each and include up to 3 photos.`}
                     </p>
                     <p className="text-[9px] sm:text-[10px] text-emerald-700 mt-0.5">
-                      Marketplace applies only to Parts, Engines, Electronics, Trailers, Accessories, Marinas, Services and Wanted listings — never to Boats for Sale or Hire.
+                      Marketplace applies only to Parts, Engines, Electronics, Trailers, Accessories, Marinas and Wanted listings — never to Boats for Sale or Hire.
                     </p>
                   </div>
                 )}
@@ -2756,7 +2792,9 @@ const CreateAd = () => {
                             : normalizeListingPlan(formData.plan) === 'featured'
                               ? 'Featured Listing'
                               : 'Standard Listing')
-                        : (hasMarketplaceFreeBenefit() ? 'Free Marketplace' : `Marketplace £${getMarketplaceAdditionalPrice().toFixed(2)}`)}
+                        : isBoatServiceCategory(formData.category)
+                          ? (normalizeListingPlan(formData.plan) === 'premium' ? 'Boat Services Premium' : normalizeListingPlan(formData.plan) === 'featured' ? 'Boat Services Featured' : 'Boat Services Basic — FREE')
+                          : (hasMarketplaceFreeBenefit() ? 'Free Marketplace' : `Marketplace £${getMarketplaceAdditionalPrice().toFixed(2)}`)}
                     </strong>
                   </span>
                   <span className="text-[10px] font-bold text-indigo-600">
@@ -2924,13 +2962,15 @@ const CreateAd = () => {
                   )}
                 </div>
                 <div className={`text-[11px] font-bold rounded-xl px-3 py-2 border ${
-                  isPaidBoatListingCategory(formData.category)
+                  isTieredListingCategory(formData.category)
                     ? 'text-indigo-700 bg-indigo-50 border-indigo-100'
                     : 'text-emerald-800 bg-emerald-50 border-emerald-200'
                 }`}>
                   {isPaidBoatListingCategory(formData.category)
                     ? `📷 Your ${normalizeListingPlan(formData.plan)} plan allows up to ${maxAllowed} photos.`
-                    : `✓ FREE listing — this category includes up to 3 photos at no listing cost.`}
+                    : isBoatServiceCategory(formData.category)
+                      ? `⚙️ Boat Services ${normalizeListingPlan(formData.plan) === 'standard' ? 'Basic' : normalizeListingPlan(formData.plan)} includes up to ${maxAllowed} photos.`
+                      : `✓ Marketplace listing — this category includes up to 3 photos.`}
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium">
                   * First photo is the cover photo. Use arrows or &quot;Set as Main&quot; to reorder photos. Max 5MB per file.
@@ -3137,15 +3177,15 @@ const CreateAd = () => {
                     const cat = e.target.value;
                     setPlanCategoryHint(null);
                     setCategoryAttention(false);
-                    const paidBoatListing = isPaidBoatListingCategory(cat);
-                    const nextPlan: typeof formData.plan = paidBoatListing
+                    const tieredListing = isTieredListingCategory(cat);
+                    const nextPlan: typeof formData.plan = tieredListing
                       ? (formData.plan === 'free' ? 'standard' : formData.plan)
                       : 'free';
                     setFormData(prev => ({
                       ...prev,
                       category: cat,
                       plan: nextPlan,
-                      images: paidBoatListing ? prev.images : prev.images.slice(0, 3)
+                      images: tieredListing ? prev.images.slice(0, getPhotoLimit(cat, nextPlan)) : prev.images.slice(0, 3)
                     }));
                   }}
                   className={`w-full px-3 py-2.5 bg-slate-50 border-2 rounded-xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-medium ${
@@ -3986,8 +4026,24 @@ const CreateAd = () => {
                 </div>
               </div>
 
-              {/* Listing plan: paid only for Boats for Sale / Boats for Hire */}
-              {!isPaidBoatListingCategory(formData.category) ? (
+              {/* Listing plan summary */}
+              {isBoatServiceCategory(formData.category) ? (
+                <div className="p-5 rounded-3xl border-2 border-sky-200 bg-sky-50/70">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-sm font-black text-sky-900 uppercase tracking-wider">
+                        ⚙️ Boat Services {normalizeListingPlan(formData.plan) === 'premium' ? 'Premium' : normalizeListingPlan(formData.plan) === 'featured' ? 'Featured' : 'Basic'}
+                      </h3>
+                      <p className="text-xs text-sky-700 mt-1 font-semibold">
+                        {maxAllowed} photos • 30 days • {normalizeListingPlan(formData.plan) === 'standard' ? 'Standard placement' : normalizeListingPlan(formData.plan) === 'featured' ? 'Priority placement' : 'Top priority placement'}
+                      </p>
+                    </div>
+                    <span className="text-xl font-black text-sky-700">
+                      {getServicePlanPrice(formData.plan) === 0 ? 'FREE' : `£${getServicePlanPrice(formData.plan).toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
+              ) : !isPaidBoatListingCategory(formData.category) ? (
                 <div className="p-5 rounded-3xl border-2 border-emerald-200 bg-emerald-50/70">
                   <div className="flex items-center justify-between gap-4">
                     <div>
@@ -3995,7 +4051,7 @@ const CreateAd = () => {
                         ✓ {hasMarketplaceFreeBenefit() ? 'Free Marketplace Listing' : 'Marketplace Listing'}
                       </h3>
                       <p className="text-xs text-emerald-700 mt-1 font-semibold">
-                        Up to 3 photos • Marketplace categories only • Not valid for Boats for Sale or Hire.
+                        Up to 3 photos • Marketplace categories only • Not valid for Boats for Sale, Hire or Boat Services.
                       </p>
                     </div>
                     <span className="text-xl font-black text-emerald-700">
@@ -4140,12 +4196,16 @@ const CreateAd = () => {
                     <span>
                       {isPaidBoatListingCategory(formData.category)
                         ? `${formData.plan === 'premium' ? 'Premium Featured Listing' : formData.plan === 'featured' ? 'Featured Listing' : 'Standard Listing'} (30 Days)`
-                        : (hasMarketplaceFreeBenefit() ? 'Free Marketplace Listing' : 'Marketplace Listing')}
+                        : isBoatServiceCategory(formData.category)
+                          ? `Boat Services ${normalizeListingPlan(formData.plan) === 'premium' ? 'Premium' : normalizeListingPlan(formData.plan) === 'featured' ? 'Featured' : 'Basic'} (30 Days)`
+                          : (hasMarketplaceFreeBenefit() ? 'Free Marketplace Listing' : 'Marketplace Listing')}
                     </span>
                     <span className="font-bold text-slate-900">
                       {isPaidBoatListingCategory(formData.category)
                         ? `£${getPlanPrice(formData.plan).toFixed(2)}`
-                        : (hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`)}
+                        : isBoatServiceCategory(formData.category)
+                          ? (getServicePlanPrice(formData.plan) === 0 ? '£0.00' : `£${getServicePlanPrice(formData.plan).toFixed(2)}`)
+                          : (hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`)}
                     </span>
                   </div>
 
@@ -4341,12 +4401,16 @@ const CreateAd = () => {
                     <span>
                       {isPaidBoatListingCategory(formData.category)
                         ? (formData.plan === 'premium' ? 'Premium Featured Listing (30 days)' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? 'Featured Listing (30 days)' : 'Standard Listing (30 days)')
-                        : (hasMarketplaceFreeBenefit() ? 'Free Marketplace Listing' : 'Marketplace Listing')}
+                        : isBoatServiceCategory(formData.category)
+                          ? `Boat Services ${normalizeListingPlan(formData.plan) === 'premium' ? 'Premium' : normalizeListingPlan(formData.plan) === 'featured' ? 'Featured' : 'Basic'} (30 days)`
+                          : (hasMarketplaceFreeBenefit() ? 'Free Marketplace Listing' : 'Marketplace Listing')}
                     </span>
                     <span className="font-bold text-slate-900">
                       {isPaidBoatListingCategory(formData.category)
                         ? `£${getPlanPrice(formData.plan).toFixed(2)}`
-                        : (hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`)}
+                        : isBoatServiceCategory(formData.category)
+                          ? (getServicePlanPrice(formData.plan) === 0 ? '£0.00' : `£${getServicePlanPrice(formData.plan).toFixed(2)}`)
+                          : (hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`)}
                     </span>
                   </div>
                   {formData.mediaBoostEnabled && (
