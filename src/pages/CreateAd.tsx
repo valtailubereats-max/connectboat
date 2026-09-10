@@ -2593,11 +2593,13 @@ const CreateAd = () => {
                     Choose Listing Plan
                   </label>
                   <span className="text-[10px] font-semibold text-slate-400">
-                    Boat plans, Boat Services and Marketplace are separate listing types
+                    {isBoatServiceCategory(formData.category)
+                      ? 'Choose the visibility level for your marine service'
+                      : 'Boat plans and Marketplace are separate listing types'}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className={`grid grid-cols-2 ${isBoatServiceCategory(formData.category) ? 'sm:grid-cols-3' : 'sm:grid-cols-4'} gap-2`}>
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
@@ -2700,6 +2702,7 @@ const CreateAd = () => {
                     <p className="text-[8px] text-slate-400 mt-1">{isBoatServiceCategory(formData.category) ? 'Boat Services' : 'Boats for Sale / Hire'}</p>
                   </button>
 
+                  {!isBoatServiceCategory(formData.category) && (
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
@@ -2753,6 +2756,7 @@ const CreateAd = () => {
                       Parts, engines, electronics, trailers, accessories, marinas & wanted only
                     </p>
                   </button>
+                  )}
                 </div>
 
                 {isPaidBoatListingCategory(formData.category) ? (
@@ -2993,7 +2997,9 @@ const CreateAd = () => {
                       </span>
                     </div>
                     <p className="text-xs text-slate-600 font-medium max-w-xl leading-relaxed">
-                      “Add a video of up to 60 seconds to showcase your boat and increase buyer or renter confidence.”
+                      {isBoatServiceCategory(formData.category)
+                        ? '“Add a video of up to 60 seconds to showcase your marine service or business and attract more customers.”'
+                        : '“Add a video of up to 60 seconds to showcase your boat and increase buyer or renter confidence.”'}
                     </p>
                   </div>
 
