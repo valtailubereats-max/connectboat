@@ -16,8 +16,9 @@ const FIRESTORE_DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b6
 const PAID_BOAT_LISTING_CATEGORIES = new Set(['Boats for Sale', 'Boats for Hire']);
 const MARKETPLACE_LISTING_CATEGORIES = new Set([
   'Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers',
-  'Marinas', 'Boat Services', 'Accessories', 'Wanted',
+  'Marinas', 'Accessories', 'Wanted',
 ]);
+const SERVICE_LISTING_CATEGORY = 'Boat Services';
 
 function normaliseListingPlan(plan: unknown): 'standard' | 'featured' | 'premium' {
   const value = String(plan || 'standard').toLowerCase();
@@ -81,6 +82,7 @@ async function handleListingSave(req: Request, res: Response) {
   const images = Array.isArray(adData.images) ? adData.images : [];
   const isBoat = PAID_BOAT_LISTING_CATEGORIES.has(category);
   const isMarketplace = MARKETPLACE_LISTING_CATEGORIES.has(category);
+  const isService = category === SERVICE_LISTING_CATEGORY;
 
   if (isBoat) {
     const plan = normaliseListingPlan(adData.plan);
@@ -89,6 +91,17 @@ async function handleListingSave(req: Request, res: Response) {
     const maxPhotos = Number.isFinite(configured) && configured > 0 ? configured : fallback;
     if (images.length > maxPhotos) {
       return res.status(400).json({ success: false, error: 'PHOTO_LIMIT', errorMessage: `Your ${plan} plan allows up to ${maxPhotos} photos.` });
+    }
+    adData.plan = plan;
+  } else if (isService) {
+    const plan = normaliseListingPlan(adData.plan);
+    const maxPhotos = plan === 'premium' ? 10 : plan === 'featured' ? 6 : 3;
+    if (images.length > maxPhotos) {
+      return res.status(400).json({
+        success: false,
+        error: 'PHOTO_LIMIT',
+        errorMessage: `Boat Services ${plan} allows up to ${maxPhotos} photos.`,
+      });
     }
     adData.plan = plan;
   } else if (isMarketplace) {
