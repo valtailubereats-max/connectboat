@@ -4,6 +4,7 @@ import { Image as ImageIcon } from 'lucide-react';
 interface OptimizedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   className?: string;
   containerClassName?: string;
+  priority?: boolean;
 }
 
 const OptimizedImage: React.FC<OptimizedImageProps & any> = ({ 
@@ -11,7 +12,11 @@ const OptimizedImage: React.FC<OptimizedImageProps & any> = ({
   alt, 
   className = '', 
   containerClassName = '',
+  priority = false,
   as: Component = 'img',
+  loading,
+  fetchPriority,
+  decoding,
   ...props 
 }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -39,7 +44,9 @@ const OptimizedImage: React.FC<OptimizedImageProps & any> = ({
         <Component
           src={src && src.trim() !== '' ? src : null}
           alt={alt}
-          loading="lazy"
+          loading={loading ?? (priority ? 'eager' : 'lazy')}
+          fetchPriority={fetchPriority ?? (priority ? 'high' : 'auto')}
+          decoding={decoding ?? 'async'}
           onLoad={() => setIsLoading(false)}
           onError={handleError}
           className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
