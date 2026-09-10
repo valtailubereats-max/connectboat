@@ -42,6 +42,9 @@ export interface MarketplaceSettings {
     standard: number;
     featured: number;
     premium: number;
+    marketplaceAdditional?: number;
+    serviceFeatured?: number;
+    servicePremium?: number;
     local?: number; // legacy
     national?: number;
     showcase?: number;
