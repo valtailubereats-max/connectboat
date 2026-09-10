@@ -138,6 +138,8 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
             featured: data.planPrices?.featured ?? 7.99,
             premium: data.planPrices?.premium ?? 12.99,
             marketplaceAdditional: data.planPrices?.marketplaceAdditional ?? 1.99,
+            serviceFeatured: data.planPrices?.serviceFeatured ?? 7.99,
+            servicePremium: data.planPrices?.servicePremium ?? 14.99,
             local: data.planPrices?.local ?? 4.99,
             national: data.planPrices?.national ?? 7.99,
             showcase: data.planPrices?.showcase ?? 8.99
@@ -180,7 +182,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
         const defaultSettings: MarketplaceSettings = {
           id: 'global',
           planDurations: { standard: 30, featured: 30, premium: 30, free: 30, local: 30, national: 30, showcase: 30, intermediate: 180 },
-          planPrices: { standard: 4.99, featured: 7.99, premium: 12.99, marketplaceAdditional: 1.99, local: 4.99, national: 7.99, showcase: 8.99 },
+          planPrices: { standard: 4.99, featured: 7.99, premium: 12.99, marketplaceAdditional: 1.99, serviceFeatured: 7.99, servicePremium: 14.99, local: 4.99, national: 7.99, showcase: 8.99 },
           maxImages: { standard: 8, featured: 15, premium: 25, free: 3, local: 15, national: 25, showcase: 6, intermediate: 3 },
           maxShowcaseProducts: 6,
           expirationAction: 'archive',
@@ -469,6 +471,35 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                 </div>
                 <div className="rounded-xl bg-white border border-emerald-100 p-3 text-xs text-slate-600 leading-relaxed">
                   First eligible Marketplace listing per account: <strong>FREE</strong>. Additional listings use this fee and always allow up to <strong>3 photos</strong>.
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 bg-sky-50/30 rounded-2xl border border-sky-100 space-y-4">
+              <h3 className="text-sm font-black text-sky-700 uppercase tracking-widest">Boat Services</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-xl bg-white border border-sky-100 p-3 text-xs text-slate-600 leading-relaxed">
+                  <strong>Basic: FREE</strong><br />3 photos • standard placement • 30 days
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Featured service price (£)</label>
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={settings.planPrices?.serviceFeatured ?? 7.99}
+                    onChange={(e) => setSettings({ ...settings, planPrices: { ...settings.planPrices, serviceFeatured: parseFloat(e.target.value) || 0 } })}
+                    className="w-full px-4 py-2.5 bg-white border border-sky-200 rounded-xl focus:border-sky-500 outline-none transition-all font-bold text-sm"
+                  />
+                  <p className="text-[10px] text-slate-500">6 photos • priority placement • 30 days</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500">Premium service price (£)</label>
+                  <input
+                    type="number" min="0" step="0.01"
+                    value={settings.planPrices?.servicePremium ?? 14.99}
+                    onChange={(e) => setSettings({ ...settings, planPrices: { ...settings.planPrices, servicePremium: parseFloat(e.target.value) || 0 } })}
+                    className="w-full px-4 py-2.5 bg-white border border-sky-200 rounded-xl focus:border-sky-500 outline-none transition-all font-bold text-sm"
+                  />
+                  <p className="text-[10px] text-slate-500">10 photos • top priority • 30 days</p>
                 </div>
               </div>
             </div>
