@@ -2368,19 +2368,11 @@ const AdDetails = () => {
         {/* SECTION CARD 1: Descrição com valor, cidade e país + Dados e CTAs */}
         <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] rounded-3xl p-4 sm:p-5 space-y-4 text-left">
           
-          {/* Categoria, views & time */}
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100/70 pb-2.5">
+          {/* Categoria — views & time já aparecem no card superior */}
+          <div className="flex items-center border-b border-slate-100/70 pb-2.5">
             <span className="bg-indigo-50 text-indigo-600 text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border border-indigo-100">
               {ad.category}
             </span>
-            <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
-              <span className="flex items-center gap-1">
-                <Eye size={12} /> {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
-              </span>
-              <span className="flex items-center gap-1 notranslate" translate="no">
-                <Clock size={12} /> {timeStr}
-              </span>
-            </div>
           </div>
 
           {/* Selos de Negócio Reivindicável no Mobile */}
