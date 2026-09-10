@@ -1693,7 +1693,13 @@ const Profile = () => {
                     
                     {ad.expirationDate && (
                       <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase tracking-wider">
-                        Expires on: {format(ad.expirationDate.toDate(), "dd MMMM", { locale: enGB })}
+                        Expires on: {format(
+                          typeof (ad.expirationDate as any)?.toDate === 'function'
+                            ? (ad.expirationDate as any).toDate()
+                            : new Date(ad.expirationDate as any),
+                          "dd MMMM",
+                          { locale: enGB }
+                        )}
                       </p>
                     )}
 
