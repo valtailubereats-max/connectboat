@@ -1962,7 +1962,7 @@ const Home = () => {
                   >
                     {marqueeData.items.map((ad, idx) => (
                       <div key={`${ad.id}-${idx}`} className="w-[140px] sm:w-[165px] md:w-[195px] shrink-0">
-                        <AdCard ad={ad} variant="featured" />
+                        <AdCard ad={ad} variant="featured" imagePriority={idx < 3} />
                       </div>
                     ))}
                   </div>
@@ -2018,8 +2018,8 @@ const Home = () => {
 
                 {hireAds.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                    {hireAds.slice(0, 5).map((ad) => (
-                      <AdCard key={`hire-${ad.id}`} ad={ad} />
+                    {hireAds.slice(0, 5).map((ad, idx) => (
+                      <AdCard key={`hire-${ad.id}`} ad={ad} imagePriority={idx < 2} />
                     ))}
                   </div>
                 ) : (
@@ -2093,8 +2093,8 @@ const Home = () => {
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                {displayedAds.map((ad) => (
-                  <AdCard key={ad.id} ad={ad} hideCategory hideActions />
+                {displayedAds.map((ad, idx) => (
+                  <AdCard key={ad.id} ad={ad} hideCategory hideActions imagePriority={idx < 5} />
                 ))}
               </div>
             )}
@@ -2386,7 +2386,7 @@ const Home = () => {
                 >
                   {marqueeData.items.map((ad, idx) => (
                     <div key={`${ad.id}-${idx}`} className="w-[125px] shrink-0">
-                      <AdCard ad={ad} variant="featured" />
+                      <AdCard ad={ad} variant="featured" imagePriority={idx < 2} />
                     </div>
                   ))}
                 </div>
@@ -2454,9 +2454,9 @@ const Home = () => {
                     onTouchCancel={handleHireTouchEnd}
                   >
                     <div className="flex gap-3 min-w-min">
-                      {hireAds.map((ad) => (
+                      {hireAds.map((ad, idx) => (
                         <div key={`mobile-hire-${ad.id}`} className="w-[125px] shrink-0">
-                          <AdCard ad={ad} variant="featured" />
+                          <AdCard ad={ad} variant="featured" imagePriority={idx < 2} />
                         </div>
                       ))}
                     </div>
@@ -2511,8 +2511,8 @@ const Home = () => {
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {displayedAds.map((ad) => (
-                  <AdCard key={`mb-ad-${ad.id}`} ad={ad} hideCategory hideActions />
+                {displayedAds.map((ad, idx) => (
+                  <AdCard key={`mb-ad-${ad.id}`} ad={ad} hideCategory hideActions imagePriority={idx < 4} />
                 ))}
               </div>
             )}
