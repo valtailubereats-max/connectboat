@@ -261,7 +261,7 @@ export default function Precos() {
               <p className="text-[11px] font-black uppercase tracking-widest text-emerald-700">Marine Marketplace</p>
               <h2 className="mt-1 text-xl md:text-2xl font-black text-slate-900">Your first eligible Marketplace listing is FREE</h2>
               <p className="mt-2 text-sm font-medium text-slate-600 max-w-2xl">
-                Parts, engines, marine electronics, trailers, accessories, marinas, boat services and Wanted listings: your first listing is free once per account. Additional listings are £{Number(settings?.planPrices?.marketplaceAdditional ?? 1.99).toFixed(2)} each.
+                Parts, engines, marine electronics, trailers, accessories, marinas and Wanted listings: your first listing is free once per account. Additional listings are £{Number(settings?.planPrices?.marketplaceAdditional ?? 1.99).toFixed(2)} each. Boat Services uses separate Basic, Featured and Premium plans.
               </p>
             </div>
             <div className="shrink-0 rounded-2xl border border-emerald-200 bg-white px-5 py-4 text-center">
@@ -270,6 +270,20 @@ export default function Precos() {
             </div>
           </div>
           <p className="mt-4 text-xs font-bold text-slate-600">Complete boats for sale or hire are not eligible for Marketplace pricing and must use a Boats for Sale or Boats for Hire plan.</p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10 rounded-3xl border-2 border-sky-200 bg-sky-50/60 p-6 md:p-7 shadow-sm"
+        >
+          <p className="text-[11px] font-black uppercase tracking-widest text-sky-700">Boat Services</p>
+          <h2 className="mt-1 text-xl md:text-2xl font-black text-slate-900">Start free, pay only for more visibility</h2>
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-2xl bg-white border border-sky-100 p-4"><strong>Basic — FREE</strong><br /><span className="text-slate-600">3 photos • standard placement • 30 days</span></div>
+            <div className="rounded-2xl bg-white border border-sky-100 p-4"><strong>Featured — £{Number(settings?.planPrices?.serviceFeatured ?? 7.99).toFixed(2)}</strong><br /><span className="text-slate-600">6 photos • priority placement • 30 days</span></div>
+            <div className="rounded-2xl bg-white border border-sky-100 p-4"><strong>Premium — £{Number(settings?.planPrices?.servicePremium ?? 14.99).toFixed(2)}</strong><br /><span className="text-slate-600">10 photos • top priority • 30 days</span></div>
+          </div>
         </motion.div>
 
         {/* Cards Grid */}
