@@ -1410,6 +1410,8 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const featuredPrice = getValidConfiguredPrice(configuredPlanPrices.featured, 7.99);
     const premiumPrice = getValidConfiguredPrice(configuredPlanPrices.premium, 12.99);
     const marketplaceAdditionalPrice = getValidConfiguredPrice(configuredPlanPrices.marketplaceAdditional, 1.99);
+    const serviceFeaturedPrice = getValidConfiguredPrice(configuredPlanPrices.serviceFeatured, 7.99);
+    const servicePremiumPrice = getValidConfiguredPrice(configuredPlanPrices.servicePremium, 14.99);
 
     let productName = '';
     let productDescription = '';
@@ -1421,8 +1423,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const isPaidBoatListing =
       itemType === 'ad_listing' &&
       (savedListingCategory === 'Boats for Sale' || savedListingCategory === 'Boats for Hire');
-    const marketplaceCategories = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Boat Services', 'Accessories', 'Wanted']);
+    const marketplaceCategories = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Accessories', 'Wanted']);
     const isMarketplaceListing = itemType === 'ad_listing' && marketplaceCategories.has(savedListingCategory);
+    const isServiceListing = itemType === 'ad_listing' && savedListingCategory === 'Boat Services';
     const savedImages = Array.isArray(authenticatedAdData?.images) ? authenticatedAdData.images : [];
     const marketplaceFreeBenefitConsumed = authenticatedAdData?.marketplaceFreeBenefitConsumed === true;
     const accountFreeBenefitUsed = authenticatedUserData?.marketplaceFreeListingUsed === true;
@@ -1432,6 +1435,14 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
     if (isMarketplaceListing && savedImages.length > 3) {
       return res.status(400).json({ success: false, error: 'MARKETPLACE_PHOTO_LIMIT', errorMessage: 'Marketplace listings allow a maximum of 3 photos.' });
+    }
+
+    if (isServiceListing) {
+      const normalizedServicePlan = activePlan === 'premium' ? 'premium' : (activePlan === 'featured' ? 'featured' : 'standard');
+      const maxServicePhotos = normalizedServicePlan === 'premium' ? 10 : normalizedServicePlan === 'featured' ? 6 : 3;
+      if (savedImages.length > maxServicePhotos) {
+        return res.status(400).json({ success: false, error: 'SERVICE_PHOTO_LIMIT', errorMessage: `Boat Services ${normalizedServicePlan} allows a maximum of ${maxServicePhotos} photos.` });
+      }
     }
 
     if (isPaidBoatListing) {
@@ -1463,7 +1474,23 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       }
     }
 
-    if (activePlan === 'premium') {
+    if (isServiceListing && !['standard', 'free', 'featured', 'premium'].includes(activePlan)) {
+      return res.status(400).json({ success: false, error: 'INVALID_SERVICE_PLAN', errorMessage: 'Invalid Boat Services plan.' });
+    }
+
+    if (isServiceListing && activePlan === 'premium') {
+      amountCents = Math.round(servicePremiumPrice * 100);
+      productName = 'ConnectBoat - Boat Services Premium';
+      productDescription = `30-day top priority placement for Boat Services (${currencySymbol}${servicePremiumPrice.toFixed(2)})`;
+    } else if (isServiceListing && activePlan === 'featured') {
+      amountCents = Math.round(serviceFeaturedPrice * 100);
+      productName = 'ConnectBoat - Boat Services Featured';
+      productDescription = `30-day priority placement for Boat Services (${currencySymbol}${serviceFeaturedPrice.toFixed(2)})`;
+    } else if (isServiceListing) {
+      amountCents = 0;
+      productName = 'ConnectBoat - Boat Services Basic';
+      productDescription = '30-day Basic Boat Services listing (FREE)';
+    } else if (activePlan === 'premium') {
       amountCents = Math.round(premiumPrice * 100);
       productName = 'ConnectBoat - Premium Featured Listing';
       productDescription = `30-day top priority exposure & premium badge (${currencySymbol}${premiumPrice.toFixed(2)}) for listing ${adId ? '#' + adId : ''}`.trim();
@@ -1497,6 +1524,15 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
             description: `Additional Marketplace listing with up to 3 photos (£${marketplaceAdditionalPrice.toFixed(2)})`,
           },
           unit_amount: Math.round(marketplaceAdditionalPrice * 100),
+        },
+        quantity: 1,
+      });
+    } else if (isServiceListing && (activePlan === 'featured' || activePlan === 'premium')) {
+      lineItems.push({
+        price_data: {
+          currency,
+          product_data: { name: productName, description: productDescription },
+          unit_amount: amountCents,
         },
         quantity: 1,
       });
@@ -1545,7 +1581,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       country: String(country || ''),
       category: savedListingCategory,
       marketplaceListingType: trustedMarketplaceListingType,
-      paymentProductType: isMarketplaceListing ? (trustedMarketplaceListingType === 'paid_additional' ? 'marketplace_additional' : 'marketplace_free') : (isPaidBoatListing ? 'boat_listing' : String(itemType)),
+      paymentProductType: isMarketplaceListing
+        ? (trustedMarketplaceListingType === 'paid_additional' ? 'marketplace_additional' : 'marketplace_free')
+        : (isServiceListing ? 'boat_service_listing' : (isPaidBoatListing ? 'boat_listing' : String(itemType))),
       mediaBoostEnabled: hasMediaBoost ? 'true' : 'false',
     };
 
