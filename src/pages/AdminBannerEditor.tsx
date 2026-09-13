@@ -28,6 +28,13 @@ import { BannerConfig, DEFAULT_BANNER_CONFIG, BannerDeviceConfig } from '../type
 
 const boatBannerBg = "https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=1600&q=80";
 
+const DAILY_FIXED_PACKAGES = [
+  { days: 1, price: 14.99, label: '1 Day' },
+  { days: 3, price: 34.99, label: '3 Days' },
+  { days: 7, price: 59.99, label: '7 Days' },
+  { days: 30, price: 149.99, label: '30 Days' },
+] as const;
+
 export default function AdminBannerEditor() {
   const { bannerConfig: initialBannerConfig } = useSettings();
   const { user } = useAuth();
@@ -58,6 +65,7 @@ export default function AdminBannerEditor() {
   const [listingAdAmountPaid, setListingAdAmountPaid] = useState('');
   const [listingAdPaymentStatus, setListingAdPaymentStatus] = useState<'paid' | 'pending' | 'admin'>('admin');
   const [listingAdPaidDate, setListingAdPaidDate] = useState('');
+  const [listingAdDailyPackageDays, setListingAdDailyPackageDays] = useState('');
 
   const [advertisingSalesEnabled, setAdvertisingSalesEnabled] = useState(false);
   const [price4s30d, setPrice4s30d] = useState('');
@@ -458,6 +466,37 @@ export default function AdminBannerEditor() {
     }
   };
 
+  const getDailyFixedPackage = (daysValue: string | number) =>
+    DAILY_FIXED_PACKAGES.find((pkg) => pkg.days === Number(daysValue));
+
+  const calculateDailyFixedEndDate = (startDate: string, daysValue: string | number) => {
+    const days = Number(daysValue);
+    if (!startDate || !Number.isFinite(days) || days < 1) return '';
+    const [year, month, day] = startDate.split('-').map(Number);
+    if (!year || !month || !day) return '';
+    const date = new Date(Date.UTC(year, month - 1, day));
+    date.setUTCDate(date.getUTCDate() + days - 1);
+    return date.toISOString().slice(0, 10);
+  };
+
+  const applyDailyFixedPackage = (daysValue: string) => {
+    setListingAdDailyPackageDays(daysValue);
+    const pkg = getDailyFixedPackage(daysValue);
+    if (!pkg) return;
+    setListingAdAmountPaid(pkg.price.toFixed(2));
+    if (listingAdStartDate) {
+      setListingAdEndDate(calculateDailyFixedEndDate(listingAdStartDate, pkg.days));
+    }
+  };
+
+  const handleDailyFixedStartDateChange = (startDate: string) => {
+    setListingAdStartDate(startDate);
+    const pkg = getDailyFixedPackage(listingAdDailyPackageDays);
+    if (pkg && startDate) {
+      setListingAdEndDate(calculateDailyFixedEndDate(startDate, pkg.days));
+    }
+  };
+
   const resetListingCampaignForm = () => {
     setCampaignId('');
     setManualCampaignOpen(false);
@@ -473,6 +512,7 @@ export default function AdminBannerEditor() {
     setListingAdAmountPaid('');
     setListingAdPaymentStatus('admin');
     setListingAdPaidDate('');
+    setListingAdDailyPackageDays('');
   };
 
   const startNewAdminCampaign = () => {
@@ -672,6 +712,7 @@ export default function AdminBannerEditor() {
           : 'pending'
     );
     setListingAdPaidDate(campaign.paidDate || '');
+    setListingAdDailyPackageDays(campaign.dailyPackageDays ? String(campaign.dailyPackageDays) : '');
   };
 
   const handleSaveListingAdvertising = async () => {
@@ -701,6 +742,12 @@ export default function AdminBannerEditor() {
     }
     if (listingAdPlacement === 'daily_fixed' && listingAdEndDate < listingAdStartDate) {
       alert('End date cannot be before start date.');
+      return;
+    }
+
+    const dailyPackage = getDailyFixedPackage(listingAdDailyPackageDays);
+    if (listingAdPlacement === 'daily_fixed' && !dailyPackage) {
+      alert('Choose a Daily Fixed advertising package.');
       return;
     }
 
@@ -736,10 +783,12 @@ export default function AdminBannerEditor() {
         displaySeconds: listingAdPlacement === 'rotating' ? displaySeconds : 0,
         startDate: listingAdStartDate,
         endDate: listingAdEndDate,
-        amountPaid: manualCampaignOpen && !campaignId ? 0 : Math.round(amountPaid * 100) / 100,
+        dailyPackageDays: listingAdPlacement === 'daily_fixed' && dailyPackage ? dailyPackage.days : null,
+        packagePrice: listingAdPlacement === 'daily_fixed' && dailyPackage ? dailyPackage.price : null,
+        amountPaid: listingAdPaymentStatus === 'paid' ? Math.round(amountPaid * 100) / 100 : 0,
         currency: 'GBP',
-        paymentStatus: manualCampaignOpen && !campaignId ? 'admin' : listingAdPaymentStatus,
-        paidDate: (manualCampaignOpen && !campaignId) ? '' : listingAdPaymentStatus === 'paid'
+        paymentStatus: listingAdPaymentStatus,
+        paidDate: listingAdPaymentStatus === 'paid'
           ? (listingAdPaidDate || new Date().toISOString().slice(0, 10))
           : '',
         updatedAt: serverTimestamp(),
@@ -751,9 +800,6 @@ export default function AdminBannerEditor() {
       } else {
         await addDoc(collection(db, 'advertisingCampaigns'), {
           ...payload,
-          amountPaid: 0,
-          paymentStatus: 'admin',
-          paidDate: '',
           source: 'admin_manual',
           createdAt: serverTimestamp(),
           createdBy: user?.email || 'admin',
@@ -1267,7 +1313,17 @@ export default function AdminBannerEditor() {
 
             <div>
               <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Advertising slot</label>
-              <select value={listingAdPlacement} onChange={(e) => setListingAdPlacement(e.target.value === 'daily_fixed' ? 'daily_fixed' : 'rotating')}
+              <select value={listingAdPlacement} onChange={(e) => {
+                const placement = e.target.value === 'daily_fixed' ? 'daily_fixed' : 'rotating';
+                setListingAdPlacement(placement);
+                if (placement === 'daily_fixed') {
+                  setListingAdPaymentStatus('pending');
+                } else if (manualCampaignOpen && !campaignId) {
+                  setListingAdPaymentStatus('admin');
+                  setListingAdDailyPackageDays('');
+                  setListingAdAmountPaid('0');
+                }
+              }}
                 className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
                 <option value="rotating">Rotating (existing slot)</option>
                 <option value="daily_fixed">Daily Fixed (new slot)</option>
@@ -1282,10 +1338,39 @@ export default function AdminBannerEditor() {
               </div>
             )}
 
+            {listingAdPlacement === 'daily_fixed' && (
+              <div className="md:col-span-2 xl:col-span-3 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/20 p-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-3">
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">Daily Fixed Advertising Rates</p>
+                    <p className="text-[11px] text-slate-500">Choose a package. The price and end date are calculated automatically.</p>
+                  </div>
+                  <div className="text-xs font-black text-indigo-700 dark:text-indigo-300">1 day £14.99 · 3 days £34.99 · 7 days £59.99 · 30 days £149.99</div>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                  {DAILY_FIXED_PACKAGES.map((pkg) => (
+                    <button
+                      key={pkg.days}
+                      type="button"
+                      onClick={() => applyDailyFixedPackage(String(pkg.days))}
+                      className={`rounded-xl border px-3 py-3 text-left transition ${
+                        listingAdDailyPackageDays === String(pkg.days)
+                          ? 'border-indigo-500 bg-white dark:bg-slate-900 ring-2 ring-indigo-200 dark:ring-indigo-900'
+                          : 'border-indigo-200 dark:border-indigo-800 bg-white/70 dark:bg-slate-900/60 hover:border-indigo-400'
+                      }`}
+                    >
+                      <span className="block text-sm font-black text-slate-900 dark:text-white">{pkg.label}</span>
+                      <span className="block text-lg font-black text-indigo-700 dark:text-indigo-300 mt-0.5">£{pkg.price.toFixed(2)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
-              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Advertising revenue (£)</label>
-              <input type="number" min="0" step="0.01" value={manualCampaignOpen && !campaignId ? '0' : listingAdAmountPaid}
-                disabled={manualCampaignOpen && !campaignId}
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">{listingAdPlacement === 'daily_fixed' ? 'Package price (£)' : 'Advertising revenue (£)'}</label>
+              <input type="number" min="0" step="0.01" value={listingAdAmountPaid}
+                disabled={listingAdPlacement === 'daily_fixed' || (manualCampaignOpen && !campaignId)}
                 onChange={(e) => setListingAdAmountPaid(e.target.value)}
                 placeholder="0.00"
                 className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-70" />
@@ -1293,27 +1378,29 @@ export default function AdminBannerEditor() {
 
             <div>
               <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Start date</label>
-              <input type="date" value={listingAdStartDate} onChange={(e) => setListingAdStartDate(e.target.value)}
+              <input type="date" value={listingAdStartDate} onChange={(e) => listingAdPlacement === 'daily_fixed' ? handleDailyFixedStartDateChange(e.target.value) : setListingAdStartDate(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
 
             <div>
               <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">End date</label>
               <input type="date" value={listingAdEndDate} onChange={(e) => setListingAdEndDate(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+                disabled={listingAdPlacement === 'daily_fixed' && Boolean(listingAdDailyPackageDays)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-70" />
+              {listingAdPlacement === 'daily_fixed' && listingAdDailyPackageDays && <p className="text-[10px] text-slate-500 mt-1">Calculated automatically from the selected package.</p>}
             </div>
 
             <div>
               <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Payment status</label>
               <select
                 value={listingAdPaymentStatus}
-                disabled={manualCampaignOpen && !campaignId}
+                disabled={listingAdPlacement === 'rotating' && manualCampaignOpen && !campaignId}
                 onChange={(e) => {
                   const value = e.target.value;
                   setListingAdPaymentStatus(value === 'paid' ? 'paid' : value === 'admin' ? 'admin' : 'pending');
                 }}
                 className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-70">
-                <option value="admin">Admin / No payment</option>
+                <option value="admin">Complimentary / No payment</option>
                 <option value="pending">Pending</option>
                 <option value="paid">Paid</option>
               </select>
@@ -1417,9 +1504,9 @@ export default function AdminBannerEditor() {
                         {campaign.placement === 'daily_fixed' ? 'Daily Fixed' : `${campaign.displaySeconds || 4}s Rotating`} · {campaign.enabled ? 'Active' : 'Inactive'} · {
                           campaign.paymentStatus === 'paid'
                             ? `Paid £${Number(campaign.amountPaid || 0).toFixed(2)}`
-                            : campaign.paymentStatus === 'admin' || campaign.source === 'admin_manual'
-                              ? 'Admin / No payment'
-                              : 'Payment pending'
+                            : campaign.paymentStatus === 'admin'
+                              ? `Complimentary${campaign.packagePrice ? ` · Rate £${Number(campaign.packagePrice).toFixed(2)}` : ''}`
+                              : `Payment pending${campaign.packagePrice ? ` · £${Number(campaign.packagePrice).toFixed(2)}` : ''}`
                         }
                       </p>
                       <p className="text-[10px] text-slate-400 mt-0.5">{campaign.impressions || 0} impressions · {campaign.clicks || 0} clicks</p>
