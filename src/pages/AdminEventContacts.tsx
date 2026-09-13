@@ -275,10 +275,10 @@ const AdminEventContacts: React.FC = () => {
       });
       const image = await fileToDataUrl(compressed as File);
       const token = await user.getIdToken();
-      const response = await fetch('/api/gemini/business-card', {
+      const response = await fetch('/api/gemini/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ image }),
+        body: JSON.stringify({ image, mode: 'businessCard' }),
       });
       const result = await response.json();
       if (!result?.success) throw new Error(result?.error || 'Card reading failed.');
