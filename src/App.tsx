@@ -42,6 +42,7 @@ import { PWAInstallButton } from './components/PWAInstallButton';
 import { InstallButton } from './components/InstallButton';
 import AdminManualTecnico from './pages/AdminManualTecnico';
 import AdminBannerEditor from './pages/AdminBannerEditor';
+import AdminEventContacts from './pages/AdminEventContacts';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import AdminLayout from './components/AdminLayout';
 import OptimizedImage from './components/OptimizedImage';
@@ -973,6 +974,7 @@ export default function App() {
                 <Route path="/links" element={<Links />} />
                 <Route path="/convite" element={<Convite />} />
                 <Route path="/admin/invitations" element={<AdminLayout><AdminInvitations /></AdminLayout>} />
+                <Route path="/admin/event-contacts" element={<AdminLayout><AdminEventContacts /></AdminLayout>} />
                 <Route path="/admin/suggestions" element={<AdminLayout><AdminSuggestions /></AdminLayout>} />
                 <Route path="/admin/manual-tecnico" element={<AdminLayout><AdminManualTecnico /></AdminLayout>} />
                 <Route path="*" element={<NotFound />} />
