@@ -52,6 +52,7 @@ export default function AdminBannerEditor() {
   const [listingAdTargetUrl, setListingAdTargetUrl] = useState('');
   const [listingAdAltText, setListingAdAltText] = useState('ConnectBoat advertising banner');
   const [listingAdDisplaySeconds, setListingAdDisplaySeconds] = useState('4');
+  const [listingAdPlacement, setListingAdPlacement] = useState<'rotating' | 'daily_fixed'>('rotating');
   const [listingAdStartDate, setListingAdStartDate] = useState('');
   const [listingAdEndDate, setListingAdEndDate] = useState('');
   const [listingAdAmountPaid, setListingAdAmountPaid] = useState('');
@@ -466,6 +467,7 @@ export default function AdminBannerEditor() {
     setListingAdTargetUrl('');
     setListingAdAltText('ConnectBoat advertising banner');
     setListingAdDisplaySeconds('4');
+    setListingAdPlacement('rotating');
     setListingAdStartDate('');
     setListingAdEndDate('');
     setListingAdAmountPaid('');
@@ -658,6 +660,7 @@ export default function AdminBannerEditor() {
     setListingAdTargetUrl(campaign.targetUrl || '');
     setListingAdAltText(campaign.altText || 'ConnectBoat advertising banner');
     setListingAdDisplaySeconds(String(campaign.displaySeconds || 4));
+    setListingAdPlacement(campaign.placement === 'daily_fixed' ? 'daily_fixed' : 'rotating');
     setListingAdStartDate(campaign.startDate || '');
     setListingAdEndDate(campaign.endDate || '');
     setListingAdAmountPaid(typeof campaign.amountPaid === 'number' ? String(campaign.amountPaid) : '');
@@ -688,9 +691,31 @@ export default function AdminBannerEditor() {
       alert('Upload a banner image.');
       return;
     }
-    if (!Number.isFinite(displaySeconds) || displaySeconds < 2 || displaySeconds > 60) {
+    if (listingAdPlacement === 'rotating' && (!Number.isFinite(displaySeconds) || displaySeconds < 2 || displaySeconds > 60)) {
       alert('Display time must be between 2 and 60 seconds.');
       return;
+    }
+    if (listingAdPlacement === 'daily_fixed' && (!listingAdStartDate || !listingAdEndDate)) {
+      alert('Daily Fixed campaigns require a start date and an end date.');
+      return;
+    }
+    if (listingAdPlacement === 'daily_fixed' && listingAdEndDate < listingAdStartDate) {
+      alert('End date cannot be before start date.');
+      return;
+    }
+
+    if (listingAdPlacement === 'daily_fixed') {
+      const overlaps = listingCampaigns.some((campaign) => {
+        if (campaign.id === campaignId || campaign.placement !== 'daily_fixed' || campaign.enabled !== true) return false;
+        const existingStart = String(campaign.startDate || '');
+        const existingEnd = String(campaign.endDate || '');
+        if (!existingStart || !existingEnd) return false;
+        return listingAdStartDate <= existingEnd && listingAdEndDate >= existingStart;
+      });
+      if (overlaps) {
+        alert('There is already an active Daily Fixed campaign booked for all or part of this date range.');
+        return;
+      }
     }
     if (!Number.isFinite(amountPaid) || amountPaid < 0) {
       alert('Enter a valid advertising revenue amount.');
@@ -707,7 +732,8 @@ export default function AdminBannerEditor() {
         imageUrl: listingAdImageUrl.trim(),
         targetUrl: listingAdTargetUrl.trim(),
         altText: listingAdAltText.trim() || `${listingAdAdvertiser.trim()} advertising banner`,
-        displaySeconds,
+        placement: listingAdPlacement,
+        displaySeconds: listingAdPlacement === 'rotating' ? displaySeconds : 0,
         startDate: listingAdStartDate,
         endDate: listingAdEndDate,
         amountPaid: manualCampaignOpen && !campaignId ? 0 : Math.round(amountPaid * 100) / 100,
@@ -1194,9 +1220,9 @@ export default function AdminBannerEditor() {
               <Megaphone size={22} />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">Carousel Campaigns</h2>
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">Listing Details Advertising</h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Published 16:9 carousel campaigns. Customer campaigns arrive through Stripe checkout, while admins can create internal campaigns without payment.
+                Manage both advertising slots shown at the top of listing details: Daily Fixed and the existing Rotating campaign slot. Customer checkout campaigns remain Rotating by default.
               </p>
             </div>
           </div>
@@ -1216,7 +1242,7 @@ export default function AdminBannerEditor() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-black text-slate-900 dark:text-white">{campaignId ? 'Edit Campaign' : 'New Admin Campaign'}</p>
-              <p className="text-[10px] text-slate-500">Rotation respects each banner's individual display time.</p>
+              <p className="text-[10px] text-slate-500">Choose Daily Fixed for an exclusive date booking, or Rotating for the existing timed carousel.</p>
             </div>
             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
               {campaignId ? 'Editing' : 'Admin / No Checkout'}
@@ -1227,7 +1253,7 @@ export default function AdminBannerEditor() {
             <input type="checkbox" checked={listingAdEnabled} onChange={(e) => setListingAdEnabled(e.target.checked)} className="w-5 h-5 rounded" />
             <div>
               <p className="text-sm font-black text-slate-900 dark:text-white">Campaign active</p>
-              <p className="text-xs text-slate-500">Inactive campaigns stay saved but do not rotate.</p>
+              <p className="text-xs text-slate-500">Inactive campaigns stay saved but do not appear on listing pages.</p>
             </div>
           </label>
 
@@ -1240,10 +1266,21 @@ export default function AdminBannerEditor() {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Display time (seconds)</label>
-              <input type="number" min="2" max="60" step="1" value={listingAdDisplaySeconds} onChange={(e) => setListingAdDisplaySeconds(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+              <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Advertising slot</label>
+              <select value={listingAdPlacement} onChange={(e) => setListingAdPlacement(e.target.value === 'daily_fixed' ? 'daily_fixed' : 'rotating')}
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="rotating">Rotating (existing slot)</option>
+                <option value="daily_fixed">Daily Fixed (new slot)</option>
+              </select>
             </div>
+
+            {listingAdPlacement === 'rotating' && (
+              <div>
+                <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Display time (seconds)</label>
+                <input type="number" min="2" max="60" step="1" value={listingAdDisplaySeconds} onChange={(e) => setListingAdDisplaySeconds(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-black text-slate-600 dark:text-slate-300 mb-2">Advertising revenue (£)</label>
@@ -1355,7 +1392,7 @@ export default function AdminBannerEditor() {
           <div className="px-4 py-3 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
             <div>
               <p className="text-sm font-black text-slate-900 dark:text-white">Advertising Campaigns</p>
-              <p className="text-[10px] text-slate-500">Each banner rotates according to its own display time.</p>
+              <p className="text-[10px] text-slate-500">Daily Fixed stays unchanged for its booked dates; Rotating keeps the existing timed behaviour.</p>
             </div>
             <span className="text-xs font-black text-slate-500">{listingCampaigns.length}</span>
           </div>
@@ -1377,7 +1414,7 @@ export default function AdminBannerEditor() {
                     <div className="min-w-0">
                       <p className="font-black text-sm text-slate-900 dark:text-white truncate">{campaign.advertiserName || 'Unnamed campaign'}</p>
                       <p className="text-[10px] text-slate-500 mt-0.5">
-                        {campaign.displaySeconds || 4}s · {campaign.enabled ? 'Active' : 'Inactive'} · {
+                        {campaign.placement === 'daily_fixed' ? 'Daily Fixed' : `${campaign.displaySeconds || 4}s Rotating`} · {campaign.enabled ? 'Active' : 'Inactive'} · {
                           campaign.paymentStatus === 'paid'
                             ? `Paid £${Number(campaign.amountPaid || 0).toFixed(2)}`
                             : campaign.paymentStatus === 'admin' || campaign.source === 'admin_manual'
