@@ -652,6 +652,12 @@ match /marineEvents/{eventId} {
 
   allow update, delete: if isAdmin();
 }
+
+
+    // Event Contacts - private admin CRM for boat shows and marine events
+    match /eventContacts/{contactId} {
+      allow read, create, update, delete: if isAdmin();
+    }
     match /locations/{locationId} {
       allow read: if true;
       allow create, update: if isAuthenticated();
