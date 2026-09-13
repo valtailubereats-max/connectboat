@@ -500,6 +500,12 @@ const AdminEventContacts: React.FC = () => {
     }
   };
 
+  const openWebsiteInNewTab = () => {
+    const url = normaliseWebsite(draft.website);
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const handleEdit = (contact: EventContact) => {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setEditingId(contact.id);
@@ -552,6 +558,7 @@ const AdminEventContacts: React.FC = () => {
   const whatsappAvailable = Boolean(draft.whatsapp.trim());
   const emailAvailable = Boolean(draft.email.trim());
   const websiteAvailable = Boolean(draft.website.trim());
+  const isResending = Boolean(editingId && String(draft.invitationStatus || '').startsWith('Sent'));
   const fieldClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100';
   const labelClass = 'mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500';
 
@@ -601,10 +608,10 @@ const AdminEventContacts: React.FC = () => {
 
             <div className="mt-4 space-y-2">
               {whatsappAvailable && (
-                <button onClick={sendWhatsApp} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><MessageCircle size={20} /> Send Invitation via WhatsApp</button>
+                <button onClick={sendWhatsApp} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><MessageCircle size={20} /> {isResending ? 'Resend via WhatsApp' : 'Send Invitation via WhatsApp'}</button>
               )}
-              {!whatsappAvailable && emailAvailable && (
-                <button onClick={sendEmail} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><Mail size={20} /> Send Invitation via Email</button>
+              {emailAvailable && (!whatsappAvailable || isResending) && (
+                <button onClick={sendEmail} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><Mail size={20} /> {isResending ? 'Resend via Email' : 'Send Invitation via Email'}</button>
               )}
               {!whatsappAvailable && !emailAvailable && websiteAvailable && (
                 <button onClick={openWebsite} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3.5 font-black text-white disabled:opacity-60"><ExternalLink size={20} /> Save & Open Website</button>
@@ -627,7 +634,17 @@ const AdminEventContacts: React.FC = () => {
             <label><span className={labelClass}>WhatsApp</span><input className={fieldClass} value={draft.whatsapp} onChange={e => updateDraft('whatsapp', e.target.value)} inputMode="tel" /></label>
             <label><span className={labelClass}>Phone</span><input className={fieldClass} value={draft.phone} onChange={e => updateDraft('phone', e.target.value)} inputMode="tel" /></label>
             <label><span className={labelClass}>Email</span><input className={fieldClass} value={draft.email} onChange={e => updateDraft('email', e.target.value)} inputMode="email" /></label>
-            <label><span className={labelClass}>Website</span><input className={fieldClass} value={draft.website} onChange={e => updateDraft('website', e.target.value)} inputMode="url" /></label>
+            <label>
+              <span className={labelClass}>Website</span>
+              <div className="flex gap-2">
+                <input className={fieldClass} value={draft.website} onChange={e => updateDraft('website', e.target.value)} inputMode="url" />
+                {websiteAvailable && (
+                  <button type="button" onClick={openWebsiteInNewTab} className="flex shrink-0 items-center justify-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-bold text-slate-700" title="Open website in a new tab">
+                    <ExternalLink size={17} /> Open
+                  </button>
+                )}
+              </div>
+            </label>
             <label><span className={labelClass}>LinkedIn</span><input className={fieldClass} value={draft.linkedin} onChange={e => updateDraft('linkedin', e.target.value)} /></label>
             <label><span className={labelClass}>Other contact</span><input className={fieldClass} value={draft.otherContact} onChange={e => updateDraft('otherContact', e.target.value)} /></label>
             <label className="sm:col-span-2"><span className={labelClass}>Notes</span><textarea className={`${fieldClass} min-h-20`} value={draft.notes} onChange={e => updateDraft('notes', e.target.value)} /></label>
