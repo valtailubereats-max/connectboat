@@ -99,6 +99,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { icon: UserCheck, label: 'Claims', path: '/admin/claims' },
     { icon: Megaphone, label: 'Marketing', path: '/admin/marketing' },
     { icon: QrCode, label: 'Invites', path: '/admin/invitations' },
+    { icon: UserCheck, label: 'Event Contacts', path: '/admin/event-contacts' },
     { icon: MessageSquare, label: 'Suggestions', path: '/admin/suggestions' },
     { icon: Camera, label: 'Marine Events', path: '/admin/fotos' },
     { icon: Settings, label: 'Settings', path: '/admin/settings' },
@@ -155,6 +156,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       items: [
         { icon: MessageSquare, label: 'Suggestions', path: '/admin/suggestions' },
         { icon: Camera, label: 'Marine Events', path: '/admin/fotos' },
+        { icon: UserCheck, label: 'Event Contacts', path: '/admin/event-contacts' },
         { icon: Settings, label: 'Settings / Definições', path: '/admin/settings' },
         { icon: BookOpen, label: 'Technical Manual', path: '/admin/manual-tecnico' },
       ]
