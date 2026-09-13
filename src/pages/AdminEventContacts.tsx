@@ -137,6 +137,40 @@ function emailSubject() {
   return 'Invitation to ConnectBoat.co.uk';
 }
 
+async function getRearCameraStream(): Promise<MediaStream> {
+  // Prefer the physical rear/environment camera. Some mobile browsers ignore
+  // capture="environment", so we request the camera directly instead.
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: 'environment' } },
+      audio: false,
+    });
+  } catch {
+    // Continue with device discovery / softer fallback below.
+  }
+
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cameras = devices.filter(device => device.kind === 'videoinput');
+    const rear = cameras.find(device => /back|rear|environment|world/i.test(device.label))
+      || [...cameras].reverse().find(device => !/front|user|selfie/i.test(device.label));
+
+    if (rear?.deviceId) {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: rear.deviceId } },
+        audio: false,
+      });
+    }
+  } catch {
+    // Fall back to an environment preference.
+  }
+
+  return navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: 'environment' } },
+    audio: false,
+  });
+}
+
 const AdminEventContacts: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const [contacts, setContacts] = useState<EventContact[]>([]);
@@ -157,6 +191,10 @@ const AdminEventContacts: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanStreamRef = useRef<MediaStream | null>(null);
   const scanTimerRef = useRef<number | null>(null);
+  const [cardCameraOpen, setCardCameraOpen] = useState(false);
+  const [cardCameraError, setCardCameraError] = useState('');
+  const cardVideoRef = useRef<HTMLVideoElement | null>(null);
+  const cardStreamRef = useRef<MediaStream | null>(null);
 
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -188,6 +226,7 @@ const AdminEventContacts: React.FC = () => {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     if (scanTimerRef.current) window.clearInterval(scanTimerRef.current);
     scanStreamRef.current?.getTracks().forEach(track => track.stop());
+    cardStreamRef.current?.getTracks().forEach(track => track.stop());
   }, [photoPreview]);
 
   const updateDraft = (key: keyof ContactDraft, value: string) => setDraft(prev => ({ ...prev, [key]: value }));
@@ -202,6 +241,51 @@ const AdminEventContacts: React.FC = () => {
     setPhotoPreview('');
     setMoreOpen(false);
     setMessage('');
+  };
+
+  const stopCardCamera = () => {
+    cardStreamRef.current?.getTracks().forEach(track => track.stop());
+    cardStreamRef.current = null;
+    setCardCameraOpen(false);
+  };
+
+  const startCardCamera = async () => {
+    setCardCameraError('');
+    setMessage('');
+    try {
+      setCardCameraOpen(true);
+      const stream = await getRearCameraStream();
+      cardStreamRef.current = stream;
+      requestAnimationFrame(async () => {
+        const video = cardVideoRef.current;
+        if (!video) return;
+        video.srcObject = stream;
+        await video.play();
+      });
+    } catch (error) {
+      console.error(error);
+      stopCardCamera();
+      setCardCameraOpen(true);
+      setCardCameraError('Rear camera access was not available. Check the browser camera permission.');
+    }
+  };
+
+  const captureBusinessCard = async () => {
+    const video = cardVideoRef.current;
+    if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    if (!blob) return;
+    const file = new File([blob], `business-card-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    stopCardCamera();
+    await handleBusinessCard(file);
   };
 
   const stopScanner = () => {
@@ -231,7 +315,7 @@ const AdminEventContacts: React.FC = () => {
 
     try {
       setScannerOpen(true);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+      const stream = await getRearCameraStream();
       scanStreamRef.current = stream;
       requestAnimationFrame(async () => {
         const video = videoRef.current;
@@ -377,9 +461,11 @@ const AdminEventContacts: React.FC = () => {
   const sendWhatsApp = async () => {
     const number = normaliseWhatsapp(draft.whatsapp);
     if (!number) return;
+    const url = `https://wa.me/${number}?text=${encodeURIComponent(invitationText(draft))}`;
     try {
       await saveCurrent({ invitationStatus: 'Sent – WhatsApp', invitationChannel: 'WhatsApp' });
-      const url = `https://wa.me/${number}?text=${encodeURIComponent(invitationText(draft))}`;
+      await loadContacts();
+      resetForm();
       window.location.href = url;
     } catch (error) {
       console.error(error);
@@ -388,10 +474,14 @@ const AdminEventContacts: React.FC = () => {
   };
 
   const sendEmail = async () => {
-    if (!draft.email.trim()) return;
+    const email = draft.email.trim();
+    if (!email) return;
+    const url = `mailto:${email}?subject=${encodeURIComponent(emailSubject())}&body=${encodeURIComponent(invitationText(draft))}`;
     try {
       await saveCurrent({ invitationStatus: 'Sent – Email', invitationChannel: 'Email' });
-      window.location.href = `mailto:${draft.email.trim()}?subject=${encodeURIComponent(emailSubject())}&body=${encodeURIComponent(invitationText(draft))}`;
+      await loadContacts();
+      resetForm();
+      window.location.href = url;
     } catch (error) {
       console.error(error);
       setMessage('Could not save the contact before opening email.');
@@ -482,11 +572,10 @@ const AdminEventContacts: React.FC = () => {
           <button type="button" onClick={startScanner} className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-3 py-3 font-black text-white shadow-sm">
             <QrCode size={28} /> Scan QR
           </button>
-          <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-center font-black text-slate-800">
+          <button type="button" onClick={startCardCamera} disabled={analysing} className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-center font-black text-slate-800 disabled:opacity-60">
             {analysing ? <Loader2 size={28} className="animate-spin" /> : <Camera size={28} />}
             {analysing ? 'Reading Card…' : 'Scan Business Card'}
-            <input type="file" accept="image/*" capture="environment" className="hidden" disabled={analysing} onChange={e => handleBusinessCard(e.target.files?.[0])} />
-          </label>
+          </button>
         </div>
 
         {(photoPreview || existingPhotoUrl) && (
@@ -548,7 +637,7 @@ const AdminEventContacts: React.FC = () => {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <div><h2 className="font-black text-slate-900">Saved contacts</h2><p className="text-xs text-slate-500">{contacts.length} captured</p></div>
+          <div><h2 className="font-black text-slate-900">Contact history</h2><p className="text-xs text-slate-500">{contacts.length} captured</p></div>
           <div className="relative w-52"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search" className={`${fieldClass} pl-9`} /></div>
         </div>
         {loading ? <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" /></div> : filteredContacts.length === 0 ? <div className="rounded-xl bg-slate-50 py-8 text-center text-sm text-slate-500">No contacts yet.</div> : (
@@ -568,6 +657,28 @@ const AdminEventContacts: React.FC = () => {
           </div>
         )}
       </section>
+
+      {cardCameraOpen && (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/90 p-4">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <div className="font-black">Scan Business Card</div>
+              <button onClick={stopCardCamera} className="p-2 text-slate-500"><X size={20} /></button>
+            </div>
+            {cardCameraError ? (
+              <div className="p-6 text-center text-sm text-slate-600">{cardCameraError}</div>
+            ) : (
+              <div className="bg-black p-3">
+                <video ref={cardVideoRef} playsInline muted className="aspect-[3/4] w-full rounded-xl object-cover" />
+                <div className="mt-3 text-center text-sm font-bold text-white">Use the rear camera and fit the whole card inside the frame.</div>
+                <button type="button" onClick={captureBusinessCard} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 font-black text-slate-900">
+                  <Camera size={20} /> Capture Card
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {scannerOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4">
