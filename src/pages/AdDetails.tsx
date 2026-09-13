@@ -41,6 +41,7 @@ const AdDetails = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [listingAdCampaigns, setListingAdCampaigns] = useState<any[]>([]);
   const [listingAdIndex, setListingAdIndex] = useState(0);
+  const [dailyFixedCampaign, setDailyFixedCampaign] = useState<any | null>(null);
   const [listingPageBackground, setListingPageBackground] = useState<{
     enabled: boolean;
     type: 'image' | 'video';
@@ -167,16 +168,37 @@ const AdDetails = () => {
     const unsubscribe = onSnapshot(
       collection(db, 'advertisingCampaigns'),
       (snapshot) => {
-        const todayString = new Date().toISOString().slice(0, 10);
+        const todayString = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Europe/London',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(new Date());
 
-        const campaigns = snapshot.docs
+        const activeCampaigns = snapshot.docs
           .map((campaignDoc) => ({ id: campaignDoc.id, ...campaignDoc.data() } as any))
           .filter((campaign) => {
             if (campaign.enabled !== true || !campaign.imageUrl) return false;
             if (campaign.startDate && campaign.startDate > todayString) return false;
             if (campaign.endDate && campaign.endDate < todayString) return false;
             return true;
-          })
+          });
+
+        const dailyCampaigns = activeCampaigns
+          .filter((campaign) => campaign.placement === 'daily_fixed')
+          .sort((a, b) => {
+            const aStart = String(a.startDate || '');
+            const bStart = String(b.startDate || '');
+            if (aStart !== bStart) return bStart.localeCompare(aStart);
+            const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return bTime - aTime;
+          });
+
+        setDailyFixedCampaign(dailyCampaigns[0] || null);
+
+        const campaigns = activeCampaigns
+          .filter((campaign) => campaign.placement !== 'daily_fixed')
           .sort((a, b) => {
             const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
             const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
@@ -226,12 +248,16 @@ const AdDetails = () => {
   }, []);
 
   useEffect(() => {
+    if (dailyFixedCampaign?.imageUrl) {
+      const fixedImg = new Image();
+      fixedImg.src = dailyFixedCampaign.imageUrl;
+    }
     listingAdCampaigns.forEach((campaign) => {
       if (!campaign?.imageUrl) return;
       const img = new Image();
       img.src = campaign.imageUrl;
     });
-  }, [listingAdCampaigns]);
+  }, [listingAdCampaigns, dailyFixedCampaign]);
 
   useEffect(() => {
     if (listingAdCampaigns.length <= 1) return;
@@ -256,6 +282,16 @@ const AdDetails = () => {
       console.warn('[AdDetails] Unable to register banner impression:', error);
     });
   }, [listingAdCampaigns, listingAdIndex]);
+
+  useEffect(() => {
+    if (!dailyFixedCampaign?.id) return;
+
+    updateDoc(doc(db, 'advertisingCampaigns', dailyFixedCampaign.id), {
+      impressions: increment(1),
+    }).catch((error) => {
+      console.warn('[AdDetails] Unable to register daily fixed banner impression:', error);
+    });
+  }, [dailyFixedCampaign?.id]);
 
   const handleAdvertisingClick = (campaign: any) => {
     if (!campaign?.id) return;
@@ -1327,7 +1363,7 @@ const AdDetails = () => {
         </div>
       )}
 
-      {/* Sponsored advertising carousel — each campaign remains active for its purchased display time */}
+      {/* Listing-page advertising: one daily fixed banner + the existing rotating banner */}
       <section className="relative mt-1 mb-2 lg:mb-1 bg-transparent lg:-mt-[28px]">
         <div className="flex items-center gap-1 lg:gap-3 overflow-hidden py-0 px-1 lg:px-0">
           <button
@@ -1338,57 +1374,97 @@ const AdDetails = () => {
             Back
           </button>
 
-          <div className="relative z-10 min-w-0 flex-1 overflow-hidden">
-            {listingAdCampaigns.length > 0 ? (
-              <div className="min-h-[83px] sm:min-h-[106px] lg:min-h-[122px] flex items-center justify-center overflow-hidden py-0 px-1">
-                <AnimatePresence mode="wait" initial={false}>
-                  {(() => {
-                    const campaign = listingAdCampaigns[listingAdIndex];
-                    if (!campaign) return null;
+          <div className="relative z-10 min-w-0 flex-1">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2.5 lg:gap-3 items-center">
+              {/* DAILY FIXED SLOT — never rotates during the booked day */}
+              <div className="min-w-0 flex items-center justify-center">
+                {dailyFixedCampaign ? (() => {
+                  const fixedContent = (
+                    <div
+                      className="relative group block w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px] aspect-video overflow-hidden rounded-xl sm:rounded-2xl border border-white/85 bg-white shadow-xl"
+                      aria-label={dailyFixedCampaign.altText || dailyFixedCampaign.advertiserName || 'Daily advertising'}
+                    >
+                      <img
+                        src={dailyFixedCampaign.imageUrl}
+                        alt={dailyFixedCampaign.altText || dailyFixedCampaign.advertiserName || 'ConnectBoat daily advertising'}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                        loading="eager"
+                      />
+                    </div>
+                  );
 
-                    const content = (
-                      <motion.div
-                        key={campaign.id}
-                        initial={{ opacity: 0, x: 18, scale: 0.99 }}
-                        animate={{ opacity: 1, x: 0, scale: 1 }}
-                        exit={{ opacity: 0, x: -18, scale: 0.99 }}
-                        transition={{ duration: 0.8, ease: 'easeInOut' }}
-                        className="relative group block w-[74vw] max-w-[243px] sm:w-[306px] sm:max-w-[306px] lg:w-[378px] lg:max-w-[378px] aspect-video overflow-hidden rounded-2xl border border-white/85 bg-white shadow-xl"
-                        aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
-                      >
-                        <img
-                          src={campaign.imageUrl}
-                          alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-                          loading="eager"
-                        />
-
-                      </motion.div>
-                    );
-
-                    return campaign.targetUrl ? (
-                      <a
-                        key={`link-${campaign.id}`}
-                        href={campaign.targetUrl}
-                        target="_blank"
-                        rel="noopener noreferrer sponsored"
-                        onClick={() => handleAdvertisingClick(campaign)}
-                        className="block"
-                      >
-                        {content}
-                      </a>
-                    ) : content;
-                  })()}
-                </AnimatePresence>
+                  return dailyFixedCampaign.targetUrl ? (
+                    <a
+                      href={dailyFixedCampaign.targetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer sponsored"
+                      onClick={() => handleAdvertisingClick(dailyFixedCampaign)}
+                      className="block w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px]"
+                    >
+                      {fixedContent}
+                    </a>
+                  ) : fixedContent;
+                })() : (
+                  <div className="w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px] aspect-video rounded-xl sm:rounded-2xl border border-white/25 bg-[#073b59]/28 flex items-center justify-center px-2 text-center text-white shadow-lg">
+                    <div>
+                      <div className="text-[6px] sm:text-[8px] lg:text-[10px] font-black uppercase tracking-[0.20em] text-cyan-200">Daily Advertising</div>
+                      <div className="mt-1 text-[9px] sm:text-xs lg:text-base font-black leading-tight">Your brand here all day</div>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="min-h-[83px] sm:min-h-[106px] lg:min-h-[122px] flex items-center justify-center px-6 text-center text-white">
-                <div className="rounded-2xl bg-transparent border border-white/20 px-6 py-5">
-                  <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-200">ConnectBoat Advertising</div>
-                  <div className="mt-2 text-xl sm:text-2xl font-black">Your marine brand could be here</div>
-                </div>
+
+              {/* EXISTING ROTATING SLOT — original carousel behaviour preserved */}
+              <div className="min-w-0 flex items-center justify-center">
+                {listingAdCampaigns.length > 0 ? (
+                  <AnimatePresence mode="wait" initial={false}>
+                    {(() => {
+                      const campaign = listingAdCampaigns[listingAdIndex];
+                      if (!campaign) return null;
+
+                      const content = (
+                        <motion.div
+                          key={campaign.id}
+                          initial={{ opacity: 0, x: 18, scale: 0.99 }}
+                          animate={{ opacity: 1, x: 0, scale: 1 }}
+                          exit={{ opacity: 0, x: -18, scale: 0.99 }}
+                          transition={{ duration: 0.8, ease: 'easeInOut' }}
+                          className="relative group block w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px] aspect-video overflow-hidden rounded-xl sm:rounded-2xl border border-white/85 bg-white shadow-xl"
+                          aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
+                        >
+                          <img
+                            src={campaign.imageUrl}
+                            alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                            loading="eager"
+                          />
+                        </motion.div>
+                      );
+
+                      return campaign.targetUrl ? (
+                        <a
+                          key={`link-${campaign.id}`}
+                          href={campaign.targetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer sponsored"
+                          onClick={() => handleAdvertisingClick(campaign)}
+                          className="block w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px]"
+                        >
+                          {content}
+                        </a>
+                      ) : content;
+                    })()}
+                  </AnimatePresence>
+                ) : (
+                  <div className="w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px] aspect-video rounded-xl sm:rounded-2xl border border-white/25 bg-[#073b59]/28 flex items-center justify-center px-2 text-center text-white shadow-lg">
+                    <div>
+                      <div className="text-[6px] sm:text-[8px] lg:text-[10px] font-black uppercase tracking-[0.20em] text-cyan-200">ConnectBoat Advertising</div>
+                      <div className="mt-1 text-[9px] sm:text-xs lg:text-base font-black leading-tight">Your marine brand could be here</div>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           <div
