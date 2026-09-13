@@ -129,9 +129,8 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-function invitationText(draft: ContactDraft) {
-  const greeting = draft.name ? `Hi ${draft.name},` : draft.company ? `Hi ${draft.company} team,` : 'Hello,';
-  return `${greeting}\n\nIt was great meeting you at the show. I’d like to invite you to discover ConnectBoat, a UK boating marketplace for boats, charters and marine businesses.\n\nWe’d be delighted to have you on board:\nhttps://connectboat.co.uk\n\nValter\nConnectBoat`;
+function invitationText(_draft: ContactDraft) {
+  return `Hi,\n\nIt was great connecting at the show. I’d like to invite you to discover ConnectBoat, a UK boating marketplace for boats, charters and marine businesses.\n\nWe’d be delighted to have your business on board:\nhttps://connectboat.co.uk\n\nValter\nConnectBoat`;
 }
 
 function emailSubject() {
@@ -376,7 +375,7 @@ const AdminEventContacts: React.FC = () => {
   };
 
   const sendWhatsApp = async () => {
-    const number = normaliseWhatsapp(draft.whatsapp || draft.phone);
+    const number = normaliseWhatsapp(draft.whatsapp);
     if (!number) return;
     try {
       await saveCurrent({ invitationStatus: 'Sent – WhatsApp', invitationChannel: 'WhatsApp' });
@@ -460,7 +459,7 @@ const AdminEventContacts: React.FC = () => {
   if (!isAdmin) return null;
 
   const foundSomething = Boolean(draft.name || draft.company || draft.phone || draft.whatsapp || draft.email || draft.website || draft.linkedin || draft.otherContact || draft.rawSource || photoFile || existingPhotoUrl);
-  const whatsappAvailable = Boolean((draft.whatsapp || draft.phone).trim());
+  const whatsappAvailable = Boolean(draft.whatsapp.trim());
   const emailAvailable = Boolean(draft.email.trim());
   const websiteAvailable = Boolean(draft.website.trim());
   const fieldClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100';
