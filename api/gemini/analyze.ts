@@ -142,10 +142,10 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { image, categories } = req.body;
+    const { image, categories, mode } = req.body;
 
     if (!image) {
-      return res.status(400).json({ error: "Falta a imagem do print." });
+      return res.status(400).json({ error: "Image is required." });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -165,7 +165,37 @@ export default async function handler(req: any, res: any) {
 
     const base64Data = image.includes(",") ? image.split(",")[1] : image;
 
-    const prompt = `Você é um motor profissional de extração de dados náuticos de altíssima precisão.
+    const businessCardPrompt = `You are a high-precision business-card contact extraction engine for ConnectBoat, a UK boating marketplace.
+
+Analyse the photographed business card, badge, leaflet or stand contact material and extract ONLY information that is clearly visible in the image.
+
+STRICT RULES:
+- Accuracy is more important than completeness. NEVER invent, infer, guess or fabricate details.
+- If a field is not clearly visible, return an empty string.
+- Keep names, company names, email addresses, phone numbers, URLs and social links exactly as printed whenever possible.
+- If the same phone number is explicitly labelled WhatsApp, put it in both phone and whatsapp.
+- If a WhatsApp logo/icon is visibly associated with a number, that number may be placed in whatsapp.
+- Do not assume that an ordinary mobile number is WhatsApp unless the card explicitly indicates WhatsApp.
+- website should contain the company website if visible.
+- linkedin should contain a visible LinkedIn profile/company URL or handle.
+- otherContact can contain another clearly visible contact channel such as Instagram, Facebook, X, WeChat or another messaging handle.
+- rawText should contain a compact transcription of useful visible contact text from the card so nothing important is lost.
+- Do not include commentary outside the JSON.
+
+Return STRICT JSON with exactly these fields:
+{
+  "name": "string",
+  "company": "string",
+  "phone": "string",
+  "whatsapp": "string",
+  "email": "string",
+  "website": "string",
+  "linkedin": "string",
+  "otherContact": "string",
+  "rawText": "string"
+}`;
+
+    const boatListingPrompt = `Você é um motor profissional de extração de dados náuticos de altíssima precisão.
 Sua função é analisar o print de anúncio fornecido (título, tabelas, especificações e texto) e extrair informações exatas da embarcação em JSON estrito.
 
 REGRAS RÍGIDAS DE PRECISÃO - NUNCA INVENTE DADOS:
@@ -228,6 +258,8 @@ Estrutura JSON esperada:
   "vatPaid": "Yes" | "No" | "",
   "ceCertified": "Yes" | "No" | ""
 }`;
+
+    const prompt = mode === "businessCard" ? businessCardPrompt : boatListingPrompt;
 
     const imagePart = {
       inlineData: {
