@@ -59,6 +59,7 @@ const EMPTY_DRAFT: ContactDraft = {
 };
 
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1nB6fP6lulZTfmAMkiAg3o9cJyVzvYtv3ZDdIHvQVEA8/edit';
+const SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzSSNVxSMpK49FS-uGfdcIOdW_h9M1CbVbdGu77ZJl9hK1RDh9Ya4MG0Dunran77ShX/exec';
 
 function normaliseWebsite(value: string) {
   const trimmed = value.trim();
@@ -409,6 +410,38 @@ const AdminEventContacts: React.FC = () => {
     return { photoUrl: await getDownloadURL(storageRef), photoPath: path };
   };
 
+  const toSheetContact = (contactId: string, contact: Partial<ContactDraft>) => ({
+    contactId,
+    name: contact.name || '',
+    company: contact.company || '',
+    whatsapp: contact.whatsapp || '',
+    phone: contact.phone || '',
+    email: contact.email || '',
+    website: normaliseWebsite(contact.website || ''),
+    linkedin: contact.linkedin || '',
+    otherContact: contact.otherContact || '',
+    invitationChannel: contact.invitationChannel || '',
+    invitationStatus: contact.invitationStatus || 'Pending',
+    notes: contact.notes || '',
+  });
+
+  const postToSheets = async (body: unknown) => {
+    await fetch(SHEETS_WEB_APP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body),
+    });
+  };
+
+  const syncOneToSheets = async (contactId: string, contact: Partial<ContactDraft>) => {
+    try {
+      await postToSheets({ action: 'upsert', contact: toSheetContact(contactId, contact) });
+    } catch (error) {
+      console.error('Google Sheets sync failed:', error);
+    }
+  };
+
   const saveCurrent = async (patch: Partial<ContactDraft> = {}) => {
     if (!isAdmin || !user) return null;
     setSaving(true);
@@ -431,6 +464,7 @@ const AdminEventContacts: React.FC = () => {
         setExistingPhotoUrl(uploaded.photoUrl || '');
         setExistingPhotoPath(uploaded.photoPath || '');
         setPhotoFile(null);
+        await syncOneToSheets(editingId, merged);
         return editingId;
       }
 
@@ -440,6 +474,7 @@ const AdminEventContacts: React.FC = () => {
       setExistingPhotoUrl(uploaded.photoUrl || '');
       setExistingPhotoPath(uploaded.photoPath || '');
       setPhotoFile(null);
+      await syncOneToSheets(created.id, merged);
       return created.id;
     } finally {
       setSaving(false);
@@ -536,19 +571,15 @@ const AdminEventContacts: React.FC = () => {
   };
 
   const copyForSheets = async () => {
-    const headers = ['Name', 'Company', 'Phone', 'WhatsApp', 'Email', 'Website', 'LinkedIn', 'Other Contact', 'Invitation Channel', 'Invitation Status', 'Notes', 'Photo'];
-    const rows = filteredContacts.map(contact => [
-      contact.name, contact.company, contact.phone, contact.whatsapp, contact.email, contact.website, contact.linkedin,
-      contact.otherContact, contact.invitationChannel, contact.invitationStatus, contact.notes.replace(/\r?\n/g, ' '), contact.photoUrl,
-    ]);
-    const tsv = [headers, ...rows].map(row => row.map(cell => String(cell || '').replace(/\t/g, ' ')).join('\t')).join('\n');
+    if (!contacts.length) return;
     try {
-      await navigator.clipboard.writeText(tsv);
-      setMessage('All contacts copied. Paste them into the Event Contacts tab in Google Sheets.');
+      const sheetContacts = contacts.map(contact => toSheetContact(contact.id, contact));
+      await postToSheets({ action: 'syncAll', contacts: sheetContacts });
+      setMessage(`Google Sheets sync sent for ${contacts.length} contact${contacts.length === 1 ? '' : 's'}.`);
       window.open(SHEET_URL, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error(error);
-      setMessage('Could not copy the contacts.');
+      setMessage('Could not send the contacts to Google Sheets.');
     }
   };
 
