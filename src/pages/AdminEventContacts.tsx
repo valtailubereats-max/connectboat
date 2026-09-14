@@ -723,7 +723,15 @@ const AdminEventContacts: React.FC = () => {
     try {
       await deleteDoc(doc(db, 'eventContacts', contact.id));
       if (contact.photoPath) deleteObject(ref(storage, contact.photoPath)).catch(() => undefined);
+
+      try {
+        await postToSheets({ action: 'delete', contactId: contact.id });
+      } catch (sheetError) {
+        console.error('Google Sheets delete sync failed:', sheetError);
+      }
+
       setContacts(prev => prev.filter(item => item.id !== contact.id));
+      setMessage('Contact deleted from ConnectBoat and Google Sheets.');
     } catch (error) {
       console.error(error);
       setMessage('Could not delete this contact.');
