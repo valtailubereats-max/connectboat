@@ -172,6 +172,28 @@ async function getRearCameraStream(): Promise<MediaStream> {
   });
 }
 
+async function improveCameraImage(stream: MediaStream) {
+  const track = stream.getVideoTracks()[0];
+  if (!track) return;
+  try {
+    const capabilities: any = track.getCapabilities?.() || {};
+    const advanced: any[] = [];
+    if (capabilities.focusMode?.includes?.('continuous')) advanced.push({ focusMode: 'continuous' });
+    if (capabilities.exposureMode?.includes?.('continuous')) advanced.push({ exposureMode: 'continuous' });
+    if (capabilities.whiteBalanceMode?.includes?.('continuous')) advanced.push({ whiteBalanceMode: 'continuous' });
+    if (capabilities.exposureCompensation) {
+      const min = Number(capabilities.exposureCompensation.min ?? 0);
+      const max = Number(capabilities.exposureCompensation.max ?? 0);
+      const step = Number(capabilities.exposureCompensation.step ?? 0.1) || 0.1;
+      const target = Math.max(min, Math.min(max, Math.round((Math.min(max, 1) / step)) * step));
+      if (target > 0) advanced.push({ exposureCompensation: target });
+    }
+    if (advanced.length) await track.applyConstraints({ advanced } as any);
+  } catch (error) {
+    console.warn('Camera enhancement not supported on this device:', error);
+  }
+}
+
 const AdminEventContacts: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const [contacts, setContacts] = useState<EventContact[]>([]);
@@ -257,6 +279,7 @@ const AdminEventContacts: React.FC = () => {
       setCardCameraOpen(true);
       const stream = await getRearCameraStream();
       cardStreamRef.current = stream;
+      await improveCameraImage(stream);
       requestAnimationFrame(async () => {
         const video = cardVideoRef.current;
         if (!video) return;
@@ -349,7 +372,7 @@ const AdminEventContacts: React.FC = () => {
   const analyseBusinessCard = async (file: File) => {
     if (!user) return;
     setAnalysing(true);
-    setMessage('Reading business card…');
+    setMessage('Reading card / sign…');
     try {
       const compressed = await imageCompression(file, {
         maxSizeMB: 0.45,
@@ -379,10 +402,10 @@ const AdminEventContacts: React.FC = () => {
         otherContact: data.otherContact || prev.otherContact,
         rawSource: data.rawText || prev.rawSource,
       }));
-      setMessage('Business card read. Check the details found, then send or save for later.');
+      setMessage('Card / sign read. Check every extracted detail, then send or save for later.');
     } catch (error: any) {
       console.error(error);
-      setMessage(error?.message || 'Could not read this business card. The photo is still available to save.');
+      setMessage(error?.message || 'Could not read this card / sign. The photo is still available to save.');
     } finally {
       setAnalysing(false);
     }
@@ -555,7 +578,9 @@ const AdminEventContacts: React.FC = () => {
       notes: contact.notes || '', rawSource: contact.rawSource || '', invitationChannel: contact.invitationChannel || '',
       invitationStatus: contact.invitationStatus || 'Pending',
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    requestAnimationFrame(() => {
+      document.getElementById('event-contact-form')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    });
   };
 
   const handleDelete = async (contact: EventContact) => {
@@ -605,21 +630,21 @@ const AdminEventContacts: React.FC = () => {
 
       {message && <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-800">{message}</div>}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <section id="event-contact-form" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="grid grid-cols-2 gap-3">
           <button type="button" onClick={startScanner} className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-3 py-3 font-black text-white shadow-sm">
             <QrCode size={28} /> Scan QR
           </button>
           <button type="button" onClick={startCardCamera} disabled={analysing} className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-center font-black text-slate-800 disabled:opacity-60">
             {analysing ? <Loader2 size={28} className="animate-spin" /> : <Camera size={28} />}
-            {analysing ? 'Reading Card…' : 'Scan Business Card'}
+            {analysing ? 'Reading Card…' : 'Scan Card / Sign'}
           </button>
         </div>
 
         {(photoPreview || existingPhotoUrl) && (
           <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
-            <img src={photoPreview || existingPhotoUrl} alt="Business card" className="h-20 w-28 rounded-lg object-cover" />
-            <div className="text-xs text-slate-500"><div className="font-bold text-slate-700">Card photo saved</div><div>It can be checked later on desktop.</div></div>
+            <img src={photoPreview || existingPhotoUrl} alt="Card or business sign" className="h-20 w-28 rounded-lg object-cover" />
+            <div className="text-xs text-slate-500"><div className="font-bold text-slate-700">Photo saved</div><div>It can be checked later on desktop.</div></div>
           </div>
         )}
 
@@ -710,7 +735,7 @@ const AdminEventContacts: React.FC = () => {
         <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/90 p-4">
           <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <div className="font-black">Scan Business Card</div>
+              <div className="font-black">Scan Card / Sign</div>
               <button onClick={stopCardCamera} className="p-2 text-slate-500"><X size={20} /></button>
             </div>
             {cardCameraError ? (
@@ -718,9 +743,9 @@ const AdminEventContacts: React.FC = () => {
             ) : (
               <div className="bg-black p-3">
                 <video ref={cardVideoRef} playsInline muted className="aspect-[3/4] w-full rounded-xl object-cover" />
-                <div className="mt-3 text-center text-sm font-bold text-white">Use the rear camera and fit the whole card inside the frame.</div>
+                <div className="mt-3 text-center text-sm font-bold text-white">Use the rear camera and fit the whole card or business sign inside the frame.</div>
                 <button type="button" onClick={captureBusinessCard} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 font-black text-slate-900">
-                  <Camera size={20} /> Capture Card
+                  <Camera size={20} /> Capture Photo
                 </button>
               </div>
             )}
