@@ -15,6 +15,7 @@ import {
   Save,
   Search,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react';
 import { db, storage } from '../firebase';
@@ -217,6 +218,61 @@ async function improveCameraImage(stream: MediaStream) {
   }
 }
 
+
+type ProspectImportRow = {
+  name?: unknown;
+  company?: unknown;
+  whatsapp?: unknown;
+  phone?: unknown;
+  email?: unknown;
+  website?: unknown;
+  linkedin?: unknown;
+  otherContact?: unknown;
+  notes?: unknown;
+};
+
+function importString(value: unknown) {
+  return typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '';
+}
+
+function prospectToDraft(row: ProspectImportRow): ContactDraft {
+  return {
+    name: importString(row.name),
+    company: importString(row.company),
+    whatsapp: importString(row.whatsapp),
+    phone: importString(row.phone),
+    email: importString(row.email),
+    website: normaliseWebsite(importString(row.website)),
+    linkedin: importString(row.linkedin),
+    otherContact: importString(row.otherContact),
+    notes: importString(row.notes),
+    rawSource: '',
+    invitationChannel: '',
+    invitationStatus: 'Pending',
+  };
+}
+
+function prospectMatchesExisting(prospect: ContactDraft, contact: EventContact) {
+  const email = comparableText(prospect.email);
+  const phone = comparablePhone(prospect.phone);
+  const whatsapp = comparablePhone(prospect.whatsapp);
+  const domain = websiteDomain(prospect.website);
+  const company = comparableText(prospect.company);
+
+  const contactEmail = comparableText(contact.email);
+  const contactPhone = comparablePhone(contact.phone);
+  const contactWhatsapp = comparablePhone(contact.whatsapp);
+  const contactDomain = websiteDomain(contact.website);
+  const contactCompany = comparableText(contact.company);
+
+  if (email && contactEmail && email === contactEmail) return true;
+  if (phone && (phone === contactPhone || phone === contactWhatsapp)) return true;
+  if (whatsapp && (whatsapp === contactWhatsapp || whatsapp === contactPhone)) return true;
+  if (domain && contactDomain && domain === contactDomain) return true;
+  if (company && contactCompany && company.length >= 5 && company === contactCompany) return true;
+  return false;
+}
+
 const AdminEventContacts: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const [contacts, setContacts] = useState<EventContact[]>([]);
@@ -241,6 +297,7 @@ const AdminEventContacts: React.FC = () => {
   const [cardCameraError, setCardCameraError] = useState('');
   const cardVideoRef = useRef<HTMLVideoElement | null>(null);
   const nativeCameraInputRef = useRef<HTMLInputElement | null>(null);
+  const prospectImportInputRef = useRef<HTMLInputElement | null>(null);
   const cardStreamRef = useRef<MediaStream | null>(null);
 
   const duplicateMatch = useMemo(() => {
@@ -673,6 +730,62 @@ const AdminEventContacts: React.FC = () => {
     }
   };
 
+  const importProspects = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !user || !isAdmin) return;
+
+    setSaving(true);
+    setMessage('Checking prospect file…');
+    try {
+      const raw = await file.text();
+      const parsed = JSON.parse(raw);
+      const rows: ProspectImportRow[] = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.prospects)
+          ? parsed.prospects
+          : [];
+
+      if (!rows.length) throw new Error('No prospects were found in this JSON file.');
+
+      const workingContacts = [...contacts];
+      let imported = 0;
+      let skipped = 0;
+
+      for (const row of rows) {
+        const prospect = prospectToDraft(row);
+        const hasUsefulData = Boolean(
+          prospect.name || prospect.company || prospect.phone || prospect.whatsapp ||
+          prospect.email || prospect.website || prospect.linkedin || prospect.otherContact
+        );
+
+        if (!hasUsefulData || workingContacts.some(contact => prospectMatchesExisting(prospect, contact))) {
+          skipped += 1;
+          continue;
+        }
+
+        const payload = {
+          ...prospect,
+          photoUrl: '',
+          photoPath: '',
+          createdBy: user.uid,
+        };
+        const created = await addDoc(collection(db, 'eventContacts'), payload);
+        await syncOneToSheets(created.id, prospect);
+        workingContacts.push({ id: created.id, ...payload } as EventContact);
+        imported += 1;
+      }
+
+      await loadContacts();
+      setMessage(`Import complete: ${imported} prospect${imported === 1 ? '' : 's'} added as Pending. ${skipped} duplicate/empty ${skipped === 1 ? 'record was' : 'records were'} skipped.`);
+    } catch (error: any) {
+      console.error(error);
+      setMessage(error?.message || 'Could not import this prospect file.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const copyForSheets = async () => {
     if (!contacts.length) return;
     try {
@@ -703,7 +816,24 @@ const AdminEventContacts: React.FC = () => {
           <h1 className="text-2xl font-black text-slate-900">Event Contacts</h1>
           <p className="text-sm text-slate-500">Scan. Check. Invite. Move to the next stand.</p>
         </div>
-        <button onClick={copyForSheets} disabled={!contacts.length} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40">Google Sheets</button>
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={prospectImportInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={importProspects}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => prospectImportInputRef.current?.click()}
+            disabled={saving}
+            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40"
+          >
+            <Upload size={16} /> Import Prospects
+          </button>
+          <button onClick={copyForSheets} disabled={!contacts.length} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40">Google Sheets</button>
+        </div>
       </div>
 
       {message && <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-800">{message}</div>}
@@ -875,4 +1005,3 @@ const AdminEventContacts: React.FC = () => {
 };
 
 export default AdminEventContacts;
-
