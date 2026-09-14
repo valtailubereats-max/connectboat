@@ -240,6 +240,7 @@ const AdminEventContacts: React.FC = () => {
   const [cardCameraOpen, setCardCameraOpen] = useState(false);
   const [cardCameraError, setCardCameraError] = useState('');
   const cardVideoRef = useRef<HTMLVideoElement | null>(null);
+  const nativeCameraInputRef = useRef<HTMLInputElement | null>(null);
   const cardStreamRef = useRef<MediaStream | null>(null);
 
   const duplicateMatch = useMemo(() => {
@@ -317,6 +318,18 @@ const AdminEventContacts: React.FC = () => {
     cardStreamRef.current?.getTracks().forEach(track => track.stop());
     cardStreamRef.current = null;
     setCardCameraOpen(false);
+  };
+
+  const openNativeCamera = () => {
+    setMessage('');
+    nativeCameraInputRef.current?.click();
+  };
+
+  const handleNativeCameraPhoto = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    await handleBusinessCard(file);
   };
 
   const startCardCamera = async () => {
@@ -696,15 +709,33 @@ const AdminEventContacts: React.FC = () => {
       {message && <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-800">{message}</div>}
 
       <section id="event-contact-form" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <input
+          ref={nativeCameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleNativeCameraPhoto}
+          className="hidden"
+        />
+
         <div className="grid grid-cols-2 gap-3">
           <button type="button" onClick={startScanner} className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-3 py-3 font-black text-white shadow-sm">
             <QrCode size={28} /> Scan QR
           </button>
-          <button type="button" onClick={startCardCamera} disabled={analysing} className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-center font-black text-slate-800 disabled:opacity-60">
+          <button type="button" onClick={openNativeCamera} disabled={analysing} className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-center font-black text-slate-800 disabled:opacity-60">
             {analysing ? <Loader2 size={28} className="animate-spin" /> : <Camera size={28} />}
-            {analysing ? 'Reading Card…' : 'Scan Card / Sign'}
+            {analysing ? 'Reading Card…' : 'Take Photo'}
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={startCardCamera}
+          disabled={analysing}
+          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 disabled:opacity-60"
+        >
+          Use quick in-app Card / Sign scanner
+        </button>
 
         {(photoPreview || existingPhotoUrl) && (
           <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
