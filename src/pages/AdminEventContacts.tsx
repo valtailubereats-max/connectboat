@@ -69,6 +69,29 @@ function normaliseWebsite(value: string) {
   return trimmed;
 }
 
+
+function comparableText(value: string) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function comparablePhone(value: string) {
+  let digits = String(value || '').replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = `44${digits.slice(1)}`;
+  return digits;
+}
+
+function websiteDomain(value: string) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+    return url.hostname.toLowerCase().replace(/^www\./, '');
+  } catch {
+    return raw.toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+  }
+}
+
 function normaliseWhatsapp(value: string) {
   let digits = value.replace(/\D/g, '');
   if (digits.startsWith('00')) digits = digits.slice(2);
@@ -218,6 +241,30 @@ const AdminEventContacts: React.FC = () => {
   const [cardCameraError, setCardCameraError] = useState('');
   const cardVideoRef = useRef<HTMLVideoElement | null>(null);
   const cardStreamRef = useRef<MediaStream | null>(null);
+
+  const duplicateMatch = useMemo(() => {
+    if (editingId) return null;
+    const email = comparableText(draft.email);
+    const phone = comparablePhone(draft.phone);
+    const whatsapp = comparablePhone(draft.whatsapp);
+    const domain = websiteDomain(draft.website);
+    const company = comparableText(draft.company);
+
+    return contacts.find(contact => {
+      const contactEmail = comparableText(contact.email);
+      const contactPhone = comparablePhone(contact.phone);
+      const contactWhatsapp = comparablePhone(contact.whatsapp);
+      const contactDomain = websiteDomain(contact.website);
+      const contactCompany = comparableText(contact.company);
+
+      if (email && contactEmail && email === contactEmail) return true;
+      if (phone && (phone === contactPhone || phone === contactWhatsapp)) return true;
+      if (whatsapp && (whatsapp === contactWhatsapp || whatsapp === contactPhone)) return true;
+      if (domain && contactDomain && domain === contactDomain) return true;
+      if (company && contactCompany && company.length >= 5 && company === contactCompany) return true;
+      return false;
+    }) || null;
+  }, [contacts, draft.email, draft.phone, draft.whatsapp, draft.website, draft.company, editingId]);
 
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -583,6 +630,24 @@ const AdminEventContacts: React.FC = () => {
     });
   };
 
+  const openDuplicateContact = () => {
+    if (!duplicateMatch) return;
+    handleEdit(duplicateMatch);
+    setMessage('Existing contact opened. Add or correct the new information here instead of creating a duplicate.');
+  };
+
+  const saveDuplicateAnyway = async () => {
+    try {
+      await saveCurrent({ invitationStatus: 'Pending', invitationChannel: '' });
+      await loadContacts();
+      resetForm();
+      setMessage('Contact saved separately.');
+    } catch (error) {
+      console.error(error);
+      setMessage('Could not save this contact.');
+    }
+  };
+
   const handleDelete = async (contact: EventContact) => {
     if (!window.confirm(`Delete ${contact.company || contact.name || 'this contact'}?`)) return;
     try {
@@ -648,6 +713,19 @@ const AdminEventContacts: React.FC = () => {
           </div>
         )}
 
+        {duplicateMatch && (
+          <div className="mt-4 rounded-2xl border-2 border-amber-300 bg-amber-50 p-4">
+            <div className="font-black text-amber-900">⚠️ Possible duplicate</div>
+            <div className="mt-1 text-sm text-amber-800">
+              <strong>{duplicateMatch.company || duplicateMatch.name || duplicateMatch.website || 'This contact'}</strong> is already in your contact history.
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <button type="button" onClick={openDuplicateContact} className="rounded-xl bg-amber-600 px-4 py-3 font-black text-white">Open existing contact</button>
+              <button type="button" onClick={saveDuplicateAnyway} disabled={saving} className="rounded-xl border border-amber-300 bg-white px-4 py-3 font-bold text-amber-900 disabled:opacity-60">Save anyway</button>
+            </div>
+          </div>
+        )}
+
         {foundSomething && (
           <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="mb-3">
@@ -662,7 +740,7 @@ const AdminEventContacts: React.FC = () => {
               {draft.linkedin && <div className="truncate">LinkedIn: {draft.linkedin}</div>}
             </div>
 
-            <div className="mt-4 space-y-2">
+            {!duplicateMatch && <div className="mt-4 space-y-2">
               {whatsappAvailable && (
                 <button onClick={sendWhatsApp} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><MessageCircle size={20} /> {isResending ? 'Resend via WhatsApp' : 'Send Invitation via WhatsApp'}</button>
               )}
@@ -675,7 +753,7 @@ const AdminEventContacts: React.FC = () => {
               <button onClick={saveForLater} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-700 disabled:opacity-60">
                 {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />} Save for later
               </button>
-            </div>
+            </div>}
           </div>
         )}
 
