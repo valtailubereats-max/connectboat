@@ -167,12 +167,16 @@ export default async function handler(req: any, res: any) {
 
     const businessCardPrompt = `You are a high-precision business-card contact extraction engine for ConnectBoat, a UK boating marketplace.
 
-Analyse the photographed business card, badge, leaflet or stand contact material and extract ONLY information that is clearly visible in the image.
+Analyse the photographed business card, business sign, badge, leaflet or stand contact material and extract ONLY information that is clearly visible in the image.
 
-STRICT RULES:
-- Accuracy is more important than completeness. NEVER invent, infer, guess or fabricate details.
-- If a field is not clearly visible, return an empty string.
-- Keep names, company names, email addresses, phone numbers, URLs and social links exactly as printed whenever possible.
+STRICT RULES — THESE OVERRIDE COMPLETENESS:
+- Accuracy is more important than completeness. NEVER invent, infer, guess, autocomplete, correct or fabricate contact details.
+- Treat this as transcription, NOT web knowledge. Do NOT use knowledge of the company, its usual email pattern, its domain, or likely contact addresses.
+- If a field is not clearly and literally visible in the pixels of THIS image, return an empty string.
+- EMAIL SAFETY: only return an email address when the complete local part, @ symbol and complete domain are visibly readable in the image. Copy it character-for-character. Never create addresses such as info@, hello@, sales@ or enquiries@ unless that exact full address is visibly printed.
+- PHONE SAFETY: only return digits that are visibly printed. Never complete a partial number.
+- WEBSITE SAFETY: only return a website/domain that is visibly printed or visibly encoded as text. Never derive a website from the company name.
+- Keep names, company names, email addresses, phone numbers, URLs and social links exactly as printed.
 - If the same phone number is explicitly labelled WhatsApp, put it in both phone and whatsapp.
 - If a WhatsApp logo/icon is visibly associated with a number, that number may be placed in whatsapp.
 - Do not assume that an ordinary mobile number is WhatsApp unless the card explicitly indicates WhatsApp.
