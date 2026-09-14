@@ -131,7 +131,7 @@ function fileToDataUrl(file: File): Promise<string> {
 }
 
 function invitationText(_draft: ContactDraft) {
-  return `Hi,\n\nIt was great connecting at the show. I’d like to invite you to discover ConnectBoat, a UK boating marketplace for boats, charters and marine businesses.\n\nWe’d be delighted to have your business on board:\nhttps://connectboat.co.uk\n\nValter\nConnectBoat`;
+  return `Hi,\n\nWe’d like to introduce you to ConnectBoat, a UK boating marketplace connecting boat owners, buyers, charter customers and marine businesses.\n\nWe’d be delighted to welcome your business to the platform and invite you to discover ConnectBoat:\n\nhttps://connectboat.co.uk\n\nKind regards,\nValter\nConnectBoat`;
 }
 
 function emailSubject() {
