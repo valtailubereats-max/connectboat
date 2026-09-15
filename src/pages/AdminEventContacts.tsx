@@ -550,14 +550,22 @@ const AdminEventContacts: React.FC = () => {
       const existingMatch = contacts.find(contact => prospectMatchesExisting(extracted, contact)) || null;
 
       if (existingMatch) {
-        setHistoryFilter('All');
-        setSearch(existingMatch.email || existingMatch.phone || existingMatch.whatsapp || existingMatch.company || existingMatch.name);
-        setMessage(`Existing contact found: ${existingMatch.company || existingMatch.name || 'contact'}. It is shown in Contact history below. You can edit or review it.`);
+        const matchLabel = existingMatch.company || existingMatch.name || 'existing contact';
+        const matchSearch = existingMatch.email || existingMatch.phone || existingMatch.whatsapp || existingMatch.company || existingMatch.name || '';
+        setDraft({ ...EMPTY_DRAFT });
+        setEditingId(null);
+        setExistingPhotoUrl('');
+        setExistingPhotoPath('');
         setPhotoFile(null);
         setPhotoPreview('');
-        requestAnimationFrame(() => {
+        setMoreOpen(false);
+        setHistoryFilter('All');
+        setHistoryPage(1);
+        setSearch(matchSearch);
+        setMessage(`Existing contact found: ${matchLabel}. It is shown in Contact history below. You can edit or review it.`);
+        window.setTimeout(() => {
           document.getElementById('contact-history')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
+        }, 100);
         return;
       }
 
@@ -966,20 +974,11 @@ const AdminEventContacts: React.FC = () => {
           <button type="button" onClick={startScanner} className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-3 py-3 font-black text-white shadow-sm">
             <QrCode size={28} /> Scan QR
           </button>
-          <button type="button" onClick={openNativeCamera} disabled={analysing} className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-center font-black text-slate-800 disabled:opacity-60">
+          <button type="button" onClick={startCardCamera} disabled={analysing} className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-center font-black text-slate-800 disabled:opacity-60">
             {analysing ? <Loader2 size={28} className="animate-spin" /> : <Camera size={28} />}
             {analysing ? 'Reading Card…' : 'Take Photo'}
           </button>
         </div>
-
-        <button
-          type="button"
-          onClick={startCardCamera}
-          disabled={analysing}
-          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 disabled:opacity-60"
-        >
-          Use quick in-app Card / Sign scanner
-        </button>
 
         {(photoPreview || existingPhotoUrl) && (
           <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
