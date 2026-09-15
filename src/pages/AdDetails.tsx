@@ -1661,7 +1661,7 @@ const AdDetails = () => {
                     setCurrentImageIndex((prev) => (prev === 0 ? mediaItems.length - 1 : prev - 1));
                   }}
                   aria-label="Anterior"
-                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 bg-white/90 dark:bg-slate-900/90 hover:bg-white backdrop-blur-md rounded-full text-slate-900 shadow-md z-20"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2.5 bg-[#1E5F9E]/90 hover:bg-[#2878BD] backdrop-blur-md rounded-full text-white shadow-md z-20"
                 >
                   <ChevronLeft size={20} />
                 </button>
@@ -1671,7 +1671,7 @@ const AdDetails = () => {
                     setCurrentImageIndex((prev) => (prev === mediaItems.length - 1 ? 0 : prev + 1));
                   }}
                   aria-label="Próximo"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 bg-white/90 dark:bg-slate-900/90 hover:bg-white backdrop-blur-md rounded-full text-slate-900 shadow-md z-20"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 bg-[#1E5F9E]/90 hover:bg-[#2878BD] backdrop-blur-md rounded-full text-white shadow-md z-20"
                 >
                   <ChevronRight size={20} />
                 </button>
