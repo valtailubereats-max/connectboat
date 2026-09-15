@@ -794,18 +794,30 @@ const AdminEventContacts: React.FC = () => {
     }
   };
 
-  const copyForSheets = async () => {
-    if (!contacts.length) return;
-    try {
-      const sheetContacts = contacts.map(contact => toSheetContact(contact.id, contact));
-      await postToSheets({ action: 'syncAll', contacts: sheetContacts });
-      setMessage(`Google Sheets sync sent for ${contacts.length} contact${contacts.length === 1 ? '' : 's'}.`);
-      window.open(SHEET_URL, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      console.error(error);
-      setMessage('Could not send the contacts to Google Sheets.');
-    }
-  };
+ const copyForSheets = async () => {
+  if (!contacts.length) return;
+
+  // Open immediately from the user's click so Chrome does not block it.
+  window.open(SHEET_URL, '_blank', 'noopener,noreferrer');
+
+  try {
+    const sheetContacts = contacts.map(contact =>
+      toSheetContact(contact.id, contact)
+    );
+
+    await postToSheets({
+      action: 'syncAll',
+      contacts: sheetContacts
+    });
+
+    setMessage(
+      `Google Sheets sync sent for ${contacts.length} contact${contacts.length === 1 ? '' : 's'}.`
+    );
+  } catch (error) {
+    console.error(error);
+    setMessage('Could not send the contacts to Google Sheets.');
+  }
+};
 
   if (!isAdmin) return null;
 
