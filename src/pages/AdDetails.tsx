@@ -1579,11 +1579,8 @@ const AdDetails = () => {
             </div>
           </div>
 
-          <div className="w-full flex justify-center">
           <div 
-            className={`relative bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group [touch-action:pan-y_pinch-zoom] flex items-center justify-center select-none ${
-              currentMedia.type === 'video' ? 'w-full aspect-[16/9]' : 'w-fit max-w-full'
-            }`}
+            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group [touch-action:pan-y_pinch-zoom] flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1608,7 +1605,7 @@ const AdDetails = () => {
                 <img
                   src={currentMedia.url}
                   alt={ad.title}
-                  className="block max-w-full max-h-[72vh] w-auto h-auto object-contain relative z-10 cursor-zoom-in"
+                  className="w-full h-full object-contain relative z-10 cursor-zoom-in"
                   onClick={() => setShowFullImage(true)}
                   referrerPolicy="no-referrer"
                   style={currentMedia.imageIndex === 0 ? {
@@ -2384,7 +2381,6 @@ const AdDetails = () => {
                 </button>
               </>
             )}
-          </div>
           </div>
 
           {/* Thumbnails list */}
