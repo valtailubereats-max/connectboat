@@ -557,9 +557,6 @@ const AdminEventContacts: React.FC = () => {
       setSearch('');
       setIsolatedContactId(existingMatch.id);
       setMessage(`Existing contact found: ${existingMatch.company || existingMatch.name || 'contact'}. Only this contact is shown in Contact history.`);
-      window.setTimeout(() => {
-        document.getElementById('contact-history')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
       return;
     }
 
@@ -693,9 +690,6 @@ const AdminEventContacts: React.FC = () => {
         setSearch('');
         setIsolatedContactId(existingMatch.id);
         setMessage(`Existing contact found: ${matchLabel}. Only this contact is shown in Contact history. You can edit or review it.`);
-        window.setTimeout(() => {
-          document.getElementById('contact-history')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 100);
         return;
       }
 
@@ -897,9 +891,6 @@ const AdminEventContacts: React.FC = () => {
       notes: contact.notes || '', rawSource: contact.rawSource || '', invitationChannel: contact.invitationChannel || '',
       invitationStatus: contact.invitationStatus || 'Pending',
     });
-    window.setTimeout(() => {
-      document.getElementById('event-contact-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
   };
 
   const openDuplicateContact = () => {
