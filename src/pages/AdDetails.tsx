@@ -58,6 +58,7 @@ const AdDetails = () => {
 
   // Imagens e galeria
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [mainImageAspectRatio, setMainImageAspectRatio] = useState(16 / 9);
   const [showFullImage, setShowFullImage] = useState(false);
   const [showMobileFullTitle, setShowMobileFullTitle] = useState(false);
   const mainVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -1579,8 +1580,10 @@ const AdDetails = () => {
             </div>
           </div>
 
+          <div className="w-full flex justify-center">
           <div 
-            className={`relative bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group [touch-action:pan-y_pinch-zoom] flex items-center justify-center select-none ${currentMedia.type === 'video' ? 'aspect-[16/9]' : ''}`}
+            className={`relative bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group [touch-action:pan-y_pinch-zoom] flex items-center justify-center select-none ${currentMedia.type === 'video' ? 'w-full aspect-[16/9]' : 'w-full'}`}
+            style={currentMedia.type === 'image' && mainImageAspectRatio < 1 ? { width: `min(100%, calc(72vh * ${mainImageAspectRatio}))` } : undefined}
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1606,6 +1609,7 @@ const AdDetails = () => {
                   src={currentMedia.url}
                   alt={ad.title}
                   className="block w-full h-auto max-h-[72vh] object-contain relative z-10 cursor-zoom-in"
+                  onLoad={(e) => setMainImageAspectRatio(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight)}
                   onClick={() => setShowFullImage(true)}
                   referrerPolicy="no-referrer"
                   style={currentMedia.imageIndex === 0 ? {
@@ -1673,6 +1677,7 @@ const AdDetails = () => {
                 </button>
               </>
             )}
+          </div>
           </div>
 
           {/* Thumbnails strip */}
