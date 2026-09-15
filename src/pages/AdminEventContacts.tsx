@@ -300,7 +300,9 @@ const AdminEventContacts: React.FC = () => {
   const cardVideoRef = useRef<HTMLVideoElement | null>(null);
   const nativeCameraInputRef = useRef<HTMLInputElement | null>(null);
   const prospectImportInputRef = useRef<HTMLInputElement | null>(null);
+  const smartSearchCameraInputRef = useRef<HTMLInputElement | null>(null);
   const cardStreamRef = useRef<MediaStream | null>(null);
+  const [smartSearching, setSmartSearching] = useState(false);
 
   const duplicateMatch = useMemo(() => {
     if (editingId) return null;
@@ -360,6 +362,94 @@ const AdminEventContacts: React.FC = () => {
   useEffect(() => {
     if (historyPage > historyPageCount) setHistoryPage(historyPageCount);
   }, [historyPage, historyPageCount]);
+
+  const smartSearchTerms = (data: any) => {
+    const values = [
+      data?.name, data?.company, data?.phone, data?.whatsapp,
+      data?.email, data?.website, data?.linkedin, data?.otherContact,
+    ]
+      .map(value => String(value || '').trim())
+      .filter(Boolean);
+
+    if (!values.length) return '';
+
+    const exactContact = [
+      data?.email, data?.phone, data?.whatsapp, data?.company, data?.name,
+    ]
+      .map(value => String(value || '').trim())
+      .find(Boolean);
+
+    return exactContact || values[0];
+  };
+
+  const handleSmartSearchPhoto = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !user) return;
+
+    setSmartSearching(true);
+    setMessage('Reading photo and searching contact history…');
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.45,
+        maxWidthOrHeight: 1600,
+        useWebWorker: true,
+        fileType: 'image/jpeg',
+      });
+      const image = await fileToDataUrl(compressed as File);
+      const token = await user.getIdToken();
+      const response = await fetch('/api/gemini/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ image, mode: 'businessCard' }),
+      });
+      const result = await response.json();
+      if (!result?.success) throw new Error(result?.error || 'Could not read this photo.');
+
+      const data = result.data || {};
+      const candidates = contacts.filter(contact => {
+        const extractedEmail = comparableText(data.email || '');
+        const extractedPhone = comparablePhone(data.phone || '');
+        const extractedWhatsapp = comparablePhone(data.whatsapp || '');
+        const extractedCompany = comparableText(data.company || '');
+        const extractedName = comparableText(data.name || '');
+        const extractedLinkedin = comparableText(data.linkedin || '');
+        const extractedOther = comparableText(data.otherContact || '');
+
+        if (extractedEmail && comparableText(contact.email) === extractedEmail) return true;
+        if (extractedPhone && [comparablePhone(contact.phone), comparablePhone(contact.whatsapp)].includes(extractedPhone)) return true;
+        if (extractedWhatsapp && [comparablePhone(contact.whatsapp), comparablePhone(contact.phone)].includes(extractedWhatsapp)) return true;
+        if (extractedCompany && comparableText(contact.company) === extractedCompany) return true;
+        if (extractedName && comparableText(contact.name) === extractedName) return true;
+        if (extractedLinkedin && comparableText(contact.linkedin).includes(extractedLinkedin)) return true;
+        if (extractedOther && comparableText(contact.otherContact).includes(extractedOther)) return true;
+        return false;
+      });
+
+      setHistoryFilter('All');
+      if (candidates.length === 1) {
+        const match = candidates[0];
+        setSearch(match.email || match.phone || match.whatsapp || match.company || match.name);
+        setMessage(`Smart Search found: ${match.company || match.name || 'existing contact'}.`);
+      } else if (candidates.length > 1) {
+        const term = smartSearchTerms(data);
+        setSearch(term);
+        setMessage(`Smart Search found ${candidates.length} possible matches. Review the results below.`);
+      } else {
+        const term = smartSearchTerms(data);
+        setSearch(term);
+        setMessage(term
+          ? `No exact match found. I searched the history using: ${term}`
+          : 'No usable name, email, phone or other contact information was found in this photo.'
+        );
+      }
+    } catch (error: any) {
+      console.error(error);
+      setMessage(error?.message || 'Smart Search could not read this photo.');
+    } finally {
+      setSmartSearching(false);
+    }
+  };
 
   const loadContacts = async () => {
     setLoading(true);
@@ -1043,9 +1133,29 @@ const AdminEventContacts: React.FC = () => {
               <p className="text-xs text-slate-500">{contacts.length} captured{(search || historyFilter !== 'All') && ` • ${filteredContacts.length} matching`}</p>
             </div>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <div className="relative min-w-0 sm:w-64">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, company, email…" className={`${fieldClass} pl-9`} />
+              <div className="flex min-w-0 gap-2 sm:w-80">
+                <div className="relative min-w-0 flex-1">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, company, email…" className={`${fieldClass} pl-9`} />
+                </div>
+                <input
+                  ref={smartSearchCameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleSmartSearchPhoto}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => smartSearchCameraInputRef.current?.click()}
+                  disabled={smartSearching}
+                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white disabled:opacity-50"
+                  title="Smart Search Camera"
+                  aria-label="Smart Search Camera"
+                >
+                  {smartSearching ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
+                </button>
               </div>
               <select
                 value={historyFilter}
