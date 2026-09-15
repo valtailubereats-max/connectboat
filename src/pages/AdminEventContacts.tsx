@@ -610,18 +610,52 @@ const AdminEventContacts: React.FC = () => {
     }
   };
 
+  const prepareCardImageSafely = async (file: File): Promise<File> => {
+    const MAX_SIDE = 1600;
+    try {
+      const bitmap = await createImageBitmap(file, {
+        resizeWidth: MAX_SIDE,
+        resizeHeight: MAX_SIDE,
+        resizeQuality: 'high',
+      } as ImageBitmapOptions);
+
+      const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d', { alpha: false });
+      if (!context) {
+        bitmap.close();
+        return file;
+      }
+      context.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close();
+
+      const blob = await new Promise<Blob | null>(resolve =>
+        canvas.toBlob(resolve, 'image/jpeg', 0.88)
+      );
+      if (!blob) return file;
+      return new File([blob], `card-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    } catch (error) {
+      console.warn('Safe image resize unavailable; using compressed fallback.', error);
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.35,
+        maxWidthOrHeight: 1280,
+        useWebWorker: true,
+        fileType: 'image/jpeg',
+      });
+      return compressed as File;
+    }
+  };
+
   const analyseBusinessCard = async (file: File) => {
     if (!user) return;
     setAnalysing(true);
     setMessage('Reading card / sign…');
     try {
-      const compressed = await imageCompression(file, {
-        maxSizeMB: 0.45,
-        maxWidthOrHeight: 1600,
-        useWebWorker: true,
-        fileType: 'image/jpeg',
-      });
-      const image = await fileToDataUrl(compressed as File);
+      const image = await fileToDataUrl(file);
       const token = await user.getIdToken();
       const response = await fetch('/api/gemini/analyze', {
         method: 'POST',
@@ -689,10 +723,19 @@ const AdminEventContacts: React.FC = () => {
 
   const handleBusinessCard = async (file?: File) => {
     if (!file) return;
-    if (photoPreview) URL.revokeObjectURL(photoPreview);
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
-    await analyseBusinessCard(file);
+    setAnalysing(true);
+    setMessage('Preparing photo safely…');
+    try {
+      const safeFile = await prepareCardImageSafely(file);
+      if (photoPreview) URL.revokeObjectURL(photoPreview);
+      setPhotoFile(safeFile);
+      setPhotoPreview(URL.createObjectURL(safeFile));
+      await analyseBusinessCard(safeFile);
+    } catch (error: any) {
+      console.error(error);
+      setMessage(error?.message || 'Could not prepare this photo. Please try again.');
+      setAnalysing(false);
+    }
   };
 
   const uploadPhoto = async () => {
