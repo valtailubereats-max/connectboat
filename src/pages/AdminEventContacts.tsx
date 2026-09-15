@@ -339,7 +339,7 @@ const AdminEventContacts: React.FC = () => {
       if (historyFilter === 'No contact details') {
         return !Boolean(
           contact.phone?.trim() || contact.whatsapp?.trim() || contact.email?.trim() ||
-          contact.website?.trim() || contact.linkedin?.trim() || contact.otherContact?.trim()
+          contact.linkedin?.trim() || contact.otherContact?.trim()
         );
       }
       if (historyFilter !== 'All') return (contact.invitationStatus || 'Pending') === historyFilter;
@@ -766,6 +766,46 @@ const AdminEventContacts: React.FC = () => {
     }
   };
 
+  const deleteNoContactDetails = async () => {
+    const noContactDetails = contacts.filter(contact => !Boolean(
+      contact.phone?.trim() || contact.whatsapp?.trim() || contact.email?.trim() ||
+      contact.linkedin?.trim() || contact.otherContact?.trim()
+    ));
+    if (!noContactDetails.length) return;
+
+    if (!window.confirm(`Delete all ${noContactDetails.length} contacts with no contact details? Websites alone are not considered contact details.`)) return;
+
+    setSaving(true);
+    setMessage(`Deleting ${noContactDetails.length} contacts from ConnectBoat and Google Sheets…`);
+
+    let deleted = 0;
+    let failed = 0;
+
+    for (const contact of noContactDetails) {
+      try {
+        await deleteDoc(doc(db, 'eventContacts', contact.id));
+        if (contact.photoPath) deleteObject(ref(storage, contact.photoPath)).catch(() => undefined);
+        try {
+          await postToSheets({ action: 'delete', contactId: contact.id });
+        } catch (sheetError) {
+          console.error('Google Sheets delete sync failed:', sheetError);
+        }
+        deleted += 1;
+      } catch (error) {
+        console.error(`Could not delete ${contact.company || contact.name || contact.id}:`, error);
+        failed += 1;
+      }
+    }
+
+    await loadContacts();
+    setSaving(false);
+    setMessage(
+      failed
+        ? `Bulk delete finished: ${deleted} deleted, ${failed} failed.`
+        : `Bulk delete complete: ${deleted} contacts deleted from ConnectBoat and Google Sheets.`
+    );
+  };
+
   const importProspects = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -1023,6 +1063,23 @@ const AdminEventContacts: React.FC = () => {
           </div>
         </div>
 
+        {historyFilter === 'No contact details' && filteredContacts.length > 0 && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3">
+            <div className="mb-2 text-xs font-semibold text-red-700">
+              Website alone is not considered a contact method. This will delete all {filteredContacts.length} records with no phone, WhatsApp, email, LinkedIn or other contact.
+            </div>
+            <button
+              type="button"
+              onClick={deleteNoContactDetails}
+              disabled={saving}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-black text-white disabled:opacity-50"
+            >
+              {saving ? <Loader2 size={17} className="animate-spin" /> : <Trash2 size={17} />}
+              Delete all {filteredContacts.length} without contact details
+            </button>
+          </div>
+        )}
+
         {loading ? <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" /></div> : filteredContacts.length === 0 ? (
           <div className="rounded-xl bg-slate-50 py-8 text-center text-sm text-slate-500">No contacts match this search or filter.</div>
         ) : (
@@ -1031,7 +1088,7 @@ const AdminEventContacts: React.FC = () => {
               {paginatedContacts.map(contact => {
                 const hasDirectContact = Boolean(
                   contact.email?.trim() || contact.whatsapp?.trim() || contact.phone?.trim() ||
-                  contact.website?.trim() || contact.linkedin?.trim() || contact.otherContact?.trim()
+                  contact.linkedin?.trim() || contact.otherContact?.trim()
                 );
                 return (
                   <article key={contact.id} className="flex items-start gap-3 rounded-xl border border-slate-200 p-3">
