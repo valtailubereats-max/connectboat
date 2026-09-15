@@ -2121,7 +2121,7 @@ const AdDetails = () => {
                 <MapPin size={22} />
               </div>
               <div className="min-w-0">
-                <h2 className="text-lg font-black text-slate-900 leading-none">📍 Approximate Location</h2>
+                <h2 className="text-lg font-black text-slate-900 leading-none">Approximate Location</h2>
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5 font-sans">Reference region for the listing</p>
               </div>
             </div>
@@ -2704,7 +2704,7 @@ const AdDetails = () => {
               <MapPin size={14} />
             </div>
             <div>
-              <h2 className="text-sm font-black text-slate-900 leading-none">📍 Approximate Location</h2>
+              <h2 className="text-sm font-black text-slate-900 leading-none">Approximate Location</h2>
               <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 font-sans">Reference region for the listing</p>
             </div>
           </div>
