@@ -299,7 +299,7 @@ class EventContactsErrorBoundary extends React.Component<
 
     const error = this.state.error;
     return (
-      <div className="mx-auto max-w-4xl p-4 sm:p-6">
+      <div translate="no" className="notranslate mx-auto max-w-4xl p-4 sm:p-6">
         <div className="rounded-2xl border-2 border-red-500 bg-white p-5 shadow-lg">
           <h2 className="text-xl font-black text-red-700">Event Contacts crashed</h2>
           <p className="mt-2 text-sm font-bold text-slate-800">
@@ -1130,7 +1130,7 @@ const AdminEventContactsContent: React.FC = () => {
   const labelClass = 'mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500';
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 p-3 sm:p-6">
+    <div translate="no" className="notranslate mx-auto max-w-5xl space-y-5 p-3 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black text-slate-900">Event Contacts</h1>
