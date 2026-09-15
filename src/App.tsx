@@ -52,6 +52,7 @@ import BoatsForHire from './pages/BoatsForHire';
 import CheapBoatsFinal from './pages/CheapBoatsFinal';
 import NotFound from './pages/NotFound';
 import Advertise from './pages/Advertise';
+import Unsubscribe from './pages/Unsubscribe';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ShareModal } from './components/ShareModal';
 import { AnalyticsTracker } from './components/AnalyticsTracker';
@@ -964,6 +965,7 @@ export default function App() {
                 <Route path="/barcos-aluguer" element={<Navigate to="/boats-for-hire" replace />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/privacy" element={<Privacy />} />
+                <Route path="/unsubscribe" element={<Unsubscribe />} />
                 <Route path="/cookie-policy" element={<Cookies />} />
                 <Route path="/cookies" element={<Navigate to="/cookie-policy" replace />} />
                 <Route path="/report" element={<Report />} />
