@@ -284,6 +284,8 @@ const AdminEventContacts: React.FC = () => {
   const [photoPreview, setPhotoPreview] = useState('');
   const [moreOpen, setMoreOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [historyFilter, setHistoryFilter] = useState<'All' | InvitationStatus | 'No contact details'>('All');
+  const [historyPage, setHistoryPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [analysing, setAnalysing] = useState(false);
@@ -327,11 +329,37 @@ const AdminEventContacts: React.FC = () => {
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLowerCase();
     return contacts.filter(contact => {
-      if (!term) return true;
-      return [contact.name, contact.company, contact.phone, contact.whatsapp, contact.email, contact.website, contact.linkedin, contact.invitationStatus]
-        .some(value => String(value || '').toLowerCase().includes(term));
+      const matchesSearch = !term || [
+        contact.name, contact.company, contact.phone, contact.whatsapp, contact.email,
+        contact.website, contact.linkedin, contact.otherContact, contact.notes,
+        contact.invitationChannel, contact.invitationStatus,
+      ].some(value => String(value || '').toLowerCase().includes(term));
+      if (!matchesSearch) return false;
+
+      if (historyFilter === 'No contact details') {
+        return !Boolean(
+          contact.phone?.trim() || contact.whatsapp?.trim() || contact.email?.trim() ||
+          contact.website?.trim() || contact.linkedin?.trim() || contact.otherContact?.trim()
+        );
+      }
+      if (historyFilter !== 'All') return (contact.invitationStatus || 'Pending') === historyFilter;
+      return true;
     });
-  }, [contacts, search]);
+  }, [contacts, search, historyFilter]);
+
+  const HISTORY_PAGE_SIZE = 25;
+  const historyPageCount = Math.max(1, Math.ceil(filteredContacts.length / HISTORY_PAGE_SIZE));
+  const safeHistoryPage = Math.min(historyPage, historyPageCount);
+  const historyStart = (safeHistoryPage - 1) * HISTORY_PAGE_SIZE;
+  const paginatedContacts = filteredContacts.slice(historyStart, historyStart + HISTORY_PAGE_SIZE);
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [search, historyFilter]);
+
+  useEffect(() => {
+    if (historyPage > historyPageCount) setHistoryPage(historyPageCount);
+  }, [historyPage, historyPageCount]);
 
   const loadContacts = async () => {
     setLoading(true);
@@ -968,25 +996,77 @@ const AdminEventContacts: React.FC = () => {
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div><h2 className="font-black text-slate-900">Contact history</h2><p className="text-xs text-slate-500">{contacts.length} captured</p></div>
-          <div className="relative w-52"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search" className={`${fieldClass} pl-9`} /></div>
-        </div>
-        {loading ? <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" /></div> : filteredContacts.length === 0 ? <div className="rounded-xl bg-slate-50 py-8 text-center text-sm text-slate-500">No contacts yet.</div> : (
-          <div className="space-y-2">
-            {filteredContacts.map(contact => (
-              <article key={contact.id} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3">
-                {contact.photoUrl ? <img src={contact.photoUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /> : <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Camera size={20} /></div>}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-black text-slate-900">{contact.company || contact.name || contact.website || 'Captured contact'}</div>
-                  <div className="truncate text-xs text-slate-500">{contact.email || contact.whatsapp || contact.phone || contact.website || 'Photo / QR saved'}</div>
-                  <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${String(contact.invitationStatus).startsWith('Sent') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{contact.invitationStatus || 'Pending'}</span>
-                </div>
-                <button onClick={() => handleEdit(contact)} className="rounded-lg p-2 text-slate-500"><Pencil size={16} /></button>
-                <button onClick={() => handleDelete(contact)} className="rounded-lg p-2 text-red-500"><Trash2 size={16} /></button>
-              </article>
-            ))}
+        <div className="mb-4 space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-black text-slate-900">Contact history</h2>
+              <p className="text-xs text-slate-500">{contacts.length} captured{(search || historyFilter !== 'All') && ` • ${filteredContacts.length} matching`}</p>
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <div className="relative min-w-0 sm:w-64">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, company, email…" className={`${fieldClass} pl-9`} />
+              </div>
+              <select
+                value={historyFilter}
+                onChange={e => setHistoryFilter(e.target.value as 'All' | InvitationStatus | 'No contact details')}
+                className={`${fieldClass} sm:w-52`}
+              >
+                <option value="All">All contacts</option>
+                <option value="Pending">Pending</option>
+                <option value="Sent – Email">Sent – Email</option>
+                <option value="Sent – WhatsApp">Sent – WhatsApp</option>
+                <option value="Sent – Other">Sent – Other</option>
+                <option value="No contact details">No contact details</option>
+              </select>
+            </div>
           </div>
+        </div>
+
+        {loading ? <div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-600" /></div> : filteredContacts.length === 0 ? (
+          <div className="rounded-xl bg-slate-50 py-8 text-center text-sm text-slate-500">No contacts match this search or filter.</div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              {paginatedContacts.map(contact => {
+                const hasDirectContact = Boolean(
+                  contact.email?.trim() || contact.whatsapp?.trim() || contact.phone?.trim() ||
+                  contact.website?.trim() || contact.linkedin?.trim() || contact.otherContact?.trim()
+                );
+                return (
+                  <article key={contact.id} className="flex items-start gap-3 rounded-xl border border-slate-200 p-3">
+                    {contact.photoUrl ? <img src={contact.photoUrl} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" /> : <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Camera size={20} /></div>}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-black text-slate-900">{contact.company || contact.name || contact.website || 'Captured contact'}</div>
+                      {contact.company && contact.name && <div className="truncate text-xs font-medium text-slate-600">{contact.name}</div>}
+                      <div className="mt-1 grid gap-x-4 gap-y-0.5 text-xs text-slate-500 sm:grid-cols-2">
+                        {contact.email && <div className="truncate"><span className="font-semibold text-slate-600">Email:</span> {contact.email}</div>}
+                        {contact.whatsapp && <div className="truncate"><span className="font-semibold text-slate-600">WhatsApp:</span> {contact.whatsapp}</div>}
+                        {contact.phone && <div className="truncate"><span className="font-semibold text-slate-600">Phone:</span> {contact.phone}</div>}
+                        {contact.website && <div className="truncate"><span className="font-semibold text-slate-600">Website:</span> {contact.website}</div>}
+                        {contact.linkedin && <div className="truncate"><span className="font-semibold text-slate-600">LinkedIn:</span> {contact.linkedin}</div>}
+                        {contact.otherContact && <div className="truncate"><span className="font-semibold text-slate-600">Other:</span> {contact.otherContact}</div>}
+                      </div>
+                      {!hasDirectContact && <div className="mt-1 text-xs font-semibold text-slate-400">No contact details saved</div>}
+                      <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${String(contact.invitationStatus).startsWith('Sent') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{contact.invitationStatus || 'Pending'}</span>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button onClick={() => handleEdit(contact)} className="rounded-lg p-2 text-slate-500" title="Edit contact"><Pencil size={16} /></button>
+                      <button onClick={() => handleDelete(contact)} className="rounded-lg p-2 text-red-500" title="Delete contact"><Trash2 size={16} /></button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+              <div className="text-xs font-medium text-slate-500">{historyStart + 1}–{Math.min(historyStart + HISTORY_PAGE_SIZE, filteredContacts.length)} of {filteredContacts.length}</div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setHistoryPage(page => Math.max(1, page - 1))} disabled={safeHistoryPage <= 1} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+                <span className="min-w-20 text-center text-xs font-bold text-slate-600">Page {safeHistoryPage} of {historyPageCount}</span>
+                <button type="button" onClick={() => setHistoryPage(page => Math.min(historyPageCount, page + 1))} disabled={safeHistoryPage >= historyPageCount} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+              </div>
+            </div>
+          </>
         )}
       </section>
 
