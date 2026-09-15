@@ -354,6 +354,7 @@ const AdminEventContactsContent: React.FC = () => {
   const [historyFilter, setHistoryFilter] = useState<'All' | InvitationStatus | 'No contact details'>('All');
   const [historyPage, setHistoryPage] = useState(1);
   const [isolatedContactId, setIsolatedContactId] = useState<string | null>(null);
+  const [duplicateWarning, setDuplicateWarning] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [analysing, setAnalysing] = useState(false);
@@ -623,11 +624,13 @@ const AdminEventContactsContent: React.FC = () => {
       setHistoryPage(1);
       setSearch('');
       setIsolatedContactId(existingMatch.id);
-      setMessage(`Existing contact found: ${existingMatch.company || existingMatch.name || 'contact'}. Only this contact is shown in Contact history.`);
+      setDuplicateWarning(`⚠ POSSIBLE DUPLICATE — ${existingMatch.company || existingMatch.name || 'Existing contact'} is already registered. Look below in Contact History.`);
+      setMessage('');
       return;
     }
 
     setIsolatedContactId(null);
+    setDuplicateWarning('');
     setDraft(prev => ({ ...prev, ...parsed }));
     setMessage('QR read. No existing contact was found. I used every contact detail available in it.');
   };
@@ -756,11 +759,13 @@ const AdminEventContactsContent: React.FC = () => {
         setHistoryPage(1);
         setSearch('');
         setIsolatedContactId(existingMatch.id);
-        setMessage(`Existing contact found: ${matchLabel}. Only this contact is shown in Contact history. You can edit or review it.`);
+        setDuplicateWarning(`⚠ POSSIBLE DUPLICATE — ${matchLabel} is already registered. Look below in Contact History.`);
+        setMessage('');
         return;
       }
 
       setIsolatedContactId(null);
+      setDuplicateWarning('');
       setDraft(prev => ({
         ...prev,
         name: data.name || prev.name,
@@ -1258,6 +1263,13 @@ const AdminEventContactsContent: React.FC = () => {
         )}
       </section>
 
+      {duplicateWarning && (
+        <div role="alert" className="animate-pulse rounded-2xl border-2 border-red-600 bg-red-100 px-4 py-4 text-center shadow-lg ring-4 ring-red-200">
+          <div className="text-base font-black uppercase tracking-wide text-red-800 sm:text-lg">{duplicateWarning}</div>
+          <div className="mt-2 text-sm font-black text-red-700">↓ CHECK THE CONTACT SHOWN BELOW ↓</div>
+        </div>
+      )}
+
       <section id="contact-history" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-4 space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -1268,7 +1280,7 @@ const AdminEventContactsContent: React.FC = () => {
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <div className="relative min-w-0 sm:w-64">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input value={search} onChange={e => { setIsolatedContactId(null); setSearch(e.target.value); }} placeholder="Search name, company, email…" className={`${fieldClass} pl-9`} />
+                <input value={search} onChange={e => { setIsolatedContactId(null); setDuplicateWarning(''); setSearch(e.target.value); }} placeholder="Search name, company, email…" className={`${fieldClass} pl-9`} />
               </div>
               <select
                 value={historyFilter}
