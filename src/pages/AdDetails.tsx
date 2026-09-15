@@ -3,19 +3,19 @@ import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  MapPin, MessageCircle, Clock, ChevronLeft, ChevronRight, X, Heart, Star, 
+  MapPin, MessageCircle, Phone, Mail, Clock, ChevronLeft, ChevronRight, X, Heart, Star, 
   Trash2, Edit, AlertCircle, ShieldAlert, Eye, EyeOff, Award, Calendar, Share2, ExternalLink,
-  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video
+  Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Check, Bed, Tag, Play, Video, UserRound
 } from 'lucide-react';
 import { 
-  doc, updateDoc, increment, setDoc, collection, query, where, limit, getDoc, serverTimestamp, Timestamp 
+  doc, updateDoc, increment, setDoc, collection, query, where, limit, getDoc, serverTimestamp, Timestamp, onSnapshot 
 } from 'firebase/firestore';
 import { db, getDocWithCacheFallback, getDocsWithCacheFallback, parseFirestoreDate, handleFirestoreError, OperationType } from '../firebase';
 import { Ad, UserProfile, Review, getRegionForCity } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { formatPrice, getAdUrl, extractIdFromSlug, getAdLocationLabel } from '../utils';
 import { formatDistanceToNow } from 'date-fns';
-import { pt } from 'date-fns/locale';
+import { enGB } from 'date-fns/locale';
 import ReviewModal from '../components/ReviewModal';
 import AdCard from '../components/AdCard';
 import ImageLightboxModal from '../components/ImageLightboxModal';
@@ -39,10 +39,27 @@ const AdDetails = () => {
   const isService = ad ? (ad.category === 'Boat Services' || ad.category === 'Serviços' || ad.category?.includes('Services') || ad.category?.includes('Serviços')) : false;
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [listingAdCampaigns, setListingAdCampaigns] = useState<any[]>([]);
+  const [listingAdIndex, setListingAdIndex] = useState(0);
+  const [dailyFixedCampaign, setDailyFixedCampaign] = useState<any | null>(null);
+  const [listingPageBackground, setListingPageBackground] = useState<{
+    enabled: boolean;
+    type: 'image' | 'video';
+    mediaUrl: string;
+    loop: boolean;
+    overlayOpacity: number;
+  }>({
+    enabled: false,
+    type: 'video',
+    mediaUrl: '',
+    loop: true,
+    overlayOpacity: 28,
+  });
 
   // Imagens e galeria
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showFullImage, setShowFullImage] = useState(false);
+  const [showMobileFullTitle, setShowMobileFullTitle] = useState(false);
   const mainVideoRef = useRef<HTMLVideoElement | null>(null);
   const mobileVideoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -114,14 +131,183 @@ const AdDetails = () => {
   };
 
   useEffect(() => {
+    if (!showMobileFullTitle) return;
+    const timer = window.setTimeout(() => setShowMobileFullTitle(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, [showMobileFullTitle]);
+
+  useEffect(() => {
     pauseVideos();
   }, [currentImageIndex]);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      doc(db, 'settings', 'listingDetailsBackground'),
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          setListingPageBackground((current) => ({ ...current, enabled: false }));
+          return;
+        }
+        const data = snapshot.data() || {};
+        setListingPageBackground({
+          enabled: data.enabled === true,
+          type: data.type === 'image' ? 'image' : 'video',
+          mediaUrl: String(data.mediaUrl || ''),
+          loop: data.loop !== false,
+          overlayOpacity: Number.isFinite(Number(data.overlayOpacity))
+            ? Math.max(0, Math.min(70, Number(data.overlayOpacity)))
+            : 28,
+        });
+      },
+      (error) => console.warn('Unable to load listing details background:', error)
+    );
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, 'advertisingCampaigns'),
+      (snapshot) => {
+        const todayString = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Europe/London',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }).format(new Date());
+
+        const activeCampaigns = snapshot.docs
+          .map((campaignDoc) => ({ id: campaignDoc.id, ...campaignDoc.data() } as any))
+          .filter((campaign) => {
+            if (campaign.enabled !== true || !campaign.imageUrl) return false;
+            if (campaign.startDate && campaign.startDate > todayString) return false;
+            if (campaign.endDate && campaign.endDate < todayString) return false;
+            return true;
+          });
+
+        const dailyCampaigns = activeCampaigns
+          .filter((campaign) => campaign.placement === 'daily_fixed')
+          .sort((a, b) => {
+            const aStart = String(a.startDate || '');
+            const bStart = String(b.startDate || '');
+            if (aStart !== bStart) return bStart.localeCompare(aStart);
+            const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return bTime - aTime;
+          });
+
+        setDailyFixedCampaign(dailyCampaigns[0] || null);
+
+        const campaigns = activeCampaigns
+          .filter((campaign) => campaign.placement !== 'daily_fixed')
+          .sort((a, b) => {
+            const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return aTime - bTime;
+          });
+
+        setListingAdCampaigns((previous) => {
+          const previousKey = previous
+            .map((campaign) => [
+              campaign.id,
+              campaign.enabled,
+              campaign.imageUrl,
+              campaign.targetUrl,
+              campaign.altText,
+              campaign.displaySeconds,
+              campaign.startDate,
+              campaign.endDate,
+            ].join('|'))
+            .join('||');
+
+          const nextKey = campaigns
+            .map((campaign) => [
+              campaign.id,
+              campaign.enabled,
+              campaign.imageUrl,
+              campaign.targetUrl,
+              campaign.altText,
+              campaign.displaySeconds,
+              campaign.startDate,
+              campaign.endDate,
+            ].join('|'))
+            .join('||');
+
+          return previousKey === nextKey ? previous : campaigns;
+        });
+
+        setListingAdIndex((current) =>
+          campaigns.length === 0 ? 0 : Math.min(current, campaigns.length - 1)
+        );
+      },
+      (error) => {
+        console.warn('[AdDetails] Advertising campaigns unavailable:', error);
+      }
+    );
+
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (dailyFixedCampaign?.imageUrl) {
+      const fixedImg = new Image();
+      fixedImg.src = dailyFixedCampaign.imageUrl;
+    }
+    listingAdCampaigns.forEach((campaign) => {
+      if (!campaign?.imageUrl) return;
+      const img = new Image();
+      img.src = campaign.imageUrl;
+    });
+  }, [listingAdCampaigns, dailyFixedCampaign]);
+
+  useEffect(() => {
+    if (listingAdCampaigns.length <= 1) return;
+
+    const campaign = listingAdCampaigns[listingAdIndex];
+    const seconds = Math.min(60, Math.max(2, Number(campaign?.displaySeconds || 4)));
+
+    const timer = window.setTimeout(() => {
+      setListingAdIndex((current) => (current + 1) % listingAdCampaigns.length);
+    }, seconds * 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [listingAdCampaigns, listingAdIndex]);
+
+  useEffect(() => {
+    const campaign = listingAdCampaigns[listingAdIndex];
+    if (!campaign?.id) return;
+
+    updateDoc(doc(db, 'advertisingCampaigns', campaign.id), {
+      impressions: increment(1),
+    }).catch((error) => {
+      console.warn('[AdDetails] Unable to register banner impression:', error);
+    });
+  }, [listingAdCampaigns, listingAdIndex]);
+
+  useEffect(() => {
+    if (!dailyFixedCampaign?.id) return;
+
+    updateDoc(doc(db, 'advertisingCampaigns', dailyFixedCampaign.id), {
+      impressions: increment(1),
+    }).catch((error) => {
+      console.warn('[AdDetails] Unable to register daily fixed banner impression:', error);
+    });
+  }, [dailyFixedCampaign?.id]);
+
+  const handleAdvertisingClick = (campaign: any) => {
+    if (!campaign?.id) return;
+
+    updateDoc(doc(db, 'advertisingCampaigns', campaign.id), {
+      clicks: increment(1),
+    }).catch((error) => {
+      console.warn('[AdDetails] Unable to register banner click:', error);
+    });
+  };
 
   // Vendedor e avaliações gerais
   const [sellerProfile, setSellerProfile] = useState<UserProfile | null>(null);
   const [sellerReviews, setSellerReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(false);
-  const [showReviewsSection, setShowReviewsSection] = useState(true);
+  const [showSellerProfileModal, setShowSellerProfileModal] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
@@ -129,6 +315,7 @@ const AdDetails = () => {
 
   // Related Ads & Swipe Gestures
   const [relatedAds, setRelatedAds] = useState<Ad[]>([]);
+  const [sellerAds, setSellerAds] = useState<Ad[]>([]);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -159,9 +346,32 @@ const AdDetails = () => {
 
   // Segurança de Contacto WhatsApp
   const [showContactWarning, setShowContactWarning] = useState(false);
+  const [showContactOptionsModal, setShowContactOptionsModal] = useState(false);
+  const [selectedContactMethod, setSelectedContactMethod] = useState<'whatsapp' | 'phone' | 'email' | 'source' | null>(null);
+  const [showEmailContactModal, setShowEmailContactModal] = useState(false);
+  const [emailContactName, setEmailContactName] = useState('');
+  const [emailContactAddress, setEmailContactAddress] = useState('');
+  const [emailContactMessage, setEmailContactMessage] = useState('');
+  const [emailContactSending, setEmailContactSending] = useState(false);
   const [acceptedContactTerms, setAcceptedContactTerms] = useState(() => {
     return localStorage.getItem('safety_terms_accepted') === 'true';
   });
+
+  useEffect(() => {
+    if (!showEmailContactModal || !user || !ad) return;
+
+    setEmailContactName(
+      (profile?.name || user.displayName || '').trim()
+    );
+    setEmailContactAddress(
+      (user.email || profile?.email || '').trim()
+    );
+    setEmailContactMessage((current) =>
+      current.trim()
+        ? current
+        : `Hello,\n\nI saw your listing "${ad.title}" on ConnectBoat and I'm interested. Is it still available?\n\nThank you.`
+    );
+  }, [showEmailContactModal, user, profile, ad]);
 
   // Denúncia
   const [showReportModal, setShowReportModal] = useState(false);
@@ -169,7 +379,7 @@ const AdDetails = () => {
   const [reportDetails, setReportDetails] = useState('');
   const [reporting, setReporting] = useState(false);
 
-  // Estados para Negócios Reivindicáveis/Claimable
+  // Conditions para Negócios Reivindicáveis/Claimable
   const [showUnclaimedContactModal, setShowUnclaimedContactModal] = useState(false);
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [claimName, setClaimName] = useState('');
@@ -357,10 +567,41 @@ const AdDetails = () => {
         city: ad?.city || '',
         country: ad?.country || 'Reino Unido',
         ratingAverage,
-        ratingCount
+        ratingCount,
+        publicDescription: '',
+        profileImageUrl: ''
       };
 
-      console.log(`[AdDetails] Evitando fetch de sellerPublicProfiles para o vendedor ${sellerId} para poupar leituras Firestore.`);
+      // Public seller profile: photo/logo, description, public name and member information.
+      // Keep ad data as fallback so older/imported listings continue to work.
+      try {
+        const publicProfileRef = doc(db, 'sellerPublicProfiles', sellerId);
+        const publicProfileSnap = await getDoc(publicProfileRef);
+
+        if (publicProfileSnap.exists()) {
+          const publicData: any = publicProfileSnap.data();
+          profileData.displayName = publicData.displayName || profileData.displayName;
+          profileData.city = publicData.city || profileData.city;
+          profileData.country = publicData.country || profileData.country;
+          profileData.publicDescription = publicData.publicDescription || '';
+          profileData.profileImageUrl = publicData.profileImageUrl || '';
+          profileData.createdAt = publicData.createdAt || publicData.updatedAt || undefined;
+        } else {
+          // Fallback for profiles created before sellerPublicProfiles existed.
+          const userProfileSnap = await getDoc(doc(db, 'users', sellerId));
+          if (userProfileSnap.exists()) {
+            const userData: any = userProfileSnap.data();
+            profileData.displayName = userData.displayName || userData.name || profileData.displayName;
+            profileData.city = userData.city || profileData.city;
+            profileData.country = userData.country || profileData.country;
+            profileData.publicDescription = userData.publicDescription || '';
+            profileData.profileImageUrl = userData.profileImageUrl || '';
+            profileData.createdAt = userData.createdAt || userData.acceptedTermsAt || undefined;
+          }
+        }
+      } catch (profileErr) {
+        console.warn('[AdDetails] Unable to load public seller profile; using listing fallback.', profileErr);
+      }
 
       // Carregar reviews enviadas a este vendedor se o utilizador estiver autenticado
       let reviewsData: Review[] = [];
@@ -424,23 +665,95 @@ const AdDetails = () => {
   };
 
   const cleanPhone = (phone: string) => {
-    return phone.replace(/\D/g, '');
-  };
-
-  const getWhatsappUrl = () => {
-    if (!ad) return '';
-    const phone = cleanPhone(getAdPhone());
-    return `https://wa.me/${phone}?text=${encodeURIComponent(`Olá, vi o seu anúncio "${ad.title}" no Mercado Luso e tenho grande interesse. Está disponível?`)}`;
+    return phone.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
   };
 
   const hasSourceUrl = !!(ad && ad.sourceUrl && /^https?:\/\//i.test(ad.sourceUrl));
 
-  const getTargetContactUrl = () => {
+  // Any non-demo listing with a valid sourceUrl is an external listing.
+  // Admin/Moderator-created listings using "Original Listing URL" are saved with
+  // sourceUrl even when legacy flags such as externalListing/importedBy are absent.
+  // Treating sourceUrl as the source of truth keeps Contact/WhatsApp pointing to the
+  // original marketplace and prevents imported ads from exposing staff listings in
+  // "More From This Seller".
+  const isExternalImportedListing = !!ad && hasSourceUrl && !ad.demoListing;
+
+  type ContactMethod = 'whatsapp' | 'phone' | 'email' | 'source';
+
+  const getContactMethods = (): ContactMethod[] => {
+    if (!ad) return [];
+
+    const a = ad as any;
+
+    // External/imported listings must always contact through the original source.
+    // This prevents an admin/profile phone number from overriding sourceUrl.
+    if (isExternalImportedListing) {
+      return ['source'];
+    }
+
+    const hasNewVisibilityFlags =
+      typeof a.showWhatsapp === 'boolean' ||
+      typeof a.showPhone === 'boolean' ||
+      typeof a.showEmail === 'boolean';
+
+    const whatsappNumber = (a.contactWhatsapp || '').trim();
+    const phoneNumber = (a.contactPhone || '').trim();
+    const emailAddress = (a.contactEmail || '').trim();
+
+    if (hasNewVisibilityFlags) {
+      const methods: ContactMethod[] = [];
+      if (a.showWhatsapp === true && whatsappNumber) methods.push('whatsapp');
+      if (a.showPhone === true && phoneNumber) methods.push('phone');
+      if (a.showEmail === true && emailAddress) methods.push('email');
+      return methods;
+    }
+
+    // Backward compatibility for listings created before Contact Options.
+    if ((ad.sellerPhone || '').trim()) return ['whatsapp'];
+    if (emailAddress) return ['email'];
+    if (hasSourceUrl && ad.sourceUrl) return ['source'];
+    return [];
+  };
+
+  const getContactMethodLabel = (method: ContactMethod) => {
+    if (method === 'whatsapp') return 'WhatsApp';
+    if (method === 'phone') return 'Call Seller';
+    if (method === 'email') return 'Email Seller';
+    return 'Contact Seller';
+  };
+
+  const getContactMethodIcon = (method: ContactMethod) => {
+    if (method === 'phone') return Phone;
+    if (method === 'email') return Mail;
+    if (method === 'source') return ExternalLink;
+    return MessageCircle;
+  };
+
+  const getTargetContactUrl = (method: ContactMethod) => {
     if (!ad) return '';
-    if (hasSourceUrl && ad.sourceUrl) {
+    const a = ad as any;
+
+    if (method === 'whatsapp') {
+      const phone = cleanPhone((a.contactWhatsapp || ad.sellerPhone || '').trim());
+      if (!phone) return '';
+      return `https://wa.me/${phone.replace(/^\+/, '')}?text=${encodeURIComponent(`Hello, I saw your listing "${ad.title}" on ConnectBoat and I'm interested. Is it still available?`)}`;
+    }
+
+    if (method === 'phone') {
+      const phone = cleanPhone((a.contactPhone || '').trim());
+      return phone ? `tel:${phone}` : '';
+    }
+
+    if (method === 'email') {
+      const email = (a.contactEmail || '').trim();
+      return email ? 'connectboat:email-form' : '';
+    }
+
+    if (method === 'source' && hasSourceUrl && ad.sourceUrl) {
       return ad.sourceUrl;
     }
-    return getWhatsappUrl();
+
+    return '';
   };
 
   const incrementWhatsappClicks = async () => {
@@ -454,48 +767,101 @@ const AdDetails = () => {
     }
   };
 
-  const handleContactClick = () => {
-    if (ad?.isClaimableBusiness && (ad.claimStatus === 'unclaimed' || !ad.claimStatus)) {
-      setShowUnclaimedContactModal(true);
-      return;
-    }
-    if (ad?.adStatus === 'sold' || ad?.status === 'sold') {
-      showToastMsg('error', 'Este anúncio já foi vendido. Não é possível contactar o vendedor.');
-      return;
-    }
-    if (!user) {
-      navigate(`/login?message=${encodeURIComponent('Para contactar o vendedor, faça login ou crie uma conta gratuita.')}`);
+  const openContactMethod = async (method: ContactMethod) => {
+    if (!ad) return;
+
+    if (method === 'email') {
+      const email = ((ad as any).contactEmail || '').trim();
+      if (!email) {
+        showToastMsg('error', 'Email contact is not available for this listing.');
+        return;
+      }
+      setShowEmailContactModal(true);
       return;
     }
 
-    const accepted = localStorage.getItem('safety_terms_accepted') === 'true';
-    if (accepted && ad) {
-      console.log('[AdDetails] Safety terms already accepted. Registering interest directly.');
+    const targetUrl = getTargetContactUrl(method);
+    if (!targetUrl) {
+      showToastMsg('error', 'This contact method is not available.');
+      return;
+    }
+
+    if (method === 'whatsapp') {
       incrementWhatsappClicks();
-      showToastMsg('loading', 'A registar o seu interesse no anúncio...');
-      registerInterest().then((res: any) => {
-        if (res.success) {
-          if (res.bypassed) {
-            showToastMsg('success', hasSourceUrl ? 'A abrir o link de contacto...' : 'A abrir o WhatsApp...', 2000);
-          } else {
-            showToastMsg('success', hasSourceUrl ? '👥 Interesse registado! A abrir o contacto...' : '👥 Interesse registado! A abrir o WhatsApp...', 3000);
-          }
-          setTimeout(() => {
-            window.open(getTargetContactUrl(), '_blank', 'noopener,noreferrer');
-          }, 1000);
-        } else {
-          showToastMsg('error', `⚠️ Erro na BD: ${res.error || 'Falha ao registar'}. A abrir contacto...`, 6000);
-          setTimeout(() => {
-            window.open(getTargetContactUrl(), '_blank', 'noopener,noreferrer');
-          }, 2500);
-        }
-      });
+    }
+
+    if (user) {
+      showToastMsg('loading', 'Registering your interest...');
+      const res = await registerInterest(method);
+      if (res.success) {
+        showToastMsg('success', `${getContactMethodLabel(method)} opening...`, res.bypassed ? 2000 : 3000);
+      } else {
+        showToastMsg('error', `Could not register interest. Opening contact anyway...`, 3500);
+      }
+    }
+
+    if (method === 'phone') {
+      window.location.href = targetUrl;
+    } else {
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const continueWithContactMethod = (method: ContactMethod) => {
+    setSelectedContactMethod(method);
+    setShowContactOptionsModal(false);
+
+    const accepted = localStorage.getItem('safety_terms_accepted') === 'true';
+    if (accepted) {
+      void openContactMethod(method);
     } else {
       setShowContactWarning(true);
     }
   };
 
-  const registerInterest = async (): Promise<{ success: boolean; error?: string; bypassed?: boolean }> => {
+  const handleContactClick = () => {
+    if (ad?.isClaimableBusiness && ad.claimStatus !== 'claimed') {
+      setShowUnclaimedContactModal(true);
+      return;
+    }
+    if (ad?.adStatus === 'sold' || ad?.status === 'sold') {
+      showToastMsg('error', 'This listing has been sold. The seller cannot be contacted.');
+      return;
+    }
+
+    const methods = getContactMethods();
+
+    // Imported/external listings are discovery listings: Contact must open
+    // the original advert directly, just like "View Original Listing".
+    if (methods.length === 1 && methods[0] === 'source') {
+      const targetUrl = getTargetContactUrl('source');
+      if (targetUrl) {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        showToastMsg('error', 'The original listing link is not available.');
+      }
+      return;
+    }
+
+    if (!user) {
+      navigate(`/login?message=${encodeURIComponent('To contact the seller, please log in or create a free account.')}`);
+      return;
+    }
+
+    if (methods.length === 0) {
+      showToastMsg('error', 'No contact method is currently available for this listing.');
+      return;
+    }
+
+    if (methods.length === 1) {
+      continueWithContactMethod(methods[0]);
+      return;
+    }
+
+    setShowContactOptionsModal(true);
+  };
+
+  const registerInterest = async (method: ContactMethod = 'whatsapp'): Promise<{ success: boolean; error?: string; bypassed?: boolean }> => {
     if (!user || !ad) {
       console.warn('[AdDetails] Cannot register interest: user or ad is missing.');
       return { success: false, error: 'Sessão expirada ou anúncio indisponível.' };
@@ -509,7 +875,7 @@ const AdDetails = () => {
 
     const docId = `${ad.id}_${user.uid}`;
     const rawName = (profile?.name || user.displayName || user.email || '').trim();
-    const sanitizedName = rawName.length > 0 ? rawName : 'Utilizador do Mercado Luso';
+    const sanitizedName = rawName.length > 0 ? rawName : 'ConnectBoat User';
     const truncatedName = sanitizedName.substring(0, 95); // Ensure it's under 100 character limit of rules
     
     const interestData = {
@@ -519,7 +885,7 @@ const AdDetails = () => {
       interestedUserId: user.uid,
       interestedUserName: truncatedName,
       createdAt: serverTimestamp(),
-      source: 'whatsapp'
+      source: method
     };
     
     // 5. Logs obrigatórios
@@ -545,11 +911,11 @@ const AdDetails = () => {
           const notifData = {
             userId: ad.sellerId.trim(),
             title: 'Novo interesse em ' + ad.title.substring(0, 25) + '...',
-            message: `${truncatedName} clicou no botão para o contactar via WhatsApp para o anúncio "${ad.title}".`,
+            message: `${truncatedName} used ${getContactMethodLabel(method)} for the listing "${ad.title}".`,
             createdAt: serverTimestamp(),
             read: false,
             adId: ad.id,
-            type: 'whatsapp_interest'
+            type: 'contact_interest'
           };
           console.log('[AdDetails] Tentando criar notificação em bloco separado:', notifData);
           await setDoc(doc(db, 'notifications', notifId), notifData);
@@ -567,37 +933,90 @@ const AdDetails = () => {
     }
   };
 
-  const handleConfirmWhatsapp = async () => {
-    if (ad?.adStatus === 'sold' || ad?.status === 'sold') {
-      showToastMsg('error', 'Este anúncio já foi vendido. Não é possível contactar o vendedor.');
+  const handleEmailContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ad || !user) return;
+
+    const recipient = ((ad as any).contactEmail || '').trim();
+    const name = emailContactName.trim();
+    const senderEmail = emailContactAddress.trim();
+    const message = emailContactMessage.trim();
+
+    if (!recipient) {
+      showToastMsg('error', 'The seller email is not available.');
       return;
     }
-    if (acceptedContactTerms && ad) {
-      localStorage.setItem('safety_terms_accepted', 'true');
-      incrementWhatsappClicks();
-      if (user) {
-        showToastMsg('loading', 'A registar o seu interesse no anúncio...');
-        const res = await registerInterest();
-        if (res.success) {
-          if (res.bypassed) {
-            showToastMsg('success', hasSourceUrl ? 'A abrir o link de contacto...' : 'A abrir o WhatsApp...', 2000);
-          } else {
-            showToastMsg('success', hasSourceUrl ? '👥 Interesse registado! A abrir o contacto...' : '👥 Interesse registado! A abrir o WhatsApp...', 3000);
-          }
-          setTimeout(() => {
-            window.open(getTargetContactUrl(), '_blank', 'noopener,noreferrer');
-          }, 1000);
-        } else {
-          showToastMsg('error', `⚠️ Erro na BD: ${res.error || 'Falha ao registar'}. A abrir contacto...`, 6000);
-          setTimeout(() => {
-            window.open(getTargetContactUrl(), '_blank', 'noopener,noreferrer');
-          }, 2500);
-        }
-      } else {
-        window.open(getTargetContactUrl(), '_blank', 'noopener,noreferrer');
-      }
-      setShowContactWarning(false);
+    if (!name) {
+      showToastMsg('error', 'Please enter your name.');
+      return;
     }
+    if (!senderEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(senderEmail)) {
+      showToastMsg('error', 'Your account email is not available.');
+      return;
+    }
+    if (!message || message.length < 10) {
+      showToastMsg('error', 'Please write a message of at least 10 characters.');
+      return;
+    }
+    if (message.length > 3000) {
+      showToastMsg('error', 'Your message is too long. Please keep it under 3000 characters.');
+      return;
+    }
+
+    setEmailContactSending(true);
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          template: 'seller_message',
+          to: recipient,
+          data: {
+            adId: ad.id,
+            adTitle: ad.title,
+            sellerName: ad.sellerName || 'Seller',
+            interestedName: name,
+            interestedEmail: senderEmail,
+            message,
+            adUrl: `${window.location.origin}${location.pathname}`
+          }
+        })
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.success === false) {
+        throw new Error(result?.error || 'Could not send the message.');
+      }
+
+      await registerInterest('email');
+
+      setShowEmailContactModal(false);
+      setSelectedContactMethod(null);
+      setEmailContactMessage('');
+      showToastMsg('success', 'Message sent to the seller successfully.', 4500);
+    } catch (error: any) {
+      console.error('[AdDetails] Email contact error:', error);
+      showToastMsg('error', error?.message || 'Could not send the message. Please try again.');
+    } finally {
+      setEmailContactSending(false);
+    }
+  };
+
+  const handleConfirmContact = async () => {
+    if (ad?.adStatus === 'sold' || ad?.status === 'sold') {
+      showToastMsg('error', 'This listing has been sold. The seller cannot be contacted.');
+      return;
+    }
+
+    if (!acceptedContactTerms || !selectedContactMethod) return;
+
+    localStorage.setItem('safety_terms_accepted', 'true');
+    setShowContactWarning(false);
+    await openContactMethod(selectedContactMethod);
   };
 
   useEffect(() => {
@@ -614,6 +1033,70 @@ const AdDetails = () => {
       window.removeEventListener('request-share-current-page', handleGlobalShareRequest);
     };
   }, [ad]);
+
+  // More listings from the same seller.
+  // For claimable listings still controlled by Admin/Moderator, do not expose
+  // other listings uploaded from the same staff account.
+  useEffect(() => {
+    const isAwaitingClaim =
+      !!ad?.isClaimableBusiness &&
+      ad?.claimStatus !== 'claimed';
+
+    if (!ad?.sellerId || isAwaitingClaim || isExternalImportedListing) {
+      setSellerAds([]);
+      return;
+    }
+
+    const fetchSellerListings = async () => {
+      try {
+        const sellerQuery = query(
+          collection(db, 'ads'),
+          where('sellerId', '==', ad.sellerId),
+          limit(12)
+        );
+        const snap = await getDocsWithCacheFallback(sellerQuery, `seller_listings_${ad.sellerId}`);
+        const items = snap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Ad))
+          .filter((item: any) => {
+            if (item.id === ad.id || item.isHidden) return false;
+
+            const isActive =
+              item.adStatus === 'active' ||
+              item.status === 'active' ||
+              item.status === 'approved';
+
+            const isExpired =
+              item.expirationDate?.toDate
+                ? item.expirationDate.toDate().getTime() < Date.now()
+                : item.expirationDate
+                  ? new Date(item.expirationDate).getTime() < Date.now()
+                  : false;
+
+            return isActive && !isExpired;
+          })
+          .sort((a: any, b: any) => {
+            const dateA = a.createdAt?.toDate
+              ? a.createdAt.toDate().getTime()
+              : a.createdAt
+                ? new Date(a.createdAt).getTime()
+                : 0;
+            const dateB = b.createdAt?.toDate
+              ? b.createdAt.toDate().getTime()
+              : b.createdAt
+                ? new Date(b.createdAt).getTime()
+                : 0;
+            return dateB - dateA;
+          })
+          .slice(0, 6);
+        setSellerAds(items);
+      } catch (err) {
+        console.warn('Error fetching seller listings:', err);
+        setSellerAds([]);
+      }
+    };
+
+    fetchSellerListings();
+  }, [ad?.id, ad?.sellerId, ad?.isClaimableBusiness, ad?.claimStatus, isExternalImportedListing]);
 
   // Fetch and similarity-score related listings
   useEffect(() => {
@@ -776,6 +1259,9 @@ const AdDetails = () => {
   const currentMedia = mediaItems[validMediaIndex] || mediaItems[0];
 
   const normalizedDescription = normalizeDescription(ad.description);
+
+  // Only collapse the description when "More From This Seller" is present.
+  const shouldCollapseDescription = sellerAds.length > 0;
   
   const hasPrice =
     ad.category !== 'Imigração' &&
@@ -789,13 +1275,42 @@ const AdDetails = () => {
 
   const dateObject = parseFirestoreDate(ad.createdAt);
   const timeStr = dateObject 
-    ? formatDistanceToNow(dateObject, { addSuffix: true, locale: pt }) 
-    : 'data indisponível';
+    ? formatDistanceToNow(dateObject, { addSuffix: true, locale: enGB }) 
+    : 'Date unavailable';
 
-  const isUnclaimed = ad.isClaimable === true || ad.listingType === 'claimable';
+  const isUnclaimed =
+    (ad.isClaimableBusiness === true ||
+      ad.isClaimable === true ||
+      ad.listingType === 'claimable') &&
+    ad.claimStatus !== 'claimed';
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <>
+      {listingPageBackground.enabled && listingPageBackground.mediaUrl && (
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+          {listingPageBackground.type === 'video' ? (
+            <video
+              src={listingPageBackground.mediaUrl}
+              autoPlay
+              muted
+              loop={listingPageBackground.loop}
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <img
+              src={listingPageBackground.mediaUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+          <div
+            className="absolute inset-0 bg-slate-950"
+            style={{ opacity: listingPageBackground.overlayOpacity / 100 }}
+          />
+        </div>
+      )}
+      <div className="relative z-10 w-full max-w-[1880px] mx-auto px-2 sm:px-3 lg:px-4 xl:px-5 2xl:px-6 pt-0 pb-28 sm:pt-0 sm:pb-28 lg:pb-8">
       {ad && (
         <Helmet>
           <title>{ad.title} - {ad.city || 'United Kingdom'} | ConnectBoat</title>
@@ -848,22 +1363,224 @@ const AdDetails = () => {
         </div>
       )}
 
-      {/* Back Button */}
-      <div className="mb-6">
-        <button 
-          onClick={() => navigate(-1)} 
-          className="inline-flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold transition-all p-2 hover:bg-slate-50 rounded-xl"
-        >
-          <ChevronLeft size={20} /> Back
-        </button>
-      </div>
+      {/* Listing-page advertising: one daily fixed banner + the existing rotating banner */}
+      <section className="relative mt-1 mb-2 lg:mb-1 bg-transparent lg:-mt-[28px]">
+        <div className="flex items-center gap-1 lg:gap-3 overflow-hidden py-0 px-1 lg:px-0">
+          <button
+            onClick={() => navigate(-1)}
+            className="relative z-30 hidden lg:inline-flex shrink-0 h-[38px] min-w-[68px] items-center justify-center rounded-xl border-2 border-white bg-[#073b59]/75 px-3 text-sm font-black text-white shadow-[0_6px_16px_rgba(0,0,0,0.24)] backdrop-blur-sm transition-all hover:bg-[#073b59]/90 hover:scale-[1.02]"
+            aria-label="Back"
+          >
+            Back
+          </button>
 
-      {/* DESKTOP LAYOUT (Excellent for large devices) */}
-      <div className="hidden lg:grid lg:grid-cols-12 gap-8">
+          <div className="relative z-10 min-w-0 flex-1">
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2.5 lg:gap-3 items-center">
+              {/* DAILY FIXED SLOT — never rotates during the booked day */}
+              <div className="min-w-0 flex items-center justify-center">
+                {dailyFixedCampaign ? (() => {
+                  const fixedContent = (
+                    <div
+                      className="relative group block w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px] aspect-video overflow-hidden rounded-xl sm:rounded-2xl border border-white/85 bg-white shadow-xl"
+                      aria-label={dailyFixedCampaign.altText || dailyFixedCampaign.advertiserName || 'Daily advertising'}
+                    >
+                      <img
+                        src={dailyFixedCampaign.imageUrl}
+                        alt={dailyFixedCampaign.altText || dailyFixedCampaign.advertiserName || 'ConnectBoat daily advertising'}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                        loading="eager"
+                      />
+                    </div>
+                  );
+
+                  return dailyFixedCampaign.targetUrl ? (
+                    <a
+                      href={dailyFixedCampaign.targetUrl}
+                      target="_blank"
+                      rel="noopener noreferrer sponsored"
+                      onClick={() => handleAdvertisingClick(dailyFixedCampaign)}
+                      className="block w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px]"
+                    >
+                      {fixedContent}
+                    </a>
+                  ) : fixedContent;
+                })() : (
+                  <div className="w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px] aspect-video rounded-xl sm:rounded-2xl border border-white/25 bg-[#073b59]/28 flex items-center justify-center px-2 text-center text-white shadow-lg">
+                    <div>
+                      <div className="text-[6px] sm:text-[8px] lg:text-[10px] font-black uppercase tracking-[0.20em] text-cyan-200">Daily Advertising</div>
+                      <div className="mt-1 text-[9px] sm:text-xs lg:text-base font-black leading-tight">Your brand here all day</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* EXISTING ROTATING SLOT — original carousel behaviour preserved */}
+              <div className="min-w-0 flex items-center justify-center">
+                {listingAdCampaigns.length > 0 ? (
+                  <AnimatePresence mode="wait" initial={false}>
+                    {(() => {
+                      const campaign = listingAdCampaigns[listingAdIndex];
+                      if (!campaign) return null;
+
+                      const content = (
+                        <motion.div
+                          key={campaign.id}
+                          initial={{ opacity: 0, x: 18, scale: 0.99 }}
+                          animate={{ opacity: 1, x: 0, scale: 1 }}
+                          exit={{ opacity: 0, x: -18, scale: 0.99 }}
+                          transition={{ duration: 0.8, ease: 'easeInOut' }}
+                          className="relative group block w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px] aspect-video overflow-hidden rounded-xl sm:rounded-2xl border border-white/85 bg-white shadow-xl"
+                          aria-label={campaign.altText || campaign.advertiserName || 'Advertising'}
+                        >
+                          <img
+                            src={campaign.imageUrl}
+                            alt={campaign.altText || campaign.advertiserName || 'ConnectBoat advertising'}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                            loading="eager"
+                          />
+                        </motion.div>
+                      );
+
+                      return campaign.targetUrl ? (
+                        <a
+                          key={`link-${campaign.id}`}
+                          href={campaign.targetUrl}
+                          target="_blank"
+                          rel="noopener noreferrer sponsored"
+                          onClick={() => handleAdvertisingClick(campaign)}
+                          className="block w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px]"
+                        >
+                          {content}
+                        </a>
+                      ) : content;
+                    })()}
+                  </AnimatePresence>
+                ) : (
+                  <div className="w-full max-w-[243px] sm:max-w-[306px] lg:max-w-[378px] aspect-video rounded-xl sm:rounded-2xl border border-white/25 bg-[#073b59]/28 flex items-center justify-center px-2 text-center text-white shadow-lg">
+                    <div>
+                      <div className="text-[6px] sm:text-[8px] lg:text-[10px] font-black uppercase tracking-[0.20em] text-cyan-200">ConnectBoat Advertising</div>
+                      <div className="mt-1 text-[9px] sm:text-xs lg:text-base font-black leading-tight">Your marine brand could be here</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="relative z-30 inline-flex shrink-0 h-[20px] min-w-[28px] sm:h-[22px] sm:min-w-[31px] lg:h-[38px] lg:min-w-[68px] items-center justify-center rounded-md lg:rounded-xl border border-white/90 lg:border-2 bg-[#073b59]/55 lg:bg-[#073b59]/65 px-1 lg:px-3 text-[7px] sm:text-[8px] lg:text-sm font-black uppercase leading-none text-white shadow-[0_3px_8px_rgba(0,0,0,0.18)] lg:shadow-[0_6px_16px_rgba(0,0,0,0.24)] backdrop-blur-sm"
+            aria-label="Advertisement"
+          >
+            AD
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes connectboat-ad-progress-fill {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
+          }
+          .connectboat-ad-progress {
+            animation-name: connectboat-ad-progress-fill;
+            animation-timing-function: linear;
+            animation-fill-mode: forwards;
+          }
+          .seller-more-card {
+            flex-basis: calc((100% - 0.75rem) / 2);
+            max-width: calc((100% - 0.75rem) / 2);
+          }
+          @media (min-width: 1024px) {
+            .seller-more-card {
+              flex-basis: calc((100% - 2rem) / 3);
+              max-width: calc((100% - 2rem) / 3);
+            }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .connectboat-ad-progress { animation: none; }
+          }
+        `}</style>
+      </section>
+
+      {/* DESKTOP LAYOUT */}
+      <div className="hidden lg:grid lg:grid-cols-12 gap-4 xl:gap-5">
         {/* LADO ESQUERDO: Imagens e Galeria */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-9 space-y-4">
+          {/* Compact listing header above main image */}
+          <div className="relative h-[142px] overflow-visible rounded-2xl border border-white/80 bg-white/92 backdrop-blur-sm shadow-[0_8px_24px_rgba(4,18,38,0.12)] px-5 py-3">
+            <div className="group/title relative min-w-0">
+              <h1
+                className="block w-full cursor-default truncate pr-1 text-2xl xl:text-[2rem] font-black leading-tight text-slate-900"
+                title={ad.title}
+                aria-label={`Full listing title: ${ad.title}`}
+              >
+                {ad.title}
+              </h1>
+
+              <div
+                role="tooltip"
+                className="pointer-events-none absolute left-0 top-[calc(100%+0.4rem)] z-[70] hidden max-w-[min(760px,85vw)] rounded-xl border border-slate-200/90 bg-slate-950/95 px-3.5 py-2.5 text-sm font-bold leading-snug text-white opacity-0 shadow-[0_12px_34px_rgba(2,8,23,0.32)] backdrop-blur-md transition-opacity duration-150 group-hover/title:block group-hover/title:opacity-100"
+              >
+                {ad.title}
+              </div>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-bold text-slate-600">
+                  <MapPin size={15} className="text-sky-600 shrink-0" />
+                  <span className="truncate">{getAdLocationLabel(ad)}</span>
+                </div>
+                <div className="mt-1.5 flex items-center gap-3 text-xs font-semibold text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Eye size={13} />
+                    {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
+                  </span>
+                  <span className="flex items-center gap-1 notranslate" translate="no">
+                    <Clock size={13} />
+                    {timeStr}
+                  </span>
+                </div>
+              </div>
+
+              <div className="shrink-0">
+                <div className="relative min-w-[205px] overflow-hidden rounded-2xl border-2 border-cyan-100/90 bg-gradient-to-br from-[#0a467d] via-[#063b70] to-[#082d58] px-4 py-3 shadow-[0_10px_26px_rgba(5,35,70,0.28),inset_0_0_0_1px_rgba(255,255,255,0.35),inset_0_1px_10px_rgba(255,255,255,0.08)]">
+                  <div className="pointer-events-none absolute inset-[4px] rounded-[12px] border border-white/45" />
+                  <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-cyan-100/90 to-transparent" />
+                  <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-sky-300/10 blur-2xl" />
+
+                  <div className="relative z-10 flex items-center gap-3.5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/5">
+                      <Anchor size={30} strokeWidth={2.15} className="text-white drop-shadow-[0_2px_5px_rgba(0,0,0,0.22)]" />
+                    </div>
+
+                    <div className="min-w-0 text-right">
+                      <div className="text-[11px] font-extrabold uppercase tracking-[0.20em] text-cyan-50/95">
+                        Price
+                      </div>
+                      <div className="mt-0.5 whitespace-nowrap">
+                        {ad.category === '💚 Doações & Solidariedade' ? (
+                          <span className="block text-2xl xl:text-[1.8rem] font-black leading-none tracking-tight text-emerald-200 drop-shadow-sm">
+                            Free 💚
+                          </span>
+                        ) : (ad as any).priceOnRequest || !hasPrice ? (
+                          <span className="block text-lg xl:text-xl font-black leading-none tracking-tight text-white drop-shadow-sm">
+                            On Request
+                          </span>
+                        ) : (
+                          <span className="block text-2xl xl:text-[2rem] font-black leading-none tracking-[-0.035em] text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.24)]">
+                            {formatPrice(ad.price, ad.country)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div 
-            className="relative aspect-[4/3] md:aspect-[16/10] bg-slate-950 rounded-3xl overflow-hidden shadow-lg group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[16/9] bg-slate-950 rounded-3xl overflow-hidden border-2 border-white/85 shadow-[0_10px_28px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group [touch-action:pan-y_pinch-zoom] flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -907,6 +1624,17 @@ const AdDetails = () => {
                   } : undefined}
                 />
               </>
+            )}
+
+            {(ad.status === 'sold' || ad.adStatus === 'sold') && (
+              <div className="absolute inset-0 z-[18] overflow-hidden pointer-events-none">
+                <img
+                  src="/sold-banner-connectboat.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full object-cover opacity-[0.86]"
+                />
+              </div>
             )}
 
             {/* Favorito Button */}
@@ -957,8 +1685,10 @@ const AdDetails = () => {
                     pauseVideos();
                     setCurrentImageIndex(i);
                   }}
-                  className={`relative w-20 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
+                  className={`relative w-32 h-24 xl:w-36 xl:h-28 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                    validMediaIndex === i
+                      ? 'border-violet-600 opacity-100 shadow-[0_0_0_2px_rgba(255,255,255,0.90),0_5px_14px_rgba(76,29,149,0.28)] ring-2 ring-violet-500'
+                      : 'border-white/80 opacity-90 shadow-[0_2px_8px_rgba(4,18,38,0.14)] hover:border-white hover:opacity-100'
                   }`}
                 >
                   {item.type === 'video' ? (
@@ -1005,17 +1735,77 @@ const AdDetails = () => {
             </div>
           )}
 
+
+          {/* External / demo notices kept without the redundant title/price card */}
+          {(ad.externalListing || ad.demoListing) && (
+            <div className="space-y-3 mt-4">
+              {ad.externalListing && (
+                <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl p-4 flex items-start gap-3">
+                  <div className="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5">
+                    <ExternalLink size={18} />
+                  </div>
+                  <div className="space-y-1 text-xs text-indigo-950">
+                    <span className="font-extrabold text-indigo-900 block text-sm">
+                      External Listing {ad.sourceSite ? `• ${ad.sourceSite}` : ''}
+                    </span>
+                    <p className="text-indigo-800 leading-relaxed font-medium">
+                      This listing originated from a partner marketplace ({ad.sourceSite || 'External Source'}). ConnectBoat is not the seller of this item. Click "View Original Listing" to visit the seller's source page.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {ad.demoListing && (
+                <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3">
+                  <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
+                    <Tag size={18} />
+                  </div>
+                  <div className="space-y-1 text-xs text-amber-950">
+                    <span className="font-extrabold text-amber-900 block text-sm">
+                      Example Listing (Demonstration)
+                    </span>
+                    <p className="text-amber-800 leading-relaxed font-medium">
+                      This is an example listing created for demonstration purposes and is not available for purchase.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DESCRIPTION CARD — separate from title and seller */}
+          <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-7 mt-4 text-left">
+            <div className="space-y-2">
+              <h3 className="text-sm font-black text-slate-700 uppercase tracking-[0.08em]">Detailed Description</h3>
+              <p className="text-slate-700 text-[15px] leading-relaxed whitespace-pre-line break-words overflow-hidden bg-white/38 backdrop-blur-sm p-4 rounded-2xl border border-white/55">
+                {shouldCollapseDescription && normalizedDescription.length > 400 && !descriptionExpanded
+                  ? `${normalizedDescription.substring(0, 400).trim()}...`
+                  : normalizedDescription}
+              </p>
+              {shouldCollapseDescription && normalizedDescription.length > 400 && (
+                <button
+                  onClick={() => setDescriptionExpanded(!descriptionExpanded)}
+                  className="text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+                >
+                  {descriptionExpanded ? 'Show Less' : 'Read Full Description'}
+                </button>
+              )}
+            </div>
+
+
+          </div>
+
           {/* ESPECIFICAÇÕES TÉCNICAS DO BARCO (GROUPED MARINE SPECS) */}
           {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.length || ad.beam || ad.draft || ad.hullMaterial || ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType || ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
-            <div id="especificacoes-nauticas" className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6 mt-6 text-left">
+            <div id="especificacoes-nauticas" className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-8 space-y-6 mt-6 text-left">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-indigo-600/10 text-indigo-700 rounded-2xl flex items-center justify-center font-bold">
                     <Anchor size={22} />
                   </div>
                   <div>
-                    <h2 className="text-xl font-black text-slate-900 leading-none">⚓ Especificações Náuticas</h2>
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5">Ficha Técnica Oficial ConnectBoat</p>
+                    <h2 className="text-xl font-black text-slate-900 leading-none">⚓ Marine Specifications</h2>
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5">Official ConnectBoat Specification</p>
                   </div>
                 </div>
                 {ad.condition && (
@@ -1025,18 +1815,18 @@ const AdDetails = () => {
                 )}
               </div>
 
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Grupo 1: Embarcação / Vessel */}
                 {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.condition) && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-sky-800 bg-sky-50/70 p-2.5 rounded-xl border border-sky-100/60">
+                  <div className="space-y-3 lg:col-span-2">
+                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.08em] text-slate-800">
                       <Anchor size={16} className="text-sky-600" />
-                      <span>Informação da Embarcação</span>
+                      <span>Vessel Information</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       {ad.boatType && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Tipo de Barco</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Boat Type</span>
                           <span className="text-xs sm:text-sm font-black text-slate-900 block mt-0.5">{ad.boatType}</span>
                         </div>
                       )}
@@ -1054,13 +1844,13 @@ const AdDetails = () => {
                       )}
                       {ad.year && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ano de Fabrico</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Year</span>
                           <span className="text-xs sm:text-sm font-black text-slate-900 block mt-0.5">{ad.year}</span>
                         </div>
                       )}
                       {ad.condition && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Estado</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Condition</span>
                           <span className="text-xs sm:text-sm font-black text-slate-900 block mt-0.5">{ad.condition}</span>
                         </div>
                       )}
@@ -1071,11 +1861,11 @@ const AdDetails = () => {
                 {/* Grupo 2: Dimensões & Casco / Dimensions */}
                 {(ad.length || ad.beam || ad.draft || ad.hullMaterial) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-teal-800 bg-teal-50/70 p-2.5 rounded-xl border border-teal-100/60">
+                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.08em] text-slate-800">
                       <Ruler size={16} className="text-teal-600" />
                       <span>Dimensões & Casco</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {ad.length && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Comprimento (LOA)</span>
@@ -1107,11 +1897,11 @@ const AdDetails = () => {
                 {/* Grupo 3: Motorização / Engine */}
                 {(ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-800 bg-amber-50/70 p-2.5 rounded-xl border border-amber-100/60">
+                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.08em] text-slate-800">
                       <Gauge size={16} className="text-amber-600" />
                       <span>Motorização & Performance</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {ad.engineBrand && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Marca do Motor</span>
@@ -1143,11 +1933,11 @@ const AdDetails = () => {
                 {/* Grupo 4: Acomodações & Habitabilidade / Accommodation */}
                 {(ad.cabins || ad.berths || ad.bathrooms) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-indigo-800 bg-indigo-50/70 p-2.5 rounded-xl border border-indigo-100/60">
+                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.08em] text-slate-800">
                       <Bed size={16} className="text-indigo-600" />
                       <span>Acomodações & Habitabilidade</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {ad.cabins && (
                         <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Cabines</span>
@@ -1173,7 +1963,7 @@ const AdDetails = () => {
                 {/* Grupo 5: Conformidade & Extras */}
                 {(ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-800 bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100/60">
+                    <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.08em] text-slate-800">
                       <ShieldCheck size={16} className="text-emerald-600" />
                       <span>Conformidade & Equipamento</span>
                     </div>
@@ -1201,45 +1991,150 @@ const AdDetails = () => {
             </div>
           )}
 
+
+        </div>
+
+        {/* LADO DIREITO: Dados, Vendedor e WhatsApp */}
+        <div className="lg:col-span-3 space-y-6">
+          <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-6 md:p-8 space-y-6">
+
+            {/* Contact actions — responsive and claim-aware */}
+            <div className="bg-white/58 backdrop-blur-md rounded-2xl p-4 md:p-5 border border-white/70 space-y-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.60)]">
+              <div className="flex flex-col gap-3">
+                {(ad as any).moreInfoUrl && /^https?:\/\//i.test((ad as any).moreInfoUrl) && (
+                  <a
+                    href={(ad as any).moreInfoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-indigo-700 active:scale-[0.98]"
+                  >
+                    <ExternalLink size={19} className="shrink-0" />
+                    <span className="leading-tight">View Original Listing</span>
+                  </a>
+                )}
+
+                {!((ad as any).moreInfoUrl && /^https?:\/\//i.test((ad as any).moreInfoUrl)) &&
+                  (ad.externalListing || (hasSourceUrl && !ad.demoListing)) && (
+                    <a
+                      href={ad.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-indigo-700 active:scale-[0.98]"
+                    >
+                      <ExternalLink size={19} className="shrink-0" />
+                      <span className="leading-tight">View Original Listing</span>
+                    </a>
+                  )}
+
+                {ad.demoListing ? (
+                  <div className="flex items-center justify-center gap-2 rounded-2xl border border-amber-200/80 bg-amber-50 px-4 py-3.5 text-center text-xs font-extrabold text-amber-800">
+                    <Tag size={16} className="shrink-0 text-amber-600" />
+                    <span>Demo Listing — Not Available for Sale</span>
+                  </div>
+                ) : ad.adStatus === 'sold' || ad.status === 'sold' ? (
+                  <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3.5 text-sm font-black text-slate-500">
+                    <Tag size={19} className="shrink-0 text-slate-400" />
+                    <span>Listing Sold</span>
+                  </div>
+                ) : ad.isClaimableBusiness && ad.claimStatus !== 'claimed' ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowUnclaimedContactModal(true)}
+                    className="flex w-full cursor-default items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-center font-black text-amber-800 shadow-sm"
+                    title="Direct contact becomes available after the owner claims this listing"
+                  >
+                    <ShieldAlert size={19} className="shrink-0 text-amber-600" />
+                    <span className="leading-tight">
+                      {ad.claimStatus === 'pending'
+                        ? 'Owner Verification Pending'
+                        : 'Awaiting Owner Claim'}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleContactClick}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3.5 text-center font-black text-white shadow-md transition-all hover:bg-emerald-600 active:scale-[0.98]"
+                  >
+                    {(() => {
+                      const methods = getContactMethods();
+                      const method = methods.length === 1 ? methods[0] : null;
+                      const Icon = method ? getContactMethodIcon(method) : MessageCircle;
+                      return <Icon size={19} className="shrink-0" />;
+                    })()}
+                    <span className="leading-tight">
+                      {(() => {
+                        const methods = getContactMethods();
+                        return methods.length === 1 ? getContactMethodLabel(methods[0]) : 'Contact';
+                      })()}
+                    </span>
+                  </button>
+                )}
+
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setShowSellerProfileModal(true)}
+                    aria-label="View seller profile and reviews"
+                    title="Seller profile"
+                    className="min-w-0 rounded-xl border border-indigo-100 bg-indigo-50 px-2 py-3 text-indigo-700 transition-all hover:bg-indigo-100 active:scale-[0.98] flex flex-col items-center justify-center gap-1"
+                  >
+                    <UserRound size={18} />
+                    <span className="text-[10px] font-black leading-tight">Profile</span>
+                  </button>
+
+                  <button
+                    onClick={handleShare}
+                    className={`min-w-0 rounded-xl border px-2 py-3 transition-all flex flex-col items-center justify-center gap-1 ${
+                      shareCopied
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                    }`}
+                    title="Share listing"
+                  >
+                    <Share2 size={18} className={shareCopied ? 'text-emerald-500 animate-bounce' : ''} />
+                    <span className="text-[10px] font-black leading-tight">
+                      {shareCopied ? 'Copied' : 'Share'}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowReportModal(true)}
+                    className="min-w-0 rounded-xl border border-rose-100 bg-rose-50/60 px-2 py-3 text-rose-500 transition-all hover:border-rose-200 hover:bg-rose-50 flex flex-col items-center justify-center gap-1"
+                    title="Report listing"
+                  >
+                    <ShieldAlert size={18} />
+                    <span className="text-[10px] font-black leading-tight">Report</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* SECÇÃO DE LOCALIZAÇÃO */}
-          <div id="localizacao" className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6 mt-6 scroll-mt-24 text-left">
+          <div id="localizacao" className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] rounded-[2rem] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] p-5 space-y-4 scroll-mt-24 text-left">
             <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
                 <MapPin size={22} />
               </div>
-              <div>
-                <h2 className="text-xl font-black text-slate-900 leading-none">📍 Approximate Location</h2>
+              <div className="min-w-0">
+                <h2 className="text-lg font-black text-slate-900 leading-none">📍 Approximate Location</h2>
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1.5 font-sans">Reference region for the listing</p>
               </div>
             </div>
 
-            <div className="flex flex-row items-center justify-between gap-4 bg-slate-50 p-4 md:p-5 rounded-2xl border border-slate-100 font-sans">
-              <div className="space-y-0.5">
-                <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider text-left">
-                  {isService ? 'Service Area' : 'City'}
-                </span>
-                <span className="text-sm sm:text-lg font-extrabold text-slate-900 block text-left">
-                  {isService && ad.serviceCoverage === 'online' ? (
-                    '💻 Online Service'
-                  ) : isService && ad.serviceCoverage === 'uk' ? (
-                    '🌍 Entire UK'
-                  ) : isService && ad.serviceCoverage === 'portugal' ? (
-                    '🇵🇹 Entire Portugal'
-                  ) : (
-                    getAdLocationLabel(ad)
-                  )}
-                </span>
-              </div>
-              {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
-                <div className="space-y-0.5 text-right">
-                  <span className="block text-[10px] text-slate-400 uppercase font-black tracking-wider">Region</span>
-                  <span className="text-sm sm:text-lg font-extrabold text-slate-900 block">
-                    {ad.region || getRegionForCity(ad.city)}
+            {!(isService && (ad.serviceCoverage === 'online' || ad.serviceCoverage === 'uk' || ad.serviceCoverage === 'portugal')) && (
+              <div className="grid grid-cols-2 gap-4 rounded-2xl bg-white/90 border border-white shadow-sm px-4 py-3.5 font-sans">
+                <div className="min-w-0 text-left">
+                  <span className="block text-[9px] text-slate-400 uppercase font-black tracking-wider">City</span>
+                  <span className="mt-1 block truncate text-sm font-extrabold text-slate-900">{getAdLocationLabel(ad)}</span>
+                </div>
+                <div className="min-w-0 text-right">
+                  <span className="block text-[9px] text-slate-400 uppercase font-black tracking-wider">Country</span>
+                  <span className="mt-1 block truncate text-sm font-extrabold text-slate-900">
+                    {ad.country === 'Reino Unido' ? 'United Kingdom' : ad.country || 'United Kingdom'}
                   </span>
                 </div>
-              )}
-            </div>
-
+              </div>
+            )}
             {isService && ad.serviceCoverage === 'online' ? (
               <div className="flex flex-col items-center justify-center p-8 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl text-center space-y-2">
                 <span className="text-4xl">💻</span>
@@ -1254,7 +2149,7 @@ const AdDetails = () => {
               </div>
             ) : (
               ad.city && ad.city.trim() !== '' && ad.city.toLowerCase() !== 'todas' && (
-                <div className="w-full h-64 md:h-80 rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-100 relative">
+                <div className="w-full h-72 rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-100 relative">
                   <iframe
                     title={`Map of ${ad.city}`}
                     width="100%"
@@ -1281,281 +2176,6 @@ const AdDetails = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* LADO DIREITO: Dados, Vendedor e WhatsApp */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-xl space-y-6">
-            
-            {/* Categoria & Visualizações / Tempo */}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4">
-              <span className="bg-indigo-50 text-indigo-600 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-indigo-100">
-                {ad.category}
-              </span>
-              <div className="flex items-center gap-3 text-slate-400 text-xs font-semibold">
-                <span className="flex items-center gap-1">
-                  <Eye size={14} /> {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Clock size={14} /> {timeStr}
-                </span>
-              </div>
-            </div>
-
-            {/* Selos de Negócio Reivindicável */}
-            {ad.isClaimableBusiness && (
-              <div className="flex flex-wrap gap-2 animate-fade-in">
-                {(ad.claimStatus === 'unclaimed' || !ad.claimStatus) && (
-                  <span className="bg-amber-50 text-amber-605 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-amber-200 flex items-center gap-1">
-                    <AlertCircle size={12} /> Awaiting owner activation
-                  </span>
-                )}
-                {ad.claimStatus === 'pending' && (
-                  <span className="bg-indigo-50 text-indigo-600 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-indigo-200 flex items-center gap-1 animate-pulse">
-                    <Clock size={12} /> Activation Pending Verification
-                  </span>
-                )}
-                {ad.claimStatus === 'claimed' && (
-                  <span className="bg-emerald-50 text-emerald-700 text-[11px] font-black px-3 py-1.5 rounded-xl uppercase tracking-wider border border-emerald-200 flex items-center gap-1">
-                    <Award size={12} /> Verified & Active Business
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Título & Preço */}
-            <div className="space-y-2">
-              {ad.externalListing && (
-                <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl p-4 flex items-start gap-3 mb-2">
-                  <div className="p-2 bg-indigo-600 text-white rounded-xl shrink-0 mt-0.5">
-                    <ExternalLink size={18} />
-                  </div>
-                  <div className="space-y-1 text-xs text-indigo-950">
-                    <span className="font-extrabold text-indigo-900 block text-sm">
-                      External Listing {ad.sourceSite ? `• ${ad.sourceSite}` : ''}
-                    </span>
-                    <p className="text-indigo-800 leading-relaxed font-medium">
-                      This listing originated from a partner marketplace ({ad.sourceSite || 'External Source'}). ConnectBoat is not the seller of this item. Click "View Original Listing" to visit the seller's source page.
-                    </p>
-                  </div>
-                </div>
-              )}
-              {ad.demoListing && (
-                <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-start gap-3 mb-2">
-                  <div className="p-2 bg-amber-500 text-white rounded-xl shrink-0 mt-0.5">
-                    <Tag size={18} />
-                  </div>
-                  <div className="space-y-1 text-xs text-amber-950">
-                    <span className="font-extrabold text-amber-900 block text-sm">
-                      Example Listing (Demonstration)
-                    </span>
-                    <p className="text-amber-800 leading-relaxed font-medium">
-                      This is an example listing created for demonstration purposes and is not available for purchase.
-                    </p>
-                  </div>
-                </div>
-              )}
-              <h1 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
-                {ad.title}
-              </h1>
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-1.5 text-slate-500 font-bold text-sm">
-                  {isService && ad.serviceCoverage === 'online' ? (
-                    <span>💻 Online Service</span>
-                  ) : isService && ad.serviceCoverage === 'uk' ? (
-                    <span>🌍 Entire UK</span>
-                  ) : isService && ad.serviceCoverage === 'portugal' ? (
-                    <span>🇵🇹 Entire Portugal</span>
-                  ) : (
-                    <>
-                      <MapPin size={16} className="text-indigo-600" />
-                      <span>{getAdLocationLabel(ad)}</span>
-                    </>
-                  )}
-                </div>
-                {ad.category === '💚 Doações & Solidariedade' ? (
-                  <div className="text-3.5xl font-black text-emerald-600 bg-emerald-50 py-1.5 px-4 rounded-2xl border border-emerald-200 flex items-center justify-center animate-pulse">
-                    Free 💚
-                  </div>
-                ) : hasPrice ? (
-                  <div className="text-3.5xl font-black text-indigo-600 bg-indigo-50/50 py-1.5 px-4 rounded-2xl border border-indigo-100/50 flex items-center justify-center">
-                    {formatPrice(ad.price, ad.country)}
-                  </div>
-                ) : (
-                  <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-emerald-100 flex items-center justify-center">
-                    Price on Request
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Descrição */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Detailed Description</h3>
-              <p className="text-slate-600 text-[15px] leading-relaxed whitespace-pre-line break-words overflow-hidden bg-slate-50/40 p-4 rounded-2xl border border-slate-50">
-                {normalizedDescription.length > 400 && !descriptionExpanded
-                  ? `${normalizedDescription.substring(0, 400).trim()}...`
-                  : normalizedDescription}
-              </p>
-              {normalizedDescription.length > 400 && (
-                <button
-                  onClick={() => setDescriptionExpanded(!descriptionExpanded)}
-                  className="text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
-                >
-                  {descriptionExpanded ? 'Show Less' : 'Read Full Description'}
-                </button>
-              )}
-            </div>
-
-            {/* Cartão do Vendedor e Avaliações */}
-            <div className="bg-slate-50 rounded-2xl p-4 md:p-6 border border-slate-100 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/60">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-indigo-600/10 text-indigo-700 rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0">
-                    {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <h4 className="font-extrabold text-slate-900 leading-tight flex items-center gap-1 truncate">
-                      {hasSourceUrl ? 'Partner' : ad.sellerName}
-                      <Award size={14} className="text-indigo-500 flex-shrink-0" />
-                    </h4>
-                    
-                    {/* Estrelas */}
-                    <div className="flex items-center gap-0.5 mt-1" title={`${sellerProfile?.ratingAverage || 0} / 5`}>
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map((star) => {
-                          const ratingVal = sellerProfile?.ratingAverage || 0;
-                          const isFilled = star <= Math.round(ratingVal);
-                          return (
-                            <Star
-                              key={star}
-                              size={12}
-                              className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
-                            />
-                          );
-                        })}
-                      </div>
-                      <span className="text-[10px] text-slate-500 font-bold ml-1">
-                        ({sellerProfile?.ratingCount || 0} reviews)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Botão de Avaliar */}
-                {user && user.uid !== ad.sellerId && (
-                  <button
-                    onClick={() => setShowReviewModal(true)}
-                    className="text-[11px] font-black bg-indigo-50 text-indigo-600 py-1.5 px-3.5 rounded-xl border border-indigo-100 hover:bg-indigo-100/80 hover:text-indigo-700 font-bold transition-all text-center w-full sm:w-auto self-start sm:self-center flex-shrink-0"
-                  >
-                    Rate Seller
-                  </button>
-                )}
-              </div>
-
-              {/* CTAs */}
-              <div className="flex flex-col gap-3">
-                {ad.externalListing || (hasSourceUrl && !ad.demoListing) ? (
-                  <a
-                    href={ad.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center"
-                  >
-                    <ExternalLink size={20} className="flex-shrink-0" />
-                    <span className="leading-tight">View Original Listing</span>
-                  </a>
-                ) : ad.demoListing ? (
-                  <div className="flex items-center justify-center gap-2 bg-amber-50 text-amber-800 py-3.5 px-6 rounded-2xl font-extrabold text-xs text-center border border-amber-200/80">
-                    <Tag size={16} className="text-amber-600 shrink-0" />
-                    <span>Demo Listing — Not Available for Sale</span>
-                  </div>
-                ) : ad.adStatus === 'sold' || ad.status === 'sold' ? (
-                  <div className="flex items-center justify-center gap-2 bg-slate-100 text-slate-500 py-3.5 px-6 rounded-2xl font-black text-sm border border-slate-200">
-                    <Tag size={20} className="flex-shrink-0 text-slate-400" />
-                    <span className="leading-tight">Listing Sold</span>
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleContactClick}
-                    className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 px-6 rounded-2xl font-black transition-all shadow-md active:scale-[0.98] w-full text-center"
-                  >
-                    <MessageCircle size={20} className="flex-shrink-0" />
-                    <span className="leading-tight">Contact via WhatsApp</span>
-                  </button>
-                )}
-
-                <div className="flex gap-2">
-                  {/* Share button */}
-                  <button
-                    onClick={handleShare}
-                    className={`flex-1 flex items-center justify-center gap-2 border py-3 px-3 rounded-xl font-bold text-xs transition-all ${
-                      shareCopied 
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
-                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <Share2 size={16} className={shareCopied ? 'text-emerald-500 animate-bounce' : ''} />
-                    <span>{shareCopied ? 'Link copied!' : 'Share'}</span>
-                  </button>
-
-                  {/* Report Button */}
-                  <button
-                    onClick={() => setShowReportModal(true)}
-                    className="flex items-center justify-center gap-1.5 border border-rose-100 hover:border-rose-200 text-rose-500 bg-rose-50/50 hover:bg-rose-50 py-3 px-4 rounded-xl font-bold text-xs transition"
-                  >
-                    <ShieldAlert size={16} /> Report
-                  </button>
-                </div>
-              </div>
-
-              {/* Seção das avaliações do vendedor */}
-              {sellerReviews.length > 0 && (
-                <div className="pt-3 border-t border-slate-200/60 font-sans">
-                  <button
-                    onClick={() => setShowReviewsSection(!showReviewsSection)}
-                    className="flex items-center justify-between w-full text-xs font-bold text-indigo-600 uppercase tracking-widest"
-                  >
-                    <span>Seller Reviews ({sellerReviews.length})</span>
-                    <span className="text-slate-400 text-[10px] uppercase font-bold">{showReviewsSection ? 'Collapse' : 'Expand'}</span>
-                  </button>
-
-                  <AnimatePresence>
-                    {showReviewsSection && (
-                      <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="mt-3 space-y-3 max-h-56 overflow-y-auto pr-1"
-                      >
-                        {sellerReviews.map((rev) => (
-                          <div key={rev.id} className="bg-white p-3 rounded-xl border border-slate-100 text-xs shadow-sm">
-                            <div className="flex justify-between items-start mb-1">
-                              <span className="font-extrabold text-slate-800">{rev.buyerName}</span>
-                              <div className="flex gap-0.5">
-                                {[1, 2, 3, 4, 5].map((s) => (
-                                  <Star key={s} size={10} className={`${s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-100'}`} />
-                                ))}
-                              </div>
-                            </div>
-                            {rev.comment ? (
-                              <p className="text-slate-600 italic">"{rev.comment}"</p>
-                            ) : (
-                              <p className="text-slate-400 italic">Rated without written comment.</p>
-                            )}
-                            <div className="text-[9px] text-slate-400 mt-1 flex justify-between">
-                              <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
-                              <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Reivindicar Card no Desktop */}
           {ad.isClaimableBusiness && (ad.claimStatus === 'unclaimed' || !ad.claimStatus) && (
@@ -1565,7 +2185,7 @@ const AdDetails = () => {
                 <div className="space-y-1">
                   <p className="font-extrabold text-[#030d32] text-base">Are you the owner of this business?</p>
                   <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                    Activate and claim this listing for free to start receiving direct WhatsApp enquiries!
+                    Activate and claim this listing for free to start receiving direct enquiries through your available contact options!
                   </p>
                 </div>
               </div>
@@ -1584,9 +2204,96 @@ const AdDetails = () => {
       <div className="block lg:hidden space-y-5">
         
         {/* CAROUSEL FLOW */}
-        <div className="space-y-3">
+        <div className="space-y-2">
+          {/* Compact listing header above main image */}
+          <div className="relative mx-1 h-[104px] sm:h-[110px] overflow-visible rounded-2xl border border-white/85 bg-white/95 backdrop-blur-sm shadow-[0_8px_22px_rgba(4,18,38,0.14)] px-4 py-2">
+            <h1
+              className="block w-full cursor-pointer truncate pr-1 text-[1.35rem] sm:text-2xl font-black leading-[1.12] text-slate-900 select-none"
+              title={ad.title}
+              role="button"
+              tabIndex={0}
+              aria-label={`Full listing title: ${ad.title}`}
+              onClick={() => setShowMobileFullTitle((current) => !current)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setShowMobileFullTitle((current) => !current);
+                }
+              }}
+            >
+              {ad.title}
+            </h1>
+
+            <AnimatePresence>
+              {showMobileFullTitle && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4, scale: 0.985 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -3, scale: 0.985 }}
+                  transition={{ duration: 0.16 }}
+                  className="absolute left-3 right-3 top-[42px] z-[70] rounded-xl border border-slate-200/90 bg-slate-950/95 px-3 py-2.5 text-[13px] font-bold leading-snug text-white shadow-[0_10px_30px_rgba(2,8,23,0.30)] backdrop-blur-md"
+                >
+                  {ad.title}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="mt-1.5 flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-[13px] font-bold text-slate-600">
+                  <MapPin size={14} className="text-sky-600 shrink-0" />
+                  <span className="truncate">{getAdLocationLabel(ad)}</span>
+                </div>
+                <div className="mt-1 flex items-center gap-3 text-[11px] font-semibold text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Eye size={12} />
+                    {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
+                  </span>
+                  <span className="flex items-center gap-1 notranslate" translate="no">
+                    <Clock size={12} />
+                    {timeStr}
+                  </span>
+                </div>
+              </div>
+
+              <div className="shrink-0">
+                <div className="relative min-w-[138px] overflow-hidden rounded-xl border-2 border-cyan-100/90 bg-gradient-to-br from-[#0a467d] via-[#063b70] to-[#082d58] px-2.5 py-1.5 shadow-[0_7px_18px_rgba(5,35,70,0.24),inset_0_0_0_1px_rgba(255,255,255,0.32)]">
+                  <div className="pointer-events-none absolute inset-[3px] rounded-[8px] border border-white/40" />
+                  <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-cyan-100/90 to-transparent" />
+
+                  <div className="relative z-10 flex items-center gap-2">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5">
+                      <Anchor size={20} strokeWidth={2.15} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.22)]" />
+                    </div>
+
+                    <div className="min-w-0 text-right">
+                      <div className="text-[8px] font-extrabold uppercase tracking-[0.18em] text-cyan-50/95">
+                        Price
+                      </div>
+                      <div className="mt-0.5 whitespace-nowrap">
+                        {ad.category === '💚 Doações & Solidariedade' ? (
+                          <span className="block text-[14px] sm:text-[16px] font-black leading-none tracking-tight text-emerald-200 drop-shadow-sm">
+                            Free 💚
+                          </span>
+                        ) : (ad as any).priceOnRequest || !hasPrice ? (
+                          <span className="block text-[10px] sm:text-[11px] font-black leading-none tracking-tight text-white drop-shadow-sm">
+                            On Request
+                          </span>
+                        ) : (
+                          <span className="block text-[16px] sm:text-[18px] font-black leading-none tracking-[-0.035em] text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.24)]">
+                            {formatPrice(ad.price, ad.country)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div 
-            className="relative aspect-[4/3] bg-slate-950 rounded-2xl overflow-hidden shadow-md group touch-pan-y flex items-center justify-center select-none"
+            className="relative aspect-[4/3] sm:aspect-[16/10] bg-slate-950 rounded-2xl overflow-hidden border-2 border-white/85 shadow-[0_10px_26px_rgba(4,18,38,0.24),0_0_0_1px_rgba(255,255,255,0.18)] group [touch-action:pan-y_pinch-zoom] flex items-center justify-center select-none"
             onTouchStart={handleGalleryTouchStart}
             onTouchMove={handleGalleryTouchMove}
             onTouchEnd={handleGalleryTouchEnd}
@@ -1628,6 +2335,17 @@ const AdDetails = () => {
                   } : undefined}
                 />
               </>
+            )}
+
+            {(ad.status === 'sold' || ad.adStatus === 'sold') && (
+              <div className="absolute inset-0 z-[18] overflow-hidden pointer-events-none">
+                <img
+                  src="/sold-banner-connectboat.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full object-cover opacity-[0.86]"
+                />
+              </div>
             )}
 
             {/* Favorito Button */}
@@ -1675,8 +2393,10 @@ const AdDetails = () => {
                     pauseVideos();
                     setCurrentImageIndex(i);
                   }}
-                  className={`relative w-14 h-11 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
-                    validMediaIndex === i ? 'border-indigo-600 scale-95 shadow-sm ring-2 ring-indigo-500/30' : 'border-transparent opacity-75 hover:opacity-100'
+                  className={`relative w-20 h-16 sm:w-24 sm:h-18 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                    validMediaIndex === i
+                      ? 'border-violet-600 opacity-100 shadow-[0_0_0_2px_rgba(255,255,255,0.90),0_5px_14px_rgba(76,29,149,0.28)] ring-2 ring-violet-500'
+                      : 'border-white/80 opacity-90 shadow-[0_2px_8px_rgba(4,18,38,0.14)] hover:border-white hover:opacity-100'
                   }`}
                 >
                   {item.type === 'video' ? (
@@ -1722,21 +2442,13 @@ const AdDetails = () => {
         </div>
 
         {/* SECTION CARD 1: Descrição com valor, cidade e país + Dados e CTAs */}
-        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-4 text-left">
+        <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] rounded-3xl p-4 sm:p-5 space-y-4 text-left">
           
-          {/* Categoria, views & time */}
-          <div className="flex items-center justify-between gap-2 border-b border-slate-100/70 pb-2.5">
+          {/* Categoria — views & time já aparecem no card superior */}
+          <div className="flex items-center border-b border-slate-100/70 pb-2.5">
             <span className="bg-indigo-50 text-indigo-600 text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider border border-indigo-100">
               {ad.category}
             </span>
-            <div className="flex items-center gap-2 text-slate-400 text-xs font-semibold">
-              <span className="flex items-center gap-1">
-                <Eye size={12} /> {ad.isClaimableBusiness ? (ad.businessViews || 0) : (ad.views || 0)}
-              </span>
-              <span className="flex items-center gap-1">
-                <Clock size={12} /> {timeStr}
-              </span>
-            </div>
           </div>
 
           {/* Selos de Negócio Reivindicável no Mobile */}
@@ -1760,51 +2472,15 @@ const AdDetails = () => {
             </div>
           )}
 
-          {/* Title, Country/City, Price */}
-          <div className="space-y-1.5">
-            <h1 className="text-lg sm:text-xl font-black text-slate-900 leading-snug">
-              {ad.title}
-            </h1>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-1 text-slate-500 font-bold text-xs truncate">
-                {isService && ad.serviceCoverage === 'online' ? (
-                  <span className="truncate">💻 Online Service</span>
-                ) : isService && ad.serviceCoverage === 'uk' ? (
-                  <span className="truncate">🌍 Entire UK</span>
-                ) : isService && ad.serviceCoverage === 'portugal' ? (
-                  <span className="truncate">🇵🇹 Entire Portugal</span>
-                ) : (
-                  <>
-                    <MapPin size={13} className="text-indigo-600 shrink-0" />
-                    <span className="truncate">{getAdLocationLabel(ad)}</span>
-                  </>
-                )}
-              </div>
-              {ad.category === '💚 Doações & Solidariedade' ? (
-                <div className="text-lg sm:text-xl font-black text-emerald-600 bg-emerald-50 py-0.5 px-2.5 rounded-lg border border-emerald-200 flex-shrink-0">
-                  Free 💚
-                </div>
-              ) : hasPrice ? (
-                <div className="text-lg sm:text-xl font-black text-indigo-600 bg-indigo-50/50 py-0.5 px-2.5 rounded-lg border border-indigo-100/30 flex-shrink-0">
-                  {formatPrice(ad.price, ad.country)}
-                </div>
-              ) : (
-                <span className="text-[9px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-emerald-100 flex-shrink-0">
-                  Price on Request
-                </span>
-              )}
-            </div>
-          </div>
-
           {/* Descrição detalhada compacta */}
           <div className="space-y-1">
-            <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Detailed Description</h3>
+            <h3 className="text-xs font-black text-slate-700 uppercase tracking-[0.08em]">Detailed Description</h3>
             <p className="text-slate-650 text-xs sm:text-sm leading-relaxed whitespace-pre-line break-words bg-slate-50/40 p-3 rounded-xl border border-slate-50">
-              {normalizedDescription.length > 250 && !descriptionExpanded
+              {shouldCollapseDescription && normalizedDescription.length > 250 && !descriptionExpanded
                 ? `${normalizedDescription.substring(0, 250).trim()}...`
                 : normalizedDescription}
             </p>
-            {normalizedDescription.length > 250 && (
+            {shouldCollapseDescription && normalizedDescription.length > 250 && (
               <button
                 onClick={() => setDescriptionExpanded(!descriptionExpanded)}
                 className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
@@ -1816,7 +2492,7 @@ const AdDetails = () => {
 
           {/* ESPECIFICAÇÕES TÉCNICAS DO BARCO NO MOBILE */}
           {(ad.boatType || ad.manufacturer || ad.model || ad.year || ad.length || ad.beam || ad.draft || ad.hullMaterial || ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType || ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
-            <div className="bg-slate-50/70 rounded-2xl p-4 border border-slate-100 space-y-4 text-left">
+            <div className="bg-[rgba(226,238,245,0.72)] backdrop-blur-[12px] rounded-2xl p-4 border border-white/65 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] space-y-4 text-left">
               <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 bg-indigo-600/10 text-indigo-700 rounded-lg flex items-center justify-center font-bold">
@@ -1837,28 +2513,28 @@ const AdDetails = () => {
               {/* Embarcação */}
               {(ad.boatType || ad.manufacturer || ad.model || ad.year) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-sky-800 tracking-wider block">Vessel</span>
+                  <span className="text-xs font-black uppercase text-slate-800 tracking-[0.08em] block">Vessel</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.boatType && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Type</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.boatType}</span>
                       </div>
                     )}
                     {ad.manufacturer && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Make</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.manufacturer}</span>
                       </div>
                     )}
                     {ad.model && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Model</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.model}</span>
                       </div>
                     )}
                     {ad.year && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Year</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.year}</span>
                       </div>
@@ -1870,28 +2546,28 @@ const AdDetails = () => {
               {/* Dimensões */}
               {(ad.length || ad.beam || ad.draft || ad.hullMaterial) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-teal-800 tracking-wider block">Dimensions</span>
+                  <span className="text-xs font-black uppercase text-slate-800 tracking-[0.08em] block">Dimensions</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.length && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Length</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.length}</span>
                       </div>
                     )}
                     {ad.beam && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Beam</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.beam}</span>
                       </div>
                     )}
                     {ad.draft && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Draft</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.draft}</span>
                       </div>
                     )}
                     {ad.hullMaterial && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Hull</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.hullMaterial}</span>
                       </div>
@@ -1903,28 +2579,28 @@ const AdDetails = () => {
               {/* Motor */}
               {(ad.engineBrand || ad.horsepower || ad.engineHours || ad.fuelType) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-amber-800 tracking-wider block">Engine</span>
+                  <span className="text-xs font-black uppercase text-slate-800 tracking-[0.08em] block">Engine</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.engineBrand && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Make</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.engineBrand}</span>
                       </div>
                     )}
                     {ad.horsepower && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Power</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.horsepower}</span>
                       </div>
                     )}
                     {ad.engineHours && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Hours</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.engineHours}</span>
                       </div>
                     )}
                     {ad.fuelType && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Fuel</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.fuelType}</span>
                       </div>
@@ -1936,28 +2612,28 @@ const AdDetails = () => {
               {/* Acomodações e Conformidade */}
               {(ad.cabins || ad.berths || ad.bathrooms || ad.trailerIncluded || ad.vatPaid || ad.ceCertified) && (
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase text-indigo-800 tracking-wider block">Accommodations & Extras</span>
+                  <span className="text-xs font-black uppercase text-slate-800 tracking-[0.08em] block">Accommodations & Extras</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     {ad.cabins && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Cabins</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.cabins}</span>
                       </div>
                     )}
                     {ad.berths && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Berths</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.berths}</span>
                       </div>
                     )}
                     {ad.bathrooms && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Toilets</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.bathrooms}</span>
                       </div>
                     )}
                     {ad.trailerIncluded && (
-                      <div className="bg-white p-2 rounded-xl border border-slate-100">
+                      <div className="bg-white/55 backdrop-blur-sm p-2 rounded-xl border border-white/70">
                         <span className="text-[9px] font-bold text-slate-400 uppercase block">Trailer</span>
                         <span className="font-extrabold text-slate-900 block truncate">{ad.trailerIncluded === 'Yes' ? 'Yes' : ad.trailerIncluded === 'No' ? 'No' : ad.trailerIncluded}</span>
                       </div>
@@ -1982,116 +2658,42 @@ const AdDetails = () => {
             </div>
           )}
 
-          {/* Cartão do Vendedor Compacto */}
-          <div className="bg-slate-50 rounded-2xl p-3 sm:p-4 border border-slate-100 space-y-3">
-            <div className="flex items-center justify-between gap-2 border-b border-slate-200/50 pb-2.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-9 h-9 bg-indigo-600/10 bg-indigo-50 text-indigo-700 rounded-lg flex items-center justify-center font-black text-xs shrink-0">
-                  {(hasSourceUrl ? 'Partner' : ad.sellerName).slice(0, 2).toUpperCase()}
+          {/* Highly visible ownership claim call-to-action */}
+          {ad.isClaimableBusiness && ad.claimStatus !== 'claimed' && (
+            <div className="bg-white/95 border-2 border-amber-300 rounded-2xl p-4 space-y-3 text-left animate-fade-in my-3 shadow-lg shadow-amber-100/60">
+              <div className="flex gap-3 items-start">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <ShieldAlert size={20} />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm leading-tight flex items-center gap-1 truncate">
-                    {hasSourceUrl ? 'Partner' : ad.sellerName}
-                    <Award size={11} className="text-indigo-500 shrink-0" />
-                  </h4>
-                  <div className="flex items-center gap-0.5 mt-0.5" title={`${sellerProfile?.ratingAverage || 0} / 5`}>
-                    <div className="flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => {
-                        const ratingVal = sellerProfile?.ratingAverage || 0;
-                        const isFilled = star <= Math.round(ratingVal);
-                        return (
-                          <Star
-                            key={star}
-                            size={9}
-                            className={isFilled ? "text-amber-400 fill-amber-400" : "text-slate-200"}
-                          />
-                        );
-                      })}
-                    </div>
-                    <span className="text-[9px] text-slate-500 font-bold ml-1">
-                      ({sellerProfile?.ratingCount || 0} reviews)
-                    </span>
-                  </div>
+                <div className="min-w-0">
+                  <p className="font-black text-[#030d32] text-sm">
+                    Is this your boat?
+                  </p>
+                  <p className="text-xs text-slate-600 font-semibold leading-relaxed mt-1">
+                    Claim this listing free to verify ownership, manage the advert and activate direct customer enquiries.
+                  </p>
                 </div>
               </div>
 
-              {/* Avaliar button */}
-              {user && user.uid !== ad.sellerId && (
-                <button
-                  onClick={() => setShowReviewModal(true)}
-                  className="text-[9px] font-black bg-indigo-50 text-indigo-600 py-1 px-2.5 rounded-lg border border-indigo-100 shrink-0 text-center hover:bg-indigo-100/70"
-                >
-                  Rate
-                </button>
-              )}
-            </div>
-
-            {/* Reivindicar Card no Mobile */}
-            {ad.isClaimableBusiness && (ad.claimStatus === 'unclaimed' || !ad.claimStatus) && (
-              <div className="bg-gradient-to-br from-indigo-50 to-amber-50/10 border border-indigo-100 rounded-2xl p-4 space-y-2.5 text-left animate-fade-in my-2">
-                <div className="flex gap-2 items-start">
-                  <span className="text-xl">💼</span>
-                  <div className="space-y-0.5">
-                    <p className="font-extrabold text-[#030d32] text-xs">Are you the owner of this business?</p>
-                    <p className="text-[10px] text-slate-500 font-semibold leading-relaxed">
-                      Activate and claim this listing for free to start receiving direct WhatsApp enquiries!
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleOpenClaimModal}
-                  className="w-full text-center py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[11px] uppercase tracking-wider transition-all cursor-pointer shadow-sm active:scale-95"
-                >
-                  Confirm Ownership
-                </button>
-              </div>
-            )}
-
-            {/* CTAs */}
-            <div className="flex flex-col gap-2 pt-1">
-              {ad.adStatus === 'sold' || ad.status === 'sold' ? (
-                <div className="flex items-center justify-center gap-1 bg-slate-100 text-slate-500 py-2.5 px-4 rounded-xl font-black text-xs border border-slate-200">
-                  <Tag size={14} className="text-slate-400" />
-                  <span>Listing Sold</span>
+              {ad.claimStatus === 'pending' ? (
+                <div className="w-full text-center py-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-black text-xs">
+                  Ownership verification pending
                 </div>
               ) : (
                 <button
-                  onClick={handleContactClick}
-                  className={`flex items-center justify-center gap-1.5 ${
-                    hasSourceUrl ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-500 hover:bg-emerald-600'
-                  } text-white py-2.5 px-4 rounded-xl font-black text-xs transition-all shadow-md active:scale-[0.98] w-full text-center`}
+                  onClick={handleOpenClaimModal}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-sm transition-all cursor-pointer shadow-md active:scale-[0.98]"
                 >
-                  {hasSourceUrl ? <ExternalLink size={14} /> : <MessageCircle size={14} />}
-                  <span>{hasSourceUrl ? 'Contact' : 'Contact via WhatsApp'}</span>
+                  <ShieldCheck size={17} />
+                  Claim This Listing — Free
                 </button>
               )}
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleShare}
-                  className={`flex items-center justify-center gap-1 border px-2 py-2 rounded-lg font-bold text-[9px] transition-all truncate ${
-                    shareCopied 
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
-                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <Share2 size={13} className={shareCopied ? 'text-emerald-500' : ''} />
-                  <span>{shareCopied ? 'Copied!' : 'Share'}</span>
-                </button>
-
-                <button
-                  onClick={() => setShowReportModal(true)}
-                  className="flex items-center justify-center gap-1 border border-rose-100 hover:border-rose-200 text-rose-500 bg-rose-50/50 hover:bg-rose-50 py-2 px-2 rounded-lg font-bold text-[9px] transition"
-                >
-                  <ShieldAlert size={13} /> Report
-                </button>
-              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* SECTION CARD 2: Localização aproximada */}
-        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-3.5 text-left">
+        <div className="bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] border border-white/70 shadow-[0_12px_32px_rgba(3,24,46,0.16),inset_0_1px_0_rgba(255,255,255,0.75)] rounded-3xl p-4 sm:p-5 space-y-3.5 text-left">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
             <div className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
               <MapPin size={14} />
@@ -2166,54 +2768,54 @@ const AdDetails = () => {
           </div>
         </div>
 
-        {/* SECTION CARD 3: Avaliações do Vendedor (Feedback) */}
-        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-lg space-y-3.5 text-left">
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
-            <div className="w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center shrink-0">
-              <Star size={14} className="text-amber-500" />
-            </div>
-            <div>
-              <h2 className="text-sm font-black text-slate-900 leading-none">⭐️ Seller Reviews</h2>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1 font-sans">Real feedback from other customers</p>
+      </div> {/* closes block lg:hidden */}
+
+      {/* MORE FROM THIS SELLER */}
+      {sellerAds.length > 0 &&
+        !isExternalImportedListing &&
+        !(ad.isClaimableBusiness && ad.claimStatus !== 'claimed') && (
+        <section className="mt-10 sm:mt-12 rounded-[1.75rem] sm:rounded-[2rem] border border-white/70 bg-[rgba(226,238,245,0.84)] backdrop-blur-[14px] shadow-[0_12px_32px_rgba(3,24,46,0.18)] overflow-hidden text-left">
+          <div className="px-4 sm:px-6 lg:px-7 py-5 sm:py-6 border-b border-white/60 bg-white/10">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.22em] text-indigo-600 mb-1">
+                  Seller collection
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  More From This Seller
+                </h2>
+                <p className="text-[11px] sm:text-xs text-slate-500 font-semibold mt-1">
+                  More active listings from {hasSourceUrl ? 'this partner' : (ad.sellerName || 'this seller')}.
+                </p>
+              </div>
+
+              <div className="hidden sm:flex shrink-0 items-center justify-center min-w-12 h-10 px-3 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700">
+                <span className="text-sm font-black">{sellerAds.length}</span>
+                <span className="ml-1 text-[9px] font-black uppercase tracking-wide">more</span>
+              </div>
             </div>
           </div>
 
-          {sellerReviews.length > 0 ? (
-            <div className="space-y-2.5 max-h-60 overflow-y-auto pr-0.5 scrollbar-none">
-              {sellerReviews.map((rev) => (
-                <div key={rev.id} className="bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 text-xs shadow-sm">
-                  <div className="flex justify-between items-start mb-1 gap-1.5">
-                    <span className="font-extrabold text-slate-800 text-[11px] truncate">{rev.buyerName}</span>
-                    <div className="flex gap-0.5 shrink-0">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} size={9} className={`${s <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-100'}`} />
-                      ))}
-                    </div>
-                  </div>
-                  {rev.comment ? (
-                    <p className="text-slate-600 text-[11px] italic leading-relaxed">"{rev.comment}"</p>
-                  ) : (
-                    <p className="text-slate-400 text-[10px] italic">Rated without written comment.</p>
-                  )}
-                  <div className="text-[8px] text-slate-400 mt-2 flex justify-between items-center">
-                    <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
-                    <span>{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: pt }) : 'Recently'}</span>
-                  </div>
+          {/* Single-row horizontal carousel on all screen sizes */}
+          <div className="p-4 sm:p-5 lg:p-6">
+            <div className="flex gap-3 lg:gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-thin">
+              {sellerAds.map((sellerAd) => (
+                <div
+                  key={sellerAd.id}
+                  className="seller-more-card shrink-0 snap-start"
+                >
+                  <AdCard ad={sellerAd} />
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-5 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 p-3.5">
-              <span className="text-lg block mb-1">💬</span>
-              <h4 className="text-xs font-bold text-slate-800">No reviews yet</h4>
-              <p className="text-[9px] text-slate-400 mt-0.5 leading-normal">
-                Transact safely with the seller or hire operator and be the first to leave feedback!
-              </p>
-            </div>
-          )}
-        </div>
 
-      </div> {/* closes block lg:hidden */}
+            <div className="mt-2 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400">
+              <span>Swipe or scroll to see more listings</span>
+              <ChevronRight size={13} />
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* RELATED LISTINGS SECTION (Anúncios Náuticos Semelhantes) */}
       {relatedAds.length > 0 && (
@@ -2243,37 +2845,205 @@ const AdDetails = () => {
         </div>
       )}
 
-      {/* STICKY MOBILE CONTACT BAR */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 shadow-2xl flex items-center justify-between gap-3">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Price</span>
-          <span className="text-sm font-black text-indigo-600">
-            {hasPrice ? formatPrice(ad.price, ad.country) : 'Price on Request'}
+      {/* STICKY MOBILE ACTION BAR */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[140] bg-white/95 backdrop-blur-md border-t border-slate-200 px-2.5 py-2.5 shadow-2xl flex items-center gap-2">
+        <div className="flex flex-col shrink-0 min-w-[68px]">
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Price</span>
+          <span className="text-xs sm:text-sm font-black text-indigo-600 leading-tight">
+            {(ad as any).priceOnRequest || !hasPrice
+              ? 'On Request'
+              : formatPrice(ad.price, ad.country)}
           </span>
         </div>
+
         <button
-          onClick={() => {
-            if (isUnclaimed) {
-              setShowUnclaimedContactModal(true);
-            } else if (acceptedContactTerms) {
-              handleConfirmWhatsapp();
-            } else {
-              setShowContactWarning(true);
-            }
-          }}
-          disabled={ad.adStatus === 'sold' || ad.status === 'sold'}
-          className={`flex-1 py-3 px-4 rounded-xl font-black text-xs text-white shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 ${
-            ad.adStatus === 'sold' || ad.status === 'sold'
-              ? 'bg-slate-400 cursor-not-allowed'
-              : hasSourceUrl
-                ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
-                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+          onClick={handleShare}
+          aria-label="Share listing"
+          className={`shrink-0 w-10 h-10 rounded-xl border flex items-center justify-center transition-all ${
+            shareCopied
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
           }`}
         >
-          <MessageCircle size={16} />
-          <span>{hasSourceUrl ? 'Contact Seller' : 'Contact via WhatsApp'}</span>
+          <Share2 size={16} className={shareCopied ? 'text-emerald-500' : ''} />
+        </button>
+
+        <button
+          onClick={() => setShowReportModal(true)}
+          aria-label="Report listing"
+          className="shrink-0 w-10 h-10 rounded-xl border border-rose-100 bg-rose-50/70 text-rose-500 hover:bg-rose-50 hover:border-rose-200 flex items-center justify-center transition-all"
+        >
+          <ShieldAlert size={16} />
+        </button>
+
+        <button
+          onClick={() => setShowSellerProfileModal(true)}
+          aria-label="View seller profile and reviews"
+          title="Seller profile"
+          className="shrink-0 w-10 h-10 rounded-xl border border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 flex items-center justify-center transition-all active:scale-95"
+        >
+          <UserRound size={18} />
+        </button>
+
+        <button
+          onClick={handleContactClick}
+          disabled={ad.adStatus === 'sold' || ad.status === 'sold'}
+          className={`flex-1 min-w-0 h-10 px-3 rounded-xl font-black text-[11px] text-white shadow-lg flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+            ad.adStatus === 'sold' || ad.status === 'sold'
+              ? 'bg-slate-400 cursor-not-allowed'
+              : isUnclaimed
+                ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200'
+                : hasSourceUrl
+                  ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
+                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+          }`}
+        >
+          {isUnclaimed ? (
+            <ShieldAlert size={15} className="shrink-0" />
+          ) : (
+            (() => {
+              const methods = getContactMethods();
+              const method = methods.length === 1 ? methods[0] : null;
+              // External listings created/imported by staff should clearly
+              // advertise that this action opens the original source listing.
+              const Icon = method === 'source' ? ExternalLink : (method ? getContactMethodIcon(method) : MessageCircle);
+              return <Icon size={15} className="shrink-0" />;
+            })()
+          )}
+          <span className="truncate">
+            {isUnclaimed
+              ? 'Awaiting Owner Claim'
+              : (() => {
+                  const methods = getContactMethods();
+                  if (methods.length === 1 && methods[0] === 'source') return 'View Original Listing';
+                  return methods.length === 1 ? getContactMethodLabel(methods[0]) : 'Contact';
+                })()}
+          </span>
         </button>
       </div>
+
+      {/* Seller profile + reviews popup */}
+      <AnimatePresence>
+        {showSellerProfileModal && (
+          <div className="fixed inset-0 z-[185] flex items-center justify-center p-4">
+            <motion.button
+              type="button"
+              aria-label="Close seller profile"
+              className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSellerProfileModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 14 }}
+              transition={{ duration: 0.18 }}
+              className="relative z-10 w-full max-w-md max-h-[82vh] overflow-y-auto rounded-3xl bg-white shadow-2xl border border-slate-100 p-5 sm:p-6"
+            >
+              <button
+                type="button"
+                onClick={() => setShowSellerProfileModal(false)}
+                aria-label="Close"
+                className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center transition"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="pr-11">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-500">Seller profile</p>
+                <div className="flex items-start gap-3 mt-3">
+                  <div className="w-16 h-16 bg-indigo-50 text-indigo-700 rounded-2xl overflow-hidden flex items-center justify-center font-black text-lg shrink-0 border border-indigo-100">
+                    {sellerProfile?.profileImageUrl ? (
+                      <img
+                        src={sellerProfile.profileImageUrl}
+                        alt={sellerProfile?.displayName || ad.sellerName || 'Seller'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (sellerProfile?.displayName || (hasSourceUrl ? 'Partner' : ad.sellerName) || 'Seller').slice(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg font-black text-slate-950 flex items-center gap-1.5 truncate">
+                      {sellerProfile?.displayName || (hasSourceUrl ? 'Partner' : ad.sellerName)}
+                      <Award size={15} className="text-indigo-500 shrink-0" />
+                    </h3>
+                    <div className="flex items-center gap-1 mt-1">
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const ratingVal = sellerProfile?.ratingAverage || 0;
+                          return (
+                            <Star
+                              key={star}
+                              size={13}
+                              className={star <= Math.round(ratingVal) ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}
+                            />
+                          );
+                        })}
+                      </div>
+                      <span className="text-[11px] text-slate-500 font-bold">({sellerProfile?.ratingCount || 0} reviews)</span>
+                    </div>
+                    {(sellerProfile?.city || sellerProfile?.country) && (
+                      <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                        <MapPin size={12} className="shrink-0" />
+                        <span>{[sellerProfile?.city, sellerProfile?.country].filter(Boolean).join(', ')}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {sellerProfile?.publicDescription && (
+                  <div className="mt-4 rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">About seller</p>
+                    <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-line">{sellerProfile.publicDescription}</p>
+                  </div>
+                )}
+                {user && user.uid !== ad.sellerId && (
+                  <button
+                    onClick={() => {
+                      setShowSellerProfileModal(false);
+                      setShowReviewModal(true);
+                    }}
+                    className="mt-4 w-full text-[11px] font-black bg-indigo-50 text-indigo-700 py-2.5 px-3 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-all"
+                  >
+                    Rate Seller
+                  </button>
+                )}
+              </div>
+
+              {sellerReviews.length > 0 && (
+                <div className="mt-5 pt-5 border-t border-slate-100">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">Seller Reviews</h4>
+                    <span className="text-[10px] font-bold text-slate-400">{sellerReviews.length}</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {sellerReviews.map((rev) => (
+                      <div key={rev.id} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs">
+                        <div className="flex justify-between items-start gap-2 mb-1">
+                          <span className="font-extrabold text-slate-800 truncate">{rev.buyerName}</span>
+                          <div className="flex gap-0.5 shrink-0">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star key={star} size={10} className={star <= rev.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'} />
+                            ))}
+                          </div>
+                        </div>
+                        {rev.comment && <p className="text-slate-600 italic leading-relaxed">“{rev.comment}”</p>}
+                        <div className="text-[9px] text-slate-400 mt-2 flex justify-between gap-3">
+                          <span className="font-semibold text-emerald-600">{rev.success ? '✓ Successful Deal' : 'ℹ Incomplete'}</span>
+                          <span className="notranslate" translate="no">{rev.createdAt?.toDate ? formatDistanceToNow(rev.createdAt.toDate(), { addSuffix: true, locale: enGB }) : 'Recently'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Review Modal para deixar novas review*/}
       {showReviewModal && (
@@ -2307,7 +3077,175 @@ const AdDetails = () => {
         title={ad?.title}
       />
 
-      {/* Aviso de Contacto WhatsApp */}
+      {/* Contact method chooser */}
+      <AnimatePresence>
+        {showContactOptionsModal && (
+          <div className="fixed inset-0 z-[195] flex items-center justify-center p-4">
+            <motion.button
+              type="button"
+              aria-label="Close contact options"
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowContactOptionsModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              className="relative z-10 w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl"
+            >
+              <div className="mb-5 text-center">
+                <h3 className="text-xl font-black text-slate-950">Contact Seller</h3>
+                <p className="mt-1 text-sm text-slate-500">Choose how you would like to contact the seller.</p>
+              </div>
+
+              <div className="space-y-2.5">
+                {getContactMethods().map((method) => {
+                  const Icon = getContactMethodIcon(method);
+                  return (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => continueWithContactMethod(method)}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left font-black text-slate-800 transition hover:border-indigo-200 hover:bg-indigo-50 active:scale-[0.99]"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-indigo-600">
+                        <Icon size={20} />
+                      </span>
+                      <span>{getContactMethodLabel(method)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowContactOptionsModal(false)}
+                className="mt-4 w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600 hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Internal email contact form */}
+      <AnimatePresence>
+        {showEmailContactModal && (
+          <div className="fixed inset-0 z-[198] flex items-center justify-center p-4">
+            <motion.button
+              type="button"
+              aria-label="Close email form"
+              className="absolute inset-0 bg-slate-950/65 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !emailContactSending && setShowEmailContactModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              className="relative z-10 w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl md:p-7"
+            >
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div>
+                  <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+                    <Mail size={22} />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-950">Email Seller</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Your message will be sent securely by ConnectBoat.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={emailContactSending}
+                  onClick={() => setShowEmailContactModal(false)}
+                  className="rounded-full bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200 disabled:opacity-50"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEmailContactSubmit} className="space-y-4">
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                    Your Name
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={100}
+                    value={emailContactName}
+                    onChange={(e) => setEmailContactName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    placeholder="Your name"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                    Your Email
+                  </label>
+                  <input
+                    type="email"
+                    value={emailContactAddress}
+                    readOnly
+                    className="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm text-slate-600 outline-none"
+                    required
+                  />
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+                    Replies will be sent to the email address linked to your ConnectBoat account.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
+                    Message
+                  </label>
+                  <textarea
+                    value={emailContactMessage}
+                    onChange={(e) => setEmailContactMessage(e.target.value)}
+                    maxLength={3000}
+                    rows={7}
+                    className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    placeholder="Write your message to the seller..."
+                    required
+                  />
+                  <div className="mt-1 text-right text-[11px] text-slate-400">
+                    {emailContactMessage.length}/3000
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row">
+                  <button
+                    type="button"
+                    disabled={emailContactSending}
+                    onClick={() => setShowEmailContactModal(false)}
+                    className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={emailContactSending}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-md transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Mail size={17} />
+                    {emailContactSending ? 'Sending...' : 'Send Message'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Contact safety notice */}
       <AnimatePresence>
         {showContactWarning && (
           <div className="fixed inset-0 z-[190] flex items-center justify-center p-4">
@@ -2315,7 +3253,7 @@ const AdDetails = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowContactWarning(false)}
+              onClick={() => { setShowContactWarning(false); setSelectedContactMethod(null); }}
               className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
             />
             <motion.div
@@ -2341,21 +3279,21 @@ const AdDetails = () => {
                 </label>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setShowContactWarning(false)}
+                    onClick={() => { setShowContactWarning(false); setSelectedContactMethod(null); }}
                     className="flex-1 py-3 text-sm font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition"
                   >
                     Back
                   </button>
                   <button
                     disabled={!acceptedContactTerms}
-                    onClick={handleConfirmWhatsapp}
+                    onClick={handleConfirmContact}
                     className={`flex-1 py-3 text-sm font-bold rounded-xl transition ${
                       acceptedContactTerms 
-                        ? hasSourceUrl ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-md' : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md'
+                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-md'
                         : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                     }`}
                   >
-                    {hasSourceUrl ? 'Open Contact' : 'Open WhatsApp'}
+                    {selectedContactMethod ? `Continue to ${getContactMethodLabel(selectedContactMethod)}` : 'Continue'}
                   </button>
                 </div>
               </div>
@@ -2462,7 +3400,7 @@ const AdDetails = () => {
               <div className="space-y-2 text-left">
                 <h3 className="text-xl font-black text-slate-950">Contact Unavailable</h3>
                 <p className="text-xs text-slate-500 font-semibold leading-relaxed">
-                  This listing was created for service providers on ConnectBoat and is **awaiting activation by its owner**. Direct WhatsApp contact will be enabled as soon as the business is activated.
+                  This listing was created for service providers on ConnectBoat and is **awaiting activation by its owner**. Direct contact options will be enabled as soon as the business is activated.
                 </p>
                 <p className="text-xs text-indigo-950 font-extrabold leading-relaxed bg-indigo-50/50 p-3.5 rounded-2xl border border-indigo-100">
                   💡 If you are the owner or manager of this business, click "Claim Business" below to activate it for free!
@@ -2612,7 +3550,8 @@ const AdDetails = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 
