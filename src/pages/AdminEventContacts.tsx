@@ -286,6 +286,7 @@ const AdminEventContacts: React.FC = () => {
   const [search, setSearch] = useState('');
   const [historyFilter, setHistoryFilter] = useState<'All' | InvitationStatus | 'No contact details'>('All');
   const [historyPage, setHistoryPage] = useState(1);
+  const [isolatedContactId, setIsolatedContactId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [analysing, setAnalysing] = useState(false);
@@ -297,6 +298,8 @@ const AdminEventContacts: React.FC = () => {
   const scanTimerRef = useRef<number | null>(null);
   const [cardCameraOpen, setCardCameraOpen] = useState(false);
   const [cardCameraError, setCardCameraError] = useState('');
+  const [capturedCardFile, setCapturedCardFile] = useState<File | null>(null);
+  const [capturedCardPreview, setCapturedCardPreview] = useState('');
   const cardVideoRef = useRef<HTMLVideoElement | null>(null);
   const nativeCameraInputRef = useRef<HTMLInputElement | null>(null);
   const prospectImportInputRef = useRef<HTMLInputElement | null>(null);
@@ -329,6 +332,7 @@ const AdminEventContacts: React.FC = () => {
   const filteredContacts = useMemo(() => {
     const term = search.trim().toLowerCase();
     return contacts.filter(contact => {
+      if (isolatedContactId && contact.id !== isolatedContactId) return false;
       const matchesSearch = !term || [
         contact.name, contact.company, contact.phone, contact.whatsapp, contact.email,
         contact.website, contact.linkedin, contact.otherContact, contact.notes,
@@ -345,7 +349,7 @@ const AdminEventContacts: React.FC = () => {
       if (historyFilter !== 'All') return (contact.invitationStatus || 'Pending') === historyFilter;
       return true;
     });
-  }, [contacts, search, historyFilter]);
+  }, [contacts, search, historyFilter, isolatedContactId]);
 
   const HISTORY_PAGE_SIZE = 25;
   const historyPageCount = Math.max(1, Math.ceil(filteredContacts.length / HISTORY_PAGE_SIZE));
@@ -402,6 +406,9 @@ const AdminEventContacts: React.FC = () => {
   const stopCardCamera = () => {
     cardStreamRef.current?.getTracks().forEach(track => track.stop());
     cardStreamRef.current = null;
+    if (capturedCardPreview) URL.revokeObjectURL(capturedCardPreview);
+    setCapturedCardFile(null);
+    setCapturedCardPreview('');
     setCardCameraOpen(false);
   };
 
@@ -420,17 +427,37 @@ const AdminEventContacts: React.FC = () => {
   const startCardCamera = async () => {
     setCardCameraError('');
     setMessage('');
+    if (capturedCardPreview) URL.revokeObjectURL(capturedCardPreview);
+    setCapturedCardFile(null);
+    setCapturedCardPreview('');
     try {
       setCardCameraOpen(true);
-      const stream = await getRearCameraStream();
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { exact: 'environment' },
+            width: { ideal: 3840 },
+            height: { ideal: 2160 },
+          },
+          audio: false,
+        });
+      } catch {
+        stream = await getRearCameraStream();
+      }
       cardStreamRef.current = stream;
       await improveCameraImage(stream);
-      requestAnimationFrame(async () => {
+      window.setTimeout(async () => {
         const video = cardVideoRef.current;
         if (!video) return;
         video.srcObject = stream;
-        await video.play();
-      });
+        try {
+          await video.play();
+        } catch (error) {
+          console.error('Camera preview failed:', error);
+          setCardCameraError('The rear camera opened, but the preview could not start.');
+        }
+      }, 50);
     } catch (error) {
       console.error(error);
       stopCardCamera();
@@ -440,20 +467,66 @@ const AdminEventContacts: React.FC = () => {
   };
 
   const captureBusinessCard = async () => {
+    const stream = cardStreamRef.current;
+    const track = stream?.getVideoTracks()[0];
     const video = cardVideoRef.current;
-    if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+    if (!track || !video) return;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const context = canvas.getContext('2d');
-    if (!context) return;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    try {
+      let blob: Blob | null = null;
+      const ImageCaptureCtor = (window as any).ImageCapture;
 
-    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
-    if (!blob) return;
-    const file = new File([blob], `business-card-${Date.now()}.jpg`, { type: 'image/jpeg' });
-    stopCardCamera();
+      if (ImageCaptureCtor) {
+        try {
+          const imageCapture = new ImageCaptureCtor(track);
+          blob = await imageCapture.takePhoto();
+        } catch (error) {
+          console.warn('High-resolution ImageCapture failed; using video-frame fallback.', error);
+        }
+      }
+
+      if (!blob) {
+        if (video.videoWidth <= 0 || video.videoHeight <= 0) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+        if (!context) return;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.96));
+      }
+
+      if (!blob) throw new Error('Could not capture the photo.');
+      const type = blob.type || 'image/jpeg';
+      const extension = type.includes('png') ? 'png' : 'jpg';
+      const file = new File([blob], `business-card-${Date.now()}.${extension}`, { type });
+
+      cardStreamRef.current?.getTracks().forEach(cameraTrack => cameraTrack.stop());
+      cardStreamRef.current = null;
+      setCapturedCardFile(file);
+      if (capturedCardPreview) URL.revokeObjectURL(capturedCardPreview);
+      setCapturedCardPreview(URL.createObjectURL(file));
+    } catch (error) {
+      console.error(error);
+      setCardCameraError('Could not capture this photo. Please try again.');
+    }
+  };
+
+  const retakeBusinessCard = async () => {
+    if (capturedCardPreview) URL.revokeObjectURL(capturedCardPreview);
+    setCapturedCardFile(null);
+    setCapturedCardPreview('');
+    setCardCameraOpen(false);
+    window.setTimeout(() => startCardCamera(), 50);
+  };
+
+  const useCapturedBusinessCard = async () => {
+    const file = capturedCardFile;
+    if (!file) return;
+    if (capturedCardPreview) URL.revokeObjectURL(capturedCardPreview);
+    setCapturedCardFile(null);
+    setCapturedCardPreview('');
+    setCardCameraOpen(false);
     await handleBusinessCard(file);
   };
 
@@ -467,9 +540,32 @@ const AdminEventContacts: React.FC = () => {
 
   const applyQrValue = (raw: string) => {
     const parsed = decodeQrContact(raw);
-    setDraft(prev => ({ ...prev, ...parsed }));
-    setMessage('QR read. I used every contact detail available in it.');
+    const qrDraft: ContactDraft = { ...EMPTY_DRAFT, ...parsed };
+    const existingMatch = contacts.find(contact => prospectMatchesExisting(qrDraft, contact)) || null;
     stopScanner();
+
+    if (existingMatch) {
+      setDraft({ ...EMPTY_DRAFT });
+      setEditingId(null);
+      setExistingPhotoUrl('');
+      setExistingPhotoPath('');
+      setPhotoFile(null);
+      setPhotoPreview('');
+      setMoreOpen(false);
+      setHistoryFilter('All');
+      setHistoryPage(1);
+      setSearch('');
+      setIsolatedContactId(existingMatch.id);
+      setMessage(`Existing contact found: ${existingMatch.company || existingMatch.name || 'contact'}. Only this contact is shown in Contact history.`);
+      window.setTimeout(() => {
+        document.getElementById('contact-history')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      return;
+    }
+
+    setIsolatedContactId(null);
+    setDraft(prev => ({ ...prev, ...parsed }));
+    setMessage('QR read. No existing contact was found. I used every contact detail available in it.');
   };
 
   const startScanner = async () => {
@@ -551,7 +647,6 @@ const AdminEventContacts: React.FC = () => {
 
       if (existingMatch) {
         const matchLabel = existingMatch.company || existingMatch.name || 'existing contact';
-        const matchSearch = existingMatch.email || existingMatch.phone || existingMatch.whatsapp || existingMatch.company || existingMatch.name || '';
         setDraft({ ...EMPTY_DRAFT });
         setEditingId(null);
         setExistingPhotoUrl('');
@@ -561,14 +656,16 @@ const AdminEventContacts: React.FC = () => {
         setMoreOpen(false);
         setHistoryFilter('All');
         setHistoryPage(1);
-        setSearch(matchSearch);
-        setMessage(`Existing contact found: ${matchLabel}. It is shown in Contact history below. You can edit or review it.`);
+        setSearch('');
+        setIsolatedContactId(existingMatch.id);
+        setMessage(`Existing contact found: ${matchLabel}. Only this contact is shown in Contact history. You can edit or review it.`);
         window.setTimeout(() => {
           document.getElementById('contact-history')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
         return;
       }
 
+      setIsolatedContactId(null);
       setDraft(prev => ({
         ...prev,
         name: data.name || prev.name,
@@ -1070,11 +1167,11 @@ const AdminEventContacts: React.FC = () => {
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <div className="relative min-w-0 sm:w-64">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, company, email…" className={`${fieldClass} pl-9`} />
+                <input value={search} onChange={e => { setIsolatedContactId(null); setSearch(e.target.value); }} placeholder="Search name, company, email…" className={`${fieldClass} pl-9`} />
               </div>
               <select
                 value={historyFilter}
-                onChange={e => setHistoryFilter(e.target.value as 'All' | InvitationStatus | 'No contact details')}
+                onChange={e => { setIsolatedContactId(null); setHistoryFilter(e.target.value as 'All' | InvitationStatus | 'No contact details'); }}
                 className={`${fieldClass} sm:w-52`}
               >
                 <option value="All">All contacts</option>
@@ -1160,13 +1257,24 @@ const AdminEventContacts: React.FC = () => {
               <button onClick={stopCardCamera} className="p-2 text-slate-500"><X size={20} /></button>
             </div>
             {cardCameraError ? (
-              <div className="p-6 text-center text-sm text-slate-600">{cardCameraError}</div>
+              <div className="p-6 text-center text-sm text-slate-600">
+                <div>{cardCameraError}</div>
+                <button type="button" onClick={startCardCamera} className="mt-4 rounded-xl bg-indigo-600 px-4 py-3 font-black text-white">Try Rear Camera Again</button>
+              </div>
+            ) : capturedCardPreview ? (
+              <div className="bg-black p-3">
+                <img src={capturedCardPreview} alt="Captured card preview" className="max-h-[65vh] w-full rounded-xl object-contain" />
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={retakeBusinessCard} className="rounded-xl border border-white/30 bg-slate-800 px-4 py-3 font-black text-white">Retake</button>
+                  <button type="button" onClick={useCapturedBusinessCard} className="rounded-xl bg-white px-4 py-3 font-black text-slate-900">Use Photo</button>
+                </div>
+              </div>
             ) : (
               <div className="bg-black p-3">
-                <video ref={cardVideoRef} playsInline muted className="aspect-[3/4] w-full rounded-xl object-cover" />
-                <div className="mt-3 text-center text-sm font-bold text-white">Use the rear camera and fit the whole card or business sign inside the frame.</div>
+                <video ref={cardVideoRef} playsInline muted className="max-h-[65vh] w-full rounded-xl object-contain" />
+                <div className="mt-3 text-center text-sm font-bold text-white">Rear camera • fit the whole card or business sign inside the frame.</div>
                 <button type="button" onClick={captureBusinessCard} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 font-black text-slate-900">
-                  <Camera size={20} /> Capture Photo
+                  <Camera size={20} /> Take Photo
                 </button>
               </div>
             )}
