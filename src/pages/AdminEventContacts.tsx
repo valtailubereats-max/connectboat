@@ -273,7 +273,74 @@ function prospectMatchesExisting(prospect: ContactDraft, contact: EventContact) 
   return false;
 }
 
-const AdminEventContacts: React.FC = () => {
+
+type EventContactsErrorBoundaryState = {
+  error: Error | null;
+  info: React.ErrorInfo | null;
+};
+
+class EventContactsErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  EventContactsErrorBoundaryState
+> {
+  state: EventContactsErrorBoundaryState = { error: null, info: null };
+
+  static getDerivedStateFromError(error: Error): EventContactsErrorBoundaryState {
+    return { error, info: null };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('AdminEventContacts render crash:', error, info);
+    this.setState({ error, info });
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children;
+
+    const error = this.state.error;
+    return (
+      <div className="mx-auto max-w-4xl p-4 sm:p-6">
+        <div className="rounded-2xl border-2 border-red-500 bg-white p-5 shadow-lg">
+          <h2 className="text-xl font-black text-red-700">Event Contacts crashed</h2>
+          <p className="mt-2 text-sm font-bold text-slate-800">
+            Take a screenshot of this red box and send it to me.
+          </p>
+          <div className="mt-4 rounded-xl bg-red-50 p-3">
+            <div className="text-xs font-black uppercase text-red-700">Error</div>
+            <pre className="mt-1 whitespace-pre-wrap break-words text-xs text-slate-900">
+              {error.name}: {error.message}
+            </pre>
+          </div>
+          {error.stack && (
+            <div className="mt-3 rounded-xl bg-slate-100 p-3">
+              <div className="text-xs font-black uppercase text-slate-700">JavaScript stack</div>
+              <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[11px] text-slate-800">
+                {error.stack}
+              </pre>
+            </div>
+          )}
+          {this.state.info?.componentStack && (
+            <div className="mt-3 rounded-xl bg-slate-100 p-3">
+              <div className="text-xs font-black uppercase text-slate-700">React component stack</div>
+              <pre className="mt-1 max-h-64 overflow-auto whitespace-pre-wrap break-words text-[11px] text-slate-800">
+                {this.state.info.componentStack}
+              </pre>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-4 rounded-xl bg-slate-900 px-4 py-3 font-black text-white"
+          >
+            Reload Event Contacts
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
+
+const AdminEventContactsContent: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const [contacts, setContacts] = useState<EventContact[]>([]);
   const [draft, setDraft] = useState<ContactDraft>({ ...EMPTY_DRAFT });
@@ -1327,5 +1394,12 @@ const AdminEventContacts: React.FC = () => {
     </div>
   );
 };
+
+
+const AdminEventContacts: React.FC = () => (
+  <EventContactsErrorBoundary>
+    <AdminEventContactsContent />
+  </EventContactsErrorBoundary>
+);
 
 export default AdminEventContacts;
