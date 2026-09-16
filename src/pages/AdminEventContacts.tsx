@@ -21,7 +21,7 @@ import {
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
-type InvitationStatus = 'Pending' | 'Sent – WhatsApp' | 'Sent – Email' | 'Sent – Other';
+type InvitationStatus = 'Pending' | 'Sent – WhatsApp' | 'Sent – Email' | 'Sent – Other' | 'Unsubscribed';
 
 type EventContact = {
   id: string;
@@ -40,9 +40,10 @@ type EventContact = {
   photoUrl: string;
   photoPath: string;
   createdBy: string;
+  sheetSyncPending?: boolean;
 };
 
-type ContactDraft = Omit<EventContact, 'id' | 'photoUrl' | 'photoPath' | 'createdBy'>;
+type ContactDraft = Omit<EventContact, 'id' | 'photoUrl' | 'photoPath' | 'createdBy' | 'sheetSyncPending'>;
 
 const EMPTY_DRAFT: ContactDraft = {
   name: '',
@@ -60,7 +61,7 @@ const EMPTY_DRAFT: ContactDraft = {
 };
 
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1nB6fP6lulZTfmAMkiAg3o9cJyVzvYtv3ZDdIHvQVEA8/edit';
-const SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzSSNVxSMpK49FS-uGfdcIOdW_h9M1CbVbdGu77ZJl9hK1RDh9Ya4MG0Dunran77ShX/exec';
+
 
 function normaliseWebsite(value: string) {
   const trimmed = value.trim();
@@ -357,6 +358,8 @@ const AdminEventContactsContent: React.FC = () => {
   const [duplicateWarning, setDuplicateWarning] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncIssues, setSyncIssues] = useState<string[]>([]);
   const [analysing, setAnalysing] = useState(false);
   const [message, setMessage] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -833,21 +836,83 @@ const AdminEventContactsContent: React.FC = () => {
     notes: contact.notes || '',
   });
 
-  const postToSheets = async (body: unknown) => {
-    await fetch(SHEETS_WEB_APP_URL, {
+  const contactSyncRequest = async (body: Record<string, unknown>) => {
+    if (!user) throw new Error('Sign in again to sync contacts.');
+    const response = await fetch('/api/admin/create-assisted-payment?mode=eventContacts', {
       method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await user.getIdToken() },
       body: JSON.stringify(body),
     });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.errorMessage || 'Google Sheets did not confirm this operation.');
+    return result;
   };
 
-  const syncOneToSheets = async (contactId: string, contact: Partial<ContactDraft>) => {
+  const postToSheets = async (body: any) => {
+    if (body.action === 'delete') return contactSyncRequest({ operation: 'delete', contactId: body.contactId });
+    return contactSyncRequest({ operation: 'push', contactIds: [body.contact.contactId] });
+  };
+
+  const syncOneToSheets = async (contactId: string, _contact: Partial<ContactDraft>) => {
     try {
-      await postToSheets({ action: 'upsert', contact: toSheetContact(contactId, contact) });
+      const result = await contactSyncRequest({ operation: 'push', contactIds: [contactId] });
+      if (result.suppressedIds?.includes(contactId)) {
+        setDraft(prev => ({ ...prev, invitationStatus: 'Unsubscribed' }));
+        if (String(_contact.invitationStatus || '').startsWith('Sent')) {
+          const error = new Error('This contact has unsubscribed. The invitation was not opened.');
+          (error as any).suppressed = true;
+          throw error;
+        }
+      }
+      return true;
     } catch (error) {
+      if ((error as any)?.suppressed) throw error;
       console.error('Google Sheets sync failed:', error);
+      setSyncIssues(prev => [...prev.filter(item => item !== 'A contact is saved in ConnectBoat but still needs sending to Google Sheets.'), 'A contact is saved in ConnectBoat but still needs sending to Google Sheets.']);
+      return false;
     }
+  };
+
+  const syncFromSheets = async () => {
+    if (syncing || saving || loading) return;
+    setSyncing(true); setSyncIssues([]);
+    let added = 0, existing = 0, empty = 0, offset = 0;
+    const issues: string[] = [];
+    try {
+      while (true) {
+        setMessage('Reading Google Sheets… ' + added + ' contacts added.');
+        const result = await contactSyncRequest({ operation: 'pull', offset });
+        added += result.added; existing += result.existing; empty += result.empty;
+        issues.push(...result.ambiguous.map((label: string) => 'Possible duplicate — review: ' + label));
+        if (result.linkWarning) issues.push(result.linkWarning);
+        if (result.nextOffset === null) break;
+        if (!Number.isSafeInteger(result.nextOffset) || result.nextOffset <= offset) throw new Error('Invalid sync position returned by Google Sheets.');
+        offset = result.nextOffset;
+      }
+      setMessage('Sync complete: ' + added + ' added, ' + existing + ' already present, ' + empty + ' empty records skipped. ' + issues.length + ' items need review.');
+    } catch (error: any) {
+      setMessage('Sync interrupted after ' + added + ' additions. ' + error.message + ' Run Sync Google Sheets again to continue safely.');
+    } finally {
+      setSyncIssues(issues); await loadContacts(); setSyncing(false);
+    }
+  };
+
+  const retrySheetSends = async () => {
+    if (syncing || saving || loading) return;
+    setSyncing(true); setSyncIssues([]);
+    let sent = 0;
+    try {
+      const snapshot = await getDocs(collection(db, 'eventContacts'));
+      const pending = snapshot.docs.filter(item => item.data().sheetSyncPending === true);
+      for (let i = 0; i < pending.length; i += 25) {
+        setMessage('Sending pending contacts to Google Sheets… ' + sent + ' confirmed.');
+        await contactSyncRequest({ operation: 'push', contactIds: pending.slice(i, i + 25).map(item => item.id) });
+        sent += Math.min(25, pending.length - i);
+      }
+      setMessage('Google Sheets confirmed ' + sent + ' pending contacts.');
+    } catch (error: any) {
+      setMessage(sent + ' contacts confirmed. Remaining sends are pending. ' + error.message);
+    } finally { await loadContacts(); setSyncing(false); }
   };
 
   const saveCurrent = async (patch: Partial<ContactDraft> = {}) => {
@@ -856,8 +921,10 @@ const AdminEventContactsContent: React.FC = () => {
     try {
       const uploaded = await uploadPhoto();
       const merged = { ...draft, ...patch };
+      if (draft.invitationStatus === 'Unsubscribed') merged.invitationStatus = 'Unsubscribed';
       const payload = {
         ...merged,
+        sheetSyncPending: true,
         website: normaliseWebsite(merged.website),
         photoUrl: uploaded.photoUrl || '',
         photoPath: uploaded.photoPath || '',
@@ -872,7 +939,8 @@ const AdminEventContactsContent: React.FC = () => {
         setExistingPhotoUrl(uploaded.photoUrl || '');
         setExistingPhotoPath(uploaded.photoPath || '');
         setPhotoFile(null);
-        await syncOneToSheets(editingId, merged);
+        const confirmed = await syncOneToSheets(editingId, merged);
+        if (!confirmed && String(patch.invitationStatus || '').startsWith('Sent')) throw new Error('The contact is saved, but Google Sheets could not verify its email suppression status. Retry pending sends before inviting.');
         return editingId;
       }
 
@@ -882,7 +950,8 @@ const AdminEventContactsContent: React.FC = () => {
       setExistingPhotoUrl(uploaded.photoUrl || '');
       setExistingPhotoPath(uploaded.photoPath || '');
       setPhotoFile(null);
-      await syncOneToSheets(created.id, merged);
+      const confirmed = await syncOneToSheets(created.id, merged);
+      if (!confirmed && String(patch.invitationStatus || '').startsWith('Sent')) throw new Error('The contact is saved, but Google Sheets could not verify its email suppression status. Retry pending sends before inviting.');
       return created.id;
     } finally {
       setSaving(false);
@@ -986,14 +1055,9 @@ const AdminEventContactsContent: React.FC = () => {
   const handleDelete = async (contact: EventContact) => {
     if (!window.confirm(`Delete ${contact.company || contact.name || 'this contact'}?`)) return;
     try {
+      await postToSheets({ action: 'delete', contactId: contact.id });
       await deleteDoc(doc(db, 'eventContacts', contact.id));
       if (contact.photoPath) deleteObject(ref(storage, contact.photoPath)).catch(() => undefined);
-
-      try {
-        await postToSheets({ action: 'delete', contactId: contact.id });
-      } catch (sheetError) {
-        console.error('Google Sheets delete sync failed:', sheetError);
-      }
 
       setContacts(prev => prev.filter(item => item.id !== contact.id));
       setMessage('Contact deleted from ConnectBoat and Google Sheets.');
@@ -1020,13 +1084,9 @@ const AdminEventContactsContent: React.FC = () => {
 
     for (const contact of noContactDetails) {
       try {
+        await postToSheets({ action: 'delete', contactId: contact.id });
         await deleteDoc(doc(db, 'eventContacts', contact.id));
         if (contact.photoPath) deleteObject(ref(storage, contact.photoPath)).catch(() => undefined);
-        try {
-          await postToSheets({ action: 'delete', contactId: contact.id });
-        } catch (sheetError) {
-          console.error('Google Sheets delete sync failed:', sheetError);
-        }
         deleted += 1;
       } catch (error) {
         console.error(`Could not delete ${contact.company || contact.name || contact.id}:`, error);
@@ -1061,9 +1121,12 @@ const AdminEventContactsContent: React.FC = () => {
 
       if (!rows.length) throw new Error('No prospects were found in this JSON file.');
 
-      const workingContacts = [...contacts];
+      const fresh = await getDocs(collection(db, 'eventContacts'));
+      const workingContacts = fresh.docs.map(item => ({ ...item.data(), id: item.id } as EventContact));
       let imported = 0;
       let skipped = 0;
+      let pending = 0;
+      const importedIds: string[] = [];
 
       for (const row of rows) {
         const prospect = prospectToDraft(row);
@@ -1079,50 +1142,41 @@ const AdminEventContactsContent: React.FC = () => {
 
         const payload = {
           ...prospect,
+          sheetSyncPending: true,
           photoUrl: '',
           photoPath: '',
           createdBy: user.uid,
         };
         const created = await addDoc(collection(db, 'eventContacts'), payload);
-        await syncOneToSheets(created.id, prospect);
+        importedIds.push(created.id);
         workingContacts.push({ id: created.id, ...payload } as EventContact);
         imported += 1;
+        setMessage(`Saving prospects… ${imported} added, ${skipped} skipped.`);
+      }
+
+      pending = importedIds.length;
+      for (let i = 0; i < importedIds.length; i += 25) {
+        try {
+          setMessage(`Sending prospects to Google Sheets… ${importedIds.length - pending} confirmed.`);
+          const batchIds = importedIds.slice(i, i + 25);
+          await contactSyncRequest({ operation: 'push', contactIds: batchIds });
+          pending -= batchIds.length;
+        } catch (error) {
+          console.error('Prospects saved; sheet batch remains pending:', error);
+          break;
+        }
       }
 
       await loadContacts();
-      setMessage(`Import complete: ${imported} prospect${imported === 1 ? '' : 's'} added as Pending. ${skipped} duplicate/empty ${skipped === 1 ? 'record was' : 'records were'} skipped.`);
+      setMessage(`Google Sheets: ${pending} sends pending. Import complete: ${imported} prospect${imported === 1 ? '' : 's'} added as Pending. ${skipped} duplicate/empty ${skipped === 1 ? 'record was' : 'records were'} skipped.`);
     } catch (error: any) {
       console.error(error);
+      await loadContacts();
       setMessage(error?.message || 'Could not import this prospect file.');
     } finally {
       setSaving(false);
     }
   };
-
- const copyForSheets = async () => {
-  if (!contacts.length) return;
-
-  // Open immediately from the user's click so Chrome does not block it.
-  window.open(SHEET_URL, '_blank', 'noopener,noreferrer');
-
-  try {
-    const sheetContacts = contacts.map(contact =>
-      toSheetContact(contact.id, contact)
-    );
-
-    await postToSheets({
-      action: 'syncAll',
-      contacts: sheetContacts
-    });
-
-    setMessage(
-      `Google Sheets sync sent for ${contacts.length} contact${contacts.length === 1 ? '' : 's'}.`
-    );
-  } catch (error) {
-    console.error(error);
-    setMessage('Could not send the contacts to Google Sheets.');
-  }
-};
 
   if (!isAdmin) return null;
 
@@ -1152,15 +1206,18 @@ const AdminEventContactsContent: React.FC = () => {
           <button
             type="button"
             onClick={() => prospectImportInputRef.current?.click()}
-            disabled={saving}
+            disabled={saving || syncing || loading}
             className="flex items-center gap-2 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40"
           >
             <Upload size={16} /> Import Prospects
           </button>
-          <button onClick={copyForSheets} disabled={!contacts.length} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40">Google Sheets</button>
+          <button onClick={syncFromSheets} disabled={saving || syncing || loading} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{syncing ? 'Syncing…' : 'Sync Google Sheets'}</button>
+          <button onClick={retrySheetSends} disabled={saving || syncing || loading} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 disabled:opacity-40">Retry pending sends</button>
+          <a href={SHEET_URL} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700">Open Google Sheets</a>
         </div>
       </div>
 
+      {syncIssues.length > 0 && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><strong>Items needing review</strong><ul className="mt-2 list-disc pl-5">{syncIssues.map((issue, index) => <li key={index}>{issue}</li>)}</ul></div>}
       {message && <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-800">{message}</div>}
 
       <section id="event-contact-form" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
@@ -1218,10 +1275,10 @@ const AdminEventContactsContent: React.FC = () => {
             </div>
 
             {!duplicateMatch && <div className="mt-4 space-y-2">
-              {whatsappAvailable && (
+              {whatsappAvailable && draft.invitationStatus !== 'Unsubscribed' && (
                 <button onClick={sendWhatsApp} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><MessageCircle size={20} /> {isResending ? 'Resend via WhatsApp' : 'Send Invitation via WhatsApp'}</button>
               )}
-              {emailAvailable && (!whatsappAvailable || isResending) && (
+              {emailAvailable && draft.invitationStatus !== 'Unsubscribed' && (!whatsappAvailable || isResending) && (
                 <button onClick={sendEmail} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><Mail size={20} /> {isResending ? 'Resend via Email' : 'Send Invitation via Email'}</button>
               )}
               {!whatsappAvailable && !emailAvailable && websiteAvailable && (
@@ -1289,6 +1346,7 @@ const AdminEventContactsContent: React.FC = () => {
               >
                 <option value="All">All contacts</option>
                 <option value="Pending">Pending</option>
+                <option value="Unsubscribed">Unsubscribed</option>
                 <option value="Sent – Email">Sent – Email</option>
                 <option value="Sent – WhatsApp">Sent – WhatsApp</option>
                 <option value="Sent – Other">Sent – Other</option>

@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { handleEventContacts } from '../../src/server/eventContactsSync';
 import Stripe from 'stripe';
 import { timingSafeEqual } from 'node:crypto';
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
@@ -673,6 +674,20 @@ export default async function createAssistedPaymentHandler(
   res: Response
 ) {
   const mode = typeof req.query.mode === 'string' ? req.query.mode : '';
+
+  if (mode === 'eventContacts') {
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method !== 'POST') return res.status(405).json({ success: false, errorMessage: 'Method not allowed.' });
+    try {
+      const db = getAdminDb();
+      const admin = await verifyAdminRequest(req, db);
+      if (!admin.ok) return res.status(admin.status).json({ success: false, errorMessage: admin.message });
+      return await handleEventContacts(req, res, db, admin.uid);
+    } catch (error: any) {
+      console.error('Event Contacts sync failed:', error?.message);
+      return res.status(502).json({ success: false, errorMessage: error?.message || 'Contact sync failed. You can retry safely.' });
+    }
+  }
 
   // /api/admin/analytics is rewritten to this existing function so we do not
   // create a 13th Vercel Function on the Hobby plan.
