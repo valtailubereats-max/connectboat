@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { handleEventContacts } from '../../src/server/eventContactsSync';
+import { handleEventContacts } from '../../src/server/eventContactsSync.js';
 import Stripe from 'stripe';
 import { timingSafeEqual } from 'node:crypto';
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';

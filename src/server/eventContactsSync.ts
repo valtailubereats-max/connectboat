@@ -1,4 +1,4 @@
-import { classifyContact, contactData, CONTACT_FIELDS, text } from '../utils/eventContactsSync';
+import { classifyContact, contactData, CONTACT_FIELDS, text } from '../utils/eventContactsSync.js';
 
 export async function callContactSheet(body: Record<string, unknown>) {
   const token = process.env.EVENT_CONTACTS_SYNC_SECRET;

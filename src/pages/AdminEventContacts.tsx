@@ -843,8 +843,13 @@ const AdminEventContactsContent: React.FC = () => {
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await user.getIdToken() },
       body: JSON.stringify(body),
     });
-    const result = await response.json();
-    if (!response.ok || !result.success) throw new Error(result.errorMessage || 'Google Sheets did not confirm this operation.');
+    let result: any;
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error(`The sync server returned an invalid response (HTTP ${response.status}). Check the deployment logs before retrying.`);
+    }
+    if (!response.ok || result?.success !== true) throw new Error(result?.errorMessage || 'Google Sheets did not confirm this operation.');
     return result;
   };
 
