@@ -1,4 +1,5 @@
 import { classifyContact, contactData, CONTACT_FIELDS, text } from '../utils/eventContactsSync.js';
+import { readEventContacts } from './readEventContacts.mjs';
 
 export async function callContactSheet(body: Record<string, unknown>, timeoutMs = 20000) {
   const token = process.env.EVENT_CONTACTS_SYNC_SECRET;
@@ -26,11 +27,12 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
     if (!Number.isSafeInteger(offset) || offset < 0) return res.status(400).json({ success: false, errorMessage: 'Invalid sync position.' });
     const page = await callContactSheet({ action: 'readContacts', offset, limit: 25 });
     if (!Array.isArray(page.contacts) || page.contacts.length > 25) throw new Error('Invalid contacts page.');
+    const pageIds = page.contacts.map((row: any) => text(row.contactId));
+    if (pageIds.some((id: string) => !id || id.includes('/') || id.length > 200)) throw new Error('A sheet contact has an invalid Contact ID.');
     const result = await db.runTransaction(async (tx: any) => {
       const guard = db.collection('systemSettings').doc('eventContactsSync');
       await tx.get(guard);
-      const snapshot = await tx.get(contacts);
-      const working = snapshot.docs.map((d: any) => ({ ...d.data(), id: d.id }));
+      const working = await readEventContacts(tx, contacts, pageIds);
       const links: any[] = [], ambiguous: string[] = [];
       let added = 0, existing = 0, empty = 0;
       for (const row of page.contacts) {

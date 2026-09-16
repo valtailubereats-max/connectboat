@@ -882,6 +882,7 @@ const AdminEventContactsContent: React.FC = () => {
     if (syncing || saving || loading) return;
     setSyncing(true); setSyncIssues([]);
     let added = 0, existing = 0, empty = 0, offset = 0;
+    let quotaExceeded = false;
     const issues: string[] = [];
     try {
       while (true) {
@@ -896,9 +897,14 @@ const AdminEventContactsContent: React.FC = () => {
       }
       setMessage('Sync complete: ' + added + ' added, ' + existing + ' already present, ' + empty + ' empty records skipped. ' + issues.length + ' items need review.');
     } catch (error: any) {
-      setMessage('Sync interrupted after ' + added + ' additions. ' + error.message + ' Run Sync Google Sheets again to continue safely.');
+      quotaExceeded = /RESOURCE_EXHAUSTED|quota exceeded/i.test(String(error?.message || ''));
+      setMessage('Sync interrupted after ' + added + ' additions. ' + error.message + (quotaExceeded
+        ? ' The database quota is exhausted. Wait until it is available again before syncing; repeated attempts use more quota.'
+        : ' Run Sync Google Sheets again to continue safely.'));
     } finally {
-      setSyncIssues(issues); await loadContacts(); setSyncing(false);
+      setSyncIssues(issues);
+      if (!quotaExceeded) await loadContacts();
+      setSyncing(false);
     }
   };
 
