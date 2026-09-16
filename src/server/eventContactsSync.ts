@@ -1,10 +1,16 @@
 import { classifyContact, contactData, CONTACT_FIELDS, text } from '../utils/eventContactsSync.js';
 
-export async function callContactSheet(body: Record<string, unknown>) {
+export async function callContactSheet(body: Record<string, unknown>, timeoutMs = 20000) {
   const token = process.env.EVENT_CONTACTS_SYNC_SECRET;
   const url = process.env.EVENT_CONTACTS_SHEETS_URL;
   if (!token || !url) throw new Error('Configure EVENT_CONTACTS_SYNC_SECRET and EVENT_CONTACTS_SHEETS_URL on the server.');
-  const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...body, token }), signal: AbortSignal.timeout(45000) });
+  let response: globalThis.Response;
+  try {
+    response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...body, token }), signal: AbortSignal.timeout(timeoutMs) });
+  } catch (error: any) {
+    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') throw new Error('Google Sheets took too long to respond. Wait a minute before retrying; the previous script may still be running.');
+    throw error;
+  }
   let result: any;
   try { result = await response.json(); } catch { throw new Error('Google Sheets returned an invalid response. Check the Apps Script deployment.'); }
   if (!response.ok || result?.ok !== true) throw new Error(text(result?.error) || 'Google Sheets did not confirm this operation.');
@@ -12,6 +18,7 @@ export async function callContactSheet(body: Record<string, unknown>) {
 }
 
 export async function handleEventContacts(req: any, res: any, db: any, uid: string) {
+  const startedAt = Date.now();
   const body = req.body || {};
   const contacts = db.collection('eventContacts');
   if (body.operation === 'pull') {
@@ -49,10 +56,14 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
       }
       tx.set(guard, { lastImportedAt: new Date() }, { merge: true });
       return { added, existing, empty, ambiguous, links };
-    });
+    }, { maxAttempts: 1 });
     let linkWarning = '';
     if (result.links.length) {
-      try { await callContactSheet({ action: 'linkContacts', links: result.links }); }
+      try {
+        const remainingMs = Math.min(10000, 50000 - (Date.now() - startedAt));
+        if (remainingMs < 1000) throw new Error('Linking deferred to the next sync.');
+        await callContactSheet({ action: 'linkContacts', links: result.links }, remainingMs);
+      }
       catch { linkWarning = 'Some sheet IDs could not be linked. Run Sync Google Sheets again before exporting.'; }
     }
     return res.json({ success: true, ...result, links: undefined, nextOffset: page.nextOffset, linkWarning });
@@ -76,7 +87,7 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
         });
         else if (suppressed) tx.update(d.ref, { invitationStatus: 'Unsubscribed' });
       }
-    });
+    }, { maxAttempts: 1 });
     return res.json({ success: true, added: result.added, updated: result.updated, suppressedIds: result.suppressedIds || [] });
   }
   if (body.operation === 'delete') {
