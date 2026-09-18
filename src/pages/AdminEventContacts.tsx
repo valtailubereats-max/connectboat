@@ -10,6 +10,7 @@ import {
   Loader2,
   Mail,
   MessageCircle,
+  Smartphone,
   Pencil,
   QrCode,
   Save,
@@ -168,6 +169,11 @@ function invitationText(_draft: ContactDraft) {
 
 function emailSubject() {
   return 'Invitation to ConnectBoat.co.uk';
+}
+
+function smsInvitationText(draft: ContactDraft) {
+  const greeting = draft.name.trim() || draft.company.trim() || 'there';
+  return `Hi ${greeting}, ConnectBoat is a UK boating marketplace for boats, charters and marine businesses. Discover us at https://connectboat.co.uk`;
 }
 
 async function getRearCameraStream(): Promise<MediaStream> {
@@ -1043,6 +1049,32 @@ const AdminEventContactsContent: React.FC = () => {
     }
   };
 
+  const sendSmsSimulation = async () => {
+    const number = draft.whatsapp.trim() || draft.phone.trim();
+    if (!number || !user || saving) return;
+    setSaving(true);
+    try {
+      const response = await fetch('/api/sms/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + await user.getIdToken(),
+        },
+        body: JSON.stringify({ to: number, message: smsInvitationText(draft), allowLiveDelivery: false }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success || !result?.simulated) {
+        throw new Error(result?.error || 'SMS simulation could not be completed.');
+      }
+      setMessage(`SMS simulation complete for ${result.recipient}. No SMS was sent.`);
+    } catch (error: any) {
+      console.error(error);
+      setMessage(error?.message || 'SMS simulation could not be completed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const openWebsite = async () => {
     const url = normaliseWebsite(draft.website);
     if (!url) return;
@@ -1225,6 +1257,7 @@ const AdminEventContactsContent: React.FC = () => {
 
   const foundSomething = Boolean(draft.name || draft.company || draft.phone || draft.whatsapp || draft.email || draft.website || draft.linkedin || draft.otherContact || draft.rawSource || photoFile || existingPhotoUrl);
   const whatsappAvailable = Boolean(draft.whatsapp.trim());
+  const smsAvailable = Boolean(draft.whatsapp.trim() || draft.phone.trim());
   const emailAvailable = Boolean(draft.email.trim());
   const websiteAvailable = Boolean(draft.website.trim());
   const isResending = Boolean(editingId && String(draft.invitationStatus || '').startsWith('Sent'));
@@ -1330,6 +1363,9 @@ const AdminEventContactsContent: React.FC = () => {
             {!duplicateMatch && <div className="mt-4 space-y-2">
               {whatsappAvailable && draft.invitationStatus !== 'Unsubscribed' && (
                 <button onClick={sendWhatsApp} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><MessageCircle size={20} /> {isResending ? 'Resend via WhatsApp' : 'Send Invitation via WhatsApp'}</button>
+              )}
+              {smsAvailable && draft.invitationStatus !== 'Unsubscribed' && (
+                <button onClick={sendSmsSimulation} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 font-black text-violet-700 disabled:opacity-60"><Smartphone size={19} /> Test SMS (simulation)</button>
               )}
               {emailAvailable && draft.invitationStatus !== 'Unsubscribed' && (!whatsappAvailable || isResending) && (
                 <button onClick={sendEmail} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><Mail size={20} /> {isResending ? 'Resend via Email' : 'Send Invitation via Email'}</button>
