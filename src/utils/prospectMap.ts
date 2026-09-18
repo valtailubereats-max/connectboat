@@ -67,3 +67,10 @@ export function project(lat: number, lng: number, zoom: number): [number, number
   const size = 256 * 2 ** zoom, sin = Math.sin(lat * Math.PI / 180);
   return [(lng + 180) / 360 * size, (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * size];
 }
+
+export function unproject(x: number, y: number, zoom: number): [number, number] {
+  const size = 256 * 2 ** zoom;
+  const lng = x / size * 360 - 180;
+  const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * y / size))) * 180 / Math.PI;
+  return [lat, lng];
+}

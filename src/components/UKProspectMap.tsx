@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getBytes, ref, uploadBytes } from 'firebase/storage';
-import { coordinates, mergeLocations, parseLocations, project, type ProspectLocationInput, type MapProspect } from '../utils/prospectMap';
+import { coordinates, mergeLocations, parseLocations, project, unproject, type ProspectLocationInput, type MapProspect } from '../utils/prospectMap';
 import { storage } from '../firebase';
 
 const MAP_LOCATIONS_PATH = 'event-contacts/uk-prospect-locations.json';
@@ -21,6 +21,7 @@ export default function UKProspectMap({ contacts, loading, onClose, onOpenContac
   const [loadingSavedLocations, setLoadingSavedLocations] = useState(true);
   const [savingLocations, setSavingLocations] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const drag = useRef<{ pointerId: number; startX: number; startY: number; centerX: number; centerY: number; zoom: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,7 +62,21 @@ export default function UKProspectMap({ contacts, loading, onClose, onOpenContac
     }
   }
   const reset = () => { setCenter([55.5, -3.5]); setZoom(5); setTileError(false); };
-  const move = (lat: number, lng: number) => setCenter(([a, b]) => [Math.max(49.8, Math.min(61, a + lat)), Math.max(-8.3, Math.min(2, b + lng))]);
+  const move = (lat: number, lng: number) => setCenter(([a, b]) => [Math.max(49.1, Math.min(61, a + lat)), Math.max(-8.3, Math.min(2, b + lng))]);
+  const clampCenter = ([lat, lng]: [number, number]): [number, number] => [Math.max(49.1, Math.min(61, lat)), Math.max(-8.3, Math.min(2, lng))];
+  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || (event.target as HTMLElement).closest('button, a, input, select')) return;
+    drag.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, centerX: cx, centerY: cy, zoom };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const dragMap = (event: React.PointerEvent<HTMLDivElement>) => {
+    const active = drag.current;
+    if (!active || active.pointerId !== event.pointerId) return;
+    setCenter(clampCenter(unproject(active.centerX - (event.clientX - active.startX), active.centerY - (event.clientY - active.startY), active.zoom)));
+  };
+  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (drag.current?.pointerId === event.pointerId) drag.current = null;
+  };
   const loadFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]; event.target.value = '';
     if (!file) return;
@@ -104,7 +119,18 @@ export default function UKProspectMap({ contacts, loading, onClose, onOpenContac
       <p aria-live="polite" className="mb-3 text-sm text-slate-600">{loading || loadingSavedLocations ? 'Loading map data…' : points.length + ' located · ' + (matching.length - points.length) + ' without valid UK coordinates · ' + matching.length + ' matching'}</p>
       {!loading && points.length === 0 && <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">No matching locations. Load prepared JSON/GeoJSON, or use contacts with saved coordinates. Addresses alone are not plotted.</p>}
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="relative h-[480px] overflow-hidden rounded-xl bg-slate-100" aria-label="Map of UK prospects">
+        <div
+          className="relative h-[480px] touch-none overflow-hidden rounded-xl bg-slate-100 cursor-grab active:cursor-grabbing"
+          aria-label="Map of UK prospects"
+          onPointerDown={startDrag}
+          onPointerMove={dragMap}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onWheel={event => {
+            event.preventDefault();
+            setZoom(value => Math.max(4, Math.min(18, value + (event.deltaY < 0 ? 1 : -1))));
+          }}
+        >
           {tiles.map(tile => <img key={zoom + '-' + tile.x + '-' + tile.y} src={'https://tile.openstreetmap.org/' + zoom + '/' + tile.x + '/' + tile.y + '.png'} alt="" draggable={false} onError={() => setTileError(true)} style={{ position: 'absolute', width: 256, height: 256, maxWidth: 'none', left: 'calc(50% + ' + (tile.x * 256 - cx) + 'px)', top: 'calc(50% + ' + (tile.y * 256 - cy) + 'px)' }} />)}
           {points.map(point => {
             const [px, py] = project(point.latitude, point.longitude, zoom);
@@ -122,6 +148,7 @@ export default function UKProspectMap({ contacts, loading, onClose, onOpenContac
             <button type="button" aria-label="Pan east" onClick={() => move(0, 360 / 2 ** zoom)} className={button}>→</button>
           </div>
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="absolute bottom-0 right-0 bg-white/90 px-2 text-xs text-slate-700">© OpenStreetMap contributors</a>
+          <div className="pointer-events-none absolute bottom-0 left-0 bg-white/90 px-2 text-xs text-slate-700">Drag to move · Scroll to zoom</div>
         </div>
         <div className="space-y-3">
           {selected && <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm break-words">
