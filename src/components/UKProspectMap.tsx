@@ -1,7 +1,12 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { getBytes, ref, uploadBytes } from 'firebase/storage';
 import { coordinates, mergeLocations, parseLocations, project, type ProspectLocationInput, type MapProspect } from '../utils/prospectMap';
+import { storage } from '../firebase';
 
-// Only mounted within the existing Event Contacts admin guard; locations never persist.
+const MAP_LOCATIONS_PATH = 'event-contacts/uk-prospect-locations.json';
+
+// Mounted only within the existing Event Contacts admin guard. The location file
+// is private because this Storage path is protected by the existing admin rule.
 export default function UKProspectMap({ contacts, loading, onClose, onOpenContact }: {
   contacts: ProspectLocationInput[]; loading: boolean; onClose: () => void; onOpenContact: (id: string) => void;
 }) {
@@ -13,7 +18,30 @@ export default function UKProspectMap({ contacts, loading, onClose, onOpenContac
   const [center, setCenter] = useState<[number, number]>([55.5, -3.5]);
   const [error, setError] = useState('');
   const [tileError, setTileError] = useState(false);
+  const [loadingSavedLocations, setLoadingSavedLocations] = useState(true);
+  const [savingLocations, setSavingLocations] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSavedLocations = async () => {
+      try {
+        const bytes = await getBytes(ref(storage, MAP_LOCATIONS_PATH), 2 * 1024 * 1024);
+        const parsed = parseLocations(JSON.parse(new TextDecoder().decode(bytes)));
+        if (!parsed.some(row => coordinates(row))) throw new Error('Saved map data has no valid UK coordinates.');
+        if (!cancelled) setPrepared(parsed);
+      } catch (loadError) {
+        const code = (loadError as { code?: string }).code;
+        if (!cancelled && code !== 'storage/object-not-found') {
+          setError(loadError instanceof Error ? loadError.message : 'Could not load saved map locations.');
+        }
+      } finally {
+        if (!cancelled) setLoadingSavedLocations(false);
+      }
+    };
+    loadSavedLocations();
+    return () => { cancelled = true; };
+  }, []);
   const rows = useMemo(() => mergeLocations(contacts, prepared).map((row, index) => ({ ...row, mapId: 'row-' + index })), [contacts, prepared]);
   const statuses = useMemo(() => Array.from(new Set(rows.map(r => r.invitationStatus || 'Pending'))).sort(), [rows]);
   const matching = useMemo(() => rows.filter(row =>
@@ -44,11 +72,24 @@ export default function UKProspectMap({ contacts, loading, onClose, onOpenContac
       setPrepared(parsed); setError(''); setSelectedId(null); reset();
     } catch (e) { setError(e instanceof Error ? e.message : 'Could not read locations.'); }
   };
+  const saveLocations = async () => {
+    if (!prepared.length || savingLocations) return;
+    setSavingLocations(true);
+    try {
+      const file = new Blob([JSON.stringify({ prospects: prepared })], { type: 'application/json' });
+      await uploadBytes(ref(storage, MAP_LOCATIONS_PATH), file, { contentType: 'application/json' });
+      setError('');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Could not save map locations.');
+    } finally {
+      setSavingLocations(false);
+    }
+  };
   const button = 'rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700';
   return (
     <section id="uk-prospect-map" aria-label="UK Prospect Map" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><h2 className="text-xl font-black text-slate-900">UK Prospect Map</h2><p className="text-xs text-slate-500">Admin only · Loaded locations stay in this session.</p></div>
+        <div><h2 className="text-xl font-black text-slate-900">UK Prospect Map</h2><p className="text-xs text-slate-500">Admin only · Saved locations load automatically.</p></div>
         <button type="button" onClick={onClose} className={button}>Close map</button>
       </div>
       <div className="my-3 flex flex-wrap gap-2">
@@ -56,10 +97,11 @@ export default function UKProspectMap({ contacts, loading, onClose, onOpenContac
         <select aria-label="Map invitation status" value={status} onChange={e => setStatus(e.target.value)} className={button}><option value="All">All statuses</option>{statuses.map(value => <option key={value}>{value}</option>)}</select>
         <input ref={fileInput} type="file" accept=".json,.geojson,application/json" onChange={loadFile} className="hidden" />
         <button type="button" onClick={() => fileInput.current?.click()} className={button}>Load prepared locations</button>
-        {prepared.length > 0 && <button type="button" onClick={() => { setPrepared([]); setSelectedId(null); }} className={button}>Clear loaded locations</button>}
+        {prepared.length > 0 && <button type="button" onClick={saveLocations} disabled={savingLocations} className={button}>{savingLocations ? 'Saving…' : 'Save locations permanently'}</button>}
+        {prepared.length > 0 && <button type="button" onClick={() => { setPrepared([]); setSelectedId(null); }} className={button}>Hide locations for now</button>}
       </div>
       {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
-      <p aria-live="polite" className="mb-3 text-sm text-slate-600">{loading ? 'Loading contacts…' : points.length + ' located · ' + (matching.length - points.length) + ' without valid UK coordinates · ' + matching.length + ' matching'}</p>
+      <p aria-live="polite" className="mb-3 text-sm text-slate-600">{loading || loadingSavedLocations ? 'Loading map data…' : points.length + ' located · ' + (matching.length - points.length) + ' without valid UK coordinates · ' + matching.length + ' matching'}</p>
       {!loading && points.length === 0 && <p className="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">No matching locations. Load prepared JSON/GeoJSON, or use contacts with saved coordinates. Addresses alone are not plotted.</p>}
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="relative h-[480px] overflow-hidden rounded-xl bg-slate-100" aria-label="Map of UK prospects">
