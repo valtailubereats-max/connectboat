@@ -713,9 +713,10 @@ async function fetchPageResiliently(pageUrl: string): Promise<FetchResult> {
   // 2. Fallback to Jina Reader with strict 4.0s timeout
   fallbackAttempted = true;
   const jinaTargetUrl = (pageUrl.includes('boatsandoutboards') && !pageUrl.endsWith('/')) ? `${pageUrl}/` : pageUrl;
+  const parsedJinaTarget = new URL(jinaTargetUrl);
+  const jinaUrl = `https://r.jina.ai/http://${parsedJinaTarget.host}${parsedJinaTarget.pathname}${parsedJinaTarget.search}`;
   console.log('[discover-listings] Attempting Jina Reader fallback for:', jinaTargetUrl);
   try {
-    const jinaUrl = `https://r.jina.ai/${jinaTargetUrl}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 12000);
 

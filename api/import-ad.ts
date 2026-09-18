@@ -1044,7 +1044,11 @@ async function fetchAdHtml(url: string): Promise<{ html: string; source: string;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
 
-    const jRes = await fetch("https://r.jina.ai/" + url, {
+    // Jina Reader expects the target after `http://`. Passing `https://...`
+    // directly after its hostname can be rejected for some protected sites.
+    const parsedUrl = new URL(url);
+    const jinaUrl = `https://r.jina.ai/http://${parsedUrl.host}${parsedUrl.pathname}${parsedUrl.search}`;
+    const jRes = await fetch(jinaUrl, {
       signal: controller.signal
     });
 
