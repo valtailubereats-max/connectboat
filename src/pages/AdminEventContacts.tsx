@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
+import UKProspectMap from '../components/UKProspectMap';
 
 type InvitationStatus = 'Pending' | 'Sent – WhatsApp' | 'Sent – Email' | 'Sent – Other' | 'Unsubscribed';
 
@@ -344,6 +345,7 @@ class EventContactsErrorBoundary extends React.Component<
 const AdminEventContactsContent: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const [contacts, setContacts] = useState<EventContact[]>([]);
+  const [prospectMapOpen, setProspectMapOpen] = useState(false);
   const [draft, setDraft] = useState<ContactDraft>({ ...EMPTY_DRAFT });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [existingPhotoUrl, setExistingPhotoUrl] = useState('');
@@ -1222,6 +1224,7 @@ const AdminEventContactsContent: React.FC = () => {
           >
             <Upload size={16} /> Import Prospects
           </button>
+          <button type="button" aria-expanded={prospectMapOpen} aria-controls="uk-prospect-map" onClick={() => setProspectMapOpen(open => !open)} className="rounded-xl border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-700">UK Prospect Map</button>
           <button onClick={syncFromSheets} disabled={saving || syncing || loading} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{syncing ? 'Syncing…' : 'Sync Google Sheets'}</button>
           <button onClick={retrySheetSends} disabled={saving || syncing || loading} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 disabled:opacity-40">Retry pending sends</button>
           <a href={SHEET_URL} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700">Open Google Sheets</a>
@@ -1230,6 +1233,15 @@ const AdminEventContactsContent: React.FC = () => {
 
       {syncIssues.length > 0 && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><strong>Items needing review</strong><ul className="mt-2 list-disc pl-5">{syncIssues.map((issue, index) => <li key={index}>{issue}</li>)}</ul></div>}
       {message && <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-800">{message}</div>}
+
+      {prospectMapOpen && isAdmin && (
+        <UKProspectMap
+          contacts={contacts}
+          loading={loading}
+          onClose={() => setProspectMapOpen(false)}
+          onOpenContact={id => { const contact = contacts.find(item => item.id === id); if (contact) handleEdit(contact); }}
+        />
+      )}
 
       <section id="event-contact-form" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <input
