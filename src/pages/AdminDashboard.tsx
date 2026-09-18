@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, limit, getDocs, where, doc, setDoc } from 'firebase/firestore';
+import { collection, query, limit, getDocs, getCountFromServer, where, doc, setDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { db, handleFirestoreError, OperationType, getDocsWithCacheFallback, auth } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -47,6 +47,7 @@ const AdminDashboard = () => {
   const [hasStoredMetricHistory, setHasStoredMetricHistory] = useState(false);
   const [pendingAds, setPendingAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detailedMetricsLoading, setDetailedMetricsLoading] = useState(false);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | 'all'>('7d');
   const [ga4Analytics, setGa4Analytics] = useState<{
     loading: boolean;
@@ -590,7 +591,7 @@ const AdminDashboard = () => {
       fetchMetrics();
       fetchPendingAds();
     }
-  }, [isAdmin, authLoading, timeRange]);
+  }, [isAdmin, authLoading]);
 
   const fetchPendingAds = async () => {
     try {
@@ -612,9 +613,96 @@ const AdminDashboard = () => {
     }
   };
 
+  // The overview opens frequently while moderating. Count aggregations keep that
+  // first visit inexpensive; the historical charts are loaded only on request.
   const fetchMetrics = async () => {
     if (!isAdmin) return;
     setLoading(true);
+    setRealtimeStats(prev => ({ ...prev, loading: true }));
+
+    const count = async (source: ReturnType<typeof query>, label: string) => {
+      try {
+        const snapshot = await getCountFromServer(source);
+        return snapshot.data().count;
+      } catch (error) {
+        console.warn(`[Dashboard] Count unavailable for ${label}:`, error);
+        return 0;
+      }
+    };
+
+    try {
+      const ads = collection(db, 'ads');
+      const users = collection(db, 'users');
+      const profiles = collection(db, 'sellerPublicProfiles');
+      const notifications = collection(db, 'notifications');
+
+      const [
+        totalAds,
+        pendingAdsCount,
+        approvedAdsCount,
+        totalUsers,
+        adminsCount,
+        moderatorsCount,
+        trabalhosCount,
+        vitrinesCount,
+        featuredAdsCount,
+        featuredLocalCount,
+        featuredNationalCount,
+        paidVitrinesCount,
+        adInterestsCount,
+        showcaseInterestsCount,
+        marketingCount,
+        notificationsCount,
+      ] = await Promise.all([
+        count(query(ads), 'total ads'),
+        count(query(ads, where('status', '==', 'pending')), 'pending ads'),
+        count(query(ads, where('status', '==', 'approved')), 'approved ads'),
+        count(query(users), 'total users'),
+        count(query(users, where('role', '==', 'admin')), 'admins'),
+        count(query(users, where('role', '==', 'moderator')), 'moderators'),
+        count(query(ads, where('category', 'in', ['trabalho/empregos', 'trabalho', 'trabalhos', 'emprego', 'empregos'])), 'jobs'),
+        count(query(profiles), 'showcases'),
+        count(query(ads, where('isFeatured', '==', true)), 'featured ads'),
+        count(query(ads, where('isFeatured', '==', true), where('featuredLevel', '==', 'local')), 'local featured ads'),
+        count(query(ads, where('isFeatured', '==', true), where('featuredLevel', '==', 'national')), 'national featured ads'),
+        count(query(profiles, where('showcasePaid', '==', true)), 'paid showcases'),
+        count(query(collection(db, 'adInterests')), 'ad interests'),
+        count(query(collection(db, 'showcaseProductInterests')), 'showcase interests'),
+        count(query(collection(db, 'marketing_materials')), 'marketing materials'),
+        auth.currentUser?.uid
+          ? count(query(notifications, where('userId', '==', auth.currentUser.uid)), 'admin notifications')
+          : Promise.resolve(0),
+      ]);
+
+      setRealtimeStats({
+        totalAds,
+        pendingAds: pendingAdsCount,
+        approvedAds: approvedAdsCount,
+        totalUsers,
+        staffCount: adminsCount + moderatorsCount,
+        trabalhosCount,
+        vitrinesCount,
+        featuredAdsCount,
+        featuredLocalCount,
+        featuredNationalCount,
+        paidVitrinesCount,
+        leadsCount: adInterestsCount + showcaseInterestsCount,
+        notificationsCount,
+        marketingCount,
+        loading: false,
+      });
+    } catch (err) {
+      console.error('[Dashboard] Unable to load lightweight metrics:', err);
+      setRealtimeStats(prev => ({ ...prev, loading: false }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDetailedMetrics = async (range: '7d' | '30d' | 'all' = timeRange) => {
+    if (!isAdmin) return;
+    setLoading(true);
+    setDetailedMetricsLoading(true);
     setRealtimeStats(prev => ({ ...prev, loading: true }));
     try {
       // A. Gather raw live collection snapshot states from Firestore
@@ -771,7 +859,7 @@ const AdminDashboard = () => {
           })
           .filter((value) => value > 0);
 
-        const requestedDays = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : null;
+        const requestedDays = range === '7d' ? 7 : range === '30d' ? 30 : null;
         const earliestTime = createdTimes.length ? Math.min(...createdTimes) : Date.now();
         const naturalDays = Math.max(1, Math.ceil((Date.now() - earliestTime) / (24 * 60 * 60 * 1000)) + 1);
         const numDays = requestedDays ?? Math.min(naturalDays, 365);
@@ -926,6 +1014,7 @@ const AdminDashboard = () => {
       console.error('Metrics fetch aggregate error:', err);
     } finally {
       setLoading(false);
+      setDetailedMetricsLoading(false);
     }
   };
 
@@ -1349,7 +1438,10 @@ const AdminDashboard = () => {
             {(['7d', '30d', 'all'] as const).map((range, index) => (
               <button
                 key={`range-${range}-${index}`}
-                onClick={() => setTimeRange(range)}
+                onClick={() => {
+                  setTimeRange(range);
+                  if (metrics.length > 0) void fetchDetailedMetrics(range);
+                }}
                 className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${timeRange === range ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 {range === '7d' ? '7 Days' : range === '30d' ? '30 Days' : 'All'}
@@ -1625,8 +1717,16 @@ const AdminDashboard = () => {
       ) : !latest ? (
         <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-200">
           <Calendar className="mx-auto text-slate-300 mb-4" size={48} />
-          <p className="text-slate-500 font-bold">No metrics available yet.</p>
-          <p className="text-slate-400 text-sm">Please wait for daily system processing.</p>
+          <p className="text-slate-700 font-bold">Detailed history is not loaded yet.</p>
+          <p className="text-slate-400 text-sm mt-1">The overview above uses lightweight counts to keep moderation fast.</p>
+          <button
+            type="button"
+            onClick={() => void fetchDetailedMetrics()}
+            disabled={detailedMetricsLoading}
+            className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {detailedMetricsLoading ? 'Loading detailed history…' : 'Load detailed history'}
+          </button>
         </div>
       ) : (
         <>
