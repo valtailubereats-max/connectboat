@@ -176,7 +176,8 @@ function smsInvitationText(draft: ContactDraft) {
   return `Hi ${greeting}, ConnectBoat is a UK boating marketplace for boats, charters and marine businesses. Discover us at https://connectboat.co.uk`;
 }
 
-const COMMERCIAL_SMS_MESSAGE = "Hi, ConnectBoat is a UK marine marketplace. We'd like to invite your business to join us at connectboat.co.uk. Opt out: contato@connectboat.co.uk";
+// ClickSend replaces this placeholder with a unique unsubscribe link after the final confirmation.
+const COMMERCIAL_SMS_MESSAGE = "Hi, ConnectBoat is a UK marine marketplace. We'd like to invite your business to join us at connectboat.co.uk. Unsubscribe: StopMsg.me/xxxxx";
 
 function normaliseUkSmsPhonePreview(value: string) {
   let phone = value.trim().replace(/[\s().-]/g, '');

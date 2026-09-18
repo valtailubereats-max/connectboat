@@ -1,6 +1,7 @@
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { createHash } from 'node:crypto';
 
 // Serverless Email Service for ConnectBoat
 
@@ -91,7 +92,10 @@ function normaliseSmsPhone(value: unknown): string {
   return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : '';
 }
 
-const COMMERCIAL_SMS_MESSAGE = "Hi, ConnectBoat is a UK marine marketplace. We'd like to invite your business to join us at connectboat.co.uk. Opt out: contato@connectboat.co.uk";
+// ClickSend replaces this placeholder with a unique unsubscribe URL for the recipient.
+// Alpha Tags cannot receive STOP replies, so commercial SMS must use this campaign-only method.
+const CLICKSEND_UNSUBSCRIBE_PLACEHOLDER = 'StopMsg.me/xxxxx';
+const COMMERCIAL_SMS_MESSAGE = `Hi, ConnectBoat is a UK marine marketplace. We'd like to invite your business to join us at connectboat.co.uk. Unsubscribe: ${CLICKSEND_UNSUBSCRIBE_PLACEHOLDER}`;
 
 function getClickSendMessageId(payload: any): string | null {
   const data = payload?.data;
@@ -102,6 +106,83 @@ function getClickSendMessageId(payload: any): string | null {
       : data;
   const messageId = item?.message_id || item?.id;
   return typeof messageId === 'string' ? messageId : null;
+}
+
+function getClickSendCampaignId(payload: any): string | null {
+  const campaignId = payload?.data?.sms_campaign_id || payload?.data?.id;
+  return campaignId === undefined || campaignId === null ? null : String(campaignId);
+}
+
+function clickSendListName(phone: string): string {
+  // The list name is deterministic and contains no phone number or company name.
+  return `connectboat-sms-${createHash('sha256').update(phone).digest('hex').slice(0, 24)}`;
+}
+
+function clickSendRecords(payload: any): any[] {
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+}
+
+async function clickSendRequest(username: string, apiKey: string, path: string, options: RequestInit = {}) {
+  const response = await fetch(`https://rest.clicksend.com/v3${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Basic ${Buffer.from(`${username}:${apiKey}`).toString('base64')}`,
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  return { response, payload };
+}
+
+async function resolveClickSendCampaignList(username: string, apiKey: string, phone: string) {
+  const listName = clickSendListName(phone);
+  const search = await clickSendRequest(
+    username,
+    apiKey,
+    `/search/contacts-lists?q=${encodeURIComponent(listName)}`
+  );
+  if (!search.response.ok || search.payload?.response_code !== 'SUCCESS') {
+    throw new Error(search.payload?.response_msg || 'ClickSend could not check the SMS contact list.');
+  }
+
+  const existingList = clickSendRecords(search.payload).find((item: any) => item?.list_name === listName);
+  if (existingList?.list_id) {
+    const contacts = await clickSendRequest(username, apiKey, `/lists/${existingList.list_id}/contacts?limit=100`);
+    if (!contacts.response.ok || contacts.payload?.response_code !== 'SUCCESS') {
+      throw new Error(contacts.payload?.response_msg || 'ClickSend could not check the SMS recipient.');
+    }
+    const stillSubscribed = clickSendRecords(contacts.payload).some(
+      (contact: any) => normaliseSmsPhone(contact?.phone_number) === phone
+    );
+    if (!stillSubscribed) {
+      const error: any = new Error('This number has opted out of ConnectBoat SMS and cannot be contacted.');
+      error.statusCode = 409;
+      throw error;
+    }
+    return String(existingList.list_id);
+  }
+
+  const created = await clickSendRequest(username, apiKey, '/lists', {
+    method: 'POST',
+    body: JSON.stringify({ list_name: listName }),
+  });
+  const listId = created.payload?.data?.list_id;
+  if (!created.response.ok || created.payload?.response_code !== 'SUCCESS' || !listId) {
+    throw new Error(created.payload?.response_msg || 'ClickSend could not create the SMS contact list.');
+  }
+
+  const contact = await clickSendRequest(username, apiKey, `/lists/${listId}/contacts`, {
+    method: 'POST',
+    body: JSON.stringify({ phone_number: phone }),
+  });
+  if (!contact.response.ok || contact.payload?.response_code !== 'SUCCESS') {
+    throw new Error(contact.payload?.response_msg || 'ClickSend could not add the SMS recipient.');
+  }
+
+  return String(listId);
 }
 
 async function handleSmsRequest(decodedUser: any, body: any, res: any) {
@@ -141,26 +222,37 @@ async function handleSmsRequest(decodedUser: any, body: any, res: any) {
     return res.status(503).json({ success: false, error: 'SMS provider is not configured.' });
   }
 
-  const response = await fetch('https://rest.clicksend.com/v3/sms/send', {
+  let listId: string;
+  try {
+    listId = await resolveClickSendCampaignList(username, apiKey, to);
+  } catch (error: any) {
+    return res.status(error?.statusCode || 502).json({
+      success: false,
+      error: error?.message || 'ClickSend could not prepare the SMS recipient.',
+    });
+  }
+
+  const campaignName = `ConnectBoat invitation ${Date.now()}`;
+  const { response, payload } = await clickSendRequest(username, apiKey, '/sms-campaigns/send', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Basic ${Buffer.from(`${username}:${apiKey}`).toString('base64')}`,
-    },
     body: JSON.stringify({
-      messages: [{ source: 'sdk', from: 'ConnectBoat', to, body: message }],
+      list_id: Number(listId),
+      name: campaignName,
+      from: 'ConnectBoat',
+      body: message,
+      source: 'connectboat-event-contacts',
+      senders: [{ recipient_country_code: 'GB', sender_id: 'ConnectBoat' }],
     }),
   });
-  const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.response_code !== 'SUCCESS') {
-    return res.status(502).json({ success: false, error: payload?.response_msg || 'SMS provider rejected the request.' });
+    return res.status(502).json({ success: false, error: payload?.response_msg || 'SMS provider rejected the campaign.' });
   }
 
   return res.status(200).json({
     success: true,
     simulated: false,
-    messageId: getClickSendMessageId(payload),
-    message: payload?.response_msg || 'SMS accepted for delivery.',
+    messageId: getClickSendCampaignId(payload),
+    message: payload?.response_msg || 'SMS campaign accepted for delivery.',
     recipient: to,
   });
 }
