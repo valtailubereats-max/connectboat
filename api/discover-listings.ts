@@ -653,7 +653,7 @@ async function enrichMissingListingImages(listings: DiscoveredListing[]): Promis
 
 export type FetchResult = {
   htmlOrText: string;
-  fetchSource: 'direct' | 'jina' | 'gemini-url-context';
+  fetchSource: 'direct' | 'jina' | 'gemini-url-context' | 'gemini-google-search';
   status: number;
   errorCode?: 'FETCH_TIMEOUT' | 'DNS_ERROR' | 'TLS_ERROR' | 'PAGE_ACCESS_DENIED' | 'FALLBACK_FAILED' | 'EMPTY_RESPONSE';
   errorDetails?: string;
@@ -1039,7 +1039,7 @@ export default async function discoverListingsHandler(req: any, res: any) {
     fallbackAttempted = fetchRes.fallbackAttempted;
     htmlLength = fetchRes.htmlOrText ? fetchRes.htmlOrText.length : 0;
 
-    if (fetchRes.fetchSource === 'jina' || fetchRes.fetchSource === 'gemini-url-context') {
+    if (fetchRes.fetchSource === 'jina' || fetchRes.fetchSource === 'gemini-url-context' || fetchRes.fetchSource === 'gemini-google-search') {
       lastCompletedStage = 'FALLBACK_FETCH_STARTED';
     } else {
       lastCompletedStage = 'DIRECT_FETCH_COMPLETED';
