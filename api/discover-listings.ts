@@ -494,8 +494,9 @@ export function discoverBoatsAndOutboardsListings(textOrHtml: string, pageUrl: s
   const results: DiscoveredListing[] = [];
   const seenUrls = new Set<string>();
 
-  // Detect boatsandoutboards target links (either in markdown or html)
-  const targetUrlRegex = /(?:\]\(|href=["'])(https?:\/\/(?:www\.)?boatsandoutboards\.co\.uk\/(?:boat|boats-for-sale)\/[^\)\s"']+\d{5,}\/?)/gi;
+  // Detect target links from direct HTML and reader Markdown. The reader often
+  // rewrites Boats & Outboards links as relative paths, so accept both forms.
+  const targetUrlRegex = /(?:\]\(|href=["'])((?:https?:\/\/(?:www\.)?boatsandoutboards\.co\.uk)?\/(?:boat|boats-for-sale)\/[^\)\s"']+\d{5,}\/?)/gi;
   let m: RegExpExecArray | null;
 
   while ((m = targetUrlRegex.exec(textOrHtml)) !== null) {
