@@ -180,6 +180,7 @@ async function authorizeEmailRequest(
     'anuncio_aprovado',
     'anuncio_rejeitado',
     'alerta_saude_sistema',
+    'event_contact_invitation',
   ]);
 
   if (staffOnlyTemplates.has(template)) {
@@ -600,6 +601,21 @@ export function renderEmail(template: string, data: any): { subject: string; htm
       `;
       ctaLink = `${baseUrl}/profile`;
       ctaText = 'Complete Profile';
+      break;
+
+    case 'event_contact_invitation':
+      subject = 'Invitation to ConnectBoat.co.uk';
+      bodyContent = `
+        <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${escapeHtml(data.contactName || data.company || 'there')},</p>
+        <p>We’d like to introduce you to ConnectBoat, a UK boating marketplace connecting boat owners, buyers, charter customers and marine businesses.</p>
+        <p>We’d be delighted to welcome your business to the platform and invite you to discover ConnectBoat.</p>
+        <div style="margin: 26px 0 0; text-align: center;">
+          <img src="${baseUrl}/ConnectBoat_Email_Signature.jpg" alt="ConnectBoat — The UK Boating Marketplace" width="600" style="display: block; width: 100%; max-width: 600px; height: auto; border: 0; border-radius: 8px;" />
+        </div>
+        <p style="font-size: 12px; color: #64748b; margin: 22px 0 0;">If you’d prefer not to receive further emails from ConnectBoat, reply “unsubscribe” and we won’t contact you again.</p>
+      `;
+      ctaLink = baseUrl;
+      ctaText = 'Discover ConnectBoat';
       break;
 
     case 'alerta_saude_sistema':

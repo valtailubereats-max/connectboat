@@ -1006,16 +1006,40 @@ const AdminEventContactsContent: React.FC = () => {
 
   const sendEmail = async () => {
     const email = draft.email.trim();
-    if (!email) return;
-    const url = `mailto:${email}?subject=${encodeURIComponent(emailSubject())}&body=${encodeURIComponent(invitationText(draft))}`;
+    if (!email || !user || saving) return;
+    setSaving(true);
     try {
+      // Persist a new contact before delivery, so a failed request never loses it.
+      if (!editingId) {
+        await saveCurrent({ invitationStatus: 'Pending', invitationChannel: '' });
+      }
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + await user.getIdToken(),
+        },
+        body: JSON.stringify({
+          template: 'event_contact_invitation',
+          to: email,
+          data: { contactName: draft.name, company: draft.company },
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success || result?.simulated) {
+        throw new Error(result?.error || (result?.simulated
+          ? 'Email delivery is not configured yet. The contact was not marked as sent.'
+          : 'Could not send the invitation email.'));
+      }
       await saveCurrent({ invitationStatus: 'Sent – Email', invitationChannel: 'Email' });
       await loadContacts();
       resetForm();
-      window.location.href = url;
-    } catch (error) {
+      setMessage('Invitation email sent with the ConnectBoat banner.');
+    } catch (error: any) {
       console.error(error);
-      setMessage('Could not save the contact before opening email.');
+      setMessage(error?.message || 'Could not send the invitation email. The contact was not marked as sent.');
+    } finally {
+      setSaving(false);
     }
   };
 
