@@ -20,7 +20,8 @@ export function coordinates(row: ProspectLocationInput): [number, number] | null
   const country = key(row.country ?? location.country);
   if (country && !['uk', 'gb', 'gbr', 'united kingdom', 'great britain', 'england', 'scotland', 'wales', 'northern ireland'].includes(country)) return null;
   // UK viewport, including Northern Ireland and the northern islands. Never infer coordinates from a city.
-  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= 49.8 && lat <= 61 && lng >= -8.3 && lng <= 2 ? [lat, lng] : null;
+  // Include the Channel Islands used by the original ConnectBoat prospect map.
+  return Number.isFinite(lat) && Number.isFinite(lng) && lat >= 49.1 && lat <= 61 && lng >= -8.3 && lng <= 2 ? [lat, lng] : null;
 }
 export function parseLocations(value: unknown): ProspectLocationInput[] {
   const obj = value as { prospects?: unknown; features?: unknown } | null;
