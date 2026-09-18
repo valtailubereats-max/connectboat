@@ -91,7 +91,21 @@ function normaliseSmsPhone(value: unknown): string {
   return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : '';
 }
 
-async function handleSimulatedSmsRequest(decodedUser: any, body: any, res: any) {
+const REAL_SMS_TEST_RECIPIENT = '+447508309536';
+const REAL_SMS_TEST_MESSAGE = 'ConnectBoat SMS test. Our SMS integration is working correctly.';
+
+function getClickSendMessageId(payload: any): string | null {
+  const data = payload?.data;
+  const item = Array.isArray(data)
+    ? data[0]
+    : Array.isArray(data?.messages)
+      ? data.messages[0]
+      : data;
+  const messageId = item?.message_id || item?.id;
+  return typeof messageId === 'string' ? messageId : null;
+}
+
+async function handleSmsRequest(decodedUser: any, body: any, res: any) {
   if (!(await isAdminUser(decodedUser))) {
     return res.status(403).json({ success: false, error: 'Administrator access required.' });
   }
@@ -102,15 +116,52 @@ async function handleSimulatedSmsRequest(decodedUser: any, body: any, res: any) 
   if (!message || message.length > 480) {
     return res.status(400).json({ success: false, error: 'SMS message must contain between 1 and 480 characters.' });
   }
-  if (body?.allowLiveDelivery !== false) {
-    return res.status(400).json({ success: false, error: 'SMS delivery is simulation only. allowLiveDelivery must be false.' });
+  if (body?.allowLiveDelivery === false) {
+    return res.status(200).json({
+      success: true,
+      simulated: true,
+      messageId: `simulated-${Date.now()}`,
+      message: 'SMS simulation completed. No SMS was sent.',
+      recipient: to,
+    });
+  }
+
+  if (body?.allowLiveDelivery !== true) {
+    return res.status(400).json({ success: false, error: 'allowLiveDelivery must be explicitly true or false.' });
+  }
+  if (to !== REAL_SMS_TEST_RECIPIENT) {
+    return res.status(403).json({ success: false, error: 'Real SMS tests are restricted to the approved test number.' });
+  }
+  if (message !== REAL_SMS_TEST_MESSAGE) {
+    return res.status(400).json({ success: false, error: 'Real SMS tests must use the approved test message.' });
+  }
+
+  const username = process.env.CLICKSEND_USERNAME;
+  const apiKey = process.env.CLICKSEND_API_KEY;
+  if (!username || !apiKey) {
+    return res.status(503).json({ success: false, error: 'SMS provider is not configured.' });
+  }
+
+  const response = await fetch('https://rest.clicksend.com/v3/sms/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Basic ${Buffer.from(`${username}:${apiKey}`).toString('base64')}`,
+    },
+    body: JSON.stringify({
+      messages: [{ source: 'sdk', from: 'ConnectBoat', to, body: message }],
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.response_code !== 'SUCCESS') {
+    return res.status(502).json({ success: false, error: payload?.response_msg || 'SMS provider rejected the request.' });
   }
 
   return res.status(200).json({
     success: true,
-    simulated: true,
-    messageId: `simulated-${Date.now()}`,
-    message: 'SMS simulation completed. No SMS was sent.',
+    simulated: false,
+    messageId: getClickSendMessageId(payload),
+    message: payload?.response_msg || 'SMS accepted for delivery.',
     recipient: to,
   });
 }
@@ -810,10 +861,9 @@ export default async function handler(req: any, res: any) {
     });
   }
 
-  // SMS remains simulation-only. It deliberately bypasses the email template flow
-  // while retaining the same Firebase authentication boundary.
+  // SMS uses the same Firebase authentication boundary while bypassing email templates.
   if (req.body?.channel === 'sms') {
-    return handleSimulatedSmsRequest(decodedUser, req.body, res);
+    return handleSmsRequest(decodedUser, req.body, res);
   }
 
   if (!EMAIL_FLAG_ACTIVE) {

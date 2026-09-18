@@ -176,6 +176,8 @@ function smsInvitationText(draft: ContactDraft) {
   return `Hi ${greeting}, ConnectBoat is a UK boating marketplace for boats, charters and marine businesses. Discover us at https://connectboat.co.uk`;
 }
 
+const REAL_SMS_TEST_MESSAGE = 'ConnectBoat SMS test. Our SMS integration is working correctly.';
+
 async function getRearCameraStream(): Promise<MediaStream> {
   // Prefer the physical rear/environment camera. Some mobile browsers ignore
   // capture="environment", so we request the camera directly instead.
@@ -1075,6 +1077,37 @@ const AdminEventContactsContent: React.FC = () => {
     }
   };
 
+  const sendRealSmsTest = async () => {
+    const number = draft.whatsapp.trim() || draft.phone.trim();
+    if (!number || !user || saving) return;
+    setSaving(true);
+    try {
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + await user.getIdToken(),
+        },
+        body: JSON.stringify({
+          channel: 'sms',
+          to: number,
+          message: REAL_SMS_TEST_MESSAGE,
+          allowLiveDelivery: true,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success || result?.simulated) {
+        throw new Error(result?.error || 'Real SMS test could not be sent.');
+      }
+      setMessage(`Real SMS test accepted for ${result.recipient}. Message ID: ${result.messageId || 'pending'}.`);
+    } catch (error: any) {
+      console.error(error);
+      setMessage(error?.message || 'Real SMS test could not be sent.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const openWebsite = async () => {
     const url = normaliseWebsite(draft.website);
     if (!url) return;
@@ -1366,6 +1399,9 @@ const AdminEventContactsContent: React.FC = () => {
               )}
               {smsAvailable && draft.invitationStatus !== 'Unsubscribed' && (
                 <button onClick={sendSmsSimulation} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 font-black text-violet-700 disabled:opacity-60"><Smartphone size={19} /> Test SMS (simulation)</button>
+              )}
+              {smsAvailable && draft.invitationStatus !== 'Unsubscribed' && (
+                <button onClick={sendRealSmsTest} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 font-black text-amber-800 disabled:opacity-60"><Smartphone size={19} /> Send REAL SMS test</button>
               )}
               {emailAvailable && draft.invitationStatus !== 'Unsubscribed' && (!whatsappAvailable || isResending) && (
                 <button onClick={sendEmail} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><Mail size={20} /> {isResending ? 'Resend via Email' : 'Send Invitation via Email'}</button>
