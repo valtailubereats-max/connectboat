@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { classifyContact, contactData } from '../src/utils/eventContactsSync';
+import { classifyContact, contactData, locationData } from '../src/utils/eventContactsSync';
 
 assert.equal(classifyContact({ contactId: 'existing' }, [{ id: 'existing', notes: 'preserve' }]).kind, 'existing');
 assert.equal(classifyContact({ email: ' TEST@BOAT.COM ' }, [{ id: 'a', email: 'test@boat.com' }]).kind, 'existing');
@@ -8,4 +8,7 @@ assert.equal(classifyContact({ website: 'https://www.boat.com/a' }, [{ id: 'a', 
 assert.equal(classifyContact({ email: 'shared@boat.com' }, [{ id: 'a', email: 'shared@boat.com' }, { id: 'b', email: 'shared@boat.com' }]).kind, 'ambiguous');
 assert.equal(classifyContact({ email: 'new@boat.com' }, []).kind, 'missing');
 assert.equal(contactData({ invitationStatus: 'Unsubscribed' }).invitationStatus, 'Unsubscribed');
+assert.deepEqual(locationData({ address: 'Hamble Point', postcode: 'SO31 4NB', latitude: 50.86, longitude: -1.31 }), {
+  address: 'Hamble Point', postcode: 'SO31 4NB', city: '', country: '', latitude: '50.86', longitude: '-1.31',
+});
 console.log('Event Contacts comparison tests passed.');

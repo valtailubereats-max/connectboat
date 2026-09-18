@@ -16,7 +16,13 @@ const HEADERS = [
   'Invitation Channel',
   'Invitation Status',
   'Notes',
-  'Contact ID'
+  'Contact ID',
+  'Address',
+  'Postcode',
+  'City',
+  'Country',
+  'Latitude',
+  'Longitude'
 ];
 
 const SUPPRESSION_HEADERS = [
@@ -106,7 +112,7 @@ function doPost(e) {
     }
     const sheet = getEventContactsSheet();
     const actualHeaders = sheet.getRange(1, 1, 1, HEADERS.length).getDisplayValues()[0];
-    if (actualHeaders.some(function(header, i) { return header !== HEADERS[i]; })) throw new Error('Event Contacts headers differ from the expected A:L columns.');
+    if (actualHeaders.some(function(header, i) { return header !== HEADERS[i]; })) throw new Error('Event Contacts headers differ from the expected Event Contacts columns.');
 
     if (data.action === 'readContacts') return jsonResponse(readContacts_(sheet, data));
     if (data.action === 'linkContacts') return jsonResponse(linkContacts_(sheet, data.links));
@@ -327,6 +333,19 @@ function getEventContactsSheet() {
 
     sheet.setFrozenRows(1);
   }
+  // Existing sheets used A:L. Add map columns without changing those contact
+  // columns or any formulas that may sit to their right.
+  if (!headerMissing) {
+    const legacyHeaders = currentHeaders.slice(0, 12);
+    const legacyMatches = legacyHeaders.every(function(header, i) { return header === HEADERS[i]; });
+    if (!legacyMatches) throw new Error('Event Contacts headers differ from the expected A:L contact columns.');
+    const locationHeaders = sheet.getRange(1, 13, 1, HEADERS.length - 12).getValues()[0];
+    if (locationHeaders.some(function(header, i) { return header !== HEADERS[i + 12]; })) {
+      const hasAuxiliaryColumn = locationHeaders.some(function(header) { return clean(header) !== ''; });
+      if (hasAuxiliaryColumn) sheet.insertColumnsBefore(13, HEADERS.length - 12);
+      sheet.getRange(1, 13, 1, HEADERS.length - 12).setValues([HEADERS.slice(12)]);
+    }
+  }
 
   return sheet;
 }
@@ -411,12 +430,12 @@ function upsertContact(sheet, contact, context) {
   const oldStatus = added ? '' : clean(sheet.getRange(target, 10).getValue());
   const status = context.suppressed[email] || oldStatus === 'Unsubscribed' ? 'Unsubscribed' : clean(contact.invitationStatus || contact.status || 'Pending');
   if (status === 'Unsubscribed') context.suppressedIds[id] = true;
-  const row = [clean(contact.name), clean(contact.company), clean(contact.whatsapp), clean(contact.phone), email, clean(contact.website), clean(contact.linkedin), clean(contact.otherContact), clean(contact.invitationChannel || contact.channel), status, clean(contact.notes), id];
+  const row = [clean(contact.name), clean(contact.company), clean(contact.whatsapp), clean(contact.phone), email, clean(contact.website), clean(contact.linkedin), clean(contact.otherContact), clean(contact.invitationChannel || contact.channel), status, clean(contact.notes), id, clean(contact.address), clean(contact.postcode), clean(contact.city), clean(contact.country), clean(contact.latitude), clean(contact.longitude)];
   sheet.getRange(target, 3, 1, 2).setNumberFormat('@');
   // Leading '=' is escaped so contact text is never interpreted as a formula.
   sheet.getRange(target, 1, 1, row.length).setValues([row.map(function(value) { return value.indexOf('=') === 0 ? "'" + value : value; })]);
   context.ids[id] = target;
-  if (sheet.getRange(1, 13).getValue() === 'Contact Count') sheet.getRange(target, 13).setFormula('=COUNTA(C' + target + ':H' + target + ')');
+  if (sheet.getRange(1, HEADERS.length + 1).getValue() === 'Contact Count') sheet.getRange(target, HEADERS.length + 1).setFormula('=COUNTA(C' + target + ':H' + target + ')');
   return added ? 'added' : 'updated';
 }
 
@@ -427,7 +446,7 @@ function readContacts_(sheet, data) {
   const count = Math.min(limit, Math.max(0, total - offset));
   const context = createContactContext_(sheet);
   const rows = count ? sheet.getRange(offset + 2, 1, count, HEADERS.length).getDisplayValues() : [];
-  const keys = ['name','company','whatsapp','phone','email','website','linkedin','otherContact','invitationChannel','invitationStatus','notes','contactId'];
+  const keys = ['name','company','whatsapp','phone','email','website','linkedin','otherContact','invitationChannel','invitationStatus','notes','contactId','address','postcode','city','country','latitude','longitude'];
   const contacts = [];
   rows.forEach(function(row, i) {
     if (!row.slice(0, 8).some(function(value) { return clean(value) !== ''; })) return;

@@ -42,6 +42,12 @@ type EventContact = {
   photoPath: string;
   createdBy: string;
   sheetSyncPending?: boolean;
+  address?: string;
+  postcode?: string;
+  city?: string;
+  country?: string;
+  latitude?: string;
+  longitude?: string;
 };
 
 type ContactDraft = Omit<EventContact, 'id' | 'photoUrl' | 'photoPath' | 'createdBy' | 'sheetSyncPending'>;

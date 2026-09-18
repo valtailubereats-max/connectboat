@@ -1,9 +1,15 @@
 export const CONTACT_FIELDS = ['name','company','whatsapp','phone','email','website','linkedin','otherContact','invitationChannel','invitationStatus','notes'] as const;
+export const LOCATION_FIELDS = ['address','postcode','city','country','latitude','longitude'] as const;
 export function text(value: unknown): string { return typeof value === 'string' || typeof value === 'number' ? String(value).trim() : ''; }
 export function contactData(row: any) {
   const result: Record<string, string> = {};
   for (const key of CONTACT_FIELDS) result[key] = text(row?.[key]);
   result.invitationStatus = ['Pending','Sent – WhatsApp','Sent – Email','Sent – Other','Unsubscribed'].includes(result.invitationStatus) ? result.invitationStatus : 'Pending';
+  return result;
+}
+export function locationData(row: any) {
+  const result: Record<string, string> = {};
+  for (const key of LOCATION_FIELDS) result[key] = text(row?.[key]);
   return result;
 }
 function phone(value: unknown) { return text(value).replace(/\D/g, '').replace(/^00/, ''); }

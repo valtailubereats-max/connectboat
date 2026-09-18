@@ -1,4 +1,4 @@
-import { classifyContact, contactData, CONTACT_FIELDS, text } from '../utils/eventContactsSync.js';
+import { classifyContact, contactData, locationData, CONTACT_FIELDS, text } from '../utils/eventContactsSync.js';
 import { readEventContacts } from './readEventContacts.mjs';
 
 export async function callContactSheet(body: Record<string, unknown>, timeoutMs = 20000) {
@@ -44,6 +44,14 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
         if (match.kind === 'ambiguous') { ambiguous.push(data.company || data.name || data.email || id); continue; }
         if (match.kind === 'existing') {
           existing++;
+          // The spreadsheet is the source for optional map fields. Do not overwrite
+          // contact details, invitation status, or notes already in ConnectBoat.
+          const location = locationData(row);
+          const locationPatch = Object.fromEntries(Object.entries(location).filter(([, value]) => Boolean(value)));
+          if (Object.keys(locationPatch).length) {
+            tx.update(contacts.doc(match.contact.id), locationPatch);
+            Object.assign(match.contact, locationPatch);
+          }
           if (match.contact.id !== id) links.push({ oldId: id, contactId: match.contact.id });
           if (row.suppressed || data.invitationStatus === 'Unsubscribed') {
             tx.update(contacts.doc(match.contact.id), { invitationStatus: 'Unsubscribed' });
@@ -52,7 +60,7 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
           continue;
         }
         if (row.suppressed) data.invitationStatus = 'Unsubscribed';
-        const payload = { ...data, photoUrl: '', photoPath: '', rawSource: '', createdBy: uid, source: 'googleSheets', sheetSyncPending: false };
+        const payload = { ...data, ...locationData(row), photoUrl: '', photoPath: '', rawSource: '', createdBy: uid, source: 'googleSheets', sheetSyncPending: false };
         tx.create(contacts.doc(id), payload);
         working.push({ ...payload, id }); added++;
       }
