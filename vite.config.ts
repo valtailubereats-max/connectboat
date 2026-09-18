@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import fs from 'node:fs';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 
@@ -127,6 +128,22 @@ export default defineConfig(({mode}) => {
             }
           });
         }
+      },
+      {
+        // Keep the private Action schema in the production build output. Vercel
+        // can then serve this static asset directly without a serverless route.
+        name: 'emit-connectboat-sms-openapi-schema',
+        apply: 'build',
+        generateBundle() {
+          this.emitFile({
+            type: 'asset',
+            fileName: 'connectboat-sms-prospecting.openapi.yaml',
+            source: fs.readFileSync(
+              path.resolve(__dirname, 'public/connectboat-sms-prospecting.openapi.yaml'),
+              'utf8'
+            ),
+          });
+        },
       }
     ],
     resolve: {
