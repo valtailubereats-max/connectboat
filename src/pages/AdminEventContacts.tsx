@@ -1101,7 +1101,6 @@ const AdminEventContactsContent: React.FC = () => {
     if (!confirmed) return;
     setSaving(true);
     let accepted = false;
-    let acceptedMessageId = '';
     try {
       const response = await fetch('/api/email/send', {
         method: 'POST',
@@ -1121,15 +1120,14 @@ const AdminEventContactsContent: React.FC = () => {
         throw new Error(result?.error || 'Commercial SMS could not be sent.');
       }
       accepted = true;
-      acceptedMessageId = result.messageId || 'pending';
       await saveCurrent({ invitationStatus: 'Sent – SMS', invitationChannel: 'SMS' });
       await loadContacts();
       resetForm();
-      setMessage(`Commercial SMS accepted for ${result.recipient}. Message ID: ${acceptedMessageId}.`);
+      setMessage(`Commercial SMS accepted for ${result.recipient}.`);
     } catch (error: any) {
       console.error(error);
       setMessage(accepted
-        ? `ClickSend accepted the SMS (Message ID: ${acceptedMessageId}), but the contact status needs review: ${error?.message || 'unknown error'}`
+        ? `ClickSend accepted the SMS, but the contact status needs review: ${error?.message || 'unknown error'}`
         : (error?.message || 'Commercial SMS could not be sent.'));
     } finally {
       setSaving(false);

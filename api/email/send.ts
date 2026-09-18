@@ -251,7 +251,9 @@ async function handleSmsRequest(decodedUser: any, body: any, res: any) {
   return res.status(200).json({
     success: true,
     simulated: false,
-    messageId: getClickSendCampaignId(payload),
+    // ClickSend Campaigns return sms_campaign_id, which identifies the campaign,
+    // not an individual SMS message. Keep that distinction explicit for callers.
+    campaignId: getClickSendCampaignId(payload),
     message: payload?.response_msg || 'SMS campaign accepted for delivery.',
     recipient: to,
   });
