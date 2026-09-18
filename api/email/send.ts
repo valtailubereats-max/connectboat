@@ -82,6 +82,10 @@ async function isAdminUser(decodedUser: any): Promise<boolean> {
 function normaliseSmsPhone(value: unknown): string {
   let phone = String(value || '').trim().replace(/[\s().-]/g, '');
   if (phone.startsWith('00')) phone = '+' + phone.slice(2);
+  // UK local numbers use a trunk zero. Remove it whether the number is entered
+  // locally (075...) or with an already-entered +44/0044 prefix (+44 075...).
+  if (/^\+440\d{9,10}$/.test(phone)) phone = '+44' + phone.slice(4);
+  if (/^440\d{9,10}$/.test(phone)) phone = '+44' + phone.slice(3);
   if (/^0\d{9,10}$/.test(phone)) phone = '+44' + phone.slice(1);
   if (/^44\d{9,10}$/.test(phone)) phone = '+' + phone;
   return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : '';
