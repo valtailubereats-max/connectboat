@@ -1227,6 +1227,48 @@ Include the listing title, price, location, description, make, model, year, boat
   throw new Error('Não foi possível transferir o conteúdo da página do anúncio após as tentativas direta, leitor, proxy e IA.');
 }
 
+// Text search results rarely include CDN image addresses. Ask separately for
+// image URLs and accept only literal public HTTPS URLs returned by the source.
+async function recoverSourceImageUrls(url: string): Promise<string[]> {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return [];
+
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = `Access only this exact public Boats & Outboards listing:
+${url}
+
+Return STRICT JSON containing one field only: {"images":["https://..."]}.
+Include only complete public HTTPS image URLs that are explicitly present on this listing or its public image CDN. Copy every URL exactly; do not invent, transform, guess, use a site logo, or return any URL that is not visibly sourced from the listing. If no exact image URL is available, return {"images":[]}.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [prompt],
+      config: { tools: [{ urlContext: {} }] }
+    });
+    const raw = typeof response.text === 'string' ? response.text.trim() : '';
+    if (!raw) return [];
+    const parsed = JSON.parse(raw.replace(/```json/gi, '').replace(/```/g, '').trim());
+    if (!Array.isArray(parsed?.images)) return [];
+
+    return parsed.images
+      .filter((value: unknown): value is string => typeof value === 'string')
+      .map((value) => value.trim())
+      .filter((value) => {
+        try {
+          return new URL(value).protocol === 'https:';
+        } catch {
+          return false;
+        }
+      })
+      .slice(0, 6);
+  } catch (error: any) {
+    console.warn('[Import Pipeline] Source image recovery failed:', error?.message || error);
+    return [];
+  }
+}
+
 // Helper para extração de especificações náuticas e suporte a IA Gemini
 async function extractNauticalDetails(title: string, description: string, rawHtml?: string): Promise<Record<string, any>> {
   console.log('[Import Pipeline] Stage: Extracting nautical details via AI/Regex...');
@@ -1710,6 +1752,21 @@ export default async function handler(req: any, res: any) {
       seenImages.add(key);
       cleanImages.push(normalized);
       if (cleanImages.length >= 6) break;
+    }
+
+    // Boats & Outboards may allow the listing text through a fallback while
+    // withholding its HTML image tags. Recover original image URLs separately.
+    if (isBoatsAndOutboards && cleanImages.length === 0) {
+      const recoveredImages = await recoverSourceImageUrls(url);
+      for (const rawImg of recoveredImages) {
+        const normalized = isValidImageUrl(rawImg);
+        if (!normalized) continue;
+        const key = normalized.toLowerCase();
+        if (seenImages.has(key) || isPlaceholderOrLogo(normalized)) continue;
+        seenImages.add(key);
+        cleanImages.push(normalized);
+        if (cleanImages.length >= 6) break;
+      }
     }
 
     images = cleanImages;
