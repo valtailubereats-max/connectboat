@@ -562,7 +562,7 @@ const Navbar = () => {
               </div>
             </> : (
               <div className="flex items-center gap-[13.2px]">
-                <Link to="/login" className="bg-sky-600 text-white px-[22px] py-[8.8px] rounded-[13.2px] hover:bg-sky-500 transition-all shadow-md font-bold text-[15.4px]">Sign In</Link>
+                <Link to="/login" className="bg-sky-600 text-white px-[22px] py-[8.8px] rounded-[13.2px] hover:bg-sky-500 transition-all shadow-md font-bold text-[15.4px]">Log in / Sign up</Link>
                 
                 <div className="relative" ref={userDropdownRef}>
                   <button
@@ -724,7 +724,7 @@ const Navbar = () => {
               </> : (
                 <div className="pt-4 border-t border-slate-800 flex flex-col gap-4">
                   <InstallButton variant="menu-item" onClickAction={() => setIsOpen(false)} />
-                  <Link to="/login" onClick={() => setIsOpen(false)} className="text-lg font-black text-sky-400">Sign In</Link>
+                  <Link to="/login" onClick={() => setIsOpen(false)} className="text-lg font-black text-sky-400">Log in / Sign up</Link>
                 </div>
               )}
             </div>
