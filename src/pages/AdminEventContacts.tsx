@@ -1054,13 +1054,13 @@ const AdminEventContactsContent: React.FC = () => {
     if (!number || !user || saving) return;
     setSaving(true);
     try {
-      const response = await fetch('/api/sms/send', {
+      const response = await fetch('/api/email/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + await user.getIdToken(),
         },
-        body: JSON.stringify({ to: number, message: smsInvitationText(draft), allowLiveDelivery: false }),
+        body: JSON.stringify({ channel: 'sms', to: number, message: smsInvitationText(draft), allowLiveDelivery: false }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result?.success || !result?.simulated) {

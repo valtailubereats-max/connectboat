@@ -68,6 +68,49 @@ async function getUserRole(uid: string): Promise<string> {
   return snap.exists ? (snap.data()?.role || 'user') : 'user';
 }
 
+async function isAdminUser(decodedUser: any): Promise<boolean> {
+  const role = await getUserRole(decodedUser.uid);
+  if (role === 'admin') return true;
+  const email = typeof decodedUser?.email === 'string' ? decodedUser.email.trim().toLowerCase() : '';
+  return new Set([
+    'valtailubereats@gmail.com',
+    'valtail@gmail.com',
+    'generalsales2021@gmail.com',
+  ]).has(email);
+}
+
+function normaliseSmsPhone(value: unknown): string {
+  let phone = String(value || '').trim().replace(/[\s().-]/g, '');
+  if (phone.startsWith('00')) phone = '+' + phone.slice(2);
+  if (/^0\d{9,10}$/.test(phone)) phone = '+44' + phone.slice(1);
+  if (/^44\d{9,10}$/.test(phone)) phone = '+' + phone;
+  return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : '';
+}
+
+async function handleSimulatedSmsRequest(decodedUser: any, body: any, res: any) {
+  if (!(await isAdminUser(decodedUser))) {
+    return res.status(403).json({ success: false, error: 'Administrator access required.' });
+  }
+
+  const to = normaliseSmsPhone(body?.to);
+  const message = typeof body?.message === 'string' ? body.message.trim() : '';
+  if (!to) return res.status(400).json({ success: false, error: 'A valid international mobile number is required.' });
+  if (!message || message.length > 480) {
+    return res.status(400).json({ success: false, error: 'SMS message must contain between 1 and 480 characters.' });
+  }
+  if (body?.allowLiveDelivery !== false) {
+    return res.status(400).json({ success: false, error: 'SMS delivery is simulation only. allowLiveDelivery must be false.' });
+  }
+
+  return res.status(200).json({
+    success: true,
+    simulated: true,
+    messageId: `simulated-${Date.now()}`,
+    message: 'SMS simulation completed. No SMS was sent.',
+    recipient: to,
+  });
+}
+
 async function isStaffEmail(email: string): Promise<boolean> {
   const normalized = email.trim().toLowerCase();
   const explicitAdminEmails = new Set([
@@ -761,6 +804,12 @@ export default async function handler(req: any, res: any) {
       success: false,
       error: 'Invalid or expired authentication token.',
     });
+  }
+
+  // SMS remains simulation-only. It deliberately bypasses the email template flow
+  // while retaining the same Firebase authentication boundary.
+  if (req.body?.channel === 'sms') {
+    return handleSimulatedSmsRequest(decodedUser, req.body, res);
   }
 
   if (!EMAIL_FLAG_ACTIVE) {
