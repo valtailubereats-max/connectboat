@@ -450,7 +450,9 @@ function readContacts_(sheet, data) {
   const contacts = [];
   rows.forEach(function(row, i) {
     if (!row.slice(0, 8).some(function(value) { return clean(value) !== ''; })) return;
-    if (!clean(row[11])) {
+    // Firestore document IDs cannot contain '/'. Repair missing or malformed
+    // sheet IDs in place so one old row never stops the entire import.
+    if (!isValidContactId_(row[11])) {
       row[11] = 'sheet-' + Utilities.getUuid();
       sheet.getRange(offset + i + 2, 12).setValue(row[11]);
     }
@@ -892,6 +894,11 @@ function clean(value) {
   }
 
   return String(value).trim();
+}
+
+function isValidContactId_(value) {
+  const id = clean(value);
+  return id !== '' && id.length <= 200 && id.indexOf('/') === -1;
 }
 
 
