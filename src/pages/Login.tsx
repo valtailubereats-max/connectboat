@@ -12,7 +12,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType, getDocWithCacheFallback } from '../firebase';
 import { sendEmailGeneric } from '../utils/emailService';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShieldCheck, Mail, Lock, User as UserIcon, ArrowRight, Github, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, User as UserIcon, ArrowRight, ArrowDown, Github, Eye, EyeOff } from 'lucide-react';
 import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
@@ -435,12 +435,25 @@ const Login = () => {
 
         {mode !== 'forgot' && (
           <>
-            <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+            <div className={`relative flex items-start gap-3 p-3 rounded-xl border mb-4 transition-all ${error === 'You must accept the Terms of Use to continue.' && !acceptedTerms ? 'bg-red-50 border-red-300 ring-2 ring-red-100' : 'bg-slate-50 border-slate-100'}`}>
+              {error === 'You must accept the Terms of Use to continue.' && !acceptedTerms && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: [0, 5, 0] }}
+                  transition={{ opacity: { duration: 0.2 }, y: { duration: 0.8, repeat: Infinity } }}
+                  className="absolute -top-8 left-2 flex items-center gap-1 rounded-full bg-red-600 px-2 py-1 text-[10px] font-black text-white shadow-sm"
+                >
+                  Tick here <ArrowDown size={13} strokeWidth={3} />
+                </motion.div>
+              )}
               <input
                 type="checkbox"
                 id="terms"
                 checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                onChange={(e) => {
+                  setAcceptedTerms(e.target.checked);
+                  if (e.target.checked && error === 'You must accept the Terms of Use to continue.') setError('');
+                }}
                 className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
               />
               <label htmlFor="terms" className="text-xs text-slate-600 cursor-pointer leading-tight font-medium">
