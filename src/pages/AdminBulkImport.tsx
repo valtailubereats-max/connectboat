@@ -196,9 +196,11 @@ const AdminBulkImport: React.FC = () => {
 
         if (resData.success && resData.data) {
           const d = resData.data;
+          // Never replace a missing source photo with a generic stock image.
+          // It can make an imported listing look as if the wrong vessel was found.
           const extractedImages = Array.isArray(d.images) && d.images.length > 0
             ? d.images
-            : ['https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=1200&q=80'];
+            : [];
 
           // Fallback category matching
           let matchedCategory = typeof d.category === 'string' ? d.category : 'Other';
