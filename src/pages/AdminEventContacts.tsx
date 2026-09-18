@@ -23,7 +23,7 @@ import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import UKProspectMap from '../components/UKProspectMap';
 
-type InvitationStatus = 'Pending' | 'Sent – WhatsApp' | 'Sent – Email' | 'Sent – Other' | 'Unsubscribed';
+type InvitationStatus = 'Pending' | 'Sent – WhatsApp' | 'Sent – Email' | 'Sent – SMS' | 'Sent – Other' | 'Unsubscribed';
 
 type EventContact = {
   id: string;
@@ -176,7 +176,17 @@ function smsInvitationText(draft: ContactDraft) {
   return `Hi ${greeting}, ConnectBoat is a UK boating marketplace for boats, charters and marine businesses. Discover us at https://connectboat.co.uk`;
 }
 
-const REAL_SMS_TEST_MESSAGE = 'ConnectBoat SMS test. Our SMS integration is working correctly.';
+const COMMERCIAL_SMS_MESSAGE = "Hi, ConnectBoat is a UK marine marketplace. We'd like to invite your business to join us at connectboat.co.uk. Opt out: contato@connectboat.co.uk";
+
+function normaliseUkSmsPhonePreview(value: string) {
+  let phone = value.trim().replace(/[\s().-]/g, '');
+  if (phone.startsWith('00')) phone = '+' + phone.slice(2);
+  if (/^\+440\d{9,10}$/.test(phone)) phone = '+44' + phone.slice(4);
+  if (/^440\d{9,10}$/.test(phone)) phone = '+44' + phone.slice(3);
+  if (/^0\d{9,10}$/.test(phone)) phone = '+44' + phone.slice(1);
+  if (/^44\d{9,10}$/.test(phone)) phone = '+' + phone;
+  return /^\+447\d{9}$/.test(phone) ? phone : '';
+}
 
 async function getRearCameraStream(): Promise<MediaStream> {
   // Prefer the physical rear/environment camera. Some mobile browsers ignore
@@ -1077,10 +1087,20 @@ const AdminEventContactsContent: React.FC = () => {
     }
   };
 
-  const sendRealSmsTest = async () => {
+  const sendCommercialSms = async () => {
     const number = draft.whatsapp.trim() || draft.phone.trim();
     if (!number || !user || saving) return;
+    const normalisedNumber = normaliseUkSmsPhonePreview(number);
+    if (!normalisedNumber) {
+      setMessage('A valid UK mobile number is required for commercial SMS.');
+      return;
+    }
+    const company = draft.company.trim() || draft.name.trim() || 'Unnamed contact';
+    const confirmed = window.confirm(`Confirm commercial SMS\n\nCompany: ${company}\nNumber: ${normalisedNumber}\n\nMessage:\n${COMMERCIAL_SMS_MESSAGE}\n\nSend this SMS now?`);
+    if (!confirmed) return;
     setSaving(true);
+    let accepted = false;
+    let acceptedMessageId = '';
     try {
       const response = await fetch('/api/email/send', {
         method: 'POST',
@@ -1091,18 +1111,25 @@ const AdminEventContactsContent: React.FC = () => {
         body: JSON.stringify({
           channel: 'sms',
           to: number,
-          message: REAL_SMS_TEST_MESSAGE,
+          message: COMMERCIAL_SMS_MESSAGE,
           allowLiveDelivery: true,
         }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result?.success || result?.simulated) {
-        throw new Error(result?.error || 'Real SMS test could not be sent.');
+        throw new Error(result?.error || 'Commercial SMS could not be sent.');
       }
-      setMessage(`Real SMS test accepted for ${result.recipient}. Message ID: ${result.messageId || 'pending'}.`);
+      accepted = true;
+      acceptedMessageId = result.messageId || 'pending';
+      await saveCurrent({ invitationStatus: 'Sent – SMS', invitationChannel: 'SMS' });
+      await loadContacts();
+      resetForm();
+      setMessage(`Commercial SMS accepted for ${result.recipient}. Message ID: ${acceptedMessageId}.`);
     } catch (error: any) {
       console.error(error);
-      setMessage(error?.message || 'Real SMS test could not be sent.');
+      setMessage(accepted
+        ? `ClickSend accepted the SMS (Message ID: ${acceptedMessageId}), but the contact status needs review: ${error?.message || 'unknown error'}`
+        : (error?.message || 'Commercial SMS could not be sent.'));
     } finally {
       setSaving(false);
     }
@@ -1401,7 +1428,7 @@ const AdminEventContactsContent: React.FC = () => {
                 <button onClick={sendSmsSimulation} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 font-black text-violet-700 disabled:opacity-60"><Smartphone size={19} /> Test SMS (simulation)</button>
               )}
               {smsAvailable && draft.invitationStatus !== 'Unsubscribed' && (
-                <button onClick={sendRealSmsTest} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 font-black text-amber-800 disabled:opacity-60"><Smartphone size={19} /> Send REAL SMS test</button>
+                <button onClick={sendCommercialSms} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 font-black text-amber-800 disabled:opacity-60"><Smartphone size={19} /> Send SMS</button>
               )}
               {emailAvailable && draft.invitationStatus !== 'Unsubscribed' && (!whatsappAvailable || isResending) && (
                 <button onClick={sendEmail} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><Mail size={20} /> {isResending ? 'Resend via Email' : 'Send Invitation via Email'}</button>
@@ -1474,6 +1501,7 @@ const AdminEventContactsContent: React.FC = () => {
                 <option value="Unsubscribed">Unsubscribed</option>
                 <option value="Sent – Email">Sent – Email</option>
                 <option value="Sent – WhatsApp">Sent – WhatsApp</option>
+                <option value="Sent – SMS">Sent – SMS</option>
                 <option value="Sent – Other">Sent – Other</option>
                 <option value="No contact details">No contact details</option>
               </select>

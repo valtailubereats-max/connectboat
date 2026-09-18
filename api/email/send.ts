@@ -91,8 +91,7 @@ function normaliseSmsPhone(value: unknown): string {
   return /^\+[1-9]\d{7,14}$/.test(phone) ? phone : '';
 }
 
-const REAL_SMS_TEST_RECIPIENT = '+447508309536';
-const REAL_SMS_TEST_MESSAGE = 'ConnectBoat SMS test. Our SMS integration is working correctly.';
+const COMMERCIAL_SMS_MESSAGE = "Hi, ConnectBoat is a UK marine marketplace. We'd like to invite your business to join us at connectboat.co.uk. Opt out: contato@connectboat.co.uk";
 
 function getClickSendMessageId(payload: any): string | null {
   const data = payload?.data;
@@ -129,11 +128,11 @@ async function handleSmsRequest(decodedUser: any, body: any, res: any) {
   if (body?.allowLiveDelivery !== true) {
     return res.status(400).json({ success: false, error: 'allowLiveDelivery must be explicitly true or false.' });
   }
-  if (to !== REAL_SMS_TEST_RECIPIENT) {
-    return res.status(403).json({ success: false, error: 'Real SMS tests are restricted to the approved test number.' });
+  if (!/^\+447\d{9}$/.test(to)) {
+    return res.status(400).json({ success: false, error: 'A valid UK mobile number is required for commercial SMS.' });
   }
-  if (message !== REAL_SMS_TEST_MESSAGE) {
-    return res.status(400).json({ success: false, error: 'Real SMS tests must use the approved test message.' });
+  if (message !== COMMERCIAL_SMS_MESSAGE) {
+    return res.status(400).json({ success: false, error: 'Commercial SMS must use the approved ConnectBoat message.' });
   }
 
   const username = process.env.CLICKSEND_USERNAME;
