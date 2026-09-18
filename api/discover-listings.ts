@@ -776,10 +776,7 @@ Requirements:
       model: 'gemini-2.5-flash',
       contents: [prompt],
       config: {
-        tools: [
-          { urlContext: {} },
-          { googleSearch: {} }
-        ]
+        tools: [{ urlContext: {} }]
       }
     });
 
@@ -800,6 +797,34 @@ Requirements:
     console.warn('[discover-listings] Gemini URL Context fallback failed:', geminiErr?.message || geminiErr);
   }
 
+  // 4. Search grounding is a separate fallback because some protected
+  // marketplace pages cannot be fetched directly by URL Context.
+  try {
+    console.log('[discover-listings] Attempting Gemini Google Search fallback for:', pageUrl);
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not configured on the server.');
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+    const searchPrompt = `Use Google Search to find the individual public boat listings on this exact Boats & Outboards results page:
+${pageUrl}
+
+Return only listing lines in this exact format:
+[Exact listing title](Exact public listing URL) — Price | Location
+
+Include only listings from that page. Preserve exact URLs. Do not invent listings, prices or locations. Return up to 30 results.`;
+    const searchRes = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [searchPrompt],
+      config: { tools: [{ googleSearch: {} }] }
+    });
+    const searchText = typeof searchRes.text === 'string' ? searchRes.text.trim() : '';
+    if (searchText.length > 100) {
+      return { htmlOrText: searchText, fetchSource: 'gemini-google-search', status: 200, fallbackAttempted: true };
+    }
+  } catch (searchErr: any) {
+    console.warn('[discover-listings] Gemini Google Search fallback failed:', searchErr?.message || searchErr);
+  }
+
   const finalErrorCode = directStatus === 403 ? 'PAGE_ACCESS_DENIED' : (!directHtml ? 'EMPTY_RESPONSE' : 'FALLBACK_FAILED');
 
   return {
@@ -807,7 +832,7 @@ Requirements:
     fetchSource: 'direct',
     status: directStatus || 500,
     errorCode: finalErrorCode,
-    errorDetails: 'Não foi possível aceder à página diretamente, via serviço de leitura ou via Gemini URL Context.',
+    errorDetails: 'Não foi possível aceder à página diretamente, via serviço de leitura ou via Gemini URL Context/Search.',
     fallbackAttempted: true
   };
 }

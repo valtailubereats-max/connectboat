@@ -1194,7 +1194,37 @@ Do not summarize aggressively: preserve as much factual listing content as possi
     console.warn('[Import Pipeline] Gemini URL Context fallback error:', gErr?.message || gErr);
   }
 
-  throw new Error('Não foi possível transferir o conteúdo da página do anúncio. O fornecedor bloqueou a ligação.');
+  // Attempt 5: Google Search grounding. Some marketplace pages reject server
+  // requests and URL Context, yet their public listing pages are still indexed.
+  try {
+    console.log('[Import Pipeline] Trying Gemini Google Search fallback...');
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not configured on the server.');
+
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
+    const searchPrompt = `Find and transcribe ONLY the public marine listing at this exact URL:
+${url}
+
+Use Google Search to locate that exact listing. Return factual plain text only.
+Include the listing title, price, location, description, make, model, year, boat type, dimensions, engine details and image URLs only when they are explicitly available. Do not guess or invent missing values.`;
+
+    const searchResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [searchPrompt],
+      config: { tools: [{ googleSearch: {} }] }
+    });
+    const searchText = typeof searchResponse.text === 'string' ? searchResponse.text.trim() : '';
+    if (searchText.length > 100) {
+      const escaped = searchText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      console.log('[Import Pipeline] Gemini Google Search fallback succeeded! Length:', searchText.length);
+      return { html: `<!DOCTYPE html><html><body><pre>${escaped}</pre></body></html>`, source: 'gemini-google-search', status: 200 };
+    }
+  } catch (searchErr: any) {
+    console.warn('[Import Pipeline] Gemini Google Search fallback error:', searchErr?.message || searchErr);
+  }
+
+  throw new Error('Não foi possível transferir o conteúdo da página do anúncio após as tentativas direta, leitor, proxy e IA.');
 }
 
 // Helper para extração de especificações náuticas e suporte a IA Gemini
