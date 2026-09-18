@@ -1,7 +1,7 @@
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { createHash } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 
 // Serverless Email Service for ConnectBoat
 
@@ -185,6 +185,155 @@ async function resolveClickSendCampaignList(username: string, apiKey: string, ph
   return String(listId);
 }
 
+async function sendCommercialSmsCampaign(to: string) {
+  const username = process.env.CLICKSEND_USERNAME;
+  const apiKey = process.env.CLICKSEND_API_KEY;
+  if (!username || !apiKey) {
+    const error: any = new Error('SMS provider is not configured.');
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const listId = await resolveClickSendCampaignList(username, apiKey, to);
+  const campaignName = `ConnectBoat invitation ${Date.now()}`;
+  const { response, payload } = await clickSendRequest(username, apiKey, '/sms-campaigns/send', {
+    method: 'POST',
+    body: JSON.stringify({
+      list_id: Number(listId),
+      name: campaignName,
+      from: 'ConnectBoat',
+      body: COMMERCIAL_SMS_MESSAGE,
+      source: 'connectboat-event-contacts',
+      senders: [{ recipient_country_code: 'GB', sender_id: 'ConnectBoat' }],
+    }),
+  });
+  if (!response.ok || payload?.response_code !== 'SUCCESS') {
+    const error: any = new Error(payload?.response_msg || 'SMS provider rejected the campaign.');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  return {
+    campaignId: getClickSendCampaignId(payload),
+    message: payload?.response_msg || 'SMS campaign accepted for delivery.',
+  };
+}
+
+function isSuppressedEventContact(contact: any): boolean {
+  const status = String(contact?.invitationStatus || '').trim().toLowerCase();
+  return status === 'unsubscribed'
+    || contact?.suppressed === true
+    || contact?.isSuppressed === true
+    || contact?.smsOptedOut === true
+    || contact?.optedOut === true
+    || contact?.unsubscribed === true;
+}
+
+type EventContactSmsCandidate = { id: string; company: string; phone: string };
+type EventContactSmsExclusion = { id: string; company: string; reason: string };
+type EventContactSmsEvaluation = { candidate?: EventContactSmsCandidate; exclusion?: EventContactSmsExclusion };
+
+function eventContactSmsCandidate(id: string, contact: any): EventContactSmsEvaluation {
+  const company = String(contact?.company || contact?.name || 'Unnamed contact').trim();
+  if (contact?.invitationStatus !== 'Pending') return { exclusion: { id, company, reason: 'Invitation Status is not Pending.' } };
+  if (contact?.invitationChannel === 'SMS' || contact?.invitationStatus === 'Sent – SMS') {
+    return { exclusion: { id, company, reason: 'This contact has already received SMS.' } };
+  }
+  if (isSuppressedEventContact(contact)) return { exclusion: { id, company, reason: 'This contact is suppressed or opted out.' } };
+
+  const numbers = [contact?.whatsapp, contact?.phone]
+    .map(normaliseSmsPhone)
+    .filter((number, index, values) => number && values.indexOf(number) === index);
+  const phone = numbers.find(number => /^\+447\d{9}$/.test(number));
+  if (!phone) return { exclusion: { id, company, reason: 'No valid UK mobile number (+447...) is available.' } };
+  return { candidate: { id, company, phone } };
+}
+
+function hasValidAutomationKey(req: any): boolean {
+  const configured = process.env.CONNECTBOAT_SMS_AUTOMATION_KEY;
+  const supplied = req.headers?.['x-connectboat-automation-key'];
+  if (!configured || typeof supplied !== 'string') return false;
+  const expected = Buffer.from(configured);
+  const received = Buffer.from(supplied);
+  return expected.length === received.length && timingSafeEqual(expected, received);
+}
+
+async function handleSmsProspectingAutomation(req: any, res: any) {
+  if (!hasValidAutomationKey(req)) {
+    return res.status(401).json({ success: false, error: 'Valid automation authentication is required.' });
+  }
+
+  const requested = req.body?.quantity;
+  if (!Number.isInteger(requested) || requested < 1 || requested > 5) {
+    return res.status(400).json({ success: false, error: 'quantity must be an integer between 1 and 5.' });
+  }
+
+  const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
+  const snapshot = await db.collection('eventContacts').where('invitationStatus', '==', 'Pending').limit(200).get();
+  const selected: Array<{ id: string; company: string; phone: string }> = [];
+  const exclusions: Array<{ id: string; company: string; reason: string }> = [];
+  const selectedPhones = new Set<string>();
+
+  for (const item of snapshot.docs) {
+    const evaluated = eventContactSmsCandidate(item.id, item.data());
+    if (evaluated.exclusion) {
+      exclusions.push(evaluated.exclusion);
+      continue;
+    }
+    const candidate = evaluated.candidate!;
+    if (selectedPhones.has(candidate.phone)) {
+      exclusions.push({ id: candidate.id, company: candidate.company, reason: 'Duplicate UK mobile number in Event Contacts.' });
+      continue;
+    }
+    selectedPhones.add(candidate.phone);
+    selected.push(candidate);
+    if (selected.length === requested) break;
+  }
+
+  const sent: Array<{ id: string; company: string; phone: string; campaignId: string | null }> = [];
+  const failures: Array<{ id: string; company: string; phone: string; reason: string }> = [];
+
+  for (const candidate of selected) {
+    try {
+      // Re-read immediately before delivery so a manual change, suppression, or earlier send wins.
+      const current = await db.collection('eventContacts').doc(candidate.id).get();
+      const fresh = current.exists ? eventContactSmsCandidate(candidate.id, current.data()) : { exclusion: { id: candidate.id, company: candidate.company, reason: 'Contact no longer exists.' } };
+      if (fresh.exclusion || fresh.candidate?.phone !== candidate.phone) {
+        failures.push({ id: candidate.id, company: candidate.company, phone: candidate.phone, reason: fresh.exclusion?.reason || 'Contact phone changed before sending.' });
+        continue;
+      }
+
+      const accepted = await sendCommercialSmsCampaign(candidate.phone);
+      await db.runTransaction(async transaction => {
+        const ref = db.collection('eventContacts').doc(candidate.id);
+        const latest = await transaction.get(ref);
+        const latestEvaluation = latest.exists ? eventContactSmsCandidate(candidate.id, latest.data()) : { exclusion: { reason: 'Contact no longer exists.' } };
+        if (latestEvaluation.exclusion || latestEvaluation.candidate?.phone !== candidate.phone) {
+          throw new Error(latestEvaluation.exclusion?.reason || 'Contact changed while SMS was being sent.');
+        }
+        transaction.update(ref, {
+          invitationChannel: 'SMS',
+          invitationStatus: 'Sent – SMS',
+          sheetSyncPending: true,
+        });
+      });
+      sent.push({ ...candidate, campaignId: accepted.campaignId });
+    } catch (error: any) {
+      failures.push({ id: candidate.id, company: candidate.company, phone: candidate.phone, reason: error?.message || 'Commercial SMS could not be sent.' });
+    }
+  }
+
+  return res.status(200).json({
+    success: true,
+    requested,
+    selected,
+    sent,
+    failures,
+    exclusions,
+    scannedPendingContacts: snapshot.size,
+  });
+}
+
 async function handleSmsRequest(decodedUser: any, body: any, res: any) {
   if (!(await isAdminUser(decodedUser))) {
     return res.status(403).json({ success: false, error: 'Administrator access required.' });
@@ -216,47 +365,21 @@ async function handleSmsRequest(decodedUser: any, body: any, res: any) {
     return res.status(400).json({ success: false, error: 'Commercial SMS must use the approved ConnectBoat message.' });
   }
 
-  const username = process.env.CLICKSEND_USERNAME;
-  const apiKey = process.env.CLICKSEND_API_KEY;
-  if (!username || !apiKey) {
-    return res.status(503).json({ success: false, error: 'SMS provider is not configured.' });
-  }
-
-  let listId: string;
   try {
-    listId = await resolveClickSendCampaignList(username, apiKey, to);
+    const accepted = await sendCommercialSmsCampaign(to);
+    return res.status(200).json({
+      success: true,
+      simulated: false,
+      campaignId: accepted.campaignId,
+      message: accepted.message,
+      recipient: to,
+    });
   } catch (error: any) {
     return res.status(error?.statusCode || 502).json({
       success: false,
-      error: error?.message || 'ClickSend could not prepare the SMS recipient.',
+      error: error?.message || 'ClickSend could not send the SMS campaign.',
     });
   }
-
-  const campaignName = `ConnectBoat invitation ${Date.now()}`;
-  const { response, payload } = await clickSendRequest(username, apiKey, '/sms-campaigns/send', {
-    method: 'POST',
-    body: JSON.stringify({
-      list_id: Number(listId),
-      name: campaignName,
-      from: 'ConnectBoat',
-      body: message,
-      source: 'connectboat-event-contacts',
-      senders: [{ recipient_country_code: 'GB', sender_id: 'ConnectBoat' }],
-    }),
-  });
-  if (!response.ok || payload?.response_code !== 'SUCCESS') {
-    return res.status(502).json({ success: false, error: payload?.response_msg || 'SMS provider rejected the campaign.' });
-  }
-
-  return res.status(200).json({
-    success: true,
-    simulated: false,
-    // ClickSend Campaigns return sms_campaign_id, which identifies the campaign,
-    // not an individual SMS message. Keep that distinction explicit for callers.
-    campaignId: getClickSendCampaignId(payload),
-    message: payload?.response_msg || 'SMS campaign accepted for delivery.',
-    recipient: to,
-  });
 }
 
 async function isStaffEmail(email: string): Promise<boolean> {
@@ -922,7 +1045,7 @@ export default async function handler(req: any, res: any) {
   // CORS setup
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-ConnectBoat-Automation-Key");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -930,6 +1053,12 @@ export default async function handler(req: any, res: any) {
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  // This server-to-server automation deliberately has its own Vercel-only secret.
+  // It must not use or accept a browser Firebase token as its authentication method.
+  if (req.body?.channel === 'sms-prospecting-automation') {
+    return handleSmsProspectingAutomation(req, res);
   }
 
   // Security: this public endpoint may only be called by an authenticated
