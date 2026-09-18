@@ -1,0 +1,130 @@
+openapi: 3.1.0
+info:
+  title: ConnectBoat SMS Prospecting Automation
+  version: 1.0.0
+  description: |
+    Private ConnectBoat integration for sending a controlled batch of one to five
+    eligible SMS prospects. This schema exposes no other ConnectBoat operations.
+servers:
+  - url: https://www.connectboat.co.uk
+paths:
+  /api/email/send:
+    post:
+      operationId: sendConnectBoatProspectingSms
+      summary: Send controlled ConnectBoat SMS prospecting
+      description: |
+        Selects eligible pending Event Contacts and sends up to five individual
+        ClickSend SMS campaigns. The server validates all recipients and handles
+        opt-outs before delivery.
+      security:
+        - ConnectBoatAutomationKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - channel
+                - quantity
+              properties:
+                channel:
+                  type: string
+                  const: sms-prospecting-automation
+                  description: Fixed value required for this private automation.
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  description: Exact number of SMS prospects requested.
+            example:
+              channel: sms-prospecting-automation
+              quantity: 1
+      responses:
+        '200':
+          description: Automation completed. Individual deliveries can succeed or fail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProspectingResult'
+        '400':
+          description: Invalid request. Quantity must be an integer from 1 to 5.
+        '401':
+          description: Missing or invalid private automation key.
+        '500':
+          description: Unexpected server error.
+components:
+  securitySchemes:
+    ConnectBoatAutomationKey:
+      type: apiKey
+      in: header
+      name: X-ConnectBoat-Automation-Key
+      description: Private server-to-server key. Never place it in the request body.
+  schemas:
+    Contact:
+      type: object
+      required: [id, company, phone]
+      properties:
+        id:
+          type: string
+        company:
+          type: string
+        phone:
+          type: string
+          pattern: '^\\+447\\d{9}$'
+    SentContact:
+      allOf:
+        - $ref: '#/components/schemas/Contact'
+        - type: object
+          required: [campaignId]
+          properties:
+            campaignId:
+              type: [string, 'null']
+              description: ClickSend campaign identifier when supplied by ClickSend.
+    FailedContact:
+      allOf:
+        - $ref: '#/components/schemas/Contact'
+        - type: object
+          required: [reason]
+          properties:
+            reason:
+              type: string
+    ExcludedContact:
+      type: object
+      required: [id, company, reason]
+      properties:
+        id:
+          type: string
+        company:
+          type: string
+        reason:
+          type: string
+    ProspectingResult:
+      type: object
+      required: [success, requested, selected, sent, failures, exclusions, scannedPendingContacts]
+      properties:
+        success:
+          type: boolean
+        requested:
+          type: integer
+          minimum: 1
+          maximum: 5
+        selected:
+          type: array
+          items:
+            $ref: '#/components/schemas/Contact'
+        sent:
+          type: array
+          items:
+            $ref: '#/components/schemas/SentContact'
+        failures:
+          type: array
+          items:
+            $ref: '#/components/schemas/FailedContact'
+        exclusions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExcludedContact'
+        scannedPendingContacts:
+          type: integer
