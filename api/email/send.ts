@@ -360,19 +360,26 @@ async function handleSmsDeliveryReceipts(req: any, res: any) {
     const errorCode = receipt?.error_code ?? receipt?.errorCode ?? null;
     const errorText = receipt?.error_text ?? receipt?.errorText ?? receipt?.error ?? null;
     const messageId = receipt?.message_id ?? receipt?.messageId ?? null;
-    await eligible[0].ref.update({
-      invitationChannel: 'SMS',
-      invitationStatus: state,
-      smsDeliveryStatus: state,
-      smsDeliveryStatusCode: statusCode === null ? null : String(statusCode),
-      smsDeliveryStatusText: statusText === null ? null : String(statusText),
-      smsDeliveryErrorCode: errorCode === null ? null : String(errorCode),
-      smsDeliveryErrorText: errorText === null ? null : String(errorText),
-      smsClickSendMessageId: messageId === null ? null : String(messageId),
-      smsDeliveryReceiptAt: new Date().toISOString(),
-      sheetSyncPending: true,
+    const updated = await db.runTransaction(async transaction => {
+      const latest = await transaction.get(eligible[0].ref);
+      const contact = latest.data();
+      if (contact?.invitationStatus !== 'SMS – Accepted' || contact?.smsRecipient !== phone
+        || (campaignId && contact?.smsCampaignId && String(contact.smsCampaignId) !== campaignId)) return false;
+      transaction.update(eligible[0].ref, {
+        invitationChannel: 'SMS',
+        invitationStatus: state,
+        smsDeliveryStatus: state,
+        smsDeliveryStatusCode: statusCode === null ? null : String(statusCode),
+        smsDeliveryStatusText: statusText === null ? null : String(statusText),
+        smsDeliveryErrorCode: errorCode === null ? null : String(errorCode),
+        smsDeliveryErrorText: errorText === null ? null : String(errorText),
+        smsClickSendMessageId: messageId === null ? null : String(messageId),
+        smsDeliveryReceiptAt: new Date().toISOString(),
+        sheetSyncPending: true,
+      });
+      return true;
     });
-    processed.push({ phone, state, campaignId, updated: true });
+    processed.push({ phone, state, campaignId, updated });
   }
 
   return res.status(200).json({ success: true, processed });

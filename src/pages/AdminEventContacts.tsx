@@ -478,18 +478,37 @@ const AdminEventContactsContent: React.FC = () => {
     setLoading(true);
     try {
       const snapshot = await getDocs(collection(db, 'eventContacts'));
-      setContacts(snapshot.docs.map(item => ({ id: item.id, ...item.data() } as EventContact)));
+      const loaded = snapshot.docs.map(item => ({ id: item.id, ...item.data() } as EventContact));
+      setContacts(loaded);
+      return loaded;
     } catch (error) {
       console.error(error);
       setMessage('Could not load event contacts.');
+      return [] as EventContact[];
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isAdmin) loadContacts();
-  }, [isAdmin]);
+    if (!isAdmin || !user) return;
+    let active = true;
+    (async () => {
+      const loaded = await loadContacts();
+      const acceptedIds = loaded.filter(contact => contact.invitationStatus === 'SMS – Accepted').map(contact => contact.id);
+      let updated = 0;
+      for (let i = 0; active && i < acceptedIds.length; i += 5) {
+        try {
+          const result = await contactSyncRequest({ operation: 'reconcileSms', contactIds: acceptedIds.slice(i, i + 5) });
+          updated += Number(result.updated) || 0;
+        } catch (error) {
+          console.error('SMS status reconciliation failed:', error);
+        }
+      }
+      if (active && updated) await loadContacts();
+    })();
+    return () => { active = false; };
+  }, [isAdmin, user]);
 
   useEffect(() => () => {
     if (photoPreview) URL.revokeObjectURL(photoPreview);

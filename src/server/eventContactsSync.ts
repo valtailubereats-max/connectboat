@@ -1,6 +1,81 @@
 import { classifyContact, contactData, locationData, CONTACT_FIELDS, text } from '../utils/eventContactsSync.js';
 import { readEventContacts } from './readEventContacts.mjs';
 
+const SMS_HISTORY_BODY_PREFIX = "Hi, ConnectBoat is a UK marine marketplace. We'd like to invite your business to join us at connectboat.co.uk. Unsubscribe:";
+
+async function reconcileAcceptedSms(db: any, ids: string[]) {
+  const username = process.env.CLICKSEND_USERNAME;
+  const apiKey = process.env.CLICKSEND_API_KEY;
+  if (!username || !apiKey) throw new Error('SMS provider is not configured.');
+  const snapshots = await db.getAll(...ids.map((id: string) => db.collection('eventContacts').doc(id)));
+  let updated = 0;
+  for (const snapshot of snapshots) {
+    const contact = snapshot.data();
+    if (!snapshot.exists || contact?.invitationStatus !== 'SMS – Accepted') continue;
+    const phone = String(contact.smsRecipient || '');
+    const acceptedAt = Date.parse(String(contact.smsAcceptedAt || ''));
+    if (!/^\+447\d{9}$/.test(phone) || !Number.isFinite(acceptedAt)) continue;
+
+    // History's date is the send time; delivery can happen much later.
+    const from = Math.floor((acceptedAt - 10 * 60_000) / 1000);
+    const to = Math.floor((acceptedAt + 10 * 60_000) / 1000);
+    const query = new URLSearchParams({ q: `to:${phone}`, date_from: String(from), date_to: String(to), limit: '100' });
+    let payload: any;
+    try {
+      const response = await fetch(`https://rest.clicksend.com/v3/sms/history?${query}`, {
+        headers: { Authorization: `Basic ${Buffer.from(`${username}:${apiKey}`).toString('base64')}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      payload = await response.json();
+      if (!response.ok || payload?.response_code !== 'SUCCESS') continue;
+    } catch { continue; }
+
+    const records = Array.isArray(payload?.data) ? payload.data : payload?.data?.data;
+    if (!Array.isArray(records) || (Number(payload?.data?.total) > records.length)) continue;
+    const matches = records.filter((record: any) => {
+      const sentAt = Number(record?.date ?? record?.timestamp_send);
+      return record?.to === phone
+        && sentAt >= from && sentAt <= to
+        && (!record?.direction || record.direction === 'out')
+        && typeof record.message_id === 'string' && Boolean(record.message_id)
+        && (!contact.smsClickSendListId || !record.list_id || String(record.list_id) === String(contact.smsClickSendListId))
+        && (!contact.smsCampaignId || !record.sms_campaign_id || String(record.sms_campaign_id) === String(contact.smsCampaignId))
+        && (contact.smsClickSendMessageId
+          ? record.message_id === contact.smsClickSendMessageId
+          : typeof record.body === 'string' && record.body.startsWith(SMS_HISTORY_BODY_PREFIX));
+    });
+    if (matches.length !== 1) continue;
+    const record = matches[0];
+    const code = Number(record.status_code);
+    const state = code === 201 ? 'SMS – Delivered' : Number.isFinite(code) && code >= 300 ? 'SMS – Failed' : null;
+    if (!state) continue;
+
+    const changed = await db.runTransaction(async (tx: any) => {
+      const latest = await tx.get(snapshot.ref);
+      const sameRecipient = await tx.get(db.collection('eventContacts').where('smsRecipient', '==', phone));
+      const current = latest.data();
+      if (current?.invitationStatus !== 'SMS – Accepted'
+        || current?.smsRecipient !== phone
+        || current?.smsAcceptedAt !== contact.smsAcceptedAt
+        || current?.smsCampaignId !== contact.smsCampaignId
+        || sameRecipient.docs.filter((item: any) => item.data()?.invitationStatus === 'SMS – Accepted').length !== 1) return false;
+      tx.update(snapshot.ref, {
+        invitationStatus: state,
+        smsDeliveryStatus: state,
+        smsDeliveryStatusCode: String(record.status_code),
+        smsDeliveryStatusText: record.status_text == null ? null : String(record.status_text),
+        smsDeliveryErrorCode: record.error_code == null ? null : String(record.error_code),
+        smsDeliveryErrorText: record.error_text == null ? null : String(record.error_text),
+        smsClickSendMessageId: record.message_id,
+        sheetSyncPending: true,
+      });
+      return true;
+    });
+    if (changed) updated++;
+  }
+  return updated;
+}
+
 export async function callContactSheet(body: Record<string, unknown>, timeoutMs = 20000) {
   const token = process.env.EVENT_CONTACTS_SYNC_SECRET;
   const url = process.env.EVENT_CONTACTS_SHEETS_URL;
@@ -22,6 +97,16 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
   const startedAt = Date.now();
   const body = req.body || {};
   const contacts = db.collection('eventContacts');
+  if (body.operation === 'reconcileSms') {
+    const ids = body.contactIds;
+    if (!Array.isArray(ids) || !ids.length || ids.length > 5
+      || ids.some((id: unknown) => typeof id !== 'string' || !id || id.includes('/') || id.length > 200)
+      || new Set(ids).size !== ids.length) {
+      return res.status(400).json({ success: false, errorMessage: 'Select 1–5 distinct contact IDs.' });
+    }
+    const updated = await reconcileAcceptedSms(db, ids);
+    return res.json({ success: true, updated });
+  }
   if (body.operation === 'pull') {
     const offset = Number(body.offset ?? 0);
     if (!Number.isSafeInteger(offset) || offset < 0) return res.status(400).json({ success: false, errorMessage: 'Invalid sync position.' });
