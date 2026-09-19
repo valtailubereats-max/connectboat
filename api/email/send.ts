@@ -215,6 +215,7 @@ async function sendCommercialSmsCampaign(to: string) {
 
   return {
     campaignId: getClickSendCampaignId(payload),
+    listId,
     message: payload?.response_msg || 'SMS campaign accepted for delivery.',
   };
 }
@@ -258,6 +259,125 @@ function hasValidAutomationKey(req: any): boolean {
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
 
+function hasValidSmsReceiptKey(req: any): boolean {
+  const configured = process.env.CONNECTBOAT_SMS_RECEIPT_KEY;
+  // ClickSend's delivery-report URL supports a private query token. A header is
+  // also accepted for a future signed relay, but no browser ever receives either.
+  const supplied = req.headers?.['x-connectboat-sms-receipt-key'] || req.query?.key;
+  if (!configured || typeof supplied !== 'string') return false;
+  const expected = Buffer.from(configured);
+  const received = Buffer.from(supplied);
+  return expected.length === received.length && timingSafeEqual(expected, received);
+}
+
+function clickSendReceiptRecords(payload: any): any[] {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.data?.data)) return payload.data.data;
+  if (payload?.data && typeof payload.data === 'object' && (payload.data.message_id || payload.data.messageId)) return [payload.data];
+  return payload && typeof payload === 'object' ? [payload] : [];
+}
+
+function receiptPhone(receipt: any): string {
+  return normaliseSmsPhone(receipt?.to || receipt?.recipient || receipt?.phone_number || receipt?.phone);
+}
+
+function receiptCampaignId(receipt: any): string | null {
+  const value = receipt?.sms_campaign_id || receipt?.campaign_id || receipt?.campaignId;
+  return value === undefined || value === null || value === '' ? null : String(value);
+}
+
+function receiptDeliveryState(receipt: any): 'SMS – Accepted' | 'SMS – Delivered' | 'SMS – Failed' {
+  const statusCode = Number(receipt?.status_code ?? receipt?.statusCode);
+  // ClickSend documents 201 as delivered. A delivery receipt with a 3xx/4xx/5xx
+  // status is final failure. All other receipt states remain accepted/pending.
+  if (statusCode === 201) return 'SMS – Delivered';
+  if (Number.isFinite(statusCode) && statusCode >= 300) return 'SMS – Failed';
+  return 'SMS – Accepted';
+}
+
+async function enrichReceiptFromClickSendHistory(receipt: any): Promise<any> {
+  if (receiptPhone(receipt)) return receipt;
+  const messageId = receipt?.message_id ?? receipt?.messageId;
+  const username = process.env.CLICKSEND_USERNAME;
+  const apiKey = process.env.CLICKSEND_API_KEY;
+  if (!messageId || !username || !apiKey) return receipt;
+
+  // A standard ClickSend receipt contains message_id and delivery status, but
+  // not necessarily its recipient. SMS history can securely resolve that ID.
+  const history = await clickSendRequest(
+    username,
+    apiKey,
+    `/sms/history?limit=1&q=${encodeURIComponent(`message_id:${messageId}`)}`
+  );
+  if (!history.response.ok || history.payload?.response_code !== 'SUCCESS') return receipt;
+  const record = clickSendRecords(history.payload)[0];
+  return record ? { ...record, ...receipt } : receipt;
+}
+
+async function handleSmsDeliveryReceipts(req: any, res: any) {
+  if (!hasValidSmsReceiptKey(req)) {
+    return res.status(401).json({ success: false, error: 'Valid SMS receipt authentication is required.' });
+  }
+
+  const receipts = clickSendReceiptRecords(req.body);
+  if (!receipts.length) {
+    return res.status(400).json({ success: false, error: 'At least one ClickSend delivery receipt is required.' });
+  }
+
+  const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
+  const processed: Array<{ phone: string; state: string; campaignId: string | null; updated: boolean; reason?: string }> = [];
+
+  for (const rawReceipt of receipts) {
+    const receipt = await enrichReceiptFromClickSendHistory(rawReceipt);
+    const phone = receiptPhone(receipt);
+    const campaignId = receiptCampaignId(receipt);
+    const state = receiptDeliveryState(receipt);
+    if (!phone) {
+      processed.push({ phone: '', state, campaignId, updated: false, reason: 'Receipt does not contain a valid recipient number.' });
+      continue;
+    }
+
+    const matches = await db.collection('eventContacts').where('smsRecipient', '==', phone).limit(5).get();
+    const eligible = matches.docs.filter(item => {
+      const contact = item.data();
+      return contact?.invitationStatus === 'SMS – Accepted'
+        && (!campaignId || !contact?.smsCampaignId || String(contact.smsCampaignId) === campaignId);
+    });
+    if (eligible.length !== 1) {
+      processed.push({
+        phone,
+        state,
+        campaignId,
+        updated: false,
+        reason: eligible.length ? 'More than one accepted contact matches this receipt.' : 'No accepted ConnectBoat SMS matches this receipt.',
+      });
+      continue;
+    }
+
+    const statusCode = receipt?.status_code ?? receipt?.statusCode ?? null;
+    const statusText = receipt?.status_text ?? receipt?.statusText ?? receipt?.status ?? null;
+    const errorCode = receipt?.error_code ?? receipt?.errorCode ?? null;
+    const errorText = receipt?.error_text ?? receipt?.errorText ?? receipt?.error ?? null;
+    const messageId = receipt?.message_id ?? receipt?.messageId ?? null;
+    await eligible[0].ref.update({
+      invitationChannel: 'SMS',
+      invitationStatus: state,
+      smsDeliveryStatus: state,
+      smsDeliveryStatusCode: statusCode === null ? null : String(statusCode),
+      smsDeliveryStatusText: statusText === null ? null : String(statusText),
+      smsDeliveryErrorCode: errorCode === null ? null : String(errorCode),
+      smsDeliveryErrorText: errorText === null ? null : String(errorText),
+      smsClickSendMessageId: messageId === null ? null : String(messageId),
+      smsDeliveryReceiptAt: new Date().toISOString(),
+      sheetSyncPending: true,
+    });
+    processed.push({ phone, state, campaignId, updated: true });
+  }
+
+  return res.status(200).json({ success: true, processed });
+}
+
 async function handleSmsProspectingAutomation(req: any, res: any) {
   if (!hasValidAutomationKey(req)) {
     return res.status(401).json({ success: false, error: 'Valid automation authentication is required.' });
@@ -290,7 +410,7 @@ async function handleSmsProspectingAutomation(req: any, res: any) {
     if (selected.length === requested) break;
   }
 
-  const sent: Array<{ id: string; company: string; phone: string; campaignId: string | null }> = [];
+  const acceptedContacts: Array<{ id: string; company: string; phone: string; campaignId: string | null }> = [];
   const failures: Array<{ id: string; company: string; phone: string; reason: string }> = [];
 
   for (const candidate of selected) {
@@ -313,11 +433,16 @@ async function handleSmsProspectingAutomation(req: any, res: any) {
         }
         transaction.update(ref, {
           invitationChannel: 'SMS',
-          invitationStatus: 'Sent – SMS',
+          invitationStatus: 'SMS – Accepted',
+          smsDeliveryStatus: 'SMS – Accepted',
+          smsRecipient: candidate.phone,
+          smsCampaignId: accepted.campaignId,
+          smsClickSendListId: accepted.listId,
+          smsAcceptedAt: new Date().toISOString(),
           sheetSyncPending: true,
         });
       });
-      sent.push({ ...candidate, campaignId: accepted.campaignId });
+      acceptedContacts.push({ ...candidate, campaignId: accepted.campaignId });
     } catch (error: any) {
       failures.push({ id: candidate.id, company: candidate.company, phone: candidate.phone, reason: error?.message || 'Commercial SMS could not be sent.' });
     }
@@ -327,7 +452,7 @@ async function handleSmsProspectingAutomation(req: any, res: any) {
     success: true,
     requested,
     selected,
-    sent,
+    accepted: acceptedContacts,
     failures,
     exclusions,
     scannedPendingContacts: snapshot.size,
@@ -371,6 +496,7 @@ async function handleSmsRequest(decodedUser: any, body: any, res: any) {
       success: true,
       simulated: false,
       campaignId: accepted.campaignId,
+      listId: accepted.listId,
       message: accepted.message,
       recipient: to,
     });
@@ -1045,7 +1171,7 @@ export default async function handler(req: any, res: any) {
   // CORS setup
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-ConnectBoat-Automation-Key");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-ConnectBoat-Automation-Key, X-ConnectBoat-SMS-Receipt-Key");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -1059,6 +1185,12 @@ export default async function handler(req: any, res: any) {
   // It must not use or accept a browser Firebase token as its authentication method.
   if (req.body?.channel === 'sms-prospecting-automation') {
     return handleSmsProspectingAutomation(req, res);
+  }
+
+  // ClickSend delivery receipts use an independent Vercel-only shared secret.
+  // They never receive browser Firebase credentials or expose provider credentials.
+  if (req.body?.channel === 'sms-delivery-receipt' || req.query?.channel === 'sms-delivery-receipt') {
+    return handleSmsDeliveryReceipts(req, res);
   }
 
   // Security: this public endpoint may only be called by an authenticated

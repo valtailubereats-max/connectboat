@@ -15,7 +15,8 @@ paths:
       description: |
         Selects eligible pending Event Contacts and sends up to five individual
         ClickSend SMS campaigns. The server validates all recipients and handles
-        opt-outs before delivery.
+        opt-outs before ClickSend accepts each campaign. Acceptance is not a
+        delivery confirmation; delivery is tracked separately from receipts.
       security:
         - ConnectBoatAutomationKey: []
       requestBody:
@@ -43,7 +44,7 @@ paths:
               quantity: 1
       responses:
         '200':
-          description: Automation completed. Individual deliveries can succeed or fail.
+          description: Automation completed. Each accepted campaign awaits a delivery receipt.
           content:
             application/json:
               schema:
@@ -73,7 +74,7 @@ components:
         phone:
           type: string
           pattern: '^\\+447\\d{9}$'
-    SentContact:
+    AcceptedContact:
       allOf:
         - $ref: '#/components/schemas/Contact'
         - type: object
@@ -81,7 +82,7 @@ components:
           properties:
             campaignId:
               type: [string, 'null']
-              description: ClickSend campaign identifier when supplied by ClickSend.
+              description: ClickSend sms_campaign_id when supplied after campaign acceptance. It is not a delivery receipt message ID.
     FailedContact:
       allOf:
         - $ref: '#/components/schemas/Contact'
@@ -102,7 +103,7 @@ components:
           type: string
     ProspectingResult:
       type: object
-      required: [success, requested, selected, sent, failures, exclusions, scannedPendingContacts]
+      required: [success, requested, selected, accepted, failures, exclusions, scannedPendingContacts]
       properties:
         success:
           type: boolean
@@ -114,10 +115,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Contact'
-        sent:
+        accepted:
           type: array
           items:
-            $ref: '#/components/schemas/SentContact'
+            $ref: '#/components/schemas/AcceptedContact'
         failures:
           type: array
           items:

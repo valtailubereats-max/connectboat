@@ -23,7 +23,7 @@ import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import UKProspectMap from '../components/UKProspectMap';
 
-type InvitationStatus = 'Pending' | 'Sent – WhatsApp' | 'Sent – Email' | 'Sent – SMS' | 'Sent – Other' | 'Unsubscribed';
+type InvitationStatus = 'Pending' | 'Sent – WhatsApp' | 'Sent – Email' | 'Sent – SMS' | 'Sent – Other' | 'SMS – Accepted' | 'SMS – Delivered' | 'SMS – Failed' | 'Unsubscribed';
 
 type EventContact = {
   id: string;
@@ -49,9 +49,20 @@ type EventContact = {
   country?: string;
   latitude?: string;
   longitude?: string;
+  smsRecipient?: string;
+  smsCampaignId?: string | null;
+  smsClickSendListId?: string | null;
+  smsClickSendMessageId?: string | null;
+  smsDeliveryStatus?: InvitationStatus;
+  smsDeliveryStatusCode?: string | null;
+  smsDeliveryStatusText?: string | null;
+  smsDeliveryErrorCode?: string | null;
+  smsDeliveryErrorText?: string | null;
+  smsAcceptedAt?: string;
+  smsDeliveryReceiptAt?: string;
 };
 
-type ContactDraft = Omit<EventContact, 'id' | 'photoUrl' | 'photoPath' | 'createdBy' | 'sheetSyncPending'>;
+type ContactDraft = Omit<EventContact, 'id' | 'photoUrl' | 'photoPath' | 'createdBy' | 'sheetSyncPending' | 'smsRecipient' | 'smsCampaignId' | 'smsClickSendListId' | 'smsClickSendMessageId' | 'smsDeliveryStatus' | 'smsDeliveryStatusCode' | 'smsDeliveryStatusText' | 'smsDeliveryErrorCode' | 'smsDeliveryErrorText' | 'smsAcceptedAt' | 'smsDeliveryReceiptAt'>;
 
 const EMPTY_DRAFT: ContactDraft = {
   name: '',
@@ -1120,7 +1131,16 @@ const AdminEventContactsContent: React.FC = () => {
         throw new Error(result?.error || 'Commercial SMS could not be sent.');
       }
       accepted = true;
-      await saveCurrent({ invitationStatus: 'Sent – SMS', invitationChannel: 'SMS' });
+      const savedId = await saveCurrent({ invitationStatus: 'SMS – Accepted', invitationChannel: 'SMS' });
+      if (savedId) {
+        await updateDoc(doc(db, 'eventContacts', savedId), {
+          smsRecipient: result.recipient,
+          smsCampaignId: result.campaignId || null,
+          smsClickSendListId: result.listId || null,
+          smsDeliveryStatus: 'SMS – Accepted',
+          smsAcceptedAt: new Date().toISOString(),
+        });
+      }
       await loadContacts();
       resetForm();
       setMessage(`Commercial SMS accepted for ${result.recipient}.`);
@@ -1501,6 +1521,9 @@ const AdminEventContactsContent: React.FC = () => {
                 <option value="Sent – Email">Sent – Email</option>
                 <option value="Sent – WhatsApp">Sent – WhatsApp</option>
                 <option value="Sent – SMS">Sent – SMS</option>
+                <option value="SMS – Accepted">SMS – Accepted</option>
+                <option value="SMS – Delivered">SMS – Delivered</option>
+                <option value="SMS – Failed">SMS – Failed</option>
                 <option value="Sent – Other">Sent – Other</option>
                 <option value="No contact details">No contact details</option>
               </select>
@@ -1550,7 +1573,7 @@ const AdminEventContactsContent: React.FC = () => {
                         {contact.otherContact && <div className="truncate"><span className="font-semibold text-slate-600">Other:</span> {contact.otherContact}</div>}
                       </div>
                       {!hasDirectContact && <div className="mt-1 text-xs font-semibold text-slate-400">No contact details saved</div>}
-                      <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${String(contact.invitationStatus).startsWith('Sent') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{contact.invitationStatus || 'Pending'}</span>
+                       <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${contact.invitationStatus === 'SMS – Delivered' || String(contact.invitationStatus).startsWith('Sent') ? 'bg-emerald-50 text-emerald-700' : contact.invitationStatus === 'SMS – Failed' ? 'bg-red-50 text-red-700' : contact.invitationStatus === 'SMS – Accepted' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>{contact.invitationStatus || 'Pending'}</span>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       <button onClick={() => handleEdit(contact)} className="rounded-lg p-2 text-slate-500" title="Edit contact"><Pencil size={16} /></button>
