@@ -4,7 +4,7 @@ export function text(value: unknown): string { return typeof value === 'string' 
 export function contactData(row: any) {
   const result: Record<string, string> = {};
   for (const key of CONTACT_FIELDS) result[key] = text(row?.[key]);
-  result.invitationStatus = ['Pending','Sent – WhatsApp','Sent – Email','Sent – Other','Unsubscribed'].includes(result.invitationStatus) ? result.invitationStatus : 'Pending';
+  result.invitationStatus = ['Pending','Sent – WhatsApp','Sent – Email','Sent – Other','Unsubscribed','SMS – Accepted','SMS – Delivered','SMS – Failed'].includes(result.invitationStatus) ? result.invitationStatus : 'Pending';
   return result;
 }
 export function locationData(row: any) {

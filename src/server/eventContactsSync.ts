@@ -71,7 +71,10 @@ async function reconcileAcceptedSms(db: any, ids: string[]) {
       });
       return true;
     });
-    if (changed) updated++;
+    if (changed) {
+      updated++;
+      await syncSmsStatusToSheet(db, snapshot.id).catch(() => undefined);
+    }
   }
   return updated;
 }
@@ -93,10 +96,46 @@ export async function callContactSheet(body: Record<string, unknown>, timeoutMs 
   return result;
 }
 
+export async function syncSmsStatusToSheet(db: any, contactId: string): Promise<boolean> {
+  const ref = db.collection('eventContacts').doc(contactId);
+  const snapshot = await ref.get();
+  const contact = snapshot.data();
+  const status = contact?.invitationStatus;
+  if (!snapshot.exists || !['SMS – Accepted', 'SMS – Delivered', 'SMS – Failed'].includes(status)) return false;
+  try {
+    await callContactSheet({ action: 'updateSmsStatus', contactId, status }, 5000);
+  } catch (error) {
+    await db.runTransaction(async (tx: any) => {
+      const latest = await tx.get(ref);
+      if (latest.exists && latest.data()?.invitationStatus === status) tx.update(ref, { sheetSyncPending: true });
+    });
+    throw error;
+  }
+  const latestStatus = (await ref.get()).data()?.invitationStatus;
+  if (latestStatus !== status && ['SMS – Accepted', 'SMS – Delivered', 'SMS – Failed'].includes(latestStatus)) {
+    return syncSmsStatusToSheet(db, contactId);
+  }
+  return true;
+}
+
 export async function handleEventContacts(req: any, res: any, db: any, uid: string) {
   const startedAt = Date.now();
   const body = req.body || {};
   const contacts = db.collection('eventContacts');
+  if (body.operation === 'syncSmsStatuses') {
+    const ids = body.contactIds;
+    if (!Array.isArray(ids) || !ids.length || ids.length > 5
+      || ids.some((id: unknown) => typeof id !== 'string' || !id || id.includes('/') || id.length > 200)
+      || new Set(ids).size !== ids.length) {
+      return res.status(400).json({ success: false, errorMessage: 'Select 1–5 distinct contact IDs.' });
+    }
+    const results = [];
+    for (const id of ids) {
+      try { results.push({ id, synced: await syncSmsStatusToSheet(db, id) }); }
+      catch { results.push({ id, synced: false }); }
+    }
+    return res.json({ success: true, results });
+  }
   if (body.operation === 'reconcileSms') {
     const ids = body.contactIds;
     if (!Array.isArray(ids) || !ids.length || ids.length > 5

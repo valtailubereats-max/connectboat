@@ -494,7 +494,7 @@ const AdminEventContactsContent: React.FC = () => {
     if (!isAdmin || !user) return;
     let active = true;
     (async () => {
-      const loaded = await loadContacts();
+      let loaded = await loadContacts();
       const acceptedIds = loaded.filter(contact => contact.invitationStatus === 'SMS – Accepted').map(contact => contact.id);
       let updated = 0;
       for (let i = 0; active && i < acceptedIds.length; i += 5) {
@@ -505,7 +505,15 @@ const AdminEventContactsContent: React.FC = () => {
           console.error('SMS status reconciliation failed:', error);
         }
       }
-      if (active && updated) await loadContacts();
+      if (active && updated) loaded = await loadContacts();
+      const smsIds = loaded.filter(contact => ['SMS – Accepted', 'SMS – Delivered', 'SMS – Failed'].includes(contact.invitationStatus)).map(contact => contact.id);
+      for (let i = 0; active && i < smsIds.length; i += 5) {
+        try {
+          await contactSyncRequest({ operation: 'syncSmsStatuses', contactIds: smsIds.slice(i, i + 5) });
+        } catch (error) {
+          console.error('SMS status sheet sync failed:', error);
+        }
+      }
     })();
     return () => { active = false; };
   }, [isAdmin, user]);

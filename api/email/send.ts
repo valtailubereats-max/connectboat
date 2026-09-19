@@ -2,6 +2,7 @@ import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { syncSmsStatusToSheet } from '../../src/server/eventContactsSync.js';
 
 // Serverless Email Service for ConnectBoat
 
@@ -379,6 +380,7 @@ async function handleSmsDeliveryReceipts(req: any, res: any) {
       });
       return true;
     });
+    if (updated) await syncSmsStatusToSheet(db, eligible[0].id).catch(() => undefined);
     processed.push({ phone, state, campaignId, updated });
   }
 
@@ -449,6 +451,7 @@ async function handleSmsProspectingAutomation(req: any, res: any) {
           sheetSyncPending: true,
         });
       });
+      await syncSmsStatusToSheet(db, candidate.id).catch(() => undefined);
       acceptedContacts.push({ ...candidate, campaignId: accepted.campaignId });
     } catch (error: any) {
       failures.push({ id: candidate.id, company: candidate.company, phone: candidate.phone, reason: error?.message || 'Commercial SMS could not be sent.' });

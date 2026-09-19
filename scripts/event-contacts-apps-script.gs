@@ -116,6 +116,7 @@ function doPost(e) {
 
     if (data.action === 'readContacts') return jsonResponse(readContacts_(sheet, data));
     if (data.action === 'linkContacts') return jsonResponse(linkContacts_(sheet, data.links));
+    if (data.action === 'updateSmsStatus') return jsonResponse(updateSmsStatus_(sheet, data));
     if (data.action === 'syncAll' && (!Array.isArray(data.contacts) || data.contacts.length > 25)) throw new Error('Send at most 25 contacts per batch.');
     const context = createContactContext_(sheet);
 
@@ -437,6 +438,24 @@ function upsertContact(sheet, contact, context) {
   context.ids[id] = target;
   if (sheet.getRange(1, HEADERS.length + 1).getValue() === 'Contact Count') sheet.getRange(target, HEADERS.length + 1).setFormula('=COUNTA(C' + target + ':H' + target + ')');
   return added ? 'added' : 'updated';
+}
+
+function updateSmsStatus_(sheet, data) {
+  const id = clean(data.contactId);
+  const status = clean(data.status);
+  if (!isValidContactId_(id) || ['SMS – Accepted', 'SMS – Delivered', 'SMS – Failed'].indexOf(status) < 0) {
+    return { ok: false, error: 'A valid Contact ID and SMS status are required.' };
+  }
+  const lastRow = sheet.getLastRow();
+  const ids = lastRow > 1 ? sheet.getRange(2, 12, lastRow - 1, 1).getDisplayValues() : [];
+  const matches = [];
+  ids.forEach(function(row, index) { if (clean(row[0]) === id) matches.push(index + 2); });
+  if (matches.length !== 1) return { ok: false, error: 'Contact ID must match exactly one Event Contacts row.' };
+  const row = matches[0];
+  const current = sheet.getRange(row, 9, 1, 2).getDisplayValues()[0];
+  if (current[0] === 'SMS' && current[1] === status) return { ok: true, updated: false };
+  sheet.getRange(row, 9, 1, 2).setValues([['SMS', status]]);
+  return { ok: true, updated: true };
 }
 
 function readContacts_(sheet, data) {
