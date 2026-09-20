@@ -2,7 +2,7 @@ import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { syncSmsStatusToSheet } from '../../src/server/eventContactsSync.js';
+import { callContactSheet, syncSmsStatusToSheet } from '../../src/server/eventContactsSync.js';
 
 // Serverless Email Service for ConnectBoat
 
@@ -68,6 +68,21 @@ async function getUserRole(uid: string): Promise<string> {
   const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
   const snap = await db.collection('users').doc(uid).get();
   return snap.exists ? (snap.data()?.role || 'user') : 'user';
+}
+
+async function assertEventContactCanReceiveInvitation(to: string | string[], template: string) {
+  if (template !== 'event_contact_invitation') return;
+  const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
+  for (const email of normalizeRecipients(to)) {
+    const suppression = await callContactSheet({ action: 'checkSuppression', email });
+    if (typeof suppression.suppressed !== 'boolean') throw new Error('Google Sheets did not confirm the suppression status.');
+    const contacts = await db.collection('eventContacts').where('email', '==', email).get();
+    if (suppression.suppressed || contacts.docs.some((contact: any) => contact.data()?.invitationStatus === 'Unsubscribed')) {
+      const error: any = new Error('This contact has unsubscribed. The invitation was not sent.');
+      error.statusCode = 403;
+      throw error;
+    }
+  }
 }
 
 async function isAdminUser(decodedUser: any): Promise<boolean> {
@@ -1126,6 +1141,8 @@ export async function sendEmailDirect(to: string | string[], template: string, d
     return { success: true, message: "Emails disabled globally" };
   }
 
+  await assertEventContactCanReceiveInvitation(to, template);
+
   const { subject, html } = renderEmail(template, data);
 
   const emailFrom = process.env.EMAIL_FROM || 'ConnectBoat <no-reply@connectboat.co.uk>';
@@ -1244,6 +1261,7 @@ export default async function handler(req: any, res: any) {
 
     try {
       await authorizeEmailRequest(decodedUser, template, to, data);
+      await assertEventContactCanReceiveInvitation(to, template);
     } catch (authorizationError: any) {
       return res.status(authorizationError?.statusCode || 403).json({
         success: false,
