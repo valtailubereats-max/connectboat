@@ -8,6 +8,7 @@ import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { getBrokerState, brokerMoney } from '../../src/server/brokerProgram';
+import brokerHandler from '../../src/server/brokerHandler';
 
 let stripeClient: Stripe | null = null;
 
@@ -1281,6 +1282,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const advertisingAction = String(req.body?.action || '');
 
     try {
+      if (advertisingAction.startsWith('broker_')) {
+        return await brokerHandler(req, res);
+      }
       if (advertisingAction === 'listing_save') {
         return await handleListingSave(req, res);
       }

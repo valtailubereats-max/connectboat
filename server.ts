@@ -1,6 +1,5 @@
 import express from 'express';
 import createAssistedPaymentHandler from './api/admin/create-assisted-payment.ts';
-import brokerHandler from './api/brokers.ts';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
@@ -61,7 +60,6 @@ async function startServer() {
   });
 
   // Rotas de API Backend
-  app.post('/api/brokers', (req, res) => brokerHandler(req, res));
   app.post('/api/admin/create-assisted-payment', (req, res) => createAssistedPaymentHandler(req, res));
   app.all('/api/discover-listings', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');

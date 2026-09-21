@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { randomBytes, createHash } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
-import { brokerDb, brokerIdentity, getBrokerState, hasValidBrokerReferral, isEligibleBrokerAd } from '../src/server/brokerProgram';
+import { brokerDb, brokerIdentity, getBrokerState, hasValidBrokerReferral, isEligibleBrokerAd } from './brokerProgram';
 
 const text = (value: unknown, max: number) => String(value || '').trim().slice(0, max);
 const hash = (code: string) => createHash('sha256').update(code.trim().toUpperCase()).digest('hex');
@@ -14,7 +14,7 @@ export default async function brokerHandler(req: Request, res: Response) {
   try {
     const actor = await brokerIdentity(req);
     const db = brokerDb();
-    const action = text(req.body?.action, 40);
+    const action = text(req.body?.action, 47).replace(/^broker_/, '');
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
 
     if (action === 'status') {
