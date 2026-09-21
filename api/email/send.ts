@@ -451,7 +451,7 @@ async function handleSmsProspectingAutomation(req: any, res: any) {
       await db.runTransaction(async transaction => {
         const ref = db.collection('eventContacts').doc(candidate.id);
         const latest = await transaction.get(ref);
-        const latestEvaluation = latest.exists ? eventContactSmsCandidate(candidate.id, latest.data()) : { exclusion: { reason: 'Contact no longer exists.' } };
+        const latestEvaluation: EventContactSmsEvaluation = latest.exists ? eventContactSmsCandidate(candidate.id, latest.data()) : { exclusion: { id: candidate.id, company: candidate.company, reason: 'Contact no longer exists.' } };
         if (latestEvaluation.exclusion || latestEvaluation.candidate?.phone !== candidate.phone) {
           throw new Error(latestEvaluation.exclusion?.reason || 'Contact changed while SMS was being sent.');
         }

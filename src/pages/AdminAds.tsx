@@ -8,6 +8,7 @@ import { clearHomeCache } from '../utils/cache';
 import { motion, AnimatePresence } from 'motion/react';
 import OptimizedImage from '../components/OptimizedImage';
 import { awardAdApprovalPoints } from '../utils/rewards';
+import { brokerRequest } from '../utils/brokers';
 import { 
   Clock, 
   Archive, 
@@ -85,7 +86,7 @@ const ALL_COLUMNS: ColumnOption[] = [
 const AdminAds = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { settings, categories } = useSettings();
 
   // Synchronized horizontal scrollbars for the wide admin table.
@@ -457,6 +458,10 @@ const AdminAds = () => {
       }
 
       await updateDoc(doc(db, 'ads', adId), updatePayload);
+      if (status === 'approved' && adToUpdate?.brokerPaymentVerified) {
+        try { await brokerRequest('recordApproval', { adId }); }
+        catch (error) { console.warn('[Broker Programme] Approval ledger will be reconciled on the next broker request.', error); }
+      }
       clearHomeCache();
 
       if (adToUpdate && adToUpdate.sellerId) {
@@ -2414,6 +2419,12 @@ const AdminAds = () => {
                         <span className="font-mono text-[11px] text-slate-800 bg-emerald-100/50 px-1.5 py-0.5 rounded select-all break-all">
                           {selectedAd.stripeCheckoutSessionId}
                         </span>
+                      </div>
+                    )}
+                    {selectedAd.brokerId && (
+                      <div className="sm:col-span-2 rounded-lg bg-sky-50 p-3 text-sky-950">
+                        <strong>Broker discount:</strong> {selectedAd.brokerDiscountPercent}% (tier {selectedAd.brokerTier}%) · Normal plan £{Number(selectedAd.brokerNormalPrice || 0).toFixed(2)} · Discount £{Number(selectedAd.brokerDiscountAmount || 0).toFixed(2)} · Charged plan £{Number(selectedAd.brokerFinalPlanPrice || 0).toFixed(2)}
+                        <span className="mt-1 block break-all text-[11px]">Broker account: {selectedAd.brokerId}</span>
                       </div>
                     )}
                   </div>

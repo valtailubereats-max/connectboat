@@ -96,6 +96,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { icon: Upload, label: 'Import via AI', path: '/admin/import' },
     { icon: Tag, label: 'Manage Listings', path: '/admin/ads' },
     { icon: Users, label: 'Users', path: '/admin/users' },
+    { icon: Anchor, label: 'Brokers', path: '/admin/brokers' },
     { icon: UserCheck, label: 'Claims', path: '/admin/claims' },
     { icon: Megaphone, label: 'Marketing', path: '/admin/marketing' },
     { icon: QrCode, label: 'Invites', path: '/admin/invitations' },
@@ -130,6 +131,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       items: [
         { icon: Tag, label: 'Manage Listings', path: '/admin/ads' },
         { icon: Users, label: 'Users', path: '/admin/users' },
+        { icon: Anchor, label: 'Brokers', path: '/admin/brokers' },
         { icon: UserCheck, label: 'Claims', path: '/admin/claims' },
       ]
     },

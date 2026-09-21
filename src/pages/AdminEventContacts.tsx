@@ -322,6 +322,8 @@ class EventContactsErrorBoundary extends React.Component<
   EventContactsErrorBoundaryState
 > {
   state: EventContactsErrorBoundaryState = { error: null, info: null };
+  declare props: Readonly<{ children: React.ReactNode }>;
+  declare setState: (state: Partial<EventContactsErrorBoundaryState>) => void;
 
   static getDerivedStateFromError(error: Error): EventContactsErrorBoundaryState {
     return { error, info: null };

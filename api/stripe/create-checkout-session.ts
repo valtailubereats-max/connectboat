@@ -7,6 +7,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
 import { createHash, randomBytes, randomUUID } from 'crypto';
+import { getBrokerState, brokerMoney } from '../../src/server/brokerProgram';
 
 let stripeClient: Stripe | null = null;
 
@@ -74,6 +75,14 @@ async function handleListingSave(req: Request, res: Response) {
   if (String(adData.sellerId || '') !== uid) {
     return res.status(403).json({ success: false, error: 'SELLER_MISMATCH', errorMessage: 'You can only create listings for your own account.' });
   }
+  // This endpoint uses the Admin SDK, so browser payloads must not carry
+  // payment, moderation or broker state into Firestore.
+  for (const key of [
+    'paymentStatus', 'paymentProductType', 'amountPaid', 'paidAt',
+    'stripeCheckoutSessionId', 'stripePaymentIntentId', 'brokerId',
+    'brokerTier', 'brokerDiscountPercent', 'brokerNormalPrice',
+    'brokerDiscountAmount', 'brokerFinalPlanPrice', 'brokerPaymentVerified',
+  ]) delete adData[key];
 
   const db = getAdminDb();
   const settingsSnap = await db.collection('settings').doc('global').get();
@@ -123,6 +132,7 @@ async function handleListingSave(req: Request, res: Response) {
   if (existing.exists && existing.data()?.sellerId !== uid) {
     return res.status(403).json({ success: false, error: 'AD_OWNERSHIP_MISMATCH' });
   }
+  if (!existing.exists || existing.data()?.status !== 'approved') adData.status = 'pending';
 
   if (isMarketplace && String(adData.marketplaceListingType || '') === 'free_first') {
     const phone = normaliseListingPhone(adData.sellerPhone);
@@ -1441,7 +1451,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     let amountCents = Math.round(standardPrice * 100);
 
     // Calculate base plan price using the trusted Firestore settings.
-    const activePlan = (plan || 'standard').toLowerCase();
+    const activePlan = String((itemType === 'ad_listing' ? authenticatedAdData?.plan : plan) || 'standard').toLowerCase();
     const savedListingCategory = String(authenticatedAdData?.category || category || '').trim();
     const isPaidBoatListing =
       itemType === 'ad_listing' &&
@@ -1536,6 +1546,13 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       productDescription = `30-day active listing (${currencySymbol}${standardPrice.toFixed(2)})`;
     }
 
+    const brokerState = isPaidBoatListing && amountCents > 0
+      ? await getBrokerState(db, authenticatedUserId)
+      : null;
+    const brokerPrice = brokerState?.profile?.status === 'active'
+      ? brokerMoney(amountCents, brokerState.currentDiscount)
+      : null;
+    const chargedPlanCents = brokerPrice?.finalPriceCents ?? amountCents;
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
     if (isMarketplaceListing && trustedMarketplaceListingType === 'paid_additional') {
@@ -1567,13 +1584,15 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
             name: productName,
             description: productDescription,
           },
-          unit_amount: amountCents,
+          unit_amount: chargedPlanCents,
         },
         quantity: 1,
       });
     }
 
-    const hasMediaBoost = !!mediaBoostEnabled;
+    const hasMediaBoost = itemType === 'ad_listing'
+      ? authenticatedAdData?.mediaBoostEnabled === true && authenticatedAdData?.videoPaid !== true
+      : !!mediaBoostEnabled;
     if (hasMediaBoost) {
       lineItems.push({
         price_data: {
@@ -1609,6 +1628,14 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
         : (isServiceListing ? 'boat_service_listing' : (isPaidBoatListing ? 'boat_listing' : String(itemType))),
       mediaBoostEnabled: hasMediaBoost ? 'true' : 'false',
     };
+    if (brokerPrice && isPaidBoatListing) {
+      metadata.brokerId = authenticatedUserId;
+      metadata.brokerNormalPriceCents = String(brokerPrice.normalPriceCents);
+      metadata.brokerDiscountPercent = String(brokerPrice.discountPercent);
+      metadata.brokerDiscountCents = String(brokerPrice.discountCents);
+      metadata.brokerFinalPlanCents = String(brokerPrice.finalPriceCents);
+      metadata.brokerTier = String(brokerPrice.discountPercent);
+    }
 
     if (showcaseData) {
       try {

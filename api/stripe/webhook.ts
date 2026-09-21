@@ -899,6 +899,29 @@ export default async function stripeWebhookHandler(
                         ?.id || null,
               };
 
+          // Only metadata from the server-created, Stripe-signed session can
+          // establish a broker discount. The total is always Stripe's total.
+          const brokerNormalCents = Number(metadata.brokerNormalPriceCents);
+          const brokerDiscountCents = Number(metadata.brokerDiscountCents);
+          const brokerFinalCents = Number(metadata.brokerFinalPlanCents);
+          const brokerTotalCents = brokerFinalCents + (metadata.mediaBoostEnabled === 'true' ? 200 : 0);
+          if (!isAdminAssisted && metadata.brokerId &&
+              metadata.brokerId === adData.sellerId &&
+              metadata.paymentProductType === 'boat_listing' &&
+              Number.isInteger(brokerNormalCents) && Number.isInteger(brokerDiscountCents) &&
+              Number.isInteger(brokerFinalCents) && brokerNormalCents - brokerDiscountCents === brokerFinalCents &&
+              brokerTotalCents === session.amount_total) {
+            updatePayload.brokerId = metadata.brokerId;
+            updatePayload.brokerTier = Number(metadata.brokerTier);
+            updatePayload.brokerDiscountPercent = Number(metadata.brokerDiscountPercent);
+            updatePayload.brokerNormalPrice = brokerNormalCents / 100;
+            updatePayload.brokerDiscountAmount = brokerDiscountCents / 100;
+            updatePayload.brokerFinalPlanPrice = brokerFinalCents / 100;
+          }
+          if (metadata.paymentProductType === 'boat_listing') {
+            updatePayload.brokerPaymentVerified = true;
+          }
+
           if (
             !isAdminAssisted &&
             (

@@ -53,6 +53,8 @@ import CheapBoatsFinal from './pages/CheapBoatsFinal';
 import NotFound from './pages/NotFound';
 import Advertise from './pages/Advertise';
 import Unsubscribe from './pages/Unsubscribe';
+import Brokers from './pages/Brokers';
+import AdminBrokers from './pages/AdminBrokers';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ShareModal } from './components/ShareModal';
 import { AnalyticsTracker } from './components/AnalyticsTracker';
@@ -312,6 +314,7 @@ const Navbar = () => {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-[26.4px]">
+            <Link to="/brokers" className="shrink-0 whitespace-nowrap rounded-xl border border-sky-400 px-2 py-2 text-xs font-bold text-sky-200 hover:bg-sky-900">For Brokers</Link>
             {!user && (
               <button onClick={handlePublishClick} className="text-slate-300 hover:text-sky-400 font-medium flex items-center gap-[4.4px] cursor-pointer transition-colors text-[15.4px]">
                 <Plus size={19.8} /> <span>List Boat / Item</span>
@@ -662,6 +665,7 @@ const Navbar = () => {
             <div className="px-4 py-6 space-y-4 flex flex-col">
               <Link to="/" onClick={() => setIsOpen(false)} className="text-lg font-black text-sky-400">Home</Link>
               <Link to="/events" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Marine Events</Link>
+              <Link to="/brokers" onClick={() => setIsOpen(false)} className="text-lg font-black text-sky-300">For Brokers</Link>
               <Link to="/pricing" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Pricing Plans</Link>
               <Link to="/advertise" onClick={() => setIsOpen(false)} className="text-lg font-black text-indigo-300">Advertise on ConnectBoat</Link>
               
@@ -934,6 +938,7 @@ export default function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/pricing" element={<Precos />} />
                 <Route path="/advertise" element={<Advertise />} />
+                <Route path="/brokers" element={<Brokers />} />
                 <Route path="/precos" element={<Navigate to="/pricing" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
@@ -954,6 +959,7 @@ export default function App() {
                 <Route path="/admin/ads" element={<AdminLayout><AdminAds /></AdminLayout>} />
                 <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
                 <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
+                <Route path="/admin/brokers" element={<AdminLayout><AdminBrokers /></AdminLayout>} />
                 <Route path="/admin/claims" element={<AdminLayout><AdminClaims /></AdminLayout>} />
                 <Route path="/admin/team" element={<AdminLayout><AdminTeam /></AdminLayout>} />
                 <Route path="/events" element={<Fotos />} />

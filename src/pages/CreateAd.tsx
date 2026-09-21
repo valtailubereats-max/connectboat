@@ -19,6 +19,7 @@ import { normalizeAndLimitImages, sanitizeFirestorePayload } from '../utils/adSa
 import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../utils/imageFraming';
 import { evaluateListingDuplicates, DuplicateCheckResult } from '../utils/duplicateDetector';
 import { saveCustomCity } from '../utils/locationService';
+import { brokerRequest } from '../utils/brokers';
 
 const PAID_BOAT_LISTING_CATEGORIES = new Set(['Boats for Sale', 'Boats for Hire']);
 const MARKETPLACE_LISTING_CATEGORIES = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Accessories', 'Wanted']);
@@ -191,6 +192,13 @@ const CreateAd = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [originalAd, setOriginalAd] = useState<Ad | null>(null);
+  const [brokerDiscount, setBrokerDiscount] = useState(0);
+  useEffect(() => {
+    if (!user) return;
+    brokerRequest('status').then(result => {
+      setBrokerDiscount(result.profile?.status === 'active' ? Number(result.currentDiscount || 0) : 0);
+    }).catch(() => setBrokerDiscount(0));
+  }, [user?.uid]);
   const [soldStatusUpdating, setSoldStatusUpdating] = useState(false);
 
   const isEditLocked = useMemo(() => {
@@ -705,7 +713,10 @@ const CreateAd = () => {
         ? getServicePlanPrice(activePlan)
         : (isMarketplaceListingCategory(formData.category) && !isFirstMarketplaceListingFree() ? getMarketplaceAdditionalPrice() : 0);
     const mediaBoostExtra = (formData.mediaBoostEnabled && !originalAd?.videoPaid) ? 2.00 : 0;
-    return (planBase + mediaBoostExtra).toFixed(2);
+    const discountedPlan = isPaidBoatListingCategory(formData.category)
+      ? (Math.round(planBase * 100) - Math.round(Math.round(planBase * 100) * brokerDiscount / 100)) / 100
+      : planBase;
+    return (discountedPlan + mediaBoostExtra).toFixed(2);
   };
 
   const getOriginalExpirationDate = () => {
@@ -4466,6 +4477,11 @@ const CreateAd = () => {
                 </div>
 
                 {/* Stripe Hosted Checkout Notice */}
+                {brokerDiscount > 0 && isPaidBoatListingCategory(formData.category) && (
+                  <p className="rounded-xl bg-sky-50 p-3 text-sm font-semibold text-sky-900">
+                    Broker discount: {brokerDiscount}% off the listing plan. Media Boost remains £2. The final amount is confirmed by Stripe.
+                  </p>
+                )}
                 <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5">
                     <CreditCard size={20} />

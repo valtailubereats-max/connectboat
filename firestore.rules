@@ -63,6 +63,11 @@ service cloud.firestore {
              (!('referralCode' in data) || data.referralCode is string);
     }
 
+    function brokerAdFields() {
+      return ['brokerId', 'brokerTier', 'brokerDiscountPercent', 'brokerNormalPrice',
+        'brokerDiscountAmount', 'brokerFinalPlanPrice', 'brokerPaymentVerified'];
+    }
+
     function isValidAd(data) {
       return data.keys().hasAll(['id', 'title', 'description', 'imageUrl', 'city', 'category', 'sellerId', 'sellerPhone', 'sellerName', 'status', 'createdAt']) &&
              data.id is string &&
@@ -289,7 +294,7 @@ service cloud.firestore {
         (
           isOwner(userId) && 
           isValidUser(request.resource.data, userId) && 
-          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'financeAccess'])) &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'financeAccess', 'brokerStatus', 'brokerTier', 'brokerDiscountPercent', 'brokerActivatedAt', 'brokerCode'])) &&
           (!('showcaseApproved' in request.resource.data) || request.resource.data.showcaseApproved == resource.data.get('showcaseApproved', false))
         ) ||
         (isAuthenticated() && isValidRatingUpdate()) ||
@@ -353,7 +358,7 @@ service cloud.firestore {
     match /ads/{adId} {
       allow read: if true;
 
-      allow create: if isAuthenticated() &&
+      allow create: if !request.resource.data.keys().hasAny(brokerAdFields()) && isAuthenticated() &&
                     (
                       isAdmin() ||
                       isModerator() ||
@@ -369,7 +374,7 @@ service cloud.firestore {
                       )
                     );
 
-      allow update: if (
+      allow update: if !request.resource.data.diff(resource.data).affectedKeys().hasAny(brokerAdFields()) && (
         (
           isAuthenticated() &&
           resource.data.sellerId == request.auth.uid &&
@@ -478,6 +483,26 @@ service cloud.firestore {
                       isAdmin() ||
                       isModerator()
                     );
+    }
+
+    match /brokerApplications/{uid} {
+      allow read, write: if false;
+    }
+
+    match /brokerProfiles/{uid} {
+      allow read, write: if false;
+    }
+
+    match /brokerCodes/{codeId} {
+      allow read, write: if false;
+    }
+
+    match /brokerEligibleAds/{adId} {
+      allow read, write: if false;
+    }
+
+    match /brokerApplicantKeys/{keyId} {
+      allow read, write: if false;
     }
 
     match /favorites/{favoriteId} {
