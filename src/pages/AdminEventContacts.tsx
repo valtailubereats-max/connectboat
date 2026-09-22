@@ -1227,6 +1227,7 @@ const AdminEventContactsContent: React.FC = () => {
         body: JSON.stringify({
           template: 'event_contact_invitation',
           to: email,
+          eventContactId: contact.id,
           data: { contactName: contact.name, company: contact.company },
         }),
       });
