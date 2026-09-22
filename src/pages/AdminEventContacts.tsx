@@ -708,7 +708,7 @@ const AdminEventContactsContent: React.FC = () => {
     }
     setMessage('QR read. Looking for public contact details on the company website…');
     try {
-      const response = await fetch('/api/admin/find-website-contact', {
+      const response = await fetch('/api/admin/create-assisted-payment?mode=websiteContact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await user.getIdToken() },
         body: JSON.stringify({ website: parsed.website }),

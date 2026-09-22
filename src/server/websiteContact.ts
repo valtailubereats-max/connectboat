@@ -2,22 +2,7 @@ import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-
-const DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
-const ADMIN_EMAILS = new Set(['valtailubereats@gmail.com', 'valtail@gmail.com', 'generalsales2021@gmail.com']);
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
-
-function adminApp() {
-  if (getApps().length) return getApp();
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) throw new Error('Firebase Admin is not configured.');
-  const account = JSON.parse(raw.startsWith('{') ? raw : Buffer.from(raw, 'base64').toString('utf8'));
-  if (typeof account.private_key === 'string') account.private_key = account.private_key.replace(/\\n/g, '\n');
-  return initializeApp({ credential: cert(account) });
-}
 
 function publicAddress(address: string) {
   if (isIP(address) === 4) {
@@ -127,30 +112,16 @@ function pageDetails(html: string, hostname: string) {
   return details;
 }
 
-export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
-  try {
-    const token = /^Bearer (.+)$/i.exec(String(req.headers.authorization || ''))?.[1];
-    if (!token) return res.status(401).json({ error: 'Sign in to search a website.' });
-    const app = adminApp();
-    const user = await getAuth(app).verifyIdToken(token);
-    const role = await getFirestore(app, DATABASE_ID).collection('users').doc(user.uid).get();
-    if (!ADMIN_EMAILS.has(String(user.email || '').toLowerCase()) && role.data()?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required.' });
-    }
-    const raw = req.body?.website;
-    if (typeof raw !== 'string' || raw.length > 2048) return res.status(400).json({ error: 'Invalid website.' });
-    const url = new URL(raw);
-    const details: Record<string, string> = {};
-    for (const page of [url, new URL('/', url.origin), new URL('/contact', url.origin), new URL('/contact-us', url.origin)]) {
-      try {
-        const found = pageDetails(await fetchPublicHtml(page), url.hostname);
-        for (const [key, value] of Object.entries(found)) if (value && !details[key]) details[key] = value;
-      } catch { /* Try the next public page. */ }
-      if (details.email && details.phone && details.company) break;
-    }
-    return res.status(200).json({ details });
-  } catch {
-    return res.status(400).json({ error: 'Could not check this website.' });
+export async function findWebsiteContactDetails(raw: string) {
+  if (raw.length > 2048) throw new Error('Invalid website.');
+  const url = new URL(raw);
+  const details: Record<string, string> = {};
+  for (const page of [url, new URL('/', url.origin), new URL('/contact', url.origin), new URL('/contact-us', url.origin)]) {
+    try {
+      const found = pageDetails(await fetchPublicHtml(page), url.hostname);
+      for (const [key, value] of Object.entries(found)) if (value && !details[key]) details[key] = value;
+    } catch { /* Try the next public page. */ }
+    if (details.email && details.phone && details.company) break;
   }
+  return details;
 }

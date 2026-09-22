@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { handleEventContacts } from '../../src/server/eventContactsSync.js';
+import { findWebsiteContactDetails } from '../../src/server/websiteContact.js';
 import Stripe from 'stripe';
 import { timingSafeEqual } from 'node:crypto';
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
@@ -674,6 +675,22 @@ export default async function createAssistedPaymentHandler(
   res: Response
 ) {
   const mode = typeof req.query.mode === 'string' ? req.query.mode : '';
+
+  if (mode === 'websiteContact') {
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
+    try {
+      const db = getAdminDb();
+      const admin = await verifyAdminRequest(req, db);
+      if (!admin.ok) return res.status(admin.status).json({ error: admin.message });
+      const website = req.body?.website;
+      if (typeof website !== 'string' || website.length > 2048) return res.status(400).json({ error: 'Invalid website.' });
+      return res.status(200).json({ details: await findWebsiteContactDetails(website) });
+    } catch (error) {
+      console.error('Website contact lookup failed:', error);
+      return res.status(400).json({ error: 'Could not check this website.' });
+    }
+  }
 
   if (mode === 'eventContacts') {
     res.setHeader('Cache-Control', 'no-store');
