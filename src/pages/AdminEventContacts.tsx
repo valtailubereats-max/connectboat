@@ -42,6 +42,7 @@ type EventContact = {
   photoUrl: string;
   photoPath: string;
   createdBy: string;
+  createdAt?: string;
   sheetSyncPending?: boolean;
   address?: string;
   postcode?: string;
@@ -62,7 +63,7 @@ type EventContact = {
   smsDeliveryReceiptAt?: string;
 };
 
-type ContactDraft = Omit<EventContact, 'id' | 'photoUrl' | 'photoPath' | 'createdBy' | 'sheetSyncPending' | 'smsRecipient' | 'smsCampaignId' | 'smsClickSendListId' | 'smsClickSendMessageId' | 'smsDeliveryStatus' | 'smsDeliveryStatusCode' | 'smsDeliveryStatusText' | 'smsDeliveryErrorCode' | 'smsDeliveryErrorText' | 'smsAcceptedAt' | 'smsDeliveryReceiptAt'>;
+type ContactDraft = Omit<EventContact, 'id' | 'photoUrl' | 'photoPath' | 'createdBy' | 'createdAt' | 'sheetSyncPending' | 'smsRecipient' | 'smsCampaignId' | 'smsClickSendListId' | 'smsClickSendMessageId' | 'smsDeliveryStatus' | 'smsDeliveryStatusCode' | 'smsDeliveryStatusText' | 'smsDeliveryErrorCode' | 'smsDeliveryErrorText' | 'smsAcceptedAt' | 'smsDeliveryReceiptAt'>;
 
 const EMPTY_DRAFT: ContactDraft = {
   name: '',
@@ -479,9 +480,20 @@ const AdminEventContactsContent: React.FC = () => {
   const loadContacts = async () => {
     setLoading(true);
     try {
-      const snapshot = await getDocs(collection(db, 'eventContacts'));
-      const loaded = snapshot.docs.map(item => ({ id: item.id, ...item.data() } as EventContact));
+      let loaded: EventContact[];
+      try {
+        const result = await contactSyncRequest({ operation: 'list' });
+        if (!Array.isArray(result.contacts)) throw new Error('Invalid contact history response.');
+        loaded = result.contacts as EventContact[];
+      } catch (error) {
+        console.error('Could not load chronological history:', error);
+        const snapshot = await getDocs(collection(db, 'eventContacts'));
+        loaded = snapshot.docs.map(item => ({ id: item.id, ...item.data() } as EventContact));
+        loaded.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+        setMessage('Contact history loaded, but chronological order could not be confirmed. Try reloading.');
+      }
       setContacts(loaded);
+      setHistoryPage(1);
       return loaded;
     } catch (error) {
       console.error(error);

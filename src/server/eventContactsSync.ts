@@ -122,6 +122,16 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
   const startedAt = Date.now();
   const body = req.body || {};
   const contacts = db.collection('eventContacts');
+  if (body.operation === 'list') {
+    const snapshot = await contacts.get();
+    const rows = snapshot.docs.map((item: any) => ({
+      id: item.id,
+      ...item.data(),
+      createdAt: item.createTime?.toDate().toISOString() || '',
+    }));
+    rows.sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+    return res.json({ success: true, contacts: rows });
+  }
   if (body.operation === 'syncSmsStatuses') {
     const ids = body.contactIds;
     if (!Array.isArray(ids) || !ids.length || ids.length > 5
