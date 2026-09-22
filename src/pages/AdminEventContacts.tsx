@@ -994,7 +994,7 @@ const AdminEventContactsContent: React.FC = () => {
   };
 
   const saveCurrent = async (patch: Partial<ContactDraft> = {}) => {
-    if (!isAdmin || !user) return null;
+    if (!isAdmin || !user) throw new Error('Your admin session is not available. Sign in again and retry.');
     setSaving(true);
     try {
       const uploaded = await uploadPhoto();
@@ -1038,13 +1038,14 @@ const AdminEventContactsContent: React.FC = () => {
 
   const saveForLater = async () => {
     try {
-      await saveCurrent({ invitationStatus: 'Pending', invitationChannel: '' });
+      const savedId = await saveCurrent({ invitationStatus: 'Pending', invitationChannel: '' });
+      if (!savedId) throw new Error('The contact was not saved.');
       await loadContacts();
       setMessage('Saved for later. You can move straight to the next stand.');
       resetForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setMessage('Could not save this contact.');
+      setMessage(`Could not save this contact: ${error?.message || 'Please retry.'} The extracted details are still here.`);
     }
   };
 
@@ -1225,13 +1226,14 @@ const AdminEventContactsContent: React.FC = () => {
 
   const saveDuplicateAnyway = async () => {
     try {
-      await saveCurrent({ invitationStatus: 'Pending', invitationChannel: '' });
+      const savedId = await saveCurrent({ invitationStatus: 'Pending', invitationChannel: '' });
+      if (!savedId) throw new Error('The contact was not saved.');
       await loadContacts();
       resetForm();
       setMessage('Contact saved separately.');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setMessage('Could not save this contact.');
+      setMessage(`Could not save this contact: ${error?.message || 'Please retry.'} The extracted details are still here.`);
     }
   };
 
@@ -1478,7 +1480,7 @@ const AdminEventContactsContent: React.FC = () => {
               {smsAvailable && draft.invitationStatus !== 'Unsubscribed' && (
                 <button onClick={sendCommercialSms} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 font-black text-amber-800 disabled:opacity-60"><Smartphone size={19} /> Send SMS</button>
               )}
-              {emailAvailable && draft.invitationStatus !== 'Unsubscribed' && (!whatsappAvailable || isResending) && (
+              {emailAvailable && draft.invitationStatus !== 'Unsubscribed' && (
                 <button onClick={sendEmail} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><Mail size={20} /> {isResending ? 'Resend via Email' : 'Send Invitation via Email'}</button>
               )}
               {!whatsappAvailable && !emailAvailable && websiteAvailable && (
