@@ -18,6 +18,8 @@ import {
   Trash2,
   Upload,
   X,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -391,6 +393,8 @@ const AdminEventContactsContent: React.FC = () => {
   const [existingPhotoPath, setExistingPhotoPath] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState('');
+  const [zoomImageUrl, setZoomImageUrl] = useState('');
+  const [zoomScale, setZoomScale] = useState(1);
   const [moreOpen, setMoreOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [historyFilter, setHistoryFilter] = useState<'All' | InvitationStatus | 'No contact details'>('All');
@@ -539,10 +543,20 @@ const AdminEventContactsContent: React.FC = () => {
     cardStreamRef.current?.getTracks().forEach(track => track.stop());
   }, [photoPreview]);
 
+  useEffect(() => {
+    if (!zoomImageUrl) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setZoomImageUrl('');
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [zoomImageUrl]);
+
   const updateDraft = (key: keyof ContactDraft, value: string) => setDraft(prev => ({ ...prev, [key]: value }));
 
   const resetForm = () => {
     if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setZoomImageUrl('');
     setDraft({ ...EMPTY_DRAFT });
     setEditingId(null);
     setExistingPhotoUrl('');
@@ -551,6 +565,11 @@ const AdminEventContactsContent: React.FC = () => {
     setPhotoPreview('');
     setMoreOpen(false);
     setMessage('');
+  };
+
+  const openPhotoZoom = (url: string) => {
+    setZoomScale(1);
+    setZoomImageUrl(url);
   };
 
   const stopCardCamera = () => {
@@ -1513,8 +1532,10 @@ const AdminEventContactsContent: React.FC = () => {
 
         {(photoPreview || existingPhotoUrl) && (
           <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-2">
-            <img src={photoPreview || existingPhotoUrl} alt="Card or business sign" className="h-20 w-28 rounded-lg object-cover" />
-            <div className="text-xs text-slate-500"><div className="font-bold text-slate-700">Photo saved</div><div>It can be checked later on desktop.</div></div>
+            <button type="button" onClick={() => openPhotoZoom(photoPreview || existingPhotoUrl)} aria-label="Enlarge card photo" className="shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <img src={photoPreview || existingPhotoUrl} alt="Card or business sign" className="h-20 w-28 rounded-lg object-cover" />
+            </button>
+            <div className="text-xs text-slate-500"><div className="font-bold text-slate-700">Card photo</div><div>Tap the photo to enlarge it.</div></div>
           </div>
         )}
 
@@ -1668,7 +1689,7 @@ const AdminEventContactsContent: React.FC = () => {
                 );
                 return (
                   <article key={contact.id} className="flex items-start gap-3 rounded-xl border border-slate-200 p-3">
-                    {contact.photoUrl ? <img src={contact.photoUrl} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" /> : <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Camera size={20} /></div>}
+                    {contact.photoUrl ? <button type="button" onClick={() => openPhotoZoom(contact.photoUrl)} aria-label={`Enlarge photo of ${contact.company || contact.name || 'contact'}`} className="h-14 w-14 shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"><img src={contact.photoUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /></button> : <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Camera size={20} /></div>}
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-black text-slate-900">{contact.company || contact.name || contact.website || 'Captured contact'}</div>
                       {contact.company && contact.name && <div className="truncate text-xs font-medium text-slate-600">{contact.name}</div>}
@@ -1732,6 +1753,23 @@ const AdminEventContactsContent: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {zoomImageUrl && (
+        <div role="dialog" aria-modal="true" aria-label="Card photo enlarged" className="fixed inset-0 z-[300] flex flex-col bg-black/95 text-white">
+          <div className="flex items-center justify-between gap-3 border-b border-white/20 px-4 py-3">
+            <span className="font-bold">Card photo · {Math.round(zoomScale * 100)}%</span>
+            <button type="button" onClick={() => setZoomImageUrl('')} aria-label="Close enlarged photo" className="rounded-lg p-2 hover:bg-white/15"><X size={24} /></button>
+          </div>
+          <div className="flex min-h-0 flex-1 items-center overflow-auto p-4">
+            <img src={zoomImageUrl} alt="Enlarged card or business sign" className="mx-auto h-auto max-w-none object-contain" style={{ width: `${zoomScale * 100}%` }} />
+          </div>
+          <div className="flex items-center justify-center gap-3 border-t border-white/20 p-4">
+            <button type="button" onClick={() => setZoomScale(value => Math.max(1, value - 0.5))} disabled={zoomScale <= 1} aria-label="Zoom out" className="rounded-xl border border-white/30 p-3 disabled:opacity-40"><ZoomOut size={22} /></button>
+            <button type="button" onClick={() => setZoomScale(1)} className="rounded-xl border border-white/30 px-4 py-3 font-bold">Fit</button>
+            <button type="button" onClick={() => setZoomScale(value => Math.min(4, value + 0.5))} disabled={zoomScale >= 4} aria-label="Zoom in" className="rounded-xl border border-white/30 p-3 disabled:opacity-40"><ZoomIn size={22} /></button>
           </div>
         </div>
       )}
