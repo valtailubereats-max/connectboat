@@ -702,7 +702,12 @@ export default async function createAssistedPaymentHandler(
       return await handleEventContacts(req, res, db, admin.uid);
     } catch (error: any) {
       console.error('Event Contacts sync failed:', error?.message);
-      return res.status(502).json({ success: false, errorMessage: error?.message || 'Contact sync failed. You can retry safely.' });
+      const syncCode = ['SYNC_IN_PROGRESS', 'SYNC_RESTART_REQUIRED'].includes(error?.code) ? error.code : undefined;
+      return res.status(syncCode ? 409 : 502).json({
+        success: false,
+        ...(syncCode ? { code: syncCode } : {}),
+        errorMessage: error?.message || 'Contact sync failed. You can retry safely.',
+      });
     }
   }
 

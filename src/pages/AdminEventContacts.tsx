@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { addDoc, arrayUnion, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { addDoc, arrayUnion, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 import {
@@ -95,6 +95,14 @@ const EMPTY_DRAFT: ContactDraft = {
 };
 
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1nB6fP6lulZTfmAMkiAg3o9cJyVzvYtv3ZDdIHvQVEA8/edit';
+const PULL_SYNC_ID_KEY = 'connectboat:eventContactsPullId';
+const PULL_SYNC_OFFSET_KEY = 'connectboat:eventContactsPullOffset';
+
+function newPullSyncId() {
+  return typeof crypto?.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
 
 
 function normaliseWebsite(value: string) {
@@ -485,7 +493,7 @@ const AdminEventContactsContent: React.FC = () => {
 
   const configureCameraZoom = async (stream: MediaStream) => {
     const track = stream.getVideoTracks()[0];
-    const capability: any = track?.getCapabilities?.()?.zoom;
+    const capability: any = (track?.getCapabilities?.() as any)?.zoom;
     const min = Number(capability?.min);
     const max = Number(capability?.max);
     if (!track || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) return;
@@ -1119,7 +1127,11 @@ const AdminEventContactsContent: React.FC = () => {
     } catch {
       throw new Error(`The sync server returned an invalid response (HTTP ${response.status}). Check the deployment logs before retrying.`);
     }
-    if (!response.ok || result?.success !== true) throw new Error(result?.errorMessage || 'Google Sheets did not confirm this operation.');
+    if (!response.ok || result?.success !== true) {
+      const error: any = new Error(result?.errorMessage || 'Google Sheets did not confirm this operation.');
+      error.code = result?.code;
+      throw error;
+    }
     return result;
   };
 
@@ -1151,22 +1163,39 @@ const AdminEventContactsContent: React.FC = () => {
   const syncFromSheets = async () => {
     if (syncing || saving || loading) return;
     setSyncing(true); setSyncIssues([]);
-    let added = 0, existing = 0, empty = 0, offset = 0;
+    let added = 0, existing = 0, empty = 0;
+    let syncId = sessionStorage.getItem(PULL_SYNC_ID_KEY) || '';
+    let offset = Number(sessionStorage.getItem(PULL_SYNC_OFFSET_KEY) || 0);
+    if (!/^[A-Za-z0-9_-]{8,100}$/.test(syncId) || !Number.isSafeInteger(offset) || offset < 0) {
+      syncId = newPullSyncId();
+      offset = 0;
+      sessionStorage.setItem(PULL_SYNC_ID_KEY, syncId);
+      sessionStorage.setItem(PULL_SYNC_OFFSET_KEY, '0');
+    }
     let quotaExceeded = false;
     const issues: string[] = [];
     try {
       while (true) {
         setMessage('Reading Google Sheets… ' + added + ' contacts added.');
-        const result = await contactSyncRequest({ operation: 'pull', offset });
+        const result = await contactSyncRequest({ operation: 'pull', offset, syncId });
         added += result.added; existing += result.existing; empty += result.empty;
         issues.push(...result.ambiguous.map((label: string) => 'Possible duplicate — review: ' + label));
         if (result.linkWarning) issues.push(result.linkWarning);
-        if (result.nextOffset === null) break;
+        if (result.nextOffset === null) {
+          sessionStorage.removeItem(PULL_SYNC_ID_KEY);
+          sessionStorage.removeItem(PULL_SYNC_OFFSET_KEY);
+          break;
+        }
         if (!Number.isSafeInteger(result.nextOffset) || result.nextOffset <= offset) throw new Error('Invalid sync position returned by Google Sheets.');
         offset = result.nextOffset;
+        sessionStorage.setItem(PULL_SYNC_OFFSET_KEY, String(offset));
       }
       setMessage('Sync complete: ' + added + ' added, ' + existing + ' already present, ' + empty + ' empty records skipped. ' + issues.length + ' items need review.');
     } catch (error: any) {
+      if (error?.code === 'SYNC_RESTART_REQUIRED') {
+        sessionStorage.removeItem(PULL_SYNC_ID_KEY);
+        sessionStorage.removeItem(PULL_SYNC_OFFSET_KEY);
+      }
       quotaExceeded = /RESOURCE_EXHAUSTED|quota exceeded/i.test(String(error?.message || ''));
       setMessage('Sync interrupted after ' + added + ' additions. ' + error.message + (quotaExceeded
         ? ' The database quota is exhausted. Wait until it is available again before syncing; repeated attempts use more quota.'
@@ -1183,8 +1212,8 @@ const AdminEventContactsContent: React.FC = () => {
     setSyncing(true); setSyncIssues([]);
     let sent = 0;
     try {
-      const snapshot = await getDocs(collection(db, 'eventContacts'));
-      const pending = snapshot.docs.filter(item => item.data().sheetSyncPending === true);
+      const snapshot = await getDocs(query(collection(db, 'eventContacts'), where('sheetSyncPending', '==', true)));
+      const pending = snapshot.docs;
       for (let i = 0; i < pending.length; i += 25) {
         setMessage('Sending pending contacts to Google Sheets… ' + sent + ' confirmed.');
         await contactSyncRequest({ operation: 'push', contactIds: pending.slice(i, i + 25).map(item => item.id) });
@@ -1969,7 +1998,7 @@ const AdminEventContactsContent: React.FC = () => {
             ) : (
               <div className="bg-black p-3">
                 <div className="overflow-hidden rounded-xl"><video ref={cardVideoRef} playsInline muted className="max-h-[65vh] w-full object-contain" style={{ transform: `scale(${cameraZoom})` }} /></div>
-                <LiveCameraZoomControls value={cameraZoom} onChange={changeCameraZoom} />
+                <LiveCameraZoomControls value={cameraZoom} min={cameraZoomRange.min} max={cameraZoomRange.max} step={cameraZoomRange.step} mode={cameraZoomMode} onChange={changeCameraZoom} />
                 <div className="mt-3 text-center text-sm font-bold text-white">Rear camera • centre the card or sign. The photo will use this zoom.</div>
                 <button type="button" onClick={captureBusinessCard} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 font-black text-slate-900">
                   <Camera size={20} /> Take Photo
@@ -2001,7 +2030,7 @@ const AdminEventContactsContent: React.FC = () => {
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3"><div className="font-black">Scan QR Code</div><button onClick={stopScanner} className="p-2 text-slate-500"><X size={20} /></button></div>
-            {scannerError ? <div className="p-6 text-center text-sm text-slate-600">{scannerError}</div> : <div className="bg-black p-3"><div className="aspect-square overflow-hidden rounded-xl"><video ref={videoRef} playsInline muted className="h-full w-full object-cover" style={{ transform: `scale(${cameraZoom})` }} /></div><LiveCameraZoomControls value={cameraZoom} onChange={changeCameraZoom} /><div className="mt-3 text-center text-sm font-bold text-white">Centre the company QR code. The reader uses this zoom.</div></div>}
+            {scannerError ? <div className="p-6 text-center text-sm text-slate-600">{scannerError}</div> : <div className="bg-black p-3"><div className="aspect-square overflow-hidden rounded-xl"><video ref={videoRef} playsInline muted className="h-full w-full object-cover" style={{ transform: `scale(${cameraZoom})` }} /></div><LiveCameraZoomControls value={cameraZoom} min={cameraZoomRange.min} max={cameraZoomRange.max} step={cameraZoomRange.step} mode={cameraZoomMode} onChange={changeCameraZoom} /><div className="mt-3 text-center text-sm font-bold text-white">Centre the company QR code. The reader uses this zoom.</div></div>}
           </div>
         </div>
       )}

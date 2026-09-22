@@ -1,7 +1,21 @@
 import { classifyContact, contactData, locationData, CONTACT_FIELDS, text } from '../utils/eventContactsSync.js';
-import { readEventContacts } from './readEventContacts.mjs';
+import { compactEventContacts, readEventContacts } from './readEventContacts.mjs';
 
 const SMS_HISTORY_BODY_PREFIX = "Hi, ConnectBoat is a UK marine marketplace. We'd like to invite your business to join us at connectboat.co.uk. Unsubscribe:";
+const PULL_SYNC_LEASE_MS = 2 * 60_000;
+
+function timestampMillis(value: any): number {
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  const parsed = Date.parse(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function pullSyncError(message: string, code: 'SYNC_IN_PROGRESS' | 'SYNC_RESTART_REQUIRED') {
+  const error: any = new Error(message);
+  error.code = code;
+  return error;
+}
 
 async function reconcileAcceptedSms(db: any, ids: string[]) {
   const username = process.env.CLICKSEND_USERNAME;
@@ -159,14 +173,48 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
   if (body.operation === 'pull') {
     const offset = Number(body.offset ?? 0);
     if (!Number.isSafeInteger(offset) || offset < 0) return res.status(400).json({ success: false, errorMessage: 'Invalid sync position.' });
+    const syncId = text(body.syncId);
+    if (!/^[A-Za-z0-9_-]{8,100}$/.test(syncId)) return res.status(400).json({ success: false, errorMessage: 'Invalid sync session.' });
     const page = await callContactSheet({ action: 'readContacts', offset, limit: 25 });
     if (!Array.isArray(page.contacts) || page.contacts.length > 25) throw new Error('Invalid contacts page.');
+    if (page.nextOffset !== null && (!Number.isSafeInteger(page.nextOffset) || page.nextOffset <= offset)) throw new Error('Google Sheets returned an invalid sync position.');
     const pageIds = page.contacts.map((row: any) => text(row.contactId));
     if (pageIds.some((id: string) => !id || id.includes('/') || id.length > 200)) throw new Error('A sheet contact has an invalid Contact ID.');
     const result = await db.runTransaction(async (tx: any) => {
       const guard = db.collection('systemSettings').doc('eventContactsSync');
-      await tx.get(guard);
-      const working = await readEventContacts(tx, contacts, pageIds);
+      const guardSnapshot = await tx.get(guard);
+      const state = guardSnapshot.data() || {};
+      const activeId = text(state.activePullId);
+      const activeUid = text(state.activePullUid);
+      const activeExpired = timestampMillis(state.activePullExpiresAt) <= Date.now();
+
+      if (text(state.lastCompletedPullId) === syncId && !activeId) {
+        return { added: 0, existing: 0, empty: 0, ambiguous: [], links: [], nextOffset: null, replayed: true,
+          metrics: { directDocumentReads: 0, fullCollectionRead: false, fullCollectionDocuments: 0, cacheUsed: false } };
+      }
+
+      let expectedOffset: number | null = 0;
+      let identityCache: any[] | null = null;
+      if (activeId === syncId) {
+        if (activeUid && activeUid !== uid) throw pullSyncError('Another administrator owns this sync session.', 'SYNC_IN_PROGRESS');
+        expectedOffset = state.activePullNextOffset === null ? null : Number(state.activePullNextOffset ?? 0);
+        identityCache = Array.isArray(state.activePullIdentityCache) ? state.activePullIdentityCache : null;
+      } else if (activeId && !activeExpired) {
+        throw pullSyncError('Another Google Sheets sync is already running. Wait for it to finish before retrying.', 'SYNC_IN_PROGRESS');
+      } else if (offset !== 0) {
+        throw pullSyncError('The previous sync session expired. Run Sync Google Sheets again to restart safely.', 'SYNC_RESTART_REQUIRED');
+      }
+
+      if (expectedOffset !== offset) {
+        if (expectedOffset === null || Number.isSafeInteger(expectedOffset)) {
+          return { added: 0, existing: 0, empty: 0, ambiguous: [], links: [], nextOffset: expectedOffset, replayed: true,
+            metrics: { directDocumentReads: 0, fullCollectionRead: false, fullCollectionDocuments: 0, cacheUsed: false } };
+        }
+        throw pullSyncError('The sync session position is invalid. Restart the sync safely.', 'SYNC_RESTART_REQUIRED');
+      }
+
+      const readResult = await readEventContacts(tx, contacts, pageIds, identityCache);
+      const working = readResult.contacts;
       const links: any[] = [], ambiguous: string[] = [];
       let added = 0, existing = 0, empty = 0;
       for (const row of page.contacts) {
@@ -198,9 +246,37 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
         tx.create(contacts.doc(id), payload);
         working.push({ ...payload, id }); added++;
       }
-      tx.set(guard, { lastImportedAt: new Date() }, { merge: true });
-      return { added, existing, empty, ambiguous, links };
+      const completed = page.nextOffset === null;
+      const cacheWasUsed = readResult.metrics.cacheUsed || readResult.metrics.fullCollectionRead;
+      const nextIdentityCache = cacheWasUsed ? compactEventContacts(working) : readResult.identityCache;
+      tx.set(guard, completed ? {
+        lastImportedAt: new Date(),
+        lastCompletedPullId: syncId,
+        lastCompletedPullAt: new Date(),
+        activePullId: null,
+        activePullUid: null,
+        activePullNextOffset: null,
+        activePullExpiresAt: null,
+        activePullIdentityCache: null,
+      } : {
+        lastImportedAt: new Date(),
+        activePullId: syncId,
+        activePullUid: uid,
+        activePullNextOffset: page.nextOffset,
+        activePullExpiresAt: new Date(Date.now() + PULL_SYNC_LEASE_MS),
+        activePullIdentityCache: nextIdentityCache,
+      }, { merge: true });
+      return { added, existing, empty, ambiguous, links, nextOffset: page.nextOffset, replayed: false, metrics: readResult.metrics };
     }, { maxAttempts: 1 });
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[Event Contacts pull metrics]', {
+        offset,
+        pageDocuments: pageIds.length,
+        ...result.metrics,
+        replayed: result.replayed,
+      });
+    }
     let linkWarning = '';
     if (result.links.length) {
       try {
@@ -210,7 +286,7 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
       }
       catch { linkWarning = 'Some sheet IDs could not be linked. Run Sync Google Sheets again before exporting.'; }
     }
-    return res.json({ success: true, ...result, links: undefined, nextOffset: page.nextOffset, linkWarning });
+    return res.json({ success: true, ...result, links: undefined, linkWarning });
   }
   if (body.operation === 'push') {
     const ids = Array.isArray(body.contactIds) ? body.contactIds : [];
