@@ -1187,6 +1187,60 @@ const AdminEventContactsContent: React.FC = () => {
     }
   };
 
+  const sendEmailFromHistory = async (contact: EventContact) => {
+    const email = contact.email?.trim();
+    if (!email || !user || saving) return;
+
+    const label = contact.company || contact.name || email;
+    const confirmed = window.confirm(`Send invitation email to ${label}?\n\n${email}`);
+    if (!confirmed) return;
+
+    setSaving(true);
+    try {
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + await user.getIdToken(),
+        },
+        body: JSON.stringify({
+          template: 'event_contact_invitation',
+          to: email,
+          data: { contactName: contact.name, company: contact.company },
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success || result?.simulated) {
+        throw new Error(result?.error || (result?.simulated
+          ? 'Email delivery is not configured yet. The contact was not marked as sent.'
+          : 'Could not send the invitation email.'));
+      }
+
+      await updateDoc(doc(db, 'eventContacts', contact.id), {
+        invitationStatus: 'Sent – Email',
+        invitationChannel: 'Email',
+        sheetSyncPending: true,
+      });
+
+      const confirmedSheet = await syncOneToSheets(contact.id, {
+        ...contact,
+        invitationStatus: 'Sent – Email',
+        invitationChannel: 'Email',
+      });
+      if (!confirmedSheet) {
+        setMessage('Invitation email sent with the ConnectBoat banner. Google Sheets still needs syncing.');
+      } else {
+        setMessage('Invitation email sent with the ConnectBoat banner.');
+      }
+      await loadContacts();
+    } catch (error: any) {
+      console.error(error);
+      setMessage(error?.message || 'Could not send the invitation email. The contact was not marked as sent.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const sendSmsSimulation = async () => {
     const number = draft.whatsapp.trim() || draft.phone.trim();
     if (!number || !user || saving) return;
@@ -1706,6 +1760,16 @@ const AdminEventContactsContent: React.FC = () => {
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       <button onClick={() => handleEdit(contact)} className="rounded-lg p-2 text-slate-500" title="Edit contact"><Pencil size={16} /></button>
+                      <button
+                        type="button"
+                        onClick={() => sendEmailFromHistory(contact)}
+                        disabled={!contact.email?.trim() || saving}
+                        className="rounded-lg p-2 text-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
+                        title={contact.email?.trim() ? 'Send invitation email' : 'No email saved'}
+                        aria-label={contact.email?.trim() ? `Send invitation email to ${contact.company || contact.name || contact.email}` : 'No email saved'}
+                      >
+                        <Mail size={16} />
+                      </button>
                       <button onClick={() => handleDelete(contact)} className="rounded-lg p-2 text-red-500" title="Delete contact"><Trash2 size={16} /></button>
                     </div>
                   </article>
