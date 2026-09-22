@@ -85,7 +85,7 @@ export default function AdminBannerEditor() {
 
 
   const [detailsBgEnabled, setDetailsBgEnabled] = useState(false);
-  const [detailsBgType, setDetailsBgType] = useState<'image' | 'video'>('video');
+  const [detailsBgType, setDetailsBgType] = useState<'image' | 'video' | 'pattern'>('video');
   const [detailsBgMediaUrl, setDetailsBgMediaUrl] = useState('');
   const [detailsBgFileName, setDetailsBgFileName] = useState('');
   const [detailsBgLoop, setDetailsBgLoop] = useState(true);
@@ -161,7 +161,7 @@ export default function AdminBannerEditor() {
       if (!snapshot.exists()) return;
       const data = snapshot.data() || {};
       setDetailsBgEnabled(data.enabled === true);
-      setDetailsBgType(data.type === 'image' ? 'image' : 'video');
+      setDetailsBgType(data.type === 'pattern' ? 'pattern' : data.type === 'image' ? 'image' : 'video');
       setDetailsBgMediaUrl(String(data.mediaUrl || ''));
       setDetailsBgFileName(String(data.fileName || ''));
       setDetailsBgLoop(data.loop !== false);
@@ -213,7 +213,7 @@ export default function AdminBannerEditor() {
   };
 
   const saveListingDetailsBackground = async () => {
-    if (detailsBgEnabled && !detailsBgMediaUrl) {
+    if (detailsBgEnabled && detailsBgType !== 'pattern' && !detailsBgMediaUrl) {
       alert('Upload an image or video before enabling the background.');
       return;
     }
@@ -965,7 +965,7 @@ export default function AdminBannerEditor() {
             <div className="text-[10px] uppercase tracking-[0.22em] font-black text-sky-600">Page Appearance</div>
             <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">Listing Details Page Background</h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Control the image or video shown behind the listing details page. The sponsored carousel remains transparent and floats over this background.
+              Choose the homepage pattern, an image or a video for the listing details page.
             </p>
           </div>
           <button
@@ -982,7 +982,18 @@ export default function AdminBannerEditor() {
           <div className="space-y-5">
             <div>
               <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">Background type</label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setDetailsBgType('pattern'); setDetailsBgOverlayOpacity(0); }}
+                  className={`rounded-xl border px-3 py-3 flex items-center justify-center text-center text-sm font-black transition ${
+                    detailsBgType === 'pattern'
+                      ? 'border-sky-500 bg-sky-50 text-sky-700 dark:bg-sky-950/40'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  Padrão da página inicial
+                </button>
                 <button
                   type="button"
                   onClick={() => setDetailsBgType('video')}
@@ -1008,7 +1019,7 @@ export default function AdminBannerEditor() {
               </div>
             </div>
 
-            <div>
+            {detailsBgType !== 'pattern' && <div>
               <label className="block text-xs font-black text-slate-700 dark:text-slate-300 mb-2">Background file</label>
               <label className="min-h-[118px] rounded-2xl border border-dashed border-sky-300 bg-sky-50/50 dark:bg-sky-950/20 flex flex-col items-center justify-center gap-2 cursor-pointer text-center p-5">
                 <Upload size={22} className="text-sky-600" />
@@ -1024,7 +1035,7 @@ export default function AdminBannerEditor() {
                   onChange={uploadListingDetailsBackground}
                 />
               </label>
-            </div>
+            </div>}
 
             {detailsBgType === 'video' && (
               <label className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
@@ -1063,7 +1074,7 @@ export default function AdminBannerEditor() {
             <label className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
               <div>
                 <p className="text-sm font-black text-slate-900 dark:text-white">Background active</p>
-                <p className="text-xs text-slate-500">Turn the custom listing background on or off without deleting the uploaded file.</p>
+                <p className="text-xs text-slate-500">Turn the selected listing background on or off.</p>
               </div>
               <input
                 type="checkbox"
@@ -1077,7 +1088,9 @@ export default function AdminBannerEditor() {
           <div>
             <p className="text-xs font-black text-slate-700 dark:text-slate-300 mb-2">Preview</p>
             <div className="relative aspect-[9/16] sm:aspect-video xl:aspect-[9/14] overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-950">
-              {detailsBgMediaUrl ? (
+              {detailsBgType === 'pattern' ? (
+                <div className="absolute inset-0 site-pattern-background" />
+              ) : detailsBgMediaUrl ? (
                 detailsBgType === 'video' ? (
                   <video
                     src={detailsBgMediaUrl}

@@ -44,7 +44,7 @@ const AdDetails = () => {
   const [dailyFixedCampaign, setDailyFixedCampaign] = useState<any | null>(null);
   const [listingPageBackground, setListingPageBackground] = useState<{
     enabled: boolean;
-    type: 'image' | 'video';
+    type: 'image' | 'video' | 'pattern';
     mediaUrl: string;
     loop: boolean;
     overlayOpacity: number;
@@ -152,7 +152,7 @@ const AdDetails = () => {
         const data = snapshot.data() || {};
         setListingPageBackground({
           enabled: data.enabled === true,
-          type: data.type === 'image' ? 'image' : 'video',
+          type: data.type === 'pattern' ? 'pattern' : data.type === 'image' ? 'image' : 'video',
           mediaUrl: String(data.mediaUrl || ''),
           loop: data.loop !== false,
           overlayOpacity: Number.isFinite(Number(data.overlayOpacity))
@@ -1287,9 +1287,11 @@ const AdDetails = () => {
 
   return (
     <>
-      {listingPageBackground.enabled && listingPageBackground.mediaUrl && (
+      {listingPageBackground.enabled && (listingPageBackground.type === 'pattern' || listingPageBackground.mediaUrl) && (
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
-          {listingPageBackground.type === 'video' ? (
+          {listingPageBackground.type === 'pattern' ? (
+            <div className="absolute inset-0 site-pattern-background" />
+          ) : listingPageBackground.type === 'video' ? (
             <video
               src={listingPageBackground.mediaUrl}
               autoPlay
