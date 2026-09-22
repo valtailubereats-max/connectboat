@@ -676,7 +676,7 @@ const AdminEventContactsContent: React.FC = () => {
     setScannerOpen(false);
   };
 
-  const applyQrValue = (raw: string) => {
+  const applyQrValue = async (raw: string) => {
     const parsed = decodeQrContact(raw);
     const qrDraft: ContactDraft = { ...EMPTY_DRAFT, ...parsed };
     const existingMatch = contacts.find(contact => prospectMatchesExisting(qrDraft, contact)) || null;
@@ -702,7 +702,60 @@ const AdminEventContactsContent: React.FC = () => {
     setIsolatedContactId(null);
     setDuplicateWarning('');
     setDraft(prev => ({ ...prev, ...parsed }));
-    setMessage('QR read. No existing contact was found. I used every contact detail available in it.');
+    if (!parsed.website || !user) {
+      setMessage('QR read. I used every contact detail available in it.');
+      return;
+    }
+    setMessage('QR read. Looking for public contact details on the company website…');
+    try {
+      const response = await fetch('/api/admin/find-website-contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await user.getIdToken() },
+        body: JSON.stringify({ website: parsed.website }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.error || 'Website lookup failed.');
+      const found = result?.details && typeof result.details === 'object' ? result.details : {};
+      const details = {
+        company: typeof found.company === 'string' ? found.company : '',
+        phone: typeof found.phone === 'string' ? found.phone : '',
+        whatsapp: typeof found.whatsapp === 'string' ? found.whatsapp : '',
+        email: typeof found.email === 'string' ? found.email : '',
+        linkedin: typeof found.linkedin === 'string' ? found.linkedin : '',
+      };
+      if (!Object.values(details).some(Boolean)) {
+        setMessage('QR read. No public contact details were found on the website. You can enter them manually or save the website.');
+        return;
+      }
+      const enriched = {
+        ...qrDraft,
+        company: qrDraft.company || details.company,
+        phone: qrDraft.phone || details.phone,
+        whatsapp: qrDraft.whatsapp || details.whatsapp,
+        email: qrDraft.email || details.email,
+        linkedin: qrDraft.linkedin || details.linkedin,
+      };
+      const emailMatch = contacts.find(contact => prospectMatchesExisting(enriched, contact));
+      if (emailMatch) {
+        setDraft({ ...EMPTY_DRAFT });
+        setIsolatedContactId(emailMatch.id);
+        setDuplicateWarning(`⚠ POSSIBLE DUPLICATE — ${emailMatch.company || emailMatch.name || 'Existing contact'} is already registered. Look below in Contact History.`);
+        setMessage('');
+        return;
+      }
+      setDraft(prev => ({
+        ...prev,
+        company: prev.company || details.company,
+        phone: prev.phone || details.phone,
+        whatsapp: prev.whatsapp || details.whatsapp,
+        email: prev.email || details.email,
+        linkedin: prev.linkedin || details.linkedin,
+      }));
+      setMessage('QR read. Public contact details were found on the website. Please check them before saving or sending.');
+    } catch (error) {
+      console.error('Website email lookup failed:', error);
+      setMessage('QR read. The website could not be checked for contact details. You can enter them manually or save the website.');
+    }
   };
 
   const startScanner = async () => {
@@ -1224,6 +1277,16 @@ const AdminEventContactsContent: React.FC = () => {
     setMessage('Existing contact opened. Add or correct the new information here instead of creating a duplicate.');
   };
 
+  const leaveDuplicateAlert = () => {
+    resetForm();
+    setIsolatedContactId(null);
+    setDuplicateWarning('');
+    setHistoryFilter('All');
+    setHistoryPage(1);
+    setSearch('');
+    document.getElementById('event-contact-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const saveDuplicateAnyway = async () => {
     try {
       const savedId = await saveCurrent({ invitationStatus: 'Pending', invitationChannel: '' });
@@ -1453,6 +1516,7 @@ const AdminEventContactsContent: React.FC = () => {
               <button type="button" onClick={openDuplicateContact} className="rounded-xl bg-amber-600 px-4 py-3 font-black text-white">Open existing contact</button>
               <button type="button" onClick={saveDuplicateAnyway} disabled={saving} className="rounded-xl border border-amber-300 bg-white px-4 py-3 font-bold text-amber-900 disabled:opacity-60">Save anyway</button>
             </div>
+            <button type="button" onClick={leaveDuplicateAlert} disabled={saving} className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-4 py-3 font-bold text-amber-900 disabled:opacity-60">Back to scanning</button>
           </div>
         )}
 
@@ -1526,6 +1590,7 @@ const AdminEventContactsContent: React.FC = () => {
         <div role="alert" className="animate-pulse rounded-2xl border-2 border-red-600 bg-red-100 px-4 py-4 text-center shadow-lg ring-4 ring-red-200">
           <div className="text-base font-black uppercase tracking-wide text-red-800 sm:text-lg">{duplicateWarning}</div>
           <div className="mt-2 text-sm font-black text-red-700">↓ CHECK THE CONTACT SHOWN BELOW ↓</div>
+          <button type="button" onClick={leaveDuplicateAlert} className="mt-3 rounded-xl border border-red-300 bg-white px-5 py-3 font-black text-red-800">Back to scanning</button>
         </div>
       )}
 
