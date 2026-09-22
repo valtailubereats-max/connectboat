@@ -412,6 +412,7 @@ const Home = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [totalUsersCount, setTotalUsersCount] = useState<number | null>(null);
+  const [totalActiveListingsCount, setTotalActiveListingsCount] = useState<number | null>(null);
 
   // Estados de paginação de 30 em 30 itens
   const [limitAmount, setLimitAmount] = useState(PAGE_SIZE);
@@ -531,6 +532,39 @@ const Home = () => {
     filterTrailer,
     sortBy,
   ]);
+
+  // Buscar quantidade REAL de anúncios aprovados do país diretamente no Firestore.
+  // Esta contagem é independente do limite de 48 anúncios carregados na Home.
+  useEffect(() => {
+    let active = true;
+
+    const fetchActiveListingsCount = async () => {
+      try {
+        const targetCountries = (country === 'Reino Unido' || country === 'United Kingdom')
+          ? ['Reino Unido', 'United Kingdom', 'UK']
+          : ['Portugal'];
+
+        const q = query(
+          collection(db, 'ads'),
+          where('status', '==', 'approved'),
+          where('country', 'in', targetCountries)
+        );
+
+        const snapshot = await getCountFromServer(q);
+        if (active) {
+          setTotalActiveListingsCount(snapshot.data().count);
+        }
+      } catch (err) {
+        console.error('Erro ao buscar total real de anúncios ativos:', err);
+        if (active) {
+          setTotalActiveListingsCount(null);
+        }
+      }
+    };
+
+    fetchActiveListingsCount();
+    return () => { active = false; };
+  }, [country, reloadCounter]);
 
   // Buscar total de utilizadores no banco de dados se permitido/configurado
   useEffect(() => {
@@ -1579,7 +1613,7 @@ const Home = () => {
                     className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
                   >
                     <span className="text-white font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
-                      {totalApprovedCount !== null ? totalApprovedCount : filteredAds.length}
+                      {totalActiveListingsCount !== null ? totalActiveListingsCount : totalApprovedCount}
                     </span>
                     <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Active<br/>Listings</span>
 
@@ -2166,7 +2200,7 @@ const Home = () => {
                     className="flex items-center bg-black/50 backdrop-blur-md border border-white/15 rounded-lg sm:rounded-xl px-2 py-1 xs:px-2.5 xs:py-1.5 sm:px-3.5 sm:py-2 shadow-lg select-none min-w-[70px] xs:min-w-[85px] sm:min-w-[110px] relative group"
                   >
                     <span className="text-white font-black text-xs xs:text-sm md:text-xl mr-1 sm:mr-2">
-                      {totalApprovedCount !== null ? totalApprovedCount : filteredAds.length}
+                      {totalActiveListingsCount !== null ? totalActiveListingsCount : totalApprovedCount}
                     </span>
                     <span className="text-white/70 text-[7px] xs:text-[8px] md:text-[9px] uppercase font-black tracking-wider leading-none">Active<br/>Listings</span>
 

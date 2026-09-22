@@ -1,6 +1,6 @@
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { callContactSheet, syncSmsStatusToSheet } from '../../src/server/eventContactsSync.js';
 
@@ -1253,7 +1253,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { template, to, data } = req.body;
+    const { template, to, data, eventContactId } = req.body;
 
     if (!to || !template) {
       return res.status(400).json({ error: "Required parameters 'to' and 'template' are missing." });
@@ -1308,7 +1308,41 @@ export default async function handler(req: any, res: any) {
       }
 
       const responseJson = await response.json();
-      return res.status(200).json({ success: true, provider: 'resend', id: responseJson.id });
+
+      // Keep an authoritative audit trail for Event Contacts on the server.
+      // This uses Firebase Admin, so the history is not lost if browser Firestore
+      // rules prevent the client from writing the new audit fields.
+      let auditLogged = false;
+      if (template === 'event_contact_invitation' && typeof eventContactId === 'string' && eventContactId.trim()) {
+        const contactId = eventContactId.trim();
+        if (!contactId.includes('/') && contactId.length <= 200) {
+          const sentAt = new Date().toISOString();
+          const recipient = normalizeRecipients(to)[0] || '';
+          const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
+          const ref = db.collection('eventContacts').doc(contactId);
+          const snap = await ref.get();
+          if (snap.exists) {
+            await ref.update({
+              invitationStatus: 'Sent – Email',
+              invitationChannel: 'Email',
+              sheetSyncPending: true,
+              emailHistory: FieldValue.arrayUnion({
+                sentAt,
+                to: recipient,
+                provider: 'resend',
+                providerId: String(responseJson.id || ''),
+                source: 'ConnectBoat',
+              }),
+              emailLastSentAt: sentAt,
+              emailLastProvider: 'resend',
+              emailLastProviderId: String(responseJson.id || ''),
+            });
+            auditLogged = true;
+          }
+        }
+      }
+
+      return res.status(200).json({ success: true, provider: 'resend', id: responseJson.id, auditLogged });
     }
 
     // Fallback: Console Simulation for local development without API key

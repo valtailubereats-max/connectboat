@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { addDoc, arrayUnion, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
 import {
@@ -26,6 +26,14 @@ import { useAuth } from '../context/AuthContext';
 import UKProspectMap from '../components/UKProspectMap';
 
 type InvitationStatus = 'Pending' | 'Sent – WhatsApp' | 'Sent – Email' | 'Sent – SMS' | 'Sent – Other' | 'SMS – Accepted' | 'SMS – Delivered' | 'SMS – Failed' | 'Unsubscribed';
+
+type EmailHistoryEntry = {
+  sentAt: string;
+  to: string;
+  provider: string;
+  providerId?: string;
+  source: 'ConnectBoat';
+};
 
 type EventContact = {
   id: string;
@@ -63,6 +71,10 @@ type EventContact = {
   smsDeliveryErrorText?: string | null;
   smsAcceptedAt?: string;
   smsDeliveryReceiptAt?: string;
+  emailHistory?: EmailHistoryEntry[];
+  emailLastSentAt?: string;
+  emailLastProvider?: string;
+  emailLastProviderId?: string;
 };
 
 type ContactDraft = Omit<EventContact, 'id' | 'photoUrl' | 'photoPath' | 'createdBy' | 'createdAt' | 'sheetSyncPending' | 'smsRecipient' | 'smsCampaignId' | 'smsClickSendListId' | 'smsClickSendMessageId' | 'smsDeliveryStatus' | 'smsDeliveryStatusCode' | 'smsDeliveryStatusText' | 'smsDeliveryErrorCode' | 'smsDeliveryErrorText' | 'smsAcceptedAt' | 'smsDeliveryReceiptAt'>;
@@ -1282,10 +1294,81 @@ const AdminEventContactsContent: React.FC = () => {
           ? 'Email delivery is not configured yet. The contact was not marked as sent.'
           : 'Could not send the invitation email.'));
       }
-      await saveCurrent({ invitationStatus: 'Sent – Email', invitationChannel: 'Email' });
+      const sentAt = new Date().toISOString();
+      const provider = String(result?.provider || 'unknown');
+      const providerId = String(result?.id || '');
+      const savedId = await saveCurrent({ invitationStatus: 'Sent – Email', invitationChannel: 'Email' });
+      await updateDoc(doc(db, 'eventContacts', savedId), {
+        emailHistory: arrayUnion({ sentAt, to: email, provider, providerId, source: 'ConnectBoat' }),
+        emailLastSentAt: sentAt,
+        emailLastProvider: provider,
+        emailLastProviderId: providerId,
+      });
       await loadContacts();
       resetForm();
       setMessage('Invitation email sent with the ConnectBoat banner.');
+    } catch (error: any) {
+      console.error(error);
+      setMessage(error?.message || 'Could not send the invitation email. The contact was not marked as sent.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sendEmailFromHistory = async (contact: EventContact) => {
+    const email = contact.email?.trim();
+    if (!email || !user || saving) return;
+
+    const label = contact.company || contact.name || email;
+    const confirmed = window.confirm(`Send invitation email to ${label}?\n\n${email}`);
+    if (!confirmed) return;
+
+    setSaving(true);
+    try {
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + await user.getIdToken(),
+        },
+        body: JSON.stringify({
+          template: 'event_contact_invitation',
+          to: email,
+          eventContactId: contact.id,
+          data: { contactName: contact.name, company: contact.company },
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result?.success || result?.simulated) {
+        throw new Error(result?.error || (result?.simulated
+          ? 'Email delivery is not configured yet. The contact was not marked as sent.'
+          : 'Could not send the invitation email.'));
+      }
+
+      const sentAt = new Date().toISOString();
+      const provider = String(result?.provider || 'unknown');
+      const providerId = String(result?.id || '');
+      await updateDoc(doc(db, 'eventContacts', contact.id), {
+        invitationStatus: 'Sent – Email',
+        invitationChannel: 'Email',
+        sheetSyncPending: true,
+        emailHistory: arrayUnion({ sentAt, to: email, provider, providerId, source: 'ConnectBoat' }),
+        emailLastSentAt: sentAt,
+        emailLastProvider: provider,
+        emailLastProviderId: providerId,
+      });
+
+      const confirmedSheet = await syncOneToSheets(contact.id, {
+        ...contact,
+        invitationStatus: 'Sent – Email',
+        invitationChannel: 'Email',
+      });
+      if (!confirmedSheet) {
+        setMessage('Invitation email sent with the ConnectBoat banner. Google Sheets still needs syncing.');
+      } else {
+        setMessage('Invitation email sent with the ConnectBoat banner.');
+      }
+      await loadContacts();
     } catch (error: any) {
       console.error(error);
       setMessage(error?.message || 'Could not send the invitation email. The contact was not marked as sent.');
@@ -1810,9 +1893,41 @@ const AdminEventContactsContent: React.FC = () => {
                       </div>
                       {!hasDirectContact && <div className="mt-1 text-xs font-semibold text-slate-400">No contact details saved</div>}
                        <span className={`mt-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${contact.invitationStatus === 'SMS – Delivered' || String(contact.invitationStatus).startsWith('Sent') ? 'bg-emerald-50 text-emerald-700' : contact.invitationStatus === 'SMS – Failed' ? 'bg-red-50 text-red-700' : contact.invitationStatus === 'SMS – Accepted' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>{contact.invitationStatus || 'Pending'}</span>
+                      {contact.emailLastSentAt && (
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          <span className="font-semibold text-slate-600">Last email:</span>{' '}
+                          {new Date(contact.emailLastSentAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
+                          {' · '}via {contact.emailLastProvider === 'resend' ? 'ConnectBoat / Resend' : contact.emailLastProvider || 'ConnectBoat'}
+                          {contact.emailLastProviderId && <span title={contact.emailLastProviderId}> · ID {contact.emailLastProviderId}</span>}
+                        </div>
+                      )}
+                      {Array.isArray(contact.emailHistory) && contact.emailHistory.length > 1 && (
+                        <details className="mt-1 text-[11px] text-slate-500">
+                          <summary className="cursor-pointer font-semibold text-slate-600">Email history ({contact.emailHistory.length})</summary>
+                          <div className="mt-1 space-y-1 border-l-2 border-slate-100 pl-2">
+                            {[...contact.emailHistory].reverse().map((entry, index) => (
+                              <div key={`${entry.sentAt}-${entry.providerId || index}`}>
+                                {new Date(entry.sentAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
+                                {' · '}via {entry.provider === 'resend' ? 'ConnectBoat / Resend' : entry.provider}
+                                {entry.providerId && <span title={entry.providerId}> · ID {entry.providerId}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       <button onClick={() => handleEdit(contact)} className="rounded-lg p-2 text-slate-500" title="Edit contact"><Pencil size={16} /></button>
+                      <button
+                        type="button"
+                        onClick={() => sendEmailFromHistory(contact)}
+                        disabled={!contact.email?.trim() || saving}
+                        className="rounded-lg p-2 text-blue-600 disabled:cursor-not-allowed disabled:opacity-30"
+                        title={contact.email?.trim() ? 'Send invitation email' : 'No email saved'}
+                        aria-label={contact.email?.trim() ? `Send invitation email to ${contact.company || contact.name || contact.email}` : 'No email saved'}
+                      >
+                        <Mail size={16} />
+                      </button>
                       <button onClick={() => handleDelete(contact)} className="rounded-lg p-2 text-red-500" title="Delete contact"><Trash2 size={16} /></button>
                     </div>
                   </article>
