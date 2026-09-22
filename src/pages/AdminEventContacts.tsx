@@ -237,6 +237,43 @@ async function getRearCameraStream(): Promise<MediaStream> {
   });
 }
 
+function drawZoomedFrame(source: CanvasImageSource, width: number, height: number, zoom: number, canvas: HTMLCanvasElement, square = false) {
+  const cropWidth = (square ? Math.min(width, height) : width) / zoom;
+  const cropHeight = (square ? Math.min(width, height) : height) / zoom;
+  canvas.width = Math.max(1, Math.round(cropWidth));
+  canvas.height = Math.max(1, Math.round(cropHeight));
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Could not prepare the zoomed image.');
+  context.drawImage(source, (width - cropWidth) / 2, (height - cropHeight) / 2, cropWidth, cropHeight, 0, 0, canvas.width, canvas.height);
+}
+
+async function cropPhotoToZoom(blob: Blob, zoom: number): Promise<Blob> {
+  const bitmap = await createImageBitmap(blob);
+  try {
+    const canvas = document.createElement('canvas');
+    drawZoomedFrame(bitmap, bitmap.width, bitmap.height, zoom, canvas);
+    const cropped = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.96));
+    if (!cropped) throw new Error('Could not crop the zoomed photo.');
+    return cropped;
+  } finally {
+    bitmap.close();
+  }
+}
+
+function LiveCameraZoomControls({ value, min, max, step, mode, onChange }: { value: number; min: number; max: number; step: number; mode: 'camera' | 'digital'; onChange: (value: number) => void }) {
+  return (
+    <div className="mt-3 text-white">
+      <div className="mb-1 text-center text-xs font-semibold">{mode === 'camera' ? 'Camera zoom' : 'Digital zoom'}</div>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => onChange(Math.max(min, value - step))} disabled={value <= min} aria-label="Zoom out before capture" className="rounded-lg border border-white/30 p-2 disabled:opacity-40"><ZoomOut size={20} /></button>
+        <input type="range" min={min} max={max} step={step} value={value} onChange={event => onChange(Number(event.target.value))} aria-label="Camera zoom" className="min-w-0 flex-1 accent-white" />
+        <button type="button" onClick={() => onChange(Math.min(max, value + step))} disabled={value >= max} aria-label="Zoom in before capture" className="rounded-lg border border-white/30 p-2 disabled:opacity-40"><ZoomIn size={20} /></button>
+        <span className="w-12 text-right text-sm font-bold">{value.toFixed(1)}×</span>
+      </div>
+    </div>
+  );
+}
+
 async function improveCameraImage(stream: MediaStream) {
   const track = stream.getVideoTracks()[0];
   if (!track) return;
@@ -409,6 +446,11 @@ const AdminEventContactsContent: React.FC = () => {
   const [message, setMessage] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState('');
+  const [cameraZoom, setCameraZoom] = useState(1);
+  const cameraZoomRef = useRef(1);
+  const [cameraZoomMode, setCameraZoomMode] = useState<'camera' | 'digital'>('digital');
+  const cameraZoomModeRef = useRef<'camera' | 'digital'>('digital');
+  const [cameraZoomRange, setCameraZoomRange] = useState({ min: 1, max: 3, step: 0.25 });
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scanStreamRef = useRef<MediaStream | null>(null);
   const scanTimerRef = useRef<number | null>(null);
@@ -420,6 +462,64 @@ const AdminEventContactsContent: React.FC = () => {
   const nativeCameraInputRef = useRef<HTMLInputElement | null>(null);
   const prospectImportInputRef = useRef<HTMLInputElement | null>(null);
   const cardStreamRef = useRef<MediaStream | null>(null);
+
+  const resetCameraZoom = () => {
+    cameraZoomRef.current = 1;
+    cameraZoomModeRef.current = 'digital';
+    setCameraZoom(1);
+    setCameraZoomMode('digital');
+    setCameraZoomRange({ min: 1, max: 3, step: 0.25 });
+  };
+
+  const configureCameraZoom = async (stream: MediaStream) => {
+    const track = stream.getVideoTracks()[0];
+    const capability: any = track?.getCapabilities?.()?.zoom;
+    const min = Number(capability?.min);
+    const max = Number(capability?.max);
+    if (!track || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) return;
+    try {
+      const initial = Math.max(min, Math.min(max, Number((track.getSettings() as any).zoom) || min));
+      await track.applyConstraints({ advanced: [{ zoom: initial }] } as any);
+      const applied = Number((track.getSettings() as any).zoom);
+      if (!Number.isFinite(applied) || Math.abs(applied - initial) > 0.1) return;
+      const step = Math.max(0.1, Number(capability.step) || 0.1);
+      cameraZoomRef.current = applied;
+      cameraZoomModeRef.current = 'camera';
+      setCameraZoom(applied);
+      setCameraZoomMode('camera');
+      setCameraZoomRange({ min, max, step });
+    } catch (error) {
+      console.warn('Camera zoom is unavailable; using digital zoom.', error);
+    }
+  };
+
+  const changeCameraZoom = async (value: number) => {
+    const { min, max } = cameraZoomRange;
+    const next = Math.max(min, Math.min(max, value));
+    if (cameraZoomModeRef.current === 'camera') {
+      const track = (cardStreamRef.current || scanStreamRef.current)?.getVideoTracks()[0];
+      if (track) {
+        try {
+          await track.applyConstraints({ advanced: [{ zoom: next }] } as any);
+          const applied = Number((track.getSettings() as any).zoom);
+          if (!Number.isFinite(applied) || Math.abs(applied - next) > 0.1) throw new Error('Camera did not apply the requested zoom.');
+          cameraZoomRef.current = applied;
+          setCameraZoom(applied);
+          return;
+        } catch (error) {
+          console.warn('Camera zoom failed; switching to digital zoom.', error);
+          cameraZoomModeRef.current = 'digital';
+          setCameraZoomMode('digital');
+          setCameraZoomRange({ min: 1, max: 3, step: 0.25 });
+        }
+      }
+    }
+    const digital = Math.max(1, Math.min(3, next));
+    cameraZoomRef.current = digital;
+    setCameraZoom(digital);
+  };
+
+  const digitalCameraZoom = () => cameraZoomModeRef.current === 'digital' ? cameraZoomRef.current : 1;
 
   const duplicateMatch = useMemo(() => {
     if (editingId) return null;
@@ -594,6 +694,7 @@ const AdminEventContactsContent: React.FC = () => {
   };
 
   const startCardCamera = async () => {
+    resetCameraZoom();
     setCardCameraError('');
     setMessage('');
     if (capturedCardPreview) URL.revokeObjectURL(capturedCardPreview);
@@ -616,6 +717,7 @@ const AdminEventContactsContent: React.FC = () => {
       }
       cardStreamRef.current = stream;
       await improveCameraImage(stream);
+      await configureCameraZoom(stream);
       window.setTimeout(async () => {
         const video = cardVideoRef.current;
         if (!video) return;
@@ -643,12 +745,14 @@ const AdminEventContactsContent: React.FC = () => {
 
     try {
       let blob: Blob | null = null;
+      const zoom = digitalCameraZoom();
       const ImageCaptureCtor = (window as any).ImageCapture;
 
       if (ImageCaptureCtor) {
         try {
           const imageCapture = new ImageCaptureCtor(track);
           blob = await imageCapture.takePhoto();
+          if (blob && zoom > 1) blob = await cropPhotoToZoom(blob, zoom);
         } catch (error) {
           console.warn('High-resolution ImageCapture failed; using video-frame fallback.', error);
         }
@@ -657,11 +761,7 @@ const AdminEventContactsContent: React.FC = () => {
       if (!blob) {
         if (video.videoWidth <= 0 || video.videoHeight <= 0) return;
         const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const context = canvas.getContext('2d');
-        if (!context) return;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        drawZoomedFrame(video, video.videoWidth, video.videoHeight, zoom, canvas);
         blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.96));
       }
 
@@ -790,6 +890,7 @@ const AdminEventContactsContent: React.FC = () => {
   };
 
   const startScanner = async () => {
+    resetCameraZoom();
     setScannerError('');
     setMessage('');
     const Detector = (window as any).BarcodeDetector;
@@ -803,18 +904,24 @@ const AdminEventContactsContent: React.FC = () => {
       setScannerOpen(true);
       const stream = await getRearCameraStream();
       scanStreamRef.current = stream;
+      await configureCameraZoom(stream);
       requestAnimationFrame(async () => {
         const video = videoRef.current;
         if (!video) return;
         video.srcObject = stream;
         await video.play();
         const detector = new Detector({ formats: ['qr_code'] });
+        const zoomedFrame = document.createElement('canvas');
         let busy = false;
         scanTimerRef.current = window.setInterval(async () => {
           if (busy || video.readyState < 2) return;
           busy = true;
           try {
-            const codes = await detector.detect(video);
+            const zoom = digitalCameraZoom();
+            if (zoom > 1 && video.videoWidth && video.videoHeight) {
+              drawZoomedFrame(video, video.videoWidth, video.videoHeight, zoom, zoomedFrame, true);
+            }
+            const codes = await detector.detect(zoom > 1 ? zoomedFrame : video);
             if (codes?.[0]?.rawValue) applyQrValue(codes[0].rawValue);
           } catch {
             // Ignore a single failed camera frame.
@@ -1746,8 +1853,9 @@ const AdminEventContactsContent: React.FC = () => {
               </div>
             ) : (
               <div className="bg-black p-3">
-                <video ref={cardVideoRef} playsInline muted className="max-h-[65vh] w-full rounded-xl object-contain" />
-                <div className="mt-3 text-center text-sm font-bold text-white">Rear camera • fit the whole card or business sign inside the frame.</div>
+                <div className="overflow-hidden rounded-xl"><video ref={cardVideoRef} playsInline muted className="max-h-[65vh] w-full object-contain" style={{ transform: `scale(${cameraZoom})` }} /></div>
+                <LiveCameraZoomControls value={cameraZoom} onChange={changeCameraZoom} />
+                <div className="mt-3 text-center text-sm font-bold text-white">Rear camera • centre the card or sign. The photo will use this zoom.</div>
                 <button type="button" onClick={captureBusinessCard} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 font-black text-slate-900">
                   <Camera size={20} /> Take Photo
                 </button>
@@ -1778,7 +1886,7 @@ const AdminEventContactsContent: React.FC = () => {
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4">
           <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3"><div className="font-black">Scan QR Code</div><button onClick={stopScanner} className="p-2 text-slate-500"><X size={20} /></button></div>
-            {scannerError ? <div className="p-6 text-center text-sm text-slate-600">{scannerError}</div> : <div className="bg-black p-3"><video ref={videoRef} playsInline muted className="aspect-square w-full rounded-xl object-cover" /><div className="mt-3 text-center text-sm font-bold text-white">Point the camera at the company QR code</div></div>}
+            {scannerError ? <div className="p-6 text-center text-sm text-slate-600">{scannerError}</div> : <div className="bg-black p-3"><div className="aspect-square overflow-hidden rounded-xl"><video ref={videoRef} playsInline muted className="h-full w-full object-cover" style={{ transform: `scale(${cameraZoom})` }} /></div><LiveCameraZoomControls value={cameraZoom} onChange={changeCameraZoom} /><div className="mt-3 text-center text-sm font-bold text-white">Centre the company QR code. The reader uses this zoom.</div></div>}
           </div>
         </div>
       )}
