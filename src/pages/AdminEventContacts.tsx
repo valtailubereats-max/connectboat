@@ -1400,7 +1400,17 @@ const AdminEventContactsContent: React.FC = () => {
       } else {
         setMessage('Invitation email sent with the ConnectBoat banner.');
       }
-      await loadContacts();
+      const historyEntry: EmailHistoryEntry = { sentAt, to: email, provider, providerId, source: 'ConnectBoat' };
+      setContacts(previous => previous.map(item => item.id === contact.id ? {
+        ...item,
+        invitationStatus: 'Sent – Email',
+        invitationChannel: 'Email',
+        sheetSyncPending: !confirmedSheet,
+        emailHistory: [...(Array.isArray(item.emailHistory) ? item.emailHistory : []), historyEntry],
+        emailLastSentAt: sentAt,
+        emailLastProvider: provider,
+        emailLastProviderId: providerId,
+      } : item));
     } catch (error: any) {
       console.error(error);
       setMessage(error?.message || 'Could not send the invitation email. The contact was not marked as sent.');
