@@ -1908,7 +1908,7 @@ const AdminEventContactsContent: React.FC = () => {
                 );
                 return (
                   <article key={contact.id} className="flex items-start gap-3 rounded-xl border border-slate-200 p-3">
-                    {contact.photoUrl ? <button type="button" onClick={() => openPhotoZoom(contact.photoUrl)} aria-label={`Enlarge photo of ${contact.company || contact.name || 'contact'}`} className="h-14 w-14 shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"><img src={contact.photoUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /></button> : <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Camera size={20} /></div>}
+                    {contact.photoUrl ? <button type="button" onClick={() => handleEdit(contact)} aria-label={`Edit ${contact.company || contact.name || 'contact'}`} title="Edit contact" className="h-14 w-14 shrink-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"><img src={contact.photoUrl} alt="" className="h-14 w-14 rounded-lg object-cover" /></button> : <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Camera size={20} /></div>}
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-black text-slate-900">{contact.company || contact.name || contact.website || 'Captured contact'}</div>
                       {contact.company && contact.name && <div className="truncate text-xs font-medium text-slate-600">{contact.name}</div>}

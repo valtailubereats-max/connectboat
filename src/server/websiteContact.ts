@@ -21,7 +21,9 @@ function publicAddress(address: string) {
   return false;
 }
 
-async function fetchPublicHtml(url: URL, redirects = 0): Promise<string> {
+type PublicHtmlResult = { html: string; finalUrl: URL };
+
+async function fetchPublicHtml(url: URL, redirects = 0): Promise<PublicHtmlResult> {
   if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.') ||
       url.username || url.password || (url.port && !['80', '443'].includes(url.port)) || isIP(url.hostname)) {
     throw new Error('Only public website URLs are supported.');
@@ -36,16 +38,16 @@ async function fetchPublicHtml(url: URL, redirects = 0): Promise<string> {
       headers: { 'User-Agent': 'ConnectBoatContactScanner/1.0', Accept: 'text/html' },
       lookup: (_hostname, _options, callback) => callback(null, selected.address, selected.family),
     }, response => {
-      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location && redirects < 2) {
+      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
         response.resume();
         const next = new URL(response.headers.location, url);
-        if (next.hostname.replace(/^www\./, '') !== url.hostname.replace(/^www\./, '')) return resolve('');
+        if (redirects >= 5) return resolve({ html: '', finalUrl: url });
         fetchPublicHtml(next, redirects + 1).then(resolve, reject);
         return;
       }
       if (response.statusCode !== 200 || !String(response.headers['content-type'] || '').toLowerCase().includes('text/html')) {
         response.resume();
-        return resolve('');
+        return resolve({ html: '', finalUrl: url });
       }
       let html = '';
       response.setEncoding('utf8');
@@ -53,7 +55,7 @@ async function fetchPublicHtml(url: URL, redirects = 0): Promise<string> {
         html += chunk;
         if (html.length > 200_000) response.destroy();
       });
-      response.on('end', () => resolve(html));
+      response.on('end', () => resolve({ html, finalUrl: url }));
       response.on('error', reject);
     });
     request.on('timeout', () => request.destroy(new Error('Website timed out.')));
@@ -116,9 +118,23 @@ export async function findWebsiteContactDetails(raw: string) {
   if (raw.length > 2048) throw new Error('Invalid website.');
   const url = new URL(raw);
   const details: Record<string, string> = {};
-  for (const page of [url, new URL('/', url.origin), new URL('/contact', url.origin), new URL('/contact-us', url.origin)]) {
+  const first = await fetchPublicHtml(url);
+  const resolvedUrl = first.finalUrl;
+  const pages = [
+    { url: resolvedUrl, html: first.html },
+    { url: new URL('/', resolvedUrl.origin) },
+    { url: new URL('/contact', resolvedUrl.origin) },
+    { url: new URL('/contact-us', resolvedUrl.origin) },
+    { url: new URL('/about', resolvedUrl.origin) },
+    { url: new URL('/about-us', resolvedUrl.origin) },
+  ];
+  const visited = new Set<string>();
+  for (const page of pages) {
+    if (visited.has(page.url.href)) continue;
+    visited.add(page.url.href);
     try {
-      const found = pageDetails(await fetchPublicHtml(page), url.hostname);
+      const result = page.html === undefined ? await fetchPublicHtml(page.url) : { html: page.html, finalUrl: page.url };
+      const found = pageDetails(result.html, result.finalUrl.hostname);
       for (const [key, value] of Object.entries(found)) if (value && !details[key]) details[key] = value;
     } catch { /* Try the next public page. */ }
     if (details.email && details.phone && details.company) break;
