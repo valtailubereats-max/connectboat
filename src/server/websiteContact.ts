@@ -21,9 +21,14 @@ function publicAddress(address: string) {
   return false;
 }
 
-type PublicHtmlResult = { html: string; finalUrl: URL };
+type PublicTextResult = { html: string; finalUrl: URL };
 
-async function fetchPublicHtml(url: URL, redirects = 0): Promise<PublicHtmlResult> {
+async function fetchPublicText(
+  url: URL,
+  redirects = 0,
+  acceptedTypes = ['text/html'],
+  maxBytes = 500_000,
+): Promise<PublicTextResult> {
   if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.') ||
       url.username || url.password || (url.port && !['80', '443'].includes(url.port)) || isIP(url.hostname)) {
     throw new Error('Only public website URLs are supported.');
@@ -45,20 +50,28 @@ async function fetchPublicHtml(url: URL, redirects = 0): Promise<PublicHtmlResul
         response.resume();
         const next = new URL(response.headers.location, url);
         if (redirects >= 5) return resolve({ html: '', finalUrl: url });
-        fetchPublicHtml(next, redirects + 1).then(resolve, reject);
+        fetchPublicText(next, redirects + 1, acceptedTypes, maxBytes).then(resolve, reject);
         return;
       }
-      if (response.statusCode !== 200 || !String(response.headers['content-type'] || '').toLowerCase().includes('text/html')) {
+      const contentType = String(response.headers['content-type'] || '').toLowerCase();
+      if (response.statusCode !== 200 || !acceptedTypes.some(type => contentType.includes(type))) {
         response.resume();
         return resolve({ html: '', finalUrl: url });
       }
       let html = '';
+      let bytes = 0;
+      let tooLarge = false;
       response.setEncoding('utf8');
       response.on('data', chunk => {
+        bytes += Buffer.byteLength(chunk);
+        if (bytes > maxBytes) {
+          tooLarge = true;
+          response.destroy(new Error('Website response is too large.'));
+          return;
+        }
         html += chunk;
-        if (html.length > 200_000) response.destroy();
       });
-      response.on('end', () => resolve({ html, finalUrl: url }));
+      response.on('end', () => { if (!tooLarge) resolve({ html, finalUrl: url }); });
       response.on('error', reject);
     });
     request.on('timeout', () => request.destroy(new Error('Website timed out.')));
@@ -66,6 +79,8 @@ async function fetchPublicHtml(url: URL, redirects = 0): Promise<PublicHtmlResul
     request.end();
   });
 }
+
+const fetchPublicHtml = (url: URL, redirects = 0) => fetchPublicText(url, redirects);
 
 function findEmail(html: string, hostname: string) {
   const readable = html.replace(/&#64;|&#x40;|&commat;/gi, '@').replace(/&#46;|&#x2e;|&period;/gi, '.');
@@ -177,6 +192,26 @@ export async function findWebsiteContactDetails(raw: string) {
       for (const [key, value] of Object.entries(found)) if (value && !details[key]) details[key] = value;
     } catch { /* Try the next public page. */ }
     if (details.email && details.phone && details.company) break;
+  }
+  if (!details.email || !details.linkedin) {
+    const scripts = [...first.html.matchAll(/<script\b[^>]*src\s*=\s*(["'])(.*?)\1/gi)]
+      .map(match => match[2].replace(/&amp;/gi, '&'))
+      .map(src => {
+        try { return new URL(src, resolvedUrl); } catch { return null; }
+      })
+      .filter((script): script is URL => Boolean(script && script.origin === resolvedUrl.origin))
+      .slice(0, 3);
+    for (const script of scripts) {
+      try {
+        const asset = await fetchPublicText(script, 0, ['javascript', 'text/plain'], 5_000_000);
+        if (!details.email) details.email = findEmail(asset.html, resolvedUrl.hostname);
+        if (!details.linkedin) {
+          details.linkedin = asset.html.match(/https?:\\?\/\\?\/(?:[\w-]+\.)?linkedin\.com\\?\/(?:company|in)\\?\/[^"'\\\s,)]+/i)?.[0]
+            ?.replace(/\\\//g, '/') || '';
+        }
+      } catch { /* Try the next same-origin application script. */ }
+      if (details.email && details.linkedin) break;
+    }
   }
   return details;
 }
