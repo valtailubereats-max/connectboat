@@ -17,6 +17,23 @@ function pullSyncError(message: string, code: 'SYNC_IN_PROGRESS' | 'SYNC_RESTART
   return error;
 }
 
+function sheetContact(document: any, id: string) {
+  const data = document || {};
+  return {
+    ...contactData(data),
+    ...locationData(data),
+    contactId: id,
+    photoUrl: text(data.photoUrl),
+    photoPath: text(data.photoPath),
+    createdAt: text(data.createdAt),
+    rawSource: text(data.rawSource),
+    emailHistory: Array.isArray(data.emailHistory) ? data.emailHistory : [],
+    emailLastSentAt: text(data.emailLastSentAt),
+    emailLastProvider: text(data.emailLastProvider),
+    emailLastProviderId: text(data.emailLastProviderId),
+  };
+}
+
 async function reconcileAcceptedSms(db: any, ids: string[]) {
   const username = process.env.CLICKSEND_USERNAME;
   const apiKey = process.env.CLICKSEND_API_KEY;
@@ -137,14 +154,20 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
   const body = req.body || {};
   const contacts = db.collection('eventContacts');
   if (body.operation === 'list') {
-    const snapshot = await contacts.get();
-    const rows = snapshot.docs.map((item: any) => ({
-      id: item.id,
-      ...item.data(),
-      createdAt: item.createTime?.toDate().toISOString() || '',
-    }));
-    rows.sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
-    return res.json({ success: true, contacts: rows });
+    try {
+      const result = await callContactSheet({ action: 'listContacts' });
+      if (!Array.isArray(result.contacts)) throw new Error('Google Sheets returned an invalid contact list.');
+      const rows = result.contacts.map((row: any) => ({ ...row, id: text(row.id || row.contactId) }));
+      return res.json({ success: true, contacts: rows, source: 'googleSheets' });
+    } catch (sheetError: any) {
+      // Transitional fallback: keep the page available until the updated Apps
+      // Script is deployed and the existing rows have been verified.
+      console.warn('Sheet-only contact list unavailable; using migration fallback:', sheetError?.message || sheetError);
+      const snapshot = await contacts.get();
+      const rows = snapshot.docs.map((item: any) => ({ id: item.id, ...item.data(), createdAt: item.createTime?.toDate().toISOString() || '' }));
+      rows.sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+      return res.json({ success: true, contacts: rows, source: 'firestoreMigrationFallback' });
+    }
   }
   if (body.operation === 'syncSmsStatuses') {
     const ids = body.contactIds;
@@ -292,7 +315,7 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
     const ids = Array.isArray(body.contactIds) ? body.contactIds : [];
     if (!ids.length || ids.length > 25 || ids.some((id: unknown) => !text(id) || text(id).includes('/'))) return res.status(400).json({ success: false, errorMessage: 'Select 1–25 contact IDs.' });
     const snapshots = await db.getAll(...ids.map((id: string) => contacts.doc(id)));
-    const rows = snapshots.filter((d: any) => d.exists).map((d: any) => ({ ...contactData(d.data()), contactId: d.id }));
+    const rows = snapshots.filter((d: any) => d.exists).map((d: any) => sheetContact({ ...d.data(), createdAt: d.createTime?.toDate().toISOString() || text(d.data()?.createdAt) }, d.id));
     const result = await callContactSheet({ action: 'syncAll', contacts: rows });
     // Do not acknowledge a newer edit that happened while the sheet request was running.
     await db.runTransaction(async (tx: any) => {

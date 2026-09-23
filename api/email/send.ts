@@ -1263,6 +1263,14 @@ export default async function handler(req: any, res: any) {
       await authorizeEmailRequest(decodedUser, template, to, data);
       await assertEventContactCanReceiveInvitation(to, template);
     } catch (authorizationError: any) {
+      const quotaExceeded = /RESOURCE_EXHAUSTED|quota exceeded/i.test(String(authorizationError?.message || ''));
+      if (quotaExceeded) {
+        return res.status(503).json({
+          success: false,
+          code: 'DATABASE_QUOTA_EXHAUSTED',
+          error: 'Email was not sent because the contact database quota is exhausted. Wait for the quota to reset or increase the Firebase quota, then try again once.',
+        });
+      }
       return res.status(authorizationError?.statusCode || 403).json({
         success: false,
         error: authorizationError?.message || 'Email request is not authorized.',
@@ -1313,36 +1321,44 @@ export default async function handler(req: any, res: any) {
       // This uses Firebase Admin, so the history is not lost if browser Firestore
       // rules prevent the client from writing the new audit fields.
       let auditLogged = false;
+      let auditWarning = '';
+      let sentAt = new Date().toISOString();
       if (template === 'event_contact_invitation' && typeof eventContactId === 'string' && eventContactId.trim()) {
         const contactId = eventContactId.trim();
         if (!contactId.includes('/') && contactId.length <= 200) {
-          const sentAt = new Date().toISOString();
           const recipient = normalizeRecipients(to)[0] || '';
-          const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
-          const ref = db.collection('eventContacts').doc(contactId);
-          const snap = await ref.get();
-          if (snap.exists) {
-            await ref.update({
-              invitationStatus: 'Sent – Email',
-              invitationChannel: 'Email',
-              sheetSyncPending: true,
-              emailHistory: FieldValue.arrayUnion({
-                sentAt,
-                to: recipient,
-                provider: 'resend',
-                providerId: String(responseJson.id || ''),
-                source: 'ConnectBoat',
-              }),
-              emailLastSentAt: sentAt,
-              emailLastProvider: 'resend',
-              emailLastProviderId: String(responseJson.id || ''),
-            });
-            auditLogged = true;
+          try {
+            const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
+            const ref = db.collection('eventContacts').doc(contactId);
+            const snap = await ref.get();
+            if (snap.exists) {
+              await ref.update({
+                invitationStatus: 'Sent – Email',
+                invitationChannel: 'Email',
+                sheetSyncPending: true,
+                emailHistory: FieldValue.arrayUnion({
+                  sentAt,
+                  to: recipient,
+                  provider: 'resend',
+                  providerId: String(responseJson.id || ''),
+                  source: 'ConnectBoat',
+                }),
+                emailLastSentAt: sentAt,
+                emailLastProvider: 'resend',
+                emailLastProviderId: String(responseJson.id || ''),
+              });
+              auditLogged = true;
+            }
+          } catch (auditError: any) {
+            auditWarning = /RESOURCE_EXHAUSTED|quota exceeded/i.test(String(auditError?.message || ''))
+              ? 'Email delivered, but the database quota prevented saving its history.'
+              : 'Email delivered, but its history could not be saved.';
+            console.error('[API Email AUDIT] Delivery succeeded but audit logging failed:', auditError?.message || auditError);
           }
         }
       }
 
-      return res.status(200).json({ success: true, provider: 'resend', id: responseJson.id, auditLogged });
+      return res.status(200).json({ success: true, provider: 'resend', id: responseJson.id, sentAt, auditLogged, auditWarning });
     }
 
     // Fallback: Console Simulation for local development without API key

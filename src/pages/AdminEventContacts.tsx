@@ -1377,25 +1377,35 @@ const AdminEventContactsContent: React.FC = () => {
           : 'Could not send the invitation email.'));
       }
 
-      const sentAt = new Date().toISOString();
+      const sentAt = typeof result?.sentAt === 'string' ? result.sentAt : new Date().toISOString();
       const provider = String(result?.provider || 'unknown');
       const providerId = String(result?.id || '');
-      await updateDoc(doc(db, 'eventContacts', contact.id), {
-        invitationStatus: 'Sent – Email',
-        invitationChannel: 'Email',
-        sheetSyncPending: true,
-        emailHistory: arrayUnion({ sentAt, to: email, provider, providerId, source: 'ConnectBoat' }),
-        emailLastSentAt: sentAt,
-        emailLastProvider: provider,
-        emailLastProviderId: providerId,
-      });
+      let auditLogged = result?.auditLogged === true;
+      if (!auditLogged && !result?.auditWarning) {
+        try {
+          await updateDoc(doc(db, 'eventContacts', contact.id), {
+            invitationStatus: 'Sent – Email',
+            invitationChannel: 'Email',
+            sheetSyncPending: true,
+            emailHistory: arrayUnion({ sentAt, to: email, provider, providerId, source: 'ConnectBoat' }),
+            emailLastSentAt: sentAt,
+            emailLastProvider: provider,
+            emailLastProviderId: providerId,
+          });
+          auditLogged = true;
+        } catch (auditError) {
+          console.error('Email delivered but client audit logging failed:', auditError);
+        }
+      }
 
-      const confirmedSheet = await syncOneToSheets(contact.id, {
-        ...contact,
-        invitationStatus: 'Sent – Email',
-        invitationChannel: 'Email',
-      });
-      if (!confirmedSheet) {
+      const confirmedSheet = auditLogged ? await syncOneToSheets(contact.id, {
+          ...contact,
+          invitationStatus: 'Sent – Email',
+          invitationChannel: 'Email',
+        }) : false;
+      if (!auditLogged) {
+        setMessage(result?.auditWarning || 'Email delivered, but the database could not save its history. Do not send it again; retry the pending sync after the quota resets.');
+      } else if (!confirmedSheet) {
         setMessage('Invitation email sent with the ConnectBoat banner. Google Sheets still needs syncing.');
       } else {
         setMessage('Invitation email sent with the ConnectBoat banner.');

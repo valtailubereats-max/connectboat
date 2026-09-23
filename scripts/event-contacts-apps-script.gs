@@ -22,7 +22,15 @@ const HEADERS = [
   'City',
   'Country',
   'Latitude',
-  'Longitude'
+  'Longitude',
+  'Photo URL',
+  'Photo Path',
+  'Created At',
+  'Raw Source',
+  'Email History',
+  'Email Last Sent At',
+  'Email Last Provider',
+  'Email Last Provider ID'
 ];
 
 const SUPPRESSION_HEADERS = [
@@ -115,6 +123,7 @@ function doPost(e) {
     if (actualHeaders.some(function(header, i) { return header !== HEADERS[i]; })) throw new Error('Event Contacts headers differ from the expected Event Contacts columns.');
 
     if (data.action === 'readContacts') return jsonResponse(readContacts_(sheet, data));
+    if (data.action === 'listContacts') return jsonResponse(listContacts_(sheet));
     if (data.action === 'linkContacts') return jsonResponse(linkContacts_(sheet, data.links));
     if (data.action === 'updateSmsStatus') return jsonResponse(updateSmsStatus_(sheet, data));
     if (data.action === 'syncAll' && (!Array.isArray(data.contacts) || data.contacts.length > 25)) throw new Error('Send at most 25 contacts per batch.');
@@ -340,11 +349,17 @@ function getEventContactsSheet() {
     const legacyHeaders = currentHeaders.slice(0, 12);
     const legacyMatches = legacyHeaders.every(function(header, i) { return header === HEADERS[i]; });
     if (!legacyMatches) throw new Error('Event Contacts headers differ from the expected A:L contact columns.');
-    const locationHeaders = sheet.getRange(1, 13, 1, HEADERS.length - 12).getValues()[0];
+    const locationHeaders = sheet.getRange(1, 13, 1, 6).getValues()[0];
     if (locationHeaders.some(function(header, i) { return header !== HEADERS[i + 12]; })) {
       const hasAuxiliaryColumn = locationHeaders.some(function(header) { return clean(header) !== ''; });
-      if (hasAuxiliaryColumn) sheet.insertColumnsBefore(13, HEADERS.length - 12);
-      sheet.getRange(1, 13, 1, HEADERS.length - 12).setValues([HEADERS.slice(12)]);
+      if (hasAuxiliaryColumn) sheet.insertColumnsBefore(13, 6);
+      sheet.getRange(1, 13, 1, 6).setValues([HEADERS.slice(12, 18)]);
+    }
+    const archiveHeaders = sheet.getRange(1, 19, 1, HEADERS.length - 18).getValues()[0];
+    if (archiveHeaders.some(function(header, i) { return header !== HEADERS[i + 18]; })) {
+      const hasAuxiliaryColumn = archiveHeaders.some(function(header) { return clean(header) !== ''; });
+      if (hasAuxiliaryColumn) sheet.insertColumnsBefore(19, HEADERS.length - 18);
+      sheet.getRange(1, 19, 1, HEADERS.length - 18).setValues([HEADERS.slice(18)]);
     }
   }
 
@@ -431,7 +446,8 @@ function upsertContact(sheet, contact, context) {
   const oldStatus = added ? '' : clean(sheet.getRange(target, 10).getValue());
   const status = context.suppressed[email] || oldStatus === 'Unsubscribed' ? 'Unsubscribed' : clean(contact.invitationStatus || contact.status || 'Pending');
   if (status === 'Unsubscribed') context.suppressedIds[id] = true;
-  const row = [clean(contact.name), clean(contact.company), clean(contact.whatsapp), clean(contact.phone), email, clean(contact.website), clean(contact.linkedin), clean(contact.otherContact), clean(contact.invitationChannel || contact.channel), status, clean(contact.notes), id, clean(contact.address), clean(contact.postcode), clean(contact.city), clean(contact.country), clean(contact.latitude), clean(contact.longitude)];
+  const emailHistory = Array.isArray(contact.emailHistory) ? JSON.stringify(contact.emailHistory) : clean(contact.emailHistory);
+  const row = [clean(contact.name), clean(contact.company), clean(contact.whatsapp), clean(contact.phone), email, clean(contact.website), clean(contact.linkedin), clean(contact.otherContact), clean(contact.invitationChannel || contact.channel), status, clean(contact.notes), id, clean(contact.address), clean(contact.postcode), clean(contact.city), clean(contact.country), clean(contact.latitude), clean(contact.longitude), clean(contact.photoUrl), clean(contact.photoPath), clean(contact.createdAt), clean(contact.rawSource), emailHistory, clean(contact.emailLastSentAt), clean(contact.emailLastProvider), clean(contact.emailLastProviderId)];
   sheet.getRange(target, 3, 1, 2).setNumberFormat('@');
   // Leading '=' is escaped so contact text is never interpreted as a formula.
   sheet.getRange(target, 1, 1, row.length).setValues([row.map(function(value) { return value.indexOf('=') === 0 ? "'" + value : value; })]);
@@ -465,7 +481,7 @@ function readContacts_(sheet, data) {
   const count = Math.min(limit, Math.max(0, total - offset));
   const context = createContactContext_(sheet);
   const rows = count ? sheet.getRange(offset + 2, 1, count, HEADERS.length).getDisplayValues() : [];
-  const keys = ['name','company','whatsapp','phone','email','website','linkedin','otherContact','invitationChannel','invitationStatus','notes','contactId','address','postcode','city','country','latitude','longitude'];
+  const keys = ['name','company','whatsapp','phone','email','website','linkedin','otherContact','invitationChannel','invitationStatus','notes','contactId','address','postcode','city','country','latitude','longitude','photoUrl','photoPath','createdAt','rawSource','emailHistory','emailLastSentAt','emailLastProvider','emailLastProviderId'];
   const contacts = [];
   rows.forEach(function(row, i) {
     if (!row.slice(0, 8).some(function(value) { return clean(value) !== ''; })) return;
@@ -481,6 +497,26 @@ function readContacts_(sheet, data) {
     contacts.push(contact);
   });
   return { ok: true, contacts: contacts, nextOffset: offset + count < total ? offset + count : null };
+}
+
+function listContacts_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const rows = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getDisplayValues() : [];
+  const keys = ['name','company','whatsapp','phone','email','website','linkedin','otherContact','invitationChannel','invitationStatus','notes','contactId','address','postcode','city','country','latitude','longitude','photoUrl','photoPath','createdAt','rawSource','emailHistory','emailLastSentAt','emailLastProvider','emailLastProviderId'];
+  const contacts = [];
+  rows.forEach(function(row) {
+    if (!row.slice(0, 8).some(function(value) { return clean(value) !== ''; })) return;
+    const contact = {};
+    keys.forEach(function(key, index) { contact[key] = clean(row[index]); });
+    if (contact.emailHistory) {
+      try { contact.emailHistory = JSON.parse(contact.emailHistory); }
+      catch (error) { contact.emailHistory = []; }
+    } else contact.emailHistory = [];
+    contact.id = contact.contactId;
+    contacts.push(contact);
+  });
+  contacts.reverse();
+  return { ok: true, contacts: contacts };
 }
 
 function linkContacts_(sheet, links) {
