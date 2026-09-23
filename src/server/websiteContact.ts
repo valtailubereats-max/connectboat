@@ -36,7 +36,10 @@ async function fetchPublicHtml(url: URL, redirects = 0): Promise<PublicHtmlResul
       method: 'GET',
       timeout: 5000,
       headers: { 'User-Agent': 'ConnectBoatContactScanner/1.0', Accept: 'text/html' },
-      lookup: (_hostname, _options, callback) => callback(null, selected.address, selected.family),
+      lookup: (_hostname, options, callback) => {
+        if (options?.all) callback(null, [{ address: selected.address, family: selected.family }]);
+        else callback(null, selected.address, selected.family);
+      },
     }, response => {
       if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
         response.resume();
