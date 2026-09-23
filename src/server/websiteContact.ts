@@ -67,9 +67,29 @@ async function fetchPublicHtml(url: URL, redirects = 0): Promise<PublicHtmlResul
 function findEmail(html: string, hostname: string) {
   const readable = html.replace(/&#64;|&#x40;|&commat;/gi, '@').replace(/&#46;|&#x2e;|&period;/gi, '.');
   const candidates = [...readable.matchAll(EMAIL_PATTERN)].map(match => match[0].toLowerCase())
-    .filter(email => !/\.(png|jpg|jpeg|gif|svg|webp|css|js)$/.test(email));
+    .filter(email => !/\.(png|jpg|jpeg|gif|svg|webp|css|js)$/.test(email) &&
+      !/^(example@|name@|email@|your@|user@)/.test(email));
   const domain = hostname.replace(/^www\./, '').toLowerCase();
-  return candidates.find(email => email.endsWith('@' + domain)) || '';
+  return candidates.find(email => email.endsWith('@' + domain)) || candidates[0] || '';
+}
+
+function readableText(html: string) {
+  return html
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/\s+/g, ' ');
+}
+
+function findVisiblePhone(html: string) {
+  const text = readableText(html);
+  const candidates = text.match(/(?:\+|00)?\d[\d\s().-]{7,}\d/g) || [];
+  return candidates.map(value => value.trim()).find(value => {
+    const digits = value.replace(/\D/g, '');
+    return digits.length >= 9 && digits.length <= 15;
+  }) || '';
 }
 
 function pageDetails(html: string, hostname: string) {
@@ -94,6 +114,11 @@ function pageDetails(html: string, hostname: string) {
       details.company = String(meta.content || '').trim().slice(0, 120);
     }
   }
+  if (!details.company) {
+    const title = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+    if (title) details.company = readableText(title).split(/\s+[|–—-]\s+/)[0].trim().slice(0, 120);
+  }
+  if (!details.phone) details.phone = findVisiblePhone(html);
   for (const match of html.matchAll(/<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try {
       const parsed = JSON.parse(match[1]);
@@ -120,6 +145,14 @@ export async function findWebsiteContactDetails(raw: string) {
   const details: Record<string, string> = {};
   const first = await fetchPublicHtml(url);
   const resolvedUrl = first.finalUrl;
+  const discoveredLinks = [...first.html.matchAll(/<a\b[^>]*href\s*=\s*(["'])(.*?)\1/gi)]
+    .map(match => match[2].replace(/&amp;/gi, '&'))
+    .filter(href => /contact|about|contato|contacto|kontakt/i.test(href))
+    .map(href => {
+      try { return new URL(href, resolvedUrl); } catch { return null; }
+    })
+    .filter((link): link is URL => Boolean(link && link.origin === resolvedUrl.origin))
+    .slice(0, 4);
   const pages = [
     { url: resolvedUrl, html: first.html },
     { url: new URL('/', resolvedUrl.origin) },
@@ -127,6 +160,9 @@ export async function findWebsiteContactDetails(raw: string) {
     { url: new URL('/contact-us', resolvedUrl.origin) },
     { url: new URL('/about', resolvedUrl.origin) },
     { url: new URL('/about-us', resolvedUrl.origin) },
+    { url: new URL('/contato', resolvedUrl.origin) },
+    { url: new URL('/contacto', resolvedUrl.origin) },
+    ...discoveredLinks.map(link => ({ url: link })),
   ];
   const visited = new Set<string>();
   for (const page of pages) {

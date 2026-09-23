@@ -463,6 +463,7 @@ const AdminEventContactsContent: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [syncIssues, setSyncIssues] = useState<string[]>([]);
   const [analysing, setAnalysing] = useState(false);
+  const [extractingWebsite, setExtractingWebsite] = useState(false);
   const [message, setMessage] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerError, setScannerError] = useState('');
@@ -827,6 +828,57 @@ const AdminEventContactsContent: React.FC = () => {
     setScannerOpen(false);
   };
 
+  const extractWebsiteDetails = async (website: string, source: 'QR' | 'button') => {
+    if (!user) {
+      setMessage('Sign in again before extracting website information.');
+      return;
+    }
+    const normalised = normaliseWebsite(website);
+    if (!/^https?:\/\//i.test(normalised)) {
+      setMessage('Enter a valid public website before extracting information.');
+      return;
+    }
+    setExtractingWebsite(true);
+    setMessage(source === 'QR' ? 'QR read. Looking for public contact details on the company website…' : 'Looking for company and contact details on the website…');
+    try {
+      const response = await fetch('/api/admin/create-assisted-payment?mode=websiteContact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await user.getIdToken() },
+        body: JSON.stringify({ website: normalised }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result?.error || 'Website lookup failed.');
+      const found = result?.details && typeof result.details === 'object' ? result.details : {};
+      const details = {
+        company: typeof found.company === 'string' ? found.company : '',
+        phone: typeof found.phone === 'string' ? found.phone : '',
+        whatsapp: typeof found.whatsapp === 'string' ? found.whatsapp : '',
+        email: typeof found.email === 'string' ? found.email : '',
+        linkedin: typeof found.linkedin === 'string' ? found.linkedin : '',
+      };
+      if (!Object.values(details).some(Boolean)) {
+        setMessage('The website was checked, but it does not expose readable contact details. Try opening the site or enter them manually.');
+        return;
+      }
+      setDraft(prev => ({
+        ...prev,
+        website: normalised,
+        company: prev.company || details.company,
+        phone: prev.phone || details.phone,
+        whatsapp: prev.whatsapp || details.whatsapp,
+        email: prev.email || details.email,
+        linkedin: prev.linkedin || details.linkedin,
+      }));
+      const added = Object.entries(details).filter(([, value]) => value).map(([key]) => key).join(', ');
+      setMessage(`Information extracted: ${added}. Please check it before saving or sending.`);
+    } catch (error: any) {
+      console.error('Website email lookup failed:', error);
+      setMessage(`Could not extract information from this website: ${error?.message || 'website lookup failed'}.`);
+    } finally {
+      setExtractingWebsite(false);
+    }
+  };
+
   const applyQrValue = async (raw: string) => {
     const parsed = decodeQrContact(raw);
     const qrDraft: ContactDraft = { ...EMPTY_DRAFT, ...parsed };
@@ -853,60 +905,11 @@ const AdminEventContactsContent: React.FC = () => {
     setIsolatedContactId(null);
     setDuplicateWarning('');
     setDraft(prev => ({ ...prev, ...parsed }));
-    if (!parsed.website || !user) {
+    if (!parsed.website) {
       setMessage('QR read. I used every contact detail available in it.');
       return;
     }
-    setMessage('QR read. Looking for public contact details on the company website…');
-    try {
-      const response = await fetch('/api/admin/create-assisted-payment?mode=websiteContact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await user.getIdToken() },
-        body: JSON.stringify({ website: parsed.website }),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result?.error || 'Website lookup failed.');
-      const found = result?.details && typeof result.details === 'object' ? result.details : {};
-      const details = {
-        company: typeof found.company === 'string' ? found.company : '',
-        phone: typeof found.phone === 'string' ? found.phone : '',
-        whatsapp: typeof found.whatsapp === 'string' ? found.whatsapp : '',
-        email: typeof found.email === 'string' ? found.email : '',
-        linkedin: typeof found.linkedin === 'string' ? found.linkedin : '',
-      };
-      if (!Object.values(details).some(Boolean)) {
-        setMessage('QR read. No public contact details were found on the website. You can enter them manually or save the website.');
-        return;
-      }
-      const enriched = {
-        ...qrDraft,
-        company: qrDraft.company || details.company,
-        phone: qrDraft.phone || details.phone,
-        whatsapp: qrDraft.whatsapp || details.whatsapp,
-        email: qrDraft.email || details.email,
-        linkedin: qrDraft.linkedin || details.linkedin,
-      };
-      const emailMatch = contacts.find(contact => prospectMatchesExisting(enriched, contact));
-      if (emailMatch) {
-        setDraft({ ...EMPTY_DRAFT });
-        setIsolatedContactId(emailMatch.id);
-        setDuplicateWarning(`⚠ POSSIBLE DUPLICATE — ${emailMatch.company || emailMatch.name || 'Existing contact'} is already registered. Look below in Contact History.`);
-        setMessage('');
-        return;
-      }
-      setDraft(prev => ({
-        ...prev,
-        company: prev.company || details.company,
-        phone: prev.phone || details.phone,
-        whatsapp: prev.whatsapp || details.whatsapp,
-        email: prev.email || details.email,
-        linkedin: prev.linkedin || details.linkedin,
-      }));
-      setMessage('QR read. Public contact details were found on the website. Please check them before saving or sending.');
-    } catch (error) {
-      console.error('Website email lookup failed:', error);
-      setMessage('QR read. The website could not be checked for contact details. You can enter them manually or save the website.');
-    }
+    await extractWebsiteDetails(parsed.website, 'QR');
   };
 
   const startScanner = async () => {
@@ -1787,6 +1790,12 @@ const AdminEventContactsContent: React.FC = () => {
             </div>
 
             {!duplicateMatch && <div className="mt-4 space-y-2">
+              {websiteAvailable && (
+                <button type="button" onClick={() => extractWebsiteDetails(draft.website, 'button')} disabled={extractingWebsite || saving} className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3.5 font-black text-indigo-700 disabled:opacity-60">
+                  {extractingWebsite ? <Loader2 size={19} className="animate-spin" /> : <Search size={19} />}
+                  {extractingWebsite ? 'Extracting information…' : 'Extract information from website'}
+                </button>
+              )}
               {whatsappAvailable && draft.invitationStatus !== 'Unsubscribed' && (
                 <button onClick={sendWhatsApp} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 font-black text-white disabled:opacity-60"><MessageCircle size={20} /> {isResending ? 'Resend via WhatsApp' : 'Send Invitation via WhatsApp'}</button>
               )}
