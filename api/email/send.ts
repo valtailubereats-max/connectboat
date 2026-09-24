@@ -72,12 +72,10 @@ async function getUserRole(uid: string): Promise<string> {
 
 async function assertEventContactCanReceiveInvitation(to: string | string[], template: string) {
   if (template !== 'event_contact_invitation') return;
-  const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
   for (const email of normalizeRecipients(to)) {
     const suppression = await callContactSheet({ action: 'checkSuppression', email });
     if (typeof suppression.suppressed !== 'boolean') throw new Error('Google Sheets did not confirm the suppression status.');
-    const contacts = await db.collection('eventContacts').where('email', '==', email).get();
-    if (suppression.suppressed || contacts.docs.some((contact: any) => contact.data()?.invitationStatus === 'Unsubscribed')) {
+    if (suppression.suppressed) {
       const error: any = new Error('This contact has unsubscribed. The invitation was not sent.');
       error.statusCode = 403;
       throw error;
@@ -1328,27 +1326,11 @@ export default async function handler(req: any, res: any) {
         if (!contactId.includes('/') && contactId.length <= 200) {
           const recipient = normalizeRecipients(to)[0] || '';
           try {
-            const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
-            const ref = db.collection('eventContacts').doc(contactId);
-            const snap = await ref.get();
-            if (snap.exists) {
-              await ref.update({
-                invitationStatus: 'Sent – Email',
-                invitationChannel: 'Email',
-                sheetSyncPending: true,
-                emailHistory: FieldValue.arrayUnion({
-                  sentAt,
-                  to: recipient,
-                  provider: 'resend',
-                  providerId: String(responseJson.id || ''),
-                  source: 'ConnectBoat',
-                }),
-                emailLastSentAt: sentAt,
-                emailLastProvider: 'resend',
-                emailLastProviderId: String(responseJson.id || ''),
-              });
-              auditLogged = true;
-            }
+            await callContactSheet({
+              action: 'recordEmail', contactId, sentAt, to: recipient,
+              provider: 'resend', providerId: String(responseJson.id || ''),
+            });
+            auditLogged = true;
           } catch (auditError: any) {
             auditWarning = /RESOURCE_EXHAUSTED|quota exceeded/i.test(String(auditError?.message || ''))
               ? 'Email delivered, but the database quota prevented saving its history.'

@@ -154,20 +154,18 @@ export async function handleEventContacts(req: any, res: any, db: any, uid: stri
   const body = req.body || {};
   const contacts = db.collection('eventContacts');
   if (body.operation === 'list') {
-    try {
-      const result = await callContactSheet({ action: 'listContacts' });
-      if (!Array.isArray(result.contacts)) throw new Error('Google Sheets returned an invalid contact list.');
-      const rows = result.contacts.map((row: any) => ({ ...row, id: text(row.id || row.contactId) }));
-      return res.json({ success: true, contacts: rows, source: 'googleSheets' });
-    } catch (sheetError: any) {
-      // Transitional fallback: keep the page available until the updated Apps
-      // Script is deployed and the existing rows have been verified.
-      console.warn('Sheet-only contact list unavailable; using migration fallback:', sheetError?.message || sheetError);
-      const snapshot = await contacts.get();
-      const rows = snapshot.docs.map((item: any) => ({ id: item.id, ...item.data(), createdAt: item.createTime?.toDate().toISOString() || '' }));
-      rows.sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
-      return res.json({ success: true, contacts: rows, source: 'firestoreMigrationFallback' });
-    }
+    const result = await callContactSheet({ action: 'listContacts' });
+    if (!Array.isArray(result.contacts)) throw new Error('Google Sheets returned an invalid contact list.');
+    const rows = result.contacts.map((row: any) => ({ ...row, id: text(row.id || row.contactId) }));
+    return res.json({ success: true, contacts: rows, source: 'googleSheets' });
+  }
+  if (body.operation === 'upsertSheet') {
+    const suppliedId = text(body.contactId);
+    const contactId = suppliedId || crypto.randomUUID();
+    if (!contactId || contactId.includes('/') || contactId.length > 200) return res.status(400).json({ success: false, errorMessage: 'Invalid contact ID.' });
+    const contact = body.contact && typeof body.contact === 'object' ? body.contact : {};
+    const result = await callContactSheet({ action: 'upsert', contact: sheetContact(contact, contactId) });
+    return res.json({ success: true, contactId, result: result.result });
   }
   if (body.operation === 'syncSmsStatuses') {
     const ids = body.contactIds;

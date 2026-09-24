@@ -631,30 +631,7 @@ const AdminEventContactsContent: React.FC = () => {
 
   useEffect(() => {
     if (!isAdmin || !user) return;
-    let active = true;
-    (async () => {
-      let loaded = await loadContacts();
-      const acceptedIds = loaded.filter(contact => contact.invitationStatus === 'SMS – Accepted').map(contact => contact.id);
-      let updated = 0;
-      for (let i = 0; active && i < acceptedIds.length; i += 5) {
-        try {
-          const result = await contactSyncRequest({ operation: 'reconcileSms', contactIds: acceptedIds.slice(i, i + 5) });
-          updated += Number(result.updated) || 0;
-        } catch (error) {
-          console.error('SMS status reconciliation failed:', error);
-        }
-      }
-      if (active && updated) loaded = await loadContacts();
-      const smsIds = loaded.filter(contact => ['SMS – Accepted', 'SMS – Delivered', 'SMS – Failed'].includes(contact.invitationStatus)).map(contact => contact.id);
-      for (let i = 0; active && i < smsIds.length; i += 5) {
-        try {
-          await contactSyncRequest({ operation: 'syncSmsStatuses', contactIds: smsIds.slice(i, i + 5) });
-        } catch (error) {
-          console.error('SMS status sheet sync failed:', error);
-        }
-      }
-    })();
-    return () => { active = false; };
+    loadContacts();
   }, [isAdmin, user]);
 
   useEffect(() => () => {
@@ -1235,37 +1212,30 @@ const AdminEventContactsContent: React.FC = () => {
       const uploaded = await uploadPhoto();
       const merged = { ...draft, ...patch };
       if (draft.invitationStatus === 'Unsubscribed') merged.invitationStatus = 'Unsubscribed';
+      const existing = editingId ? contacts.find(contact => contact.id === editingId) : undefined;
       const payload = {
         ...merged,
-        sheetSyncPending: true,
         website: normaliseWebsite(merged.website),
         photoUrl: uploaded.photoUrl || '',
         photoPath: uploaded.photoPath || '',
+        createdAt: existing?.createdAt || new Date().toISOString(),
+        emailHistory: existing?.emailHistory || [],
+        emailLastSentAt: existing?.emailLastSentAt || '',
+        emailLastProvider: existing?.emailLastProvider || '',
+        emailLastProviderId: existing?.emailLastProviderId || '',
         createdBy: user.uid,
       };
-
-      if (editingId) {
-        const previousPath = existingPhotoPath;
-        await updateDoc(doc(db, 'eventContacts', editingId), payload);
-        if (photoFile && previousPath && previousPath !== uploaded.photoPath) deleteObject(ref(storage, previousPath)).catch(() => undefined);
-        setDraft(merged);
-        setExistingPhotoUrl(uploaded.photoUrl || '');
-        setExistingPhotoPath(uploaded.photoPath || '');
-        setPhotoFile(null);
-        const confirmed = await syncOneToSheets(editingId, merged);
-        if (!confirmed && String(patch.invitationStatus || '').startsWith('Sent')) throw new Error('The contact is saved, but Google Sheets could not verify its email suppression status. Retry pending sends before inviting.');
-        return editingId;
-      }
-
-      const created = await addDoc(collection(db, 'eventContacts'), payload);
-      setEditingId(created.id);
+      const previousPath = existingPhotoPath;
+      const result = await contactSyncRequest({ operation: 'upsertSheet', contactId: editingId || undefined, contact: payload });
+      const savedId = String(result.contactId || '');
+      if (!savedId) throw new Error('Google Sheets did not return a Contact ID.');
+      if (photoFile && previousPath && previousPath !== uploaded.photoPath) deleteObject(ref(storage, previousPath)).catch(() => undefined);
+      setEditingId(savedId);
       setDraft(merged);
       setExistingPhotoUrl(uploaded.photoUrl || '');
       setExistingPhotoPath(uploaded.photoPath || '');
       setPhotoFile(null);
-      const confirmed = await syncOneToSheets(created.id, merged);
-      if (!confirmed && String(patch.invitationStatus || '').startsWith('Sent')) throw new Error('The contact is saved, but Google Sheets could not verify its email suppression status. Retry pending sends before inviting.');
-      return created.id;
+      return savedId;
     } finally {
       setSaving(false);
     }
@@ -1305,9 +1275,8 @@ const AdminEventContactsContent: React.FC = () => {
     setSaving(true);
     try {
       // Persist a new contact before delivery, so a failed request never loses it.
-      if (!editingId) {
-        await saveCurrent({ invitationStatus: 'Pending', invitationChannel: '' });
-      }
+      let savedId = editingId;
+      if (!savedId) savedId = await saveCurrent({ invitationStatus: 'Pending', invitationChannel: '' });
       const response = await fetch('/api/email/send', {
         method: 'POST',
         headers: {
@@ -1317,6 +1286,7 @@ const AdminEventContactsContent: React.FC = () => {
         body: JSON.stringify({
           template: 'event_contact_invitation',
           to: email,
+          eventContactId: savedId,
           data: { contactName: draft.name, company: draft.company },
         }),
       });
@@ -1326,16 +1296,6 @@ const AdminEventContactsContent: React.FC = () => {
           ? 'Email delivery is not configured yet. The contact was not marked as sent.'
           : 'Could not send the invitation email.'));
       }
-      const sentAt = new Date().toISOString();
-      const provider = String(result?.provider || 'unknown');
-      const providerId = String(result?.id || '');
-      const savedId = await saveCurrent({ invitationStatus: 'Sent – Email', invitationChannel: 'Email' });
-      await updateDoc(doc(db, 'eventContacts', savedId), {
-        emailHistory: arrayUnion({ sentAt, to: email, provider, providerId, source: 'ConnectBoat' }),
-        emailLastSentAt: sentAt,
-        emailLastProvider: provider,
-        emailLastProviderId: providerId,
-      });
       await loadContacts();
       resetForm();
       setMessage('Invitation email sent with the ConnectBoat banner.');
@@ -1380,31 +1340,10 @@ const AdminEventContactsContent: React.FC = () => {
       const sentAt = typeof result?.sentAt === 'string' ? result.sentAt : new Date().toISOString();
       const provider = String(result?.provider || 'unknown');
       const providerId = String(result?.id || '');
-      let auditLogged = result?.auditLogged === true;
-      if (!auditLogged && !result?.auditWarning) {
-        try {
-          await updateDoc(doc(db, 'eventContacts', contact.id), {
-            invitationStatus: 'Sent – Email',
-            invitationChannel: 'Email',
-            sheetSyncPending: true,
-            emailHistory: arrayUnion({ sentAt, to: email, provider, providerId, source: 'ConnectBoat' }),
-            emailLastSentAt: sentAt,
-            emailLastProvider: provider,
-            emailLastProviderId: providerId,
-          });
-          auditLogged = true;
-        } catch (auditError) {
-          console.error('Email delivered but client audit logging failed:', auditError);
-        }
-      }
-
-      const confirmedSheet = auditLogged ? await syncOneToSheets(contact.id, {
-          ...contact,
-          invitationStatus: 'Sent – Email',
-          invitationChannel: 'Email',
-        }) : false;
+      const auditLogged = result?.auditLogged === true;
+      const confirmedSheet = auditLogged;
       if (!auditLogged) {
-        setMessage(result?.auditWarning || 'Email delivered, but the database could not save its history. Do not send it again; retry the pending sync after the quota resets.');
+        setMessage(result?.auditWarning || 'Email delivered, but Google Sheets could not save its history. Do not send it again.');
       } else if (!confirmedSheet) {
         setMessage('Invitation email sent with the ConnectBoat banner. Google Sheets still needs syncing.');
       } else {
@@ -1487,16 +1426,7 @@ const AdminEventContactsContent: React.FC = () => {
         throw new Error(result?.error || 'Commercial SMS could not be sent.');
       }
       accepted = true;
-      const savedId = await saveCurrent({ invitationStatus: 'SMS – Accepted', invitationChannel: 'SMS' });
-      if (savedId) {
-        await updateDoc(doc(db, 'eventContacts', savedId), {
-          smsRecipient: result.recipient,
-          smsCampaignId: result.campaignId || null,
-          smsClickSendListId: result.listId || null,
-          smsDeliveryStatus: 'SMS – Accepted',
-          smsAcceptedAt: new Date().toISOString(),
-        });
-      }
+      await saveCurrent({ invitationStatus: 'SMS – Accepted', invitationChannel: 'SMS' });
       await loadContacts();
       resetForm();
       setMessage(`Commercial SMS accepted for ${result.recipient}.`);
@@ -1577,11 +1507,10 @@ const AdminEventContactsContent: React.FC = () => {
     if (!window.confirm(`Delete ${contact.company || contact.name || 'this contact'}?`)) return;
     try {
       await postToSheets({ action: 'delete', contactId: contact.id });
-      await deleteDoc(doc(db, 'eventContacts', contact.id));
       if (contact.photoPath) deleteObject(ref(storage, contact.photoPath)).catch(() => undefined);
 
       setContacts(prev => prev.filter(item => item.id !== contact.id));
-      setMessage('Contact deleted from ConnectBoat and Google Sheets.');
+      setMessage('Contact deleted from Google Sheets.');
     } catch (error) {
       console.error(error);
       setMessage('Could not delete this contact.');
@@ -1606,7 +1535,6 @@ const AdminEventContactsContent: React.FC = () => {
     for (const contact of noContactDetails) {
       try {
         await postToSheets({ action: 'delete', contactId: contact.id });
-        await deleteDoc(doc(db, 'eventContacts', contact.id));
         if (contact.photoPath) deleteObject(ref(storage, contact.photoPath)).catch(() => undefined);
         deleted += 1;
       } catch (error) {
@@ -1642,12 +1570,9 @@ const AdminEventContactsContent: React.FC = () => {
 
       if (!rows.length) throw new Error('No prospects were found in this JSON file.');
 
-      const fresh = await getDocs(collection(db, 'eventContacts'));
-      const workingContacts = fresh.docs.map(item => ({ ...item.data(), id: item.id } as EventContact));
+      const workingContacts = [...contacts];
       let imported = 0;
       let skipped = 0;
-      let pending = 0;
-      const importedIds: string[] = [];
 
       for (const row of rows) {
         const prospect = prospectToDraft(row);
@@ -1663,33 +1588,20 @@ const AdminEventContactsContent: React.FC = () => {
 
         const payload = {
           ...prospect,
-          sheetSyncPending: true,
           photoUrl: '',
           photoPath: '',
+          createdAt: new Date().toISOString(),
+          emailHistory: [],
           createdBy: user.uid,
         };
-        const created = await addDoc(collection(db, 'eventContacts'), payload);
-        importedIds.push(created.id);
-        workingContacts.push({ id: created.id, ...payload } as EventContact);
+        const result = await contactSyncRequest({ operation: 'upsertSheet', contact: payload });
+        workingContacts.push({ id: result.contactId, ...payload } as EventContact);
         imported += 1;
         setMessage(`Saving prospects… ${imported} added, ${skipped} skipped.`);
       }
 
-      pending = importedIds.length;
-      for (let i = 0; i < importedIds.length; i += 25) {
-        try {
-          setMessage(`Sending prospects to Google Sheets… ${importedIds.length - pending} confirmed.`);
-          const batchIds = importedIds.slice(i, i + 25);
-          await contactSyncRequest({ operation: 'push', contactIds: batchIds });
-          pending -= batchIds.length;
-        } catch (error) {
-          console.error('Prospects saved; sheet batch remains pending:', error);
-          break;
-        }
-      }
-
       await loadContacts();
-      setMessage(`Google Sheets: ${pending} sends pending. Import complete: ${imported} prospect${imported === 1 ? '' : 's'} added as Pending. ${skipped} duplicate/empty ${skipped === 1 ? 'record was' : 'records were'} skipped.`);
+      setMessage(`Import complete: ${imported} prospect${imported === 1 ? '' : 's'} added to Google Sheets as Pending. ${skipped} duplicate/empty ${skipped === 1 ? 'record was' : 'records were'} skipped.`);
     } catch (error: any) {
       console.error(error);
       await loadContacts();
@@ -1734,8 +1646,7 @@ const AdminEventContactsContent: React.FC = () => {
             <Upload size={16} /> Import Prospects
           </button>
           <button type="button" aria-expanded={prospectMapOpen} aria-controls="uk-prospect-map" onClick={() => setProspectMapOpen(open => !open)} className="rounded-xl border border-indigo-300 bg-indigo-50 px-3 py-2 text-sm font-bold text-indigo-700">UK Prospect Map</button>
-          <button onClick={syncFromSheets} disabled={saving || syncing || loading} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{syncing ? 'Syncing…' : 'Sync Google Sheets'}</button>
-          <button onClick={retrySheetSends} disabled={saving || syncing || loading} className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700 disabled:opacity-40">Retry pending sends</button>
+          <button onClick={loadContacts} disabled={saving || loading} className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{loading ? 'Refreshing…' : 'Refresh from Google Sheets'}</button>
           <a href={SHEET_URL} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-bold text-slate-700">Open Google Sheets</a>
         </div>
       </div>

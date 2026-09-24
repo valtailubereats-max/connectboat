@@ -124,6 +124,7 @@ function doPost(e) {
 
     if (data.action === 'readContacts') return jsonResponse(readContacts_(sheet, data));
     if (data.action === 'listContacts') return jsonResponse(listContacts_(sheet));
+    if (data.action === 'recordEmail') return jsonResponse(recordEmail_(sheet, data));
     if (data.action === 'linkContacts') return jsonResponse(linkContacts_(sheet, data.links));
     if (data.action === 'updateSmsStatus') return jsonResponse(updateSmsStatus_(sheet, data));
     if (data.action === 'syncAll' && (!Array.isArray(data.contacts) || data.contacts.length > 25)) throw new Error('Send at most 25 contacts per batch.');
@@ -517,6 +518,30 @@ function listContacts_(sheet) {
   });
   contacts.reverse();
   return { ok: true, contacts: contacts };
+}
+
+function recordEmail_(sheet, data) {
+  const id = clean(data.contactId);
+  if (!isValidContactId_(id)) return { ok: false, error: 'A valid Contact ID is required.' };
+  const lastRow = sheet.getLastRow();
+  const ids = lastRow > 1 ? sheet.getRange(2, 12, lastRow - 1, 1).getDisplayValues() : [];
+  let target = 0;
+  ids.forEach(function(row, index) { if (clean(row[0]) === id) target = index + 2; });
+  if (!target) return { ok: false, error: 'Contact was not found in Google Sheets.' };
+  let history = [];
+  const current = clean(sheet.getRange(target, 23).getValue());
+  if (current) { try { history = JSON.parse(current); } catch (error) { history = []; } }
+  const entry = {
+    sentAt: clean(data.sentAt),
+    to: normalizeEmail(data.to),
+    provider: clean(data.provider),
+    providerId: clean(data.providerId),
+    source: 'ConnectBoat'
+  };
+  if (!history.some(function(item) { return item && item.providerId && item.providerId === entry.providerId; })) history.push(entry);
+  sheet.getRange(target, 9, 1, 2).setValues([['Email', 'Sent – Email']]);
+  sheet.getRange(target, 23, 1, 4).setValues([[JSON.stringify(history), entry.sentAt, entry.provider, entry.providerId]]);
+  return { ok: true, updated: true };
 }
 
 function linkContacts_(sheet, links) {
