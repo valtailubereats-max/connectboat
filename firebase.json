@@ -4,5 +4,8 @@
       "database": "ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382",
       "rules": "firestore.rules"
     }
-  ]
+  ],
+  "storage": {
+    "rules": "storage.rules"
+  }
 }

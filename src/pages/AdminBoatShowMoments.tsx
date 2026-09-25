@@ -34,7 +34,7 @@ export default function AdminBoatShowMoments() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<GalleryPhoto | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -63,7 +63,7 @@ export default function AdminBoatShowMoments() {
   const closeForm = () => {
     setEditing(null);
     setForm(emptyForm);
-    setFile(null);
+    setFiles([]);
     setFormOpen(false);
   };
 
@@ -74,14 +74,15 @@ export default function AdminBoatShowMoments() {
       linkEnabled: photo.linkEnabled === true, published: photo.published === true,
       displayOrder: photo.displayOrder ?? 0,
     });
-    setFile(null);
+    setFiles([]);
     setFormOpen(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const savePhoto = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!editing && !file) return toast('Choose a photo to upload.', 'error');
+    if (!editing && files.length === 0) return toast('Choose one or more photos to upload.', 'error');
+    if (editing && files.length > 1) return toast('Choose only one replacement photo while editing.', 'error');
     if (form.linkEnabled && !form.linkUrl.trim()) return toast('Add a link or disable the link button.', 'error');
 
     setSaving(true);
@@ -90,24 +91,39 @@ export default function AdminBoatShowMoments() {
       let imageUrl = editing?.imageUrl || '';
       let storagePath = editing?.storagePath || '';
 
-      if (file) {
-        const documentRef = editing ? doc(db, 'boatShowMoments', editing.id) : doc(collection(db, 'boatShowMoments'));
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        newStoragePath = `boat-show-moments/${documentRef.id}/${Date.now()}_${safeName}`;
-        const uploaded = await uploadBytes(ref(storage, newStoragePath), file, { contentType: file.type });
-        imageUrl = await getDownloadURL(uploaded.ref);
-        storagePath = newStoragePath;
-
-        const payload = {
-          title: form.title.trim(), caption: form.caption.trim(), imageUrl, storagePath,
-          linkUrl: normaliseUrl(form.linkUrl), linkEnabled: form.linkEnabled,
-          published: form.published, displayOrder: Number(form.displayOrder) || 0, updatedAt: serverTimestamp(),
-        };
+      if (files.length > 0) {
         if (editing) {
+          const selectedFile = files[0];
+          const documentRef = doc(db, 'boatShowMoments', editing.id);
+          const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          newStoragePath = `boat-show-moments/${documentRef.id}/${Date.now()}_${safeName}`;
+          const uploaded = await uploadBytes(ref(storage, newStoragePath), selectedFile, { contentType: selectedFile.type });
+          imageUrl = await getDownloadURL(uploaded.ref);
+          storagePath = newStoragePath;
+          const payload = {
+            title: form.title.trim(), caption: form.caption.trim(), imageUrl, storagePath,
+            linkUrl: normaliseUrl(form.linkUrl), linkEnabled: form.linkEnabled,
+            published: form.published, displayOrder: Number(form.displayOrder) || 0, updatedAt: serverTimestamp(),
+          };
           await updateDoc(documentRef, payload);
           if (editing.storagePath && editing.storagePath !== storagePath) await deleteObject(ref(storage, editing.storagePath)).catch(() => undefined);
         } else {
-          await setDoc(documentRef, { ...payload, createdAt: serverTimestamp() });
+          const baseOrder = Number(form.displayOrder) || 0;
+          for (const [index, selectedFile] of files.entries()) {
+            const documentRef = doc(collection(db, 'boatShowMoments'));
+            const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            newStoragePath = `boat-show-moments/${documentRef.id}/${Date.now()}_${index}_${safeName}`;
+            const uploaded = await uploadBytes(ref(storage, newStoragePath), selectedFile, { contentType: selectedFile.type });
+            imageUrl = await getDownloadURL(uploaded.ref);
+            storagePath = newStoragePath;
+            await setDoc(documentRef, {
+              title: form.title.trim(), caption: form.caption.trim(), imageUrl, storagePath,
+              linkUrl: normaliseUrl(form.linkUrl), linkEnabled: form.linkEnabled,
+              published: form.published, displayOrder: baseOrder + index,
+              createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+            });
+            newStoragePath = '';
+          }
         }
       } else if (editing) {
         await updateDoc(doc(db, 'boatShowMoments', editing.id), {
@@ -117,7 +133,7 @@ export default function AdminBoatShowMoments() {
         });
       }
 
-      toast(editing ? 'Photo updated.' : 'Photo added.');
+      toast(editing ? 'Photo updated.' : `${files.length} ${files.length === 1 ? 'photo' : 'photos'} added.`);
       closeForm();
       await loadPhotos();
     } catch (error) {
@@ -157,7 +173,7 @@ export default function AdminBoatShowMoments() {
         <form onSubmit={savePhoto} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5"><h2 className="text-xl font-black text-slate-900">{editing ? 'Edit Photo' : 'Add Photo'}</h2><button type="button" onClick={closeForm} className="p-2 text-slate-500"><X size={20} /></button></div>
           <div className="grid gap-5 p-6 lg:grid-cols-2">
-            <label className="lg:col-span-2"><span className="text-xs font-black text-slate-600">Photo {!editing && '*'}</span><button type="button" onClick={() => fileInput.current?.click()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-sm font-black text-slate-600 hover:border-indigo-300"><UploadCloud size={22} /> {file ? file.name : editing ? 'Choose a replacement photo' : 'Choose photo'}</button><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label>
+            <label className="lg:col-span-2"><span className="text-xs font-black text-slate-600">Photo{!editing ? 's' : ''} {!editing && '*'}</span><button type="button" onClick={() => fileInput.current?.click()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-sm font-black text-slate-600 hover:border-indigo-300"><UploadCloud size={22} /> {files.length > 0 ? `${files.length} ${files.length === 1 ? 'photo selected' : 'photos selected'}` : editing ? 'Choose a replacement photo' : 'Choose multiple photos'}</button><input ref={fileInput} type="file" multiple={!editing} accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => setFiles(Array.from(e.target.files || []))} />{!editing && <span className="mt-2 block text-xs font-medium text-slate-400">All selected photos will use the details below. Display order increases automatically.</span>}</label>
             <label><span className="text-xs font-black text-slate-600">Title (optional)</span><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold" placeholder="A moment from the show" /></label>
             <label><span className="text-xs font-black text-slate-600">Display order</span><input type="number" min="0" value={form.displayOrder} onChange={(e) => setForm({ ...form, displayOrder: Number(e.target.value) })} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold" /></label>
             <label className="lg:col-span-2"><span className="text-xs font-black text-slate-600">Caption (optional)</span><textarea rows={3} value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold" /></label>
