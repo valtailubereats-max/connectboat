@@ -35,6 +35,8 @@ import AdminSuggestions from './pages/AdminSuggestions';
 import AdminClaims from './pages/AdminClaims';
 import Fotos from './pages/Fotos';
 import AdminFotos from './pages/AdminFotos';
+import BoatShowMoments from './pages/BoatShowMoments';
+import AdminBoatShowMoments from './pages/AdminBoatShowMoments';
 import AdminSystemHealth from './pages/AdminSystemHealth';
 import Convite from './pages/Convite';
 import AdminInvitations from './pages/AdminInvitations';
@@ -314,6 +316,7 @@ const Navbar = () => {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-[26.4px]">
+            <Link to="/boat-show-moments" className="shrink-0 whitespace-nowrap text-sm font-bold text-slate-300 hover:text-sky-400">Boat Show Moments</Link>
             <Link to="/brokers" className="shrink-0 whitespace-nowrap rounded-xl border border-sky-400 px-2 py-2 text-xs font-bold text-sky-200 hover:bg-sky-900">For Brokers</Link>
             {!user && (
               <button onClick={handlePublishClick} className="text-slate-300 hover:text-sky-400 font-medium flex items-center gap-[4.4px] cursor-pointer transition-colors text-[15.4px]">
@@ -665,6 +668,7 @@ const Navbar = () => {
             <div className="px-4 py-6 space-y-4 flex flex-col">
               <Link to="/" onClick={() => setIsOpen(false)} className="text-lg font-black text-sky-400">Home</Link>
               <Link to="/events" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Marine Events</Link>
+              <Link to="/boat-show-moments" onClick={() => setIsOpen(false)} className="text-lg font-black text-sky-300">Boat Show Moments</Link>
               <Link to="/brokers" onClick={() => setIsOpen(false)} className="text-lg font-black text-sky-300">For Brokers</Link>
               <Link to="/pricing" onClick={() => setIsOpen(false)} className="text-lg font-black text-slate-200">Pricing Plans</Link>
               <Link to="/advertise" onClick={() => setIsOpen(false)} className="text-lg font-black text-indigo-300">Advertise on ConnectBoat</Link>
@@ -963,9 +967,11 @@ export default function App() {
                 <Route path="/admin/claims" element={<AdminLayout><AdminClaims /></AdminLayout>} />
                 <Route path="/admin/team" element={<AdminLayout><AdminTeam /></AdminLayout>} />
                 <Route path="/events" element={<Fotos />} />
+                <Route path="/boat-show-moments" element={<BoatShowMoments />} />
                 <Route path="/photos" element={<Navigate to="/events" replace />} />
                 <Route path="/fotos" element={<Navigate to="/events" replace />} />
                 <Route path="/admin/fotos" element={<AdminLayout><AdminFotos /></AdminLayout>} />
+                <Route path="/admin/boat-show-moments" element={<AdminLayout><AdminBoatShowMoments /></AdminLayout>} />
                 <Route path="/boats-for-hire" element={<BoatsForHire />} />
                 <Route path="/cheap-boats" element={<CheapBoatsFinal />} />
                 <Route path="/barcos-aluguer" element={<Navigate to="/boats-for-hire" replace />} />

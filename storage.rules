@@ -61,8 +61,16 @@ service firebase.storage {
     match /event-contacts/{allPaths=**} {
       allow read, write: if isAdmin();
     }
+
+    match /boat-show-moments/{photoId}/{fileName} {
+      allow read: if isAdmin() || firestore.get(/databases/ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382/documents/boatShowMoments/$(photoId)).data.published == true;
+      allow create, update: if isAdmin() &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+      allow delete: if isAdmin();
+    }
     match /{allPaths=**} {
-      allow read: if true;
+      allow read: if !allPaths.matches('boat-show-moments/.*');
       allow write: if false;
     }
   }

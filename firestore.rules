@@ -678,6 +678,12 @@ match /marineEvents/{eventId} {
   allow update, delete: if isAdmin();
 }
 
+// Curated public photo gallery. Draft items remain private to administrators.
+match /boatShowMoments/{photoId} {
+  allow get, list: if isAdmin() || resource.data.get('published', false) == true;
+  allow create, update, delete: if isAdmin();
+}
+
 
     // Event Contacts - private admin CRM for boat shows and marine events
     match /eventContacts/{contactId} {
