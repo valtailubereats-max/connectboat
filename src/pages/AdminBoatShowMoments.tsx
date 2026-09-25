@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { Camera, Edit3, ExternalLink, ImagePlus, Loader2, Plus, Trash2, UploadCloud, X } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 import { db, storage } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -31,6 +32,7 @@ export default function AdminBoatShowMoments() {
   const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<GalleryPhoto | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -86,6 +88,7 @@ export default function AdminBoatShowMoments() {
     if (form.linkEnabled && !form.linkUrl.trim()) return toast('Add a link or disable the link button.', 'error');
 
     setSaving(true);
+    setUploadProgress('');
     let newStoragePath = '';
     try {
       let imageUrl = editing?.imageUrl || '';
@@ -94,10 +97,16 @@ export default function AdminBoatShowMoments() {
       if (files.length > 0) {
         if (editing) {
           const selectedFile = files[0];
+          setUploadProgress('Preparing replacement photo...');
+          const preparedFile = await imageCompression(selectedFile, {
+            maxSizeMB: 3,
+            maxWidthOrHeight: 2600,
+            useWebWorker: true,
+          });
           const documentRef = doc(db, 'boatShowMoments', editing.id);
           const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
           newStoragePath = `boat-show-moments/${documentRef.id}/${Date.now()}_${safeName}`;
-          const uploaded = await uploadBytes(ref(storage, newStoragePath), selectedFile, { contentType: selectedFile.type });
+          const uploaded = await uploadBytes(ref(storage, newStoragePath), preparedFile, { contentType: preparedFile.type || selectedFile.type });
           imageUrl = await getDownloadURL(uploaded.ref);
           storagePath = newStoragePath;
           const payload = {
@@ -110,10 +119,16 @@ export default function AdminBoatShowMoments() {
         } else {
           const baseOrder = Number(form.displayOrder) || 0;
           for (const [index, selectedFile] of files.entries()) {
+            setUploadProgress(`Uploading photo ${index + 1} of ${files.length}...`);
+            const preparedFile = await imageCompression(selectedFile, {
+              maxSizeMB: 3,
+              maxWidthOrHeight: 2600,
+              useWebWorker: true,
+            });
             const documentRef = doc(collection(db, 'boatShowMoments'));
             const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
             newStoragePath = `boat-show-moments/${documentRef.id}/${Date.now()}_${index}_${safeName}`;
-            const uploaded = await uploadBytes(ref(storage, newStoragePath), selectedFile, { contentType: selectedFile.type });
+            const uploaded = await uploadBytes(ref(storage, newStoragePath), preparedFile, { contentType: preparedFile.type || selectedFile.type });
             imageUrl = await getDownloadURL(uploaded.ref);
             storagePath = newStoragePath;
             await setDoc(documentRef, {
@@ -142,6 +157,7 @@ export default function AdminBoatShowMoments() {
       toast('Could not save the photo.', 'error');
     } finally {
       setSaving(false);
+      setUploadProgress('');
     }
   };
 
@@ -173,7 +189,42 @@ export default function AdminBoatShowMoments() {
         <form onSubmit={savePhoto} className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5"><h2 className="text-xl font-black text-slate-900">{editing ? 'Edit Photo' : 'Add Photo'}</h2><button type="button" onClick={closeForm} className="p-2 text-slate-500"><X size={20} /></button></div>
           <div className="grid gap-5 p-6 lg:grid-cols-2">
-            <label className="lg:col-span-2"><span className="text-xs font-black text-slate-600">Photo{!editing ? 's' : ''} {!editing && '*'}</span><button type="button" onClick={() => fileInput.current?.click()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-sm font-black text-slate-600 hover:border-indigo-300"><UploadCloud size={22} /> {files.length > 0 ? `${files.length} ${files.length === 1 ? 'photo selected' : 'photos selected'}` : editing ? 'Choose a replacement photo' : 'Choose multiple photos'}</button><input ref={fileInput} type="file" multiple={!editing} accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => setFiles(Array.from(e.target.files || []))} />{!editing && <span className="mt-2 block text-xs font-medium text-slate-400">All selected photos will use the details below. Display order increases automatically.</span>}</label>
+            <div className="lg:col-span-2">
+              <span className="text-xs font-black text-slate-600">Photo{!editing ? 's' : ''} {!editing && '*'}</span>
+              <button type="button" onClick={() => fileInput.current?.click()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-sm font-black text-slate-600 hover:border-indigo-300">
+                <UploadCloud size={22} />
+                {files.length > 0 ? `${files.length} ${files.length === 1 ? 'photo selected' : 'photos selected'} — add more` : editing ? 'Choose a replacement photo' : 'Choose multiple photos'}
+              </button>
+              <input
+                ref={fileInput}
+                type="file"
+                multiple={!editing}
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const selected = Array.from(e.target.files || []) as File[];
+                  setFiles((current) => editing ? selected.slice(0, 1) : [
+                    ...current,
+                    ...selected.filter((candidate) => !current.some((item) =>
+                      item.name === candidate.name && item.size === candidate.size && item.lastModified === candidate.lastModified
+                    )),
+                  ]);
+                  e.target.value = '';
+                }}
+              />
+              {!editing && <span className="mt-2 block text-xs font-medium text-slate-400">Select several photos together or add them in multiple selections. Large images are compressed automatically.</span>}
+              {files.length > 0 && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {files.map((selectedFile, index) => (
+                    <div key={`${selectedFile.name}-${selectedFile.lastModified}`} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                      <Camera size={16} className="shrink-0 text-indigo-500" />
+                      <span className="min-w-0 flex-1 truncate text-xs font-bold text-slate-600">{selectedFile.name}</span>
+                      <button type="button" onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="rounded-lg p-1 text-slate-400 hover:bg-red-50 hover:text-red-500" aria-label={`Remove ${selectedFile.name}`}><X size={15} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <label><span className="text-xs font-black text-slate-600">Title (optional)</span><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold" placeholder="A moment from the show" /></label>
             <label><span className="text-xs font-black text-slate-600">Display order</span><input type="number" min="0" value={form.displayOrder} onChange={(e) => setForm({ ...form, displayOrder: Number(e.target.value) })} className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold" /></label>
             <label className="lg:col-span-2"><span className="text-xs font-black text-slate-600">Caption (optional)</span><textarea rows={3} value={form.caption} onChange={(e) => setForm({ ...form, caption: e.target.value })} className="mt-2 w-full resize-y rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold" /></label>
@@ -181,7 +232,7 @@ export default function AdminBoatShowMoments() {
             <label className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3"><span className="text-sm font-black text-slate-700">Show link button</span><input type="checkbox" checked={form.linkEnabled} onChange={(e) => setForm({ ...form, linkEnabled: e.target.checked })} className="h-5 w-5" /></label>
             <label className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3"><span className="text-sm font-black text-slate-700">Published</span><input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} className="h-5 w-5" /></label>
           </div>
-          <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5"><button type="button" onClick={closeForm} className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600">Cancel</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-black text-white disabled:opacity-60">{saving && <Loader2 size={17} className="animate-spin" />}{editing ? 'Save Changes' : 'Publish Photo'}</button></div>
+          <div className="flex flex-col items-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-5">{uploadProgress && <p className="text-xs font-black text-indigo-600">{uploadProgress}</p>}<div className="flex gap-3"><button type="button" onClick={closeForm} disabled={saving} className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600 disabled:opacity-50">Cancel</button><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-black text-white disabled:opacity-60">{saving && <Loader2 size={17} className="animate-spin" />}{editing ? 'Save Changes' : files.length > 1 ? `Publish ${files.length} Photos` : 'Publish Photo'}</button></div></div>
         </form>
       )}
 
