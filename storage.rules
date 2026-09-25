@@ -56,6 +56,19 @@ service firebase.storage {
       allow write: if isAdmin();
     }
 
+    // Images uploaded directly by ConnectBoat administrators.
+    match /marine_events/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Images submitted by logged-in event organisers.
+    // Each user can only write inside their own folder.
+    match /marine_event_submissions/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
 
 
     match /event-contacts/{allPaths=**} {
