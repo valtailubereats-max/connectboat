@@ -183,6 +183,30 @@ const isBoatServiceCategory = (category?: string): boolean =>
 const isTieredListingCategory = (category?: string): boolean =>
   isPaidBoatListingCategory(category) || isBoatServiceCategory(category);
 
+const formatDateInputValue = (value: any): string => {
+  if (!value) return '';
+  const date = typeof value?.toDate === 'function' ? value.toDate() : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const addCalendarDaysFromToday = (days: number): string => {
+  const today = new Date();
+  const target = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  target.setDate(target.getDate() + days);
+  return formatDateInputValue(target);
+};
+
+const parseDateInputAtEndOfDay = (value: string): Date | null => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 23, 59, 59, 999);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 const CreateAd = () => {
   const { categories, settings: globalSettings } = useSettings();
   const { id } = useParams();
@@ -192,6 +216,7 @@ const CreateAd = () => {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [originalAd, setOriginalAd] = useState<Ad | null>(null);
+  const [administrativeExpirationDate, setAdministrativeExpirationDate] = useState('');
   const [brokerDiscount, setBrokerDiscount] = useState(0);
   useEffect(() => {
     if (!user) return;
@@ -1117,6 +1142,21 @@ const CreateAd = () => {
     });
   };
   const [settings, setSettings] = useState<MarketplaceSettings | null>(null);
+  useEffect(() => {
+    if (!id || !originalAd || administrativeExpirationDate || (originalAd as any).expirationDate) return;
+    if (!(isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator')) return;
+
+    const plan = String(originalAd.plan || 'standard');
+    let days = 30;
+    if (settings?.planDurations) {
+      days = Number(settings.planDurations[plan as keyof typeof settings.planDurations]) || 30;
+    } else if (plan === 'intermediate') {
+      days = 180;
+    } else if (plan === 'premium') {
+      days = 365;
+    }
+    setAdministrativeExpirationDate(addCalendarDaysFromToday(days));
+  }, [id, originalAd, administrativeExpirationDate, settings, isAdmin, isModerator, profile?.role]);
   const enablePortugal = (globalSettings?.enablePortugalMarket ?? settings?.enablePortugalMarket) === true;
   const [uploading, setUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -1185,6 +1225,7 @@ const CreateAd = () => {
           return;
         }
         setOriginalAd(data);
+        setAdministrativeExpirationDate(formatDateInputValue((data as any).expirationDate));
         const fetchedImages = normalizeAndLimitImages(data.images || (data.imageUrl ? [data.imageUrl] : []), getPhotoLimit(data.category, data.plan || 'standard'));
         const loadedWhatsappContact = splitContactNumber((data as any).contactWhatsapp || data.sellerPhone || '', 'GB');
         const loadedPhoneContact = splitContactNumber(data.contactPhone || '', 'GB');
@@ -1787,6 +1828,11 @@ const CreateAd = () => {
 
       const expirationDate = new Date();
       expirationDate.setDate(expirationDate.getDate() + days);
+      const administrativeDate = isStaff && id
+        ? parseDateInputAtEndOfDay(administrativeExpirationDate)
+        : null;
+      const effectiveExpirationDate = administrativeDate ||
+        (id && originalAd ? (originalAd.expirationDate || expirationDate) : expirationDate);
 
       const validSourceUrl = (formData.sourceUrl && /^https?:\/\//i.test(formData.sourceUrl)) ? formData.sourceUrl.trim() : null;
       const normalizedMoreInfoUrl = isStaffForExternalListing ? normalizeExternalListingUrl(formData.moreInfoUrl) : '';
@@ -1843,7 +1889,7 @@ const CreateAd = () => {
         marketplaceListingFee: isMarketplaceListingCategory(formData.category)
           ? (profile?.marketplaceFreeListingUsed === true ? getMarketplaceAdditionalPrice() : 0)
           : undefined,
-        expirationDate: id && originalAd ? (originalAd.expirationDate || expirationDate) : expirationDate,
+        expirationDate: effectiveExpirationDate,
         userNotified: id && originalAd
           ? (Object.prototype.hasOwnProperty.call(originalAd, 'userNotified') ? originalAd.userNotified : false)
           : false,
@@ -1963,16 +2009,22 @@ const CreateAd = () => {
         const isFeaturedPlan = ['featured', 'highlight', 'local', 'national', 'intermediate', 'premium'].includes(formData.plan);
         if (isFeaturedPlan || formData.isPermanentFeatured) {
           adData.isFeatured = true;
-          adData.featuredLevel = formData.plan === 'national' ? 'national' : 'local';
+          adData.featuredLevel = formData.plan === 'premium'
+            ? 'premium'
+            : formData.plan === 'featured'
+              ? 'featured'
+              : formData.plan === 'national'
+                ? 'national'
+                : 'local';
           if (formData.isPermanentFeatured) {
             const farFuture = new Date();
             farFuture.setFullYear(farFuture.getFullYear() + 100);
             adData.isPermanentFeatured = true;
             adData.featuredUntil = farFuture;
           } else {
-            adData.featuredUntil = expirationDate;
+            adData.featuredUntil = effectiveExpirationDate;
           }
-          adData.featuredActivatedAt = adData.featuredActivatedAt || new Date();
+          adData.featuredActivatedAt = (originalAd as any)?.featuredActivatedAt || new Date();
         } else if (formData.plan === 'free' && !formData.isPermanentFeatured) {
           adData.isFeatured = false;
           adData.isPermanentFeatured = false;
@@ -1984,8 +2036,8 @@ const CreateAd = () => {
         if (formData.plan === 'featured' || formData.plan === 'premium' || formData.plan === 'local' || formData.plan === 'national') {
           adData.isFeatured = true;
           adData.featuredLevel = formData.plan === 'premium' || formData.plan === 'national' ? 'premium' : 'featured';
-          adData.featuredUntil = expirationDate;
-          adData.featuredActivatedAt = adData.featuredActivatedAt || new Date();
+          adData.featuredUntil = effectiveExpirationDate;
+          adData.featuredActivatedAt = (originalAd as any)?.featuredActivatedAt || new Date();
         }
       }
 
@@ -4222,6 +4274,38 @@ const CreateAd = () => {
                     <label htmlFor="isPermanentFeatured" className="text-xs font-bold text-slate-800 cursor-pointer">
                       ⭐ Permanent Staff Highlight (Never Expires)
                     </label>
+                  </div>
+                )}
+
+                {id && isStaff && (
+                  <div className="mt-4 rounded-2xl border-2 border-indigo-100 bg-indigo-50/60 p-4 sm:p-5">
+                    <h4 className="text-sm font-black text-slate-900">Administrative Expiration</h4>
+                    <div className="mt-3 flex flex-col gap-3">
+                      <label className="block">
+                        <span className="text-xs font-black text-slate-600">Expiration date</span>
+                        <input
+                          type="date"
+                          value={administrativeExpirationDate}
+                          onChange={(event) => setAdministrativeExpirationDate(event.target.value)}
+                          className="mt-2 w-full sm:w-64 rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-indigo-500"
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {[30, 60, 90].map((daysToAdd) => (
+                          <button
+                            key={daysToAdd}
+                            type="button"
+                            onClick={() => setAdministrativeExpirationDate(addCalendarDaysFromToday(daysToAdd))}
+                            className="rounded-xl border border-indigo-200 bg-white px-4 py-2.5 text-xs font-black text-indigo-700 hover:bg-indigo-100"
+                          >
+                            +{daysToAdd} days
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[11px] font-semibold text-slate-500">
+                        Admin/Moderator only. Changing this date does not create a Stripe charge.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
