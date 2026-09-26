@@ -143,16 +143,19 @@ const buildInternationalContactNumber = (countryIso: string, localNumber?: strin
   const raw = (localNumber || '').trim();
   if (!raw) return '';
 
-  // If a complete international number was pasted, keep it as supplied.
+  // Keep pasted international numbers, correcting the invalid UK +440 prefix.
   if (raw.startsWith('+')) {
-    return raw.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+    const internationalNumber = raw.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+    return internationalNumber.replace(/^\+440/, '+44');
   }
 
   const country = getContactCountry(countryIso);
   const localDigits = raw.replace(/\D/g, '');
+  const internationalDigits = country.iso === 'GB'
+    ? localDigits.replace(/^0/, '')
+    : localDigits;
 
-  // Deliberately preserves every digit entered by the user, including a leading 0.
-  return localDigits ? `${country.dialCode}${localDigits}` : '';
+  return internationalDigits ? `${country.dialCode}${internationalDigits}` : '';
 };
 
 
@@ -1086,14 +1089,6 @@ const CreateAd = () => {
         serviceCoverage: nextCoverage
       };
       
-      // If profile phone is unchecked, and custom contact phone is empty or only holds a prefix, auto suggest new prefix
-      if (!prev.useProfilePhone) {
-        const trimmedPhone = prev.contactPhone.trim();
-        if (!trimmedPhone || trimmedPhone === '+351' || trimmedPhone === '+44') {
-          updated.contactPhone = newCountry === 'Reino Unido' ? '+44 ' : '+351 ';
-        }
-      }
-      
       return updated;
     });
   };
@@ -1130,13 +1125,6 @@ const CreateAd = () => {
         ...prev,
         useProfilePhone: checked
       };
-      
-      if (!checked) {
-        const trimmedPhone = prev.contactPhone.trim();
-        if (!trimmedPhone) {
-          updated.contactPhone = prev.country === 'Reino Unido' ? '+44 ' : '+351 ';
-        }
-      }
       
       return updated;
     });
