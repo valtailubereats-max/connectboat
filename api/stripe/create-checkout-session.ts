@@ -7,8 +7,8 @@ import { getStorage } from 'firebase-admin/storage';
 import { GoogleGenAI } from '@google/genai';
 import sharp from 'sharp';
 import { createHash, randomBytes, randomUUID } from 'crypto';
-import { getBrokerState, brokerMoney } from '../../src/server/brokerProgram';
-import brokerHandler from '../../src/server/brokerHandler';
+import { getBrokerState, brokerMoney } from '../../src/server/brokerProgram.js';
+import brokerHandler from '../../src/server/brokerHandler.js';
 
 let stripeClient: Stripe | null = null;
 

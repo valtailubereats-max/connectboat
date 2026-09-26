@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { randomBytes, createHash } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
-import { brokerDb, brokerIdentity, getBrokerState, hasValidBrokerReferral, isEligibleBrokerAd } from './brokerProgram';
+import { brokerDb, brokerIdentity, getBrokerState, hasValidBrokerReferral, isEligibleBrokerAd } from './brokerProgram.js';
 
 const text = (value: unknown, max: number) => String(value || '').trim().slice(0, max);
 const hash = (code: string) => createHash('sha256').update(code.trim().toUpperCase()).digest('hex');
