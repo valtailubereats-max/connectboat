@@ -33,7 +33,7 @@ const Profile = () => {
   const currentTab = rawTab === 'ads' ? 'anuncios' : rawTab;
 
   const [phone, setPhone] = useState('');
-  const [countryCode, setCountryCode] = useState('+351');
+  const [countryCode, setCountryCode] = useState('+44');
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
   const [region, setRegion] = useState('');
@@ -635,7 +635,7 @@ const Profile = () => {
         setCountryCode(foundCode.code);
         setPhone(fullPhone.replace(foundCode.code, '').trim());
       } else {
-        setCountryCode('+351');
+        setCountryCode('+44');
         setPhone(fullPhone);
       }
       setName(profile.name || '');
@@ -1008,7 +1008,8 @@ const Profile = () => {
         setLoading(false);
         return;
       }
-      const fullPhone = `${countryCode}${digitsOnly}`.trim();
+      const internationalDigits = countryCode === '+44' ? digitsOnly.replace(/^0/, '') : digitsOnly;
+      const fullPhone = `${countryCode}${internationalDigits}`.trim();
 
       // Check if phone is already registered to another user
       const usersQuery = query(
