@@ -17,6 +17,7 @@ import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { sendGoogleAdsSignupConversion } from '../utils/analytics';
+import marinaLoginBackground from '../assets/images/login-backgrounds/marina-login-background.png';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -302,12 +303,29 @@ const Login = () => {
     }
   };
 
+  const handleModeChange = (newMode: 'login' | 'register') => {
+    const params: any = { mode: newMode };
+    const currentRef = searchParams.get('ref');
+    const currentRedirect = searchParams.get('redirect');
+    if (currentRef) params.ref = currentRef;
+    if (currentRedirect) params.redirect = currentRedirect;
+    setSearchParams(params);
+    setMode(newMode);
+    setError('');
+    setSuccessMessage('');
+  };
+
   return (
-    <div className="max-w-md mx-auto mt-6 px-4">
+    <div
+      className="-mx-1.5 -my-4 min-h-[calc(100vh-4.4rem)] bg-cover bg-center px-4 py-6 xs:-mx-2 sm:-mx-6 sm:-my-8 sm:px-6 sm:py-8 lg:-mx-8"
+      style={{
+        backgroundImage: `linear-gradient(rgba(239, 246, 255, 0.56), rgba(239, 246, 255, 0.72)), url(${marinaLoginBackground})`
+      }}
+    >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white p-5 sm:p-6 rounded-3xl shadow-2xl border border-slate-100"
+        className={`w-full max-w-md mx-auto bg-white/95 backdrop-blur-sm p-5 sm:p-6 rounded-3xl shadow-2xl border transition-colors ${mode === 'register' ? 'border-sky-200' : 'border-white/80'}`}
       >
         <div className="text-center mb-4">
           <div className="flex items-center justify-center mx-auto mb-3">
@@ -317,12 +335,12 @@ const Login = () => {
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="w-full mb-3 bg-white border border-blue-200 text-blue-600 py-2.5 rounded-xl font-bold hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              className={`w-full mb-3 bg-white border py-2.5 rounded-xl font-bold transition-colors ${mode === 'register' ? 'border-sky-200 text-sky-600 hover:bg-sky-50 hover:border-sky-300' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300'}`}
             >
               Continue as Guest →
             </button>
           )}
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+          <h1 className={`text-2xl font-black tracking-tight transition-colors ${mode === 'register' ? 'text-sky-950' : 'text-slate-900'}`}>
             {mode === 'login' ? 'Welcome back!' : mode === 'register' ? 'Create account' : 'Reset password'}
           </h1>
           <p className="text-slate-500 mt-1 font-medium text-sm leading-tight">
@@ -435,7 +453,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-black hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 disabled:opacity-50 group"
+            className={`w-full text-white py-3 rounded-xl font-black transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 group ${mode === 'register' ? 'bg-sky-600 hover:bg-sky-700 shadow-sky-100' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'}`}
           >
             <span>{loading ? 'Processing...' : (mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Send Email')}</span>
             {!loading && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
@@ -509,23 +527,24 @@ const Login = () => {
               Back to Sign In
             </button>
           ) : (
-            <button
-              onClick={() => {
-                const newMode = mode === 'login' ? 'register' : 'login';
-                const params: any = { mode: newMode };
-                const currentRef = searchParams.get('ref');
-                const currentRedirect = searchParams.get('redirect');
-                if (currentRef) params.ref = currentRef;
-                if (currentRedirect) params.redirect = currentRedirect;
-                setSearchParams(params);
-                setMode(newMode);
-                setError('');
-                setSuccessMessage('');
-              }}
-              className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors"
-            >
-              {mode === 'login' ? "Don't have an account? Register" : "Already have an account? Sign in here"}
-            </button>
+            <div className="flex w-full gap-2 rounded-2xl bg-slate-100 p-1.5" aria-label="Choose authentication mode">
+              <button
+                type="button"
+                onClick={() => handleModeChange('login')}
+                aria-pressed={mode === 'login'}
+                className={`py-2.5 rounded-xl text-sm font-black transition-all ${mode === 'login' ? 'flex-[1.35] bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'flex-1 bg-transparent text-slate-500 hover:bg-white hover:text-indigo-600'}`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('register')}
+                aria-pressed={mode === 'register'}
+                className={`py-2.5 rounded-xl text-sm font-black transition-all ${mode === 'register' ? 'flex-[1.35] bg-sky-600 text-white shadow-md shadow-sky-200' : 'flex-1 bg-transparent text-slate-500 hover:bg-white hover:text-sky-600'}`}
+              >
+                Register
+              </button>
+            </div>
           )}
         </div>
 
