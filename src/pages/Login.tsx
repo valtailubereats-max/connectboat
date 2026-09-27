@@ -313,6 +313,15 @@ const Login = () => {
           <div className="flex items-center justify-center mx-auto mb-3">
             <ConnectBoatLogo className="h-11 w-auto" />
           </div>
+          {mode !== 'forgot' && (
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="w-full mb-3 bg-white border border-blue-200 text-blue-600 py-2.5 rounded-xl font-bold hover:bg-blue-50 hover:border-blue-300 transition-colors"
+            >
+              Continue as Guest →
+            </button>
+          )}
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
             {mode === 'login' ? 'Welcome back!' : mode === 'register' ? 'Create account' : 'Reset password'}
           </h1>
@@ -466,7 +475,7 @@ const Login = () => {
                 <div className="w-full border-t border-slate-100"></div>
               </div>
               <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold">
-                <span className="bg-white px-3 text-slate-400">Sign in with Google Key</span>
+                <span className="bg-white px-3 text-slate-400">Sign in with Google</span>
               </div>
             </div>
 
