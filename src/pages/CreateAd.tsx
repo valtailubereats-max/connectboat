@@ -2002,6 +2002,9 @@ const CreateAd = () => {
 
       if (isStaff) {
         const isFeaturedPlan = ['featured', 'highlight', 'local', 'national', 'intermediate', 'premium'].includes(formData.plan);
+        const normalizedSelectedPlan = normalizeListingPlan(formData.plan);
+        const normalizedOriginalPlan = normalizeListingPlan(originalAd?.plan || 'free');
+        const isAdminPlanOverride = !originalAd || normalizedSelectedPlan !== normalizedOriginalPlan;
         if (isFeaturedPlan || formData.isPermanentFeatured) {
           adData.isFeatured = true;
           adData.featuredLevel = formData.plan === 'premium'
@@ -2020,6 +2023,14 @@ const CreateAd = () => {
             adData.featuredUntil = effectiveExpirationDate;
           }
           adData.featuredActivatedAt = (originalAd as any)?.featuredActivatedAt || new Date();
+          adData.planType = normalizedSelectedPlan;
+          adData.planStartedAt = isAdminPlanOverride ? new Date() : (originalAd?.planStartedAt || adData.featuredActivatedAt);
+          adData.planExpiresAt = formData.isPermanentFeatured ? adData.featuredUntil : effectiveExpirationDate;
+          if (isAdminPlanOverride) {
+            adData.isCourtesy = true;
+            adData.courtesyGrantedBy = user.uid;
+            adData.courtesyReason = 'Admin plan override';
+          }
         } else if (formData.plan === 'free' && !formData.isPermanentFeatured) {
           adData.isFeatured = false;
           adData.isPermanentFeatured = false;
