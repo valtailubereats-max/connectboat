@@ -344,7 +344,6 @@ const Navbar = () => {
             <div className="flex shrink-0 items-center gap-2 lg:gap-4">
               <Link to="/" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Boats for Sale</Link>
               <Link to="/boats-for-hire" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Boats for Hire</Link>
-              <Link to="/boat-show-moments" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Businesses We Met</Link>
             </div>
 
             <form onSubmit={handleDesktopSearch} className="relative min-w-[150px] flex-1 xl:min-w-[260px]" role="search">
@@ -360,8 +359,14 @@ const Navbar = () => {
             </form>
 
             <div className="flex shrink-0 items-center gap-2 lg:gap-3">
-              <Link to="/advertise" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Advertise</Link>
-              <Link to="/brokers" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Brokers</Link>
+              <button
+                type="button"
+                onClick={handlePublishClick}
+                className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-3 py-2 text-xs font-bold text-white shadow-md shadow-sky-500/20 transition-all hover:from-sky-400 hover:to-blue-500 lg:px-4 lg:text-sm"
+              >
+                <PlusCircle size={17} />
+                <span>List Boat</span>
+              </button>
 
               <div className="relative" ref={moreMenuRef}>
                 <button
@@ -371,7 +376,7 @@ const Navbar = () => {
                   aria-expanded={showMoreMenu}
                   aria-haspopup="menu"
                 >
-                  More ▾
+                  Menu ▾
                 </button>
 
                 <AnimatePresence>
@@ -383,6 +388,16 @@ const Navbar = () => {
                       className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-100 bg-white py-2.5 text-slate-800 shadow-xl z-[100]"
                       role="menu"
                     >
+                      <Link to="/boat-show-moments" onClick={() => setShowMoreMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:text-sky-600" role="menuitem">
+                        Businesses We Met
+                      </Link>
+                      <Link to="/advertise" onClick={() => setShowMoreMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:text-sky-600" role="menuitem">
+                        Advertise
+                      </Link>
+                      <Link to="/brokers" onClick={() => setShowMoreMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:text-sky-600" role="menuitem">
+                        Brokers
+                      </Link>
+                      <div className="border-t border-slate-100 my-2" />
                       <Link to="/events" onClick={() => setShowMoreMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:text-sky-600" role="menuitem">
                         Marine Events
                       </Link>
@@ -411,10 +426,6 @@ const Navbar = () => {
               </div>
 
             {user ? <>
-              <Link to="/create-ad" className="flex items-center gap-[8.8px] bg-gradient-to-r from-sky-500 to-blue-600 text-white px-[17.6px] py-[8.8px] rounded-[13.2px] hover:from-sky-400 hover:to-blue-500 transition-all shadow-md shadow-sky-500/20 font-bold text-[15.4px]">
-                <PlusCircle size={19.8} /> <span>List Boat / Item</span>
-              </Link>
-
               <Link
                 to="/profile"
                 title="My Profile"

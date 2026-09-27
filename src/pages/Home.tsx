@@ -1729,39 +1729,6 @@ const Home = () => {
             </button>
           </div>
 
-          {/* Campo de Pesquisa Textual na Segunda Linha */}
-          <div className="h-12 flex items-center gap-2 pl-4 pr-1.5 bg-white rounded-2xl border border-slate-200 focus-within:border-sky-500 transition-all">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => {
-                handleSearchFocus();
-                setIsSearchFocused(true);
-              }}
-              onBlur={() => setIsSearchFocused(false)}
-              placeholder="Search boats, engines, parts, services..."
-              className="w-full bg-transparent text-slate-800 font-medium placeholder:text-slate-800 focus:outline-none text-xs sm:text-sm py-2 leading-normal"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm('')}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-1 font-semibold text-xs shrink-0"
-              >
-                ✕
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => handleSearchFocus()}
-              className="w-9 h-9 sm:w-10 sm:h-10 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white rounded-xl flex items-center justify-center shrink-0 transition-all shadow-sm cursor-pointer"
-              aria-label="Search"
-            >
-              <Search size={18} />
-            </button>
-          </div>
-
           {/* Chips de Filtros Ativos (Removíveis) */}
           {(activeMarineFilterCount > 0 || searchTerm || category !== 'Todas' || city !== 'Todas') && (
             <div className="flex flex-wrap items-center gap-1.5 mt-1 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-left px-1">
