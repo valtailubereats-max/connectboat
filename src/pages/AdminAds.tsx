@@ -1685,10 +1685,10 @@ const AdminAds = () => {
                   <CreditCard size={13} className="text-emerald-500" />
                   <span>Payment Date: {isPaidAd(ad) && (formatUKDate(ad.paidAt) || formatUKDate((ad as any).paymentCompletedAt)) ? <strong className="text-emerald-700">{formatUKDate(ad.paidAt) || formatUKDate((ad as any).paymentCompletedAt)}</strong> : <span className="text-slate-400 italic">Payment data unavailable</span>}</span>
                 </div>
-                {ad.expirationDate && (
+                {(ad.planExpiresAt || ad.featuredUntil || ad.expirationDate) && (
                   <div className="flex items-center gap-1" title="Expiration Date">
                     <AlertCircle size={13} className="text-amber-400" />
-                    <span>EXP: {ad.expirationDate.toDate ? format(ad.expirationDate.toDate(), 'dd MMM yyyy') : 'N/A'}</span>
+                    <span>EXP: {formatUKDate(ad.planExpiresAt || ad.featuredUntil || ad.expirationDate) || 'N/A'}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1">
@@ -2048,7 +2048,7 @@ const AdminAds = () => {
                           <div><span className="text-[7px] font-black uppercase text-slate-400">Created</span><br />{ad.createdAt?.toDate ? format(ad.createdAt.toDate(), 'dd MMM yy') : 'Recently'}</div>
                         )}
                         {isColVisible('expiracao') && (
-                          <div className="mt-1"><span className="text-[7px] font-black uppercase text-slate-400">Expiry</span><br />{ad.expirationDate?.toDate ? format(ad.expirationDate.toDate(), 'dd MMM yy') : 'N/A'}</div>
+                          <div className="mt-1"><span className="text-[7px] font-black uppercase text-slate-400">Expiry</span><br />{formatUKDate(ad.planExpiresAt || ad.featuredUntil || ad.expirationDate) || 'N/A'}</div>
                         )}
                       </td>
 
