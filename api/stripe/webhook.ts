@@ -652,10 +652,13 @@ export default async function stripeWebhookHandler(
             `[Stripe Webhook Error] itemType is '${itemType}' but adId is missing from metadata!`
           );
         } else {
-          const thirtyDaysFromNow =
+          const planDurationDays =
+            Math.max(1, Number(metadata.planDurationDays) || 30);
+
+          const planExpiresAt =
             new Date(
               Date.now() +
-                30 *
+                planDurationDays *
                   24 *
                   60 *
                   60 *
@@ -898,6 +901,20 @@ export default async function stripeWebhookHandler(
                         .payment_intent
                         ?.id || null,
               };
+
+          updatePayload.planType = activePlan;
+          updatePayload.isCourtesy = false;
+          updatePayload.courtesyGrantedBy = null;
+          updatePayload.courtesyReason = null;
+
+          if (!isAdminAssisted && adData.status === 'approved') {
+            updatePayload.planStartedAt = firebaseAdmin.firestore.FieldValue.serverTimestamp();
+            updatePayload.planExpiresAt = planExpiresAt;
+            updatePayload.featuredUntil = planExpiresAt;
+            updatePayload.featuredActivatedAt = firebaseAdmin.firestore.FieldValue.serverTimestamp();
+            updatePayload.isFeatured = isFeatured;
+            updatePayload.featuredLevel = level;
+          }
 
           // Only metadata from the server-created, Stripe-signed session can
           // establish a broker discount. The total is always Stripe's total.

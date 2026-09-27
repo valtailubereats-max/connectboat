@@ -1533,10 +1533,11 @@ const Profile = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {ads.map((ad, idx) => {
-              const isAdFeatured = ad.isFeatured && ad.featuredUntil && (
-                ad.featuredUntil.seconds 
-                  ? ad.featuredUntil.toDate() > new Date() 
-                  : new Date(ad.featuredUntil) > new Date()
+              const benefitExpiresAt = ad.planExpiresAt || ad.featuredUntil;
+              const isAdFeatured = ad.isFeatured && benefitExpiresAt && (
+                benefitExpiresAt.seconds
+                  ? benefitExpiresAt.toDate() > new Date()
+                  : new Date(benefitExpiresAt) > new Date()
               );
 
               const getFeaturedLabel = () => {

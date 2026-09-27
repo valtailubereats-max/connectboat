@@ -73,10 +73,11 @@ const AdCard: React.FC<AdCardProps> = ({
 
   const isFavorite = favorites.includes(ad.id);
 
-  const isAdFeatured = ad.isFeatured && ad.featuredUntil && (
-    ad.featuredUntil.seconds 
-      ? ad.featuredUntil.toDate() > new Date() 
-      : new Date(ad.featuredUntil) > new Date()
+  const benefitExpiresAt = ad.planExpiresAt || ad.featuredUntil;
+  const isAdFeatured = ad.isFeatured && benefitExpiresAt && (
+    benefitExpiresAt.seconds
+      ? benefitExpiresAt.toDate() > new Date()
+      : new Date(benefitExpiresAt) > new Date()
   );
 
   const isPremiumHighlight = isAdFeatured && (ad.featuredLevel === 'premium' || ad.plan === 'premium');

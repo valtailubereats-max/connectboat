@@ -1442,6 +1442,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const settingsSnapshot = await db.collection('settings').doc('global').get();
     const settingsData = settingsSnapshot.exists ? settingsSnapshot.data() : {};
     const configuredPlanPrices = settingsData?.planPrices || {};
+    const configuredPlanDurations = settingsData?.planDurations || {};
 
     const standardPrice = getValidConfiguredPrice(configuredPlanPrices.standard, 4.99);
     const featuredPrice = getValidConfiguredPrice(configuredPlanPrices.featured, 7.99);
@@ -1456,6 +1457,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
 
     // Calculate base plan price using the trusted Firestore settings.
     const activePlan = String((itemType === 'ad_listing' ? authenticatedAdData?.plan : plan) || 'standard').toLowerCase();
+    const normalizedDurationPlan = activePlan === 'premium' ? 'premium' : activePlan === 'featured' ? 'featured' : 'standard';
+    const configuredDurationDays = Number(configuredPlanDurations[normalizedDurationPlan]);
+    const planDurationDays = Number.isFinite(configuredDurationDays) && configuredDurationDays > 0 ? Math.round(configuredDurationDays) : 30;
     const savedListingCategory = String(authenticatedAdData?.category || category || '').trim();
     const isPaidBoatListing =
       itemType === 'ad_listing' &&
@@ -1631,6 +1635,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
         ? (trustedMarketplaceListingType === 'paid_additional' ? 'marketplace_additional' : 'marketplace_free')
         : (isServiceListing ? 'boat_service_listing' : (isPaidBoatListing ? 'boat_listing' : String(itemType))),
       mediaBoostEnabled: hasMediaBoost ? 'true' : 'false',
+      planDurationDays: String(planDurationDays),
     };
     if (brokerPrice && isPaidBoatListing) {
       metadata.brokerId = authenticatedUserId;

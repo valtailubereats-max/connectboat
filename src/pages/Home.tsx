@@ -1106,11 +1106,12 @@ const Home = () => {
     // Check expiration only for non-permanent ads
     const filteredActivePaid = result.filter(ad => {
       if (ad.isPermanentFeatured) return false;
-      if (!ad.isFeatured || !ad.featuredUntil) return false;
+      const benefitExpiresAt = ad.planExpiresAt || ad.featuredUntil;
+      if (!ad.isFeatured || !benefitExpiresAt) return false;
       
-      const featuredUntilDate = ad.featuredUntil.seconds
-        ? ad.featuredUntil.toDate()
-        : new Date(ad.featuredUntil);
+      const featuredUntilDate = benefitExpiresAt.seconds
+        ? benefitExpiresAt.toDate()
+        : new Date(benefitExpiresAt);
       return featuredUntilDate > now;
     });
 
@@ -1132,8 +1133,10 @@ const Home = () => {
     const paidLocal = filteredActivePaid.filter(ad => ad.featuredLevel === 'local' || ad.plan === 'local' || ad.plan === 'highlight' || ad.plan === 'intermediate');
 
     const sortByFeaturedUntilDesc = (a: Ad, b: Ad) => {
-      const timeA = a.featuredUntil?.seconds ? a.featuredUntil.seconds * 1000 : new Date(a.featuredUntil).getTime();
-      const timeB = b.featuredUntil?.seconds ? b.featuredUntil.seconds * 1000 : new Date(b.featuredUntil).getTime();
+      const expiresA = a.planExpiresAt || a.featuredUntil;
+      const expiresB = b.planExpiresAt || b.featuredUntil;
+      const timeA = expiresA?.seconds ? expiresA.seconds * 1000 : new Date(expiresA).getTime();
+      const timeB = expiresB?.seconds ? expiresB.seconds * 1000 : new Date(expiresB).getTime();
       return (timeB || 0) - (timeA || 0);
     };
 
@@ -1420,11 +1423,12 @@ const Home = () => {
 
       // Default 'newest' (priority weighting)
       const getPriority = (ad: any) => {
-        const isFeatured = ad.isFeatured && ad.featuredUntil && (
+        const benefitExpiresAt = ad.planExpiresAt || ad.featuredUntil;
+        const isFeatured = ad.isFeatured && benefitExpiresAt && (
           ad.isPermanentFeatured || (
-            ad.featuredUntil.seconds 
-              ? ad.featuredUntil.toDate() > new Date() 
-              : new Date(ad.featuredUntil) > new Date()
+            benefitExpiresAt.seconds
+              ? benefitExpiresAt.toDate() > new Date()
+              : new Date(benefitExpiresAt) > new Date()
           )
         );
 

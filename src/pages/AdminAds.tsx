@@ -194,6 +194,11 @@ const AdminAds = () => {
   const [assistedPaymentLoading, setAssistedPaymentLoading] = useState(false);
   const [assistedPaymentUrl, setAssistedPaymentUrl] = useState('');
   const [assistedPaymentError, setAssistedPaymentError] = useState<string | null>(null);
+  const [courtesyPlan, setCourtesyPlan] = useState<'standard' | 'featured' | 'premium'>('featured');
+  const [courtesyDuration, setCourtesyDuration] = useState<'7' | '30' | '60' | 'custom'>('30');
+  const [courtesyCustomDate, setCourtesyCustomDate] = useState('');
+  const [courtesyReason, setCourtesyReason] = useState('');
+  const [courtesySaving, setCourtesySaving] = useState(false);
 
   const openAssistedPayment = (ad: Ad) => {
     setAssistedPaymentAd(ad);
@@ -282,6 +287,94 @@ const AdminAds = () => {
       return format(dateValue, 'dd MMM yyyy HH:mm');
     } catch {
       return 'Not available';
+    }
+  };
+
+  const handleGrantCourtesy = async () => {
+    if (!selectedAd || !user) return;
+    if (!courtesyReason.trim()) {
+      alert('Please enter the reason for the courtesy.');
+      return;
+    }
+
+    const startedAt = new Date();
+    const expiresAt = courtesyDuration === 'custom'
+      ? new Date(`${courtesyCustomDate}T23:59:59`)
+      : addDays(startedAt, Number(courtesyDuration));
+
+    if (Number.isNaN(expiresAt.getTime()) || expiresAt <= startedAt) {
+      alert('Please choose a valid future expiration date.');
+      return;
+    }
+
+    const isFeaturedPlan = courtesyPlan === 'featured' || courtesyPlan === 'premium';
+    const updates = {
+      plan: courtesyPlan,
+      planType: courtesyPlan,
+      planStartedAt: startedAt,
+      planExpiresAt: expiresAt,
+      isCourtesy: true,
+      courtesyGrantedBy: user.uid,
+      courtesyReason: courtesyReason.trim(),
+      isFeatured: isFeaturedPlan,
+      featuredLevel: courtesyPlan,
+      featuredActivatedAt: startedAt,
+      featuredUntil: expiresAt,
+      isPermanentFeatured: false,
+      updatedAt: serverTimestamp()
+    };
+
+    setCourtesySaving(true);
+    try {
+      await updateDoc(doc(db, 'ads', selectedAd.id), updates);
+      clearHomeCache();
+      setAds(prev => prev.map(ad => ad.id === selectedAd.id ? ({ ...ad, ...updates } as Ad) : ad));
+      setSelectedAd(prev => prev ? ({ ...prev, ...updates } as Ad) : null);
+      setCourtesyReason('');
+      setCourtesyCustomDate('');
+      alert('Courtesy plan granted without creating a charge.');
+    } catch (err) {
+      console.error('[AdminAds] Failed to grant courtesy plan:', err);
+      handleFirestoreError(err, OperationType.UPDATE, `ads/${selectedAd.id}`);
+    } finally {
+      setCourtesySaving(false);
+    }
+  };
+
+  const handleRemovePlanBenefit = async () => {
+    if (!selectedAd || !user) return;
+    if (!window.confirm('Remove the current courtesy or plan benefit? The listing category will not change.')) return;
+
+    const now = new Date();
+    const updates = {
+      plan: 'standard' as const,
+      planType: 'standard' as const,
+      planStartedAt: null,
+      planExpiresAt: now,
+      isCourtesy: false,
+      courtesyGrantedBy: null,
+      courtesyReason: null,
+      isFeatured: false,
+      featuredLevel: 'standard',
+      featuredUntil: now,
+      isPermanentFeatured: false,
+      planBenefitRemovedAt: serverTimestamp(),
+      planBenefitRemovedBy: user.uid,
+      updatedAt: serverTimestamp()
+    };
+
+    setCourtesySaving(true);
+    try {
+      await updateDoc(doc(db, 'ads', selectedAd.id), updates);
+      clearHomeCache();
+      setAds(prev => prev.map(ad => ad.id === selectedAd.id ? ({ ...ad, ...updates } as Ad) : ad));
+      setSelectedAd(prev => prev ? ({ ...prev, ...updates } as Ad) : null);
+      alert('Plan benefit removed. The original category was preserved.');
+    } catch (err) {
+      console.error('[AdminAds] Failed to remove plan benefit:', err);
+      handleFirestoreError(err, OperationType.UPDATE, `ads/${selectedAd.id}`);
+    } finally {
+      setCourtesySaving(false);
     }
   };
 
@@ -442,7 +535,8 @@ const AdminAds = () => {
         const plan = (adToUpdate.plan || 'standard').toLowerCase();
         const isFeatured = plan === 'featured' || plan === 'premium';
         const featuredLevel = plan === 'premium' ? 'premium' : plan === 'featured' ? 'featured' : 'standard';
-        const expiresAt = addDays(new Date(), 30);
+        const configuredDuration = Number(settings?.planDurations?.[plan as 'standard' | 'featured' | 'premium'] ?? 30);
+        const expiresAt = addDays(new Date(), Number.isFinite(configuredDuration) && configuredDuration > 0 ? configuredDuration : 30);
 
         // Both normal customer payments and admin-assisted payments start
         // their 30-day listing period only after moderation approval.
@@ -455,6 +549,12 @@ const AdminAds = () => {
         updatePayload.featuredActivatedAt = serverTimestamp();
         updatePayload.isFeatured = isFeatured;
         updatePayload.featuredLevel = featuredLevel;
+        updatePayload.planType = plan;
+        updatePayload.planStartedAt = serverTimestamp();
+        updatePayload.planExpiresAt = expiresAt;
+        updatePayload.isCourtesy = false;
+        updatePayload.courtesyGrantedBy = null;
+        updatePayload.courtesyReason = null;
       }
 
       await updateDoc(doc(db, 'ads', adId), updatePayload);
@@ -572,8 +672,12 @@ const AdminAds = () => {
           awaitingAdminApproval: false,
           adStatus: 'active',
           activatedAt: new Date(),
-          expirationDate: addDays(new Date(), 30),
-          featuredUntil: addDays(new Date(), 30),
+          expirationDate: addDays(new Date(), Number(settings?.planDurations?.[(ad.plan || 'standard') as 'standard' | 'featured' | 'premium'] ?? 30)),
+          featuredUntil: addDays(new Date(), Number(settings?.planDurations?.[(ad.plan || 'standard') as 'standard' | 'featured' | 'premium'] ?? 30)),
+          planType: (ad.plan || 'standard') as any,
+          planStartedAt: new Date(),
+          planExpiresAt: addDays(new Date(), Number(settings?.planDurations?.[(ad.plan || 'standard') as 'standard' | 'featured' | 'premium'] ?? 30)),
+          isCourtesy: false,
           isFeatured: (ad.plan || '').toLowerCase() === 'featured' || (ad.plan || '').toLowerCase() === 'premium',
           featuredLevel: (ad.plan || '').toLowerCase() === 'premium' ? 'premium' : (ad.plan || '').toLowerCase() === 'featured' ? 'featured' : 'standard'
         } : {})
@@ -587,7 +691,11 @@ const AdminAds = () => {
           adStatus: 'active',
           activatedAt: new Date(),
           expirationDate: addDays(new Date(), 30),
-          featuredUntil: addDays(new Date(), 30)
+          featuredUntil: addDays(new Date(), 30),
+          planType: (prev.plan || 'standard') as any,
+          planStartedAt: new Date(),
+          planExpiresAt: addDays(new Date(), Number(settings?.planDurations?.[(prev.plan || 'standard') as 'standard' | 'featured' | 'premium'] ?? 30)),
+          isCourtesy: false
         } : {})
       } as Ad : prev);
       return true;
@@ -2560,6 +2668,54 @@ const AdminAds = () => {
                     </>
                   )}
                 </div>
+              </div>
+
+              <div className="border-t border-slate-100 bg-sky-50/60 p-6">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900">Listing plan and benefit</h4>
+                    <p className="mt-1 text-xs text-slate-600">Granting a courtesy updates the listing directly and never starts Stripe Checkout.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemovePlanBenefit}
+                    disabled={courtesySaving}
+                    className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                  >
+                    Remove benefit
+                  </button>
+                </div>
+
+                <div className="mb-4 grid grid-cols-2 gap-3 text-xs lg:grid-cols-5">
+                  <div className="rounded-xl border border-sky-100 bg-white p-3"><span className="block text-[10px] font-black uppercase text-slate-400">Current plan</span><strong className="mt-1 block capitalize text-slate-900">{selectedAd.planType || selectedAd.plan || 'standard'}</strong></div>
+                  <div className="rounded-xl border border-sky-100 bg-white p-3"><span className="block text-[10px] font-black uppercase text-slate-400">Started</span><strong className="mt-1 block text-slate-900">{formatSellerDate(selectedAd.planStartedAt || (selectedAd as any).featuredActivatedAt)}</strong></div>
+                  <div className="rounded-xl border border-sky-100 bg-white p-3"><span className="block text-[10px] font-black uppercase text-slate-400">Expires</span><strong className="mt-1 block text-slate-900">{formatSellerDate(selectedAd.planExpiresAt || selectedAd.featuredUntil || selectedAd.expirationDate)}</strong></div>
+                  <div className="rounded-xl border border-sky-100 bg-white p-3"><span className="block text-[10px] font-black uppercase text-slate-400">Courtesy</span><strong className="mt-1 block text-slate-900">{selectedAd.isCourtesy ? 'Yes' : 'No'}</strong></div>
+                  <div className="col-span-2 rounded-xl border border-sky-100 bg-white p-3 lg:col-span-1"><span className="block text-[10px] font-black uppercase text-slate-400">Reason</span><strong className="mt-1 block break-words text-slate-900">{selectedAd.courtesyReason || '—'}</strong></div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                  <select value={courtesyPlan} onChange={(e) => setCourtesyPlan(e.target.value as 'standard' | 'featured' | 'premium')} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-800">
+                    <option value="standard">Standard Listing</option>
+                    <option value="featured">Featured Listing</option>
+                    <option value="premium">Premium Featured</option>
+                  </select>
+                  <select value={courtesyDuration} onChange={(e) => setCourtesyDuration(e.target.value as '7' | '30' | '60' | 'custom')} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-800">
+                    <option value="7">7 days</option>
+                    <option value="30">30 days</option>
+                    <option value="60">60 days</option>
+                    <option value="custom">Custom date</option>
+                  </select>
+                  {courtesyDuration === 'custom' ? (
+                    <input type="date" value={courtesyCustomDate} onChange={(e) => setCourtesyCustomDate(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-800" />
+                  ) : (
+                    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-semibold text-slate-500">Expires {format(addDays(new Date(), Number(courtesyDuration)), 'dd MMM yyyy')}</div>
+                  )}
+                  <input type="text" value={courtesyReason} onChange={(e) => setCourtesyReason(e.target.value)} placeholder="Courtesy reason" className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-800" />
+                </div>
+                <button type="button" onClick={handleGrantCourtesy} disabled={courtesySaving} className="mt-3 w-full rounded-xl bg-sky-600 px-4 py-3 text-sm font-black text-white hover:bg-sky-700 disabled:opacity-50">
+                  {courtesySaving ? 'Saving…' : 'Grant courtesy plan'}
+                </button>
               </div>
 
               {/* Actions Footer */}

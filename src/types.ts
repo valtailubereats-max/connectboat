@@ -223,6 +223,12 @@ export interface Ad {
   adStatus?: AdLifecycleStatus;
   isHidden?: boolean;
   plan?: AdPlan;
+  planType?: AdPlan;
+  planStartedAt?: any; // Firestore Timestamp
+  planExpiresAt?: any; // Firestore Timestamp
+  isCourtesy?: boolean;
+  courtesyGrantedBy?: string | null;
+  courtesyReason?: string | null;
   paidAt?: any; // Firestore Timestamp
   stripeCheckoutSessionId?: string;
   brokerId?: string;

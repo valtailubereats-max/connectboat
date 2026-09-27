@@ -1951,6 +1951,8 @@ const CreateAd = () => {
         mediaBoostPrice: 2.00
       };
 
+      adData.planType = normalizeListingPlan(formData.plan);
+
       // Preservar metadados e dados de pagamento de anúncios existentes
       if (id && originalAd) {
         if (originalAd.sourceUrl) adData.sourceUrl = originalAd.sourceUrl;
@@ -1979,6 +1981,11 @@ const CreateAd = () => {
         if (originalAd.stripeCheckoutSessionId) adData.stripeCheckoutSessionId = originalAd.stripeCheckoutSessionId;
         if ((originalAd as any).paymentConfirmationEmailSent !== undefined) adData.paymentConfirmationEmailSent = (originalAd as any).paymentConfirmationEmailSent;
         if (originalAd.videoPaid !== undefined) adData.videoPaid = originalAd.videoPaid;
+        if (originalAd.planStartedAt) adData.planStartedAt = originalAd.planStartedAt;
+        if (originalAd.planExpiresAt) adData.planExpiresAt = originalAd.planExpiresAt;
+        if (originalAd.isCourtesy !== undefined) adData.isCourtesy = originalAd.isCourtesy;
+        if (originalAd.courtesyGrantedBy !== undefined) adData.courtesyGrantedBy = originalAd.courtesyGrantedBy;
+        if (originalAd.courtesyReason !== undefined) adData.courtesyReason = originalAd.courtesyReason;
       }
 
       if (formData.category === '💚 Doações & Solidariedade') {
