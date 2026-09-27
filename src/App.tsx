@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
-import { LogOut, PlusCircle, Plus, User as UserIcon, ShieldCheck, Menu, X, Share2, Bell, AlertTriangle, QrCode, Copy, Check, Mail } from 'lucide-react';
+import { LogOut, PlusCircle, Plus, User as UserIcon, ShieldCheck, Menu, X, Share2, Bell, AlertTriangle, QrCode, Copy, Check, Mail, Search } from 'lucide-react';
 import { ConnectBoatLogo } from './components/ConnectBoatLogo';
 import { QRCodeSVG } from 'qrcode.react';
 import { auth, db, getDocsWithCacheFallback } from './firebase';
@@ -92,6 +92,7 @@ const Navbar = () => {
   };
   const { settings } = useSettings();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = React.useState(false);
   const [adminNotificationCount, setAdminNotificationCount] = React.useState(0);
   const [adminPendingAds, setAdminPendingAds] = React.useState<any[]>([]);
@@ -100,6 +101,8 @@ const Navbar = () => {
   const [notifications, setNotifications] = React.useState<any[]>([]);
   const [showNotifications, setShowNotifications] = React.useState(false);
   const [showUserDropdown, setShowUserDropdown] = React.useState(false);
+  const [showMoreMenu, setShowMoreMenu] = React.useState(false);
+  const [desktopSearch, setDesktopSearch] = React.useState(() => new URLSearchParams(window.location.search).get('search') || '');
   const [showQrModal, setShowQrModal] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
@@ -112,12 +115,17 @@ const Navbar = () => {
   };
   
   const userDropdownRef = React.useRef<HTMLDivElement>(null);
+  const moreMenuRef = React.useRef<HTMLDivElement>(null);
   const adminNotificationsRef = React.useRef<HTMLDivElement>(null);
   const notificationsRef = React.useRef<HTMLDivElement>(null);
   const navRef = React.useRef<HTMLElement>(null);
 
   useClickOutside(userDropdownRef, () => {
     setShowUserDropdown(false);
+  });
+
+  useClickOutside(moreMenuRef, () => {
+    setShowMoreMenu(false);
   });
 
   useClickOutside(adminNotificationsRef, () => {
@@ -131,6 +139,10 @@ const Navbar = () => {
   useClickOutside(navRef, () => {
     setIsOpen(false);
   });
+
+  React.useEffect(() => {
+    setDesktopSearch(new URLSearchParams(location.search).get('search') || '');
+  }, [location.search]);
 
   const groupedNotifications = React.useMemo(() => {
     const groups: { [key: string]: any[] } = {};
@@ -299,6 +311,19 @@ const Navbar = () => {
     }
   };
 
+  const handleDesktopSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const params = location.pathname === '/' ? new URLSearchParams(location.search) : new URLSearchParams();
+    const query = desktopSearch.trim();
+    if (query) {
+      params.set('search', query);
+    } else {
+      params.delete('search');
+    }
+    const queryString = params.toString();
+    navigate(queryString ? `/?${queryString}` : '/');
+  };
+
   const handleLogoClick = () => {
     window.dispatchEvent(new CustomEvent('reset-category'));
   };
@@ -315,17 +340,75 @@ const Navbar = () => {
           </Link>
 
           {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-[26.4px]">
-            <Link to="/boat-show-moments" className="shrink-0 whitespace-nowrap text-sm font-bold text-slate-300 hover:text-sky-400">Boat Show Moments</Link>
-            <Link to="/brokers" className="shrink-0 whitespace-nowrap rounded-xl border border-sky-400 px-2 py-2 text-xs font-bold text-sky-200 hover:bg-sky-900">For Brokers</Link>
-            {!user && (
-              <button onClick={handlePublishClick} className="text-slate-300 hover:text-sky-400 font-medium flex items-center gap-[4.4px] cursor-pointer transition-colors text-[15.4px]">
-                <Plus size={19.8} /> <span>List Boat / Item</span>
-              </button>
-            )}
-            <button onClick={handleShare} className="text-slate-300 hover:text-sky-400 font-medium flex items-center gap-[4.4px] text-[15.4px] cursor-pointer transition-colors">
-              <Share2 size={19.8} /> <span>Share</span>
-            </button>
+          <div className="hidden md:flex flex-1 min-w-0 items-center gap-3 lg:gap-5">
+            <div className="flex shrink-0 items-center gap-2 lg:gap-4">
+              <Link to="/" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Boats for Sale</Link>
+              <Link to="/boats-for-hire" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Boats for Hire</Link>
+              <Link to="/boat-show-moments" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Businesses We Met</Link>
+            </div>
+
+            <form onSubmit={handleDesktopSearch} className="relative min-w-[150px] flex-1 xl:min-w-[260px]" role="search">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="search"
+                value={desktopSearch}
+                onChange={(e) => setDesktopSearch(e.target.value)}
+                placeholder="Search boats, businesses or locations"
+                aria-label="Search boats, businesses or locations"
+                className="w-full rounded-xl border border-slate-700 bg-slate-800 py-2 pl-9 pr-3 text-xs font-medium text-white outline-none transition-all placeholder:text-slate-400 focus:border-sky-400 focus:bg-slate-800/80 focus:ring-2 focus:ring-sky-500/20 lg:text-sm"
+              />
+            </form>
+
+            <div className="flex shrink-0 items-center gap-2 lg:gap-3">
+              <Link to="/advertise" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Advertise</Link>
+              <Link to="/brokers" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Brokers</Link>
+
+              <div className="relative" ref={moreMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className="whitespace-nowrap rounded-xl px-2 py-2 text-xs font-bold text-slate-300 transition-colors hover:bg-slate-800 hover:text-sky-400 lg:text-sm"
+                  aria-expanded={showMoreMenu}
+                  aria-haspopup="menu"
+                >
+                  More ▾
+                </button>
+
+                <AnimatePresence>
+                  {showMoreMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-56 rounded-2xl border border-slate-100 bg-white py-2.5 text-slate-800 shadow-xl z-[100]"
+                      role="menu"
+                    >
+                      <Link to="/events" onClick={() => setShowMoreMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:text-sky-600" role="menuitem">
+                        Marine Events
+                      </Link>
+                      <Link to="/pricing" onClick={() => setShowMoreMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:text-sky-600" role="menuitem">
+                        Pricing Plans
+                      </Link>
+                      <Link to="/links" onClick={() => setShowMoreMenu(false)} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:text-sky-600" role="menuitem">
+                        Useful Links
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowMoreMenu(false);
+                          handleShare();
+                        }}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm font-bold text-slate-700 transition-colors hover:bg-slate-50 hover:text-sky-600"
+                        role="menuitem"
+                      >
+                        <Share2 size={16} /> Share
+                      </button>
+                      <div className="border-t border-slate-100 my-2" />
+                      <InstallButton variant="dropdown-item" onClickAction={() => setShowMoreMenu(false)} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
             {user ? <>
               <Link to="/create-ad" className="flex items-center gap-[8.8px] bg-gradient-to-r from-sky-500 to-blue-600 text-white px-[17.6px] py-[8.8px] rounded-[13.2px] hover:from-sky-400 hover:to-blue-500 transition-all shadow-md shadow-sky-500/20 font-bold text-[15.4px]">
@@ -567,69 +650,11 @@ const Navbar = () => {
                 </AnimatePresence>
               </div>
             </> : (
-              <div className="flex items-center gap-[13.2px]">
-                <Link to="/login" className="bg-sky-600 text-white px-[22px] py-[8.8px] rounded-[13.2px] hover:bg-sky-500 transition-all shadow-md font-bold text-[15.4px]">Log in / Sign up</Link>
-                
-                <div className="relative" ref={userDropdownRef}>
-                  <button
-                    onClick={() => setShowUserDropdown(!showUserDropdown)}
-                    className="relative text-slate-300 hover:text-sky-400 font-medium flex items-center gap-[6.6px] p-[8.8px] cursor-pointer outline-none transition-all hover:bg-slate-800 rounded-[13.2px] text-[15.4px]"
-                    id="guest-menu-toggle"
-                  >
-                    <Menu size={22} />
-                    <span>Menu</span>
-                  </button>
-
-                  <AnimatePresence>
-                    {showUserDropdown && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2.5 z-[100] text-slate-800"
-                        id="desktop-guest-menu"
-                      >
-                        <Link
-                          to="/"
-                          onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
-                        >
-                          🧭 Home
-                        </Link>
-                        <Link
-                          to="/events"
-                          onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
-                          id="nav-fotos-link"
-                        >
-                          📅 Marine Events
-                        </Link>
-                        <Link
-                          to="/pricing"
-                          onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 transition-colors text-sm font-bold text-sky-600"
-                          id="nav-precos-link-guest"
-                        >
-                          🏷️ Pricing Plans
-                        </Link>
-
-                        <div className="border-t border-slate-100 my-2" />
-
-                        <Link
-                          to="/links"
-                          onClick={() => setShowUserDropdown(false)}
-                          className="flex items-center gap-2 px-4 py-2 hover:bg-sky-50 text-sky-700 transition-colors text-sm font-black"
-                        >
-                          <span>🔗 Useful Links</span>
-                        </Link>
-
-                        <InstallButton variant="dropdown-item" onClickAction={() => setShowUserDropdown(false)} />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </div>
+              <Link to="/login" className="whitespace-nowrap rounded-xl bg-sky-600 px-3 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-sky-500 lg:px-4 lg:text-sm">
+                Log in / Sign up
+              </Link>
             )}
+            </div>
           </div>
 
           {/* Mobile Menu */}
