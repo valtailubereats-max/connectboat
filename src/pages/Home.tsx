@@ -1036,11 +1036,20 @@ const Home = () => {
     let result = featuredAds.filter(ad => {
       if (ad.isHidden) return false;
       if (ad.category === 'Trabalho/Empregos') return false;
+      const isActiveAdminCourtesy = Boolean(
+        ad.isCourtesy &&
+        ad.courtesyGrantedBy &&
+        (ad.planType === 'featured' || ad.planType === 'premium' || ad.plan === 'featured' || ad.plan === 'premium')
+      );
       // HOME RULE: Featured listings on the homepage are exclusively boats for sale.
       // Hire listings have their own dedicated homepage section, and every other
       // marine category remains available through search, filters and categories.
-      if (ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') return false;
-      if (ad.category !== 'Boats for Sale') return false;
+      // An active courtesy explicitly granted by an administrator is the exception:
+      // it may enter Featured Marine Listings without changing its original category.
+      if (!isActiveAdminCourtesy) {
+        if (ad.listingIntent === 'hire' || ad.category === 'Boats for Hire') return false;
+        if (ad.category !== 'Boats for Sale') return false;
+      }
       
       const search = searchTerm.toLowerCase().trim();
       const matchesSearch = !search || ad.title?.toLowerCase().includes(search) || ad.description?.toLowerCase().includes(search);

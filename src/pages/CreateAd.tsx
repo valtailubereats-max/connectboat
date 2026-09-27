@@ -2004,7 +2004,12 @@ const CreateAd = () => {
         const isFeaturedPlan = ['featured', 'highlight', 'local', 'national', 'intermediate', 'premium'].includes(formData.plan);
         const normalizedSelectedPlan = normalizeListingPlan(formData.plan);
         const normalizedOriginalPlan = normalizeListingPlan(originalAd?.plan || 'free');
-        const isAdminPlanOverride = !originalAd || normalizedSelectedPlan !== normalizedOriginalPlan;
+        const originalBenefitExpiresAt = originalAd?.planExpiresAt || originalAd?.featuredUntil;
+        const hasCompleteFeaturedBenefit = Boolean(originalAd?.isFeatured && originalBenefitExpiresAt);
+        const isAdminPlanOverride =
+          !originalAd ||
+          normalizedSelectedPlan !== normalizedOriginalPlan ||
+          (isFeaturedPlan && !hasCompleteFeaturedBenefit);
         if (isFeaturedPlan || formData.isPermanentFeatured) {
           adData.isFeatured = true;
           adData.featuredLevel = formData.plan === 'premium'
