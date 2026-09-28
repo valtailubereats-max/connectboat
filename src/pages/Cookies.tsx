@@ -92,7 +92,7 @@ const Cookies = () => {
 
         <div className="prose prose-slate max-w-none space-y-8">
           <p className="text-sm font-semibold text-emerald-600">
-            Last updated: 3 September 2026
+            Last updated: 28 September 2026
           </p>
 
           <section>
@@ -176,7 +176,7 @@ const Cookies = () => {
           <section>
             <div className="flex items-center gap-2 text-emerald-600 mb-3">
               <BarChart3 size={20} />
-              <h2 className="text-xl font-bold m-0">3. Google Analytics 4</h2>
+              <h2 className="text-xl font-bold m-0">3. Google Analytics 4 and Google Ads Measurement</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -193,7 +193,15 @@ const Cookies = () => {
             </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">
-              ConnectBoat treats Google Analytics as optional. GA4 is not loaded by ConnectBoat unless you have expressly selected Accept Analytics. If you select Essential Only, ConnectBoat does not intentionally enable GA4 and removes accessible Google Analytics cookies set for this site. If an applicable legal exemption permits a storage or access technology to be used without consent, ConnectBoat may rely on that exemption only where its legal conditions are met.
+              ConnectBoat treats Google Analytics and the Google Ads measurement configured through
+              the same Google tag as optional. They are not intentionally enabled by ConnectBoat
+              unless you have expressly selected Accept Analytics. After that choice, ConnectBoat
+              may send limited Google Ads conversion events, such as a completed new-user
+              registration, to measure advertising performance. If you select Essential Only,
+              ConnectBoat does not intentionally enable GA4 or Google Ads measurement and removes
+              accessible Google Analytics cookies set for this site. If an applicable legal
+              exemption permits a storage or access technology to be used without consent,
+              ConnectBoat may rely on that exemption only where its legal conditions are met.
             </p>
           </section>
 
@@ -233,7 +241,11 @@ const Cookies = () => {
               </li>
               <li>
                 <strong>Google Analytics 4:</strong> website measurement, usage analytics and
-                performance reporting.
+                performance reporting after you accept Analytics.
+              </li>
+              <li>
+                <strong>Google Ads measurement:</strong> advertising measurement and limited
+                conversion reporting, such as completed registrations, after you accept Analytics.
               </li>
               <li>
                 <strong>Stripe:</strong> payment processing for ConnectBoat listing plans and
@@ -248,10 +260,12 @@ const Cookies = () => {
 
             <p className="text-slate-600 leading-relaxed mt-3">
               ConnectBoat may display sponsored advertising without this, by itself, meaning that
-              third-party advertising cookies or behavioural-tracking technologies are placed on
-              your device. If ConnectBoat introduces non-essential advertising cookies or similar
-              tracking technologies in the future, this policy and the applicable consent controls
-              will be updated before those technologies are used where consent is required.
+              third-party behavioural-advertising technologies are placed on your device. ConnectBoat
+              currently uses Google Ads measurement only after the Analytics choice described above.
+              If ConnectBoat introduces additional non-essential advertising cookies, personalised
+              advertising technologies or similar tracking in the future, this policy and the
+              applicable consent controls will be updated before those technologies are used where
+              consent is required.
             </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">
