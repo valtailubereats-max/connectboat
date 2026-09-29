@@ -221,12 +221,44 @@ const CreateAd = () => {
   const [originalAd, setOriginalAd] = useState<Ad | null>(null);
   const [administrativeExpirationDate, setAdministrativeExpirationDate] = useState('');
   const [brokerDiscount, setBrokerDiscount] = useState(0);
+  const [partnerVoucherCode, setPartnerVoucherCode] = useState('');
+  const [partnerVoucher, setPartnerVoucher] = useState<{ partnerCode: string; partnerName: string } | null>(null);
+  const [partnerVoucherError, setPartnerVoucherError] = useState('');
+  const [validatingPartnerVoucher, setValidatingPartnerVoucher] = useState(false);
   useEffect(() => {
     if (!user) return;
     brokerRequest('status').then(result => {
       setBrokerDiscount(result.profile?.status === 'active' ? Number(result.currentDiscount || 0) : 0);
     }).catch(() => setBrokerDiscount(0));
   }, [user?.uid]);
+
+  const validatePartnerVoucher = async () => {
+    if (!user || !partnerVoucherCode.trim()) return;
+    setValidatingPartnerVoucher(true);
+    setPartnerVoucherError('');
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          action: 'partner_voucher_validate',
+          partnerCode: partnerVoucherCode,
+          category: formData.category,
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.success !== true) throw new Error(result.errorMessage || 'Invalid partner voucher.');
+      setPartnerVoucher({ partnerCode: result.partnerCode, partnerName: result.partnerName });
+      setPartnerVoucherCode(result.partnerCode);
+    } catch (error: any) {
+      setPartnerVoucher(null);
+      setPartnerVoucherError(error?.message || 'Invalid partner voucher.');
+    } finally {
+      setValidatingPartnerVoucher(false);
+    }
+  };
+
   const [soldStatusUpdating, setSoldStatusUpdating] = useState(false);
 
   const isEditLocked = useMemo(() => {
@@ -379,6 +411,11 @@ const CreateAd = () => {
     videoMimeType: null as string | null,
     videoPaid: false
   });
+
+  useEffect(() => {
+    setPartnerVoucher(null);
+    setPartnerVoucherError('');
+  }, [formData.category]);
 
 
   const isStaffForExternalListing = isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator';
@@ -646,11 +683,14 @@ const CreateAd = () => {
     const currentTier = getPlanTier(formData.plan);
 
     if (!isEditing) {
-      if (isPaidBoatListing) return true;
+      if (isPaidBoatListing) {
+        const partnerFundsStandard = !!partnerVoucher && normalizeListingPlan(formData.plan) === 'standard';
+        return !partnerFundsStandard || formData.mediaBoostEnabled;
+      }
       if (isServiceListing) return currentTier > 0 || formData.mediaBoostEnabled;
       if (isMarketplaceListingCategory(formData.category)) {
         const freeAlreadyUsed = profile?.marketplaceFreeListingUsed === true;
-        return freeAlreadyUsed || formData.mediaBoostEnabled;
+        return (freeAlreadyUsed && !partnerVoucher) || formData.mediaBoostEnabled;
       }
       return formData.mediaBoostEnabled;
     }
@@ -735,11 +775,12 @@ const CreateAd = () => {
   const getCheckoutTotalAmountFormatted = () => {
     if (!checkRequiresPayment()) return '0.00';
     const activePlan = (formData.plan || 'standard').toLowerCase();
+    const partnerFundsStandard = !!partnerVoucher && isPaidBoatListingCategory(formData.category) && normalizeListingPlan(activePlan) === 'standard';
     const planBase = isPaidBoatListingCategory(formData.category)
-      ? getPlanPrice(activePlan)
+      ? (partnerFundsStandard ? 0 : getPlanPrice(activePlan))
       : isBoatServiceCategory(formData.category)
         ? getServicePlanPrice(activePlan)
-        : (isMarketplaceListingCategory(formData.category) && !isFirstMarketplaceListingFree() ? getMarketplaceAdditionalPrice() : 0);
+        : (isMarketplaceListingCategory(formData.category) && !isFirstMarketplaceListingFree() && !partnerVoucher ? getMarketplaceAdditionalPrice() : 0);
     const mediaBoostExtra = (formData.mediaBoostEnabled && !originalAd?.videoPaid) ? 2.00 : 0;
     const discountedPlan = isPaidBoatListingCategory(formData.category)
       ? (Math.round(planBase * 100) - Math.round(Math.round(planBase * 100) * brokerDiscount / 100)) / 100
@@ -1869,6 +1910,7 @@ const CreateAd = () => {
         status: isStaff && id ? (originalAd?.status || 'approved') : 'pending',
         adStatus: id && originalAd ? originalAd.adStatus : 'active',
         plan: isTieredListingCategory(formData.category) ? normalizeListingPlan(formData.plan) : 'free',
+        partnerVoucherCode: partnerVoucher?.partnerCode || undefined,
         marketplaceListingType: isMarketplaceListingCategory(formData.category)
           ? (id && originalAd
               ? ((originalAd as any).marketplaceListingType || 'paid_additional')
@@ -3080,6 +3122,47 @@ const CreateAd = () => {
                   * First photo is the cover photo. Use arrows or &quot;Set as Main&quot; to reorder photos. Max 5MB per file.
                 </p>
               </div>
+
+              {!id && (isPaidBoatListingCategory(formData.category) || isMarketplaceListingCategory(formData.category)) && (
+                <div className="p-5 bg-emerald-50/70 border-2 border-emerald-200 rounded-3xl space-y-3">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900">Partner voucher</h3>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Enter a partner code. On an eligible first free Marketplace listing it records the partner origin without replacing or extending that benefit.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={partnerVoucherCode}
+                      onChange={(event) => {
+                        setPartnerVoucherCode(event.target.value.toUpperCase());
+                        setPartnerVoucher(null);
+                        setPartnerVoucherError('');
+                      }}
+                      placeholder="Partner code"
+                      className="min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={validatePartnerVoucher}
+                      disabled={!partnerVoucherCode.trim() || validatingPartnerVoucher}
+                      className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-extrabold text-white disabled:opacity-50"
+                    >
+                      {validatingPartnerVoucher ? 'Checking…' : 'Apply'}
+                    </button>
+                  </div>
+                  {partnerVoucher && (
+                    <p className="text-xs font-bold text-emerald-800">
+                      ✓ {partnerVoucher.partnerName} ({partnerVoucher.partnerCode}) — partner origin will be recorded.
+                      {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'standard'
+                        ? ' Standard listing is free for 30 days.'
+                        : ''}
+                    </p>
+                  )}
+                  {partnerVoucherError && <p className="text-xs font-bold text-rose-700">{partnerVoucherError}</p>}
+                  <p className="text-[11px] font-semibold text-slate-500">Media Boost is always charged separately at £2.00.</p>
+                </div>
+              )}
 
               {/* Media Boost Optional Add-on Block */}
               <div className="p-6 bg-gradient-to-br from-indigo-50/80 via-white to-sky-50/60 border-2 border-indigo-200/90 rounded-3xl space-y-4 shadow-sm relative overflow-hidden">
@@ -4340,10 +4423,10 @@ const CreateAd = () => {
                     </span>
                     <span className="font-bold text-slate-900">
                       {isPaidBoatListingCategory(formData.category)
-                        ? `£${getPlanPrice(formData.plan).toFixed(2)}`
+                        ? (partnerVoucher && normalizeListingPlan(formData.plan) === 'standard' ? '£0.00' : `£${getPlanPrice(formData.plan).toFixed(2)}`)
                         : isBoatServiceCategory(formData.category)
                           ? (getServicePlanPrice(formData.plan) === 0 ? '£0.00' : `£${getServicePlanPrice(formData.plan).toFixed(2)}`)
-                          : (hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`)}
+                          : (hasMarketplaceFreeBenefit() || partnerVoucher ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`)}
                     </span>
                   </div>
 
@@ -4545,10 +4628,10 @@ const CreateAd = () => {
                     </span>
                     <span className="font-bold text-slate-900">
                       {isPaidBoatListingCategory(formData.category)
-                        ? `£${getPlanPrice(formData.plan).toFixed(2)}`
+                        ? (partnerVoucher && normalizeListingPlan(formData.plan) === 'standard' ? '£0.00' : `£${getPlanPrice(formData.plan).toFixed(2)}`)
                         : isBoatServiceCategory(formData.category)
                           ? (getServicePlanPrice(formData.plan) === 0 ? '£0.00' : `£${getServicePlanPrice(formData.plan).toFixed(2)}`)
-                          : (hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`)}
+                          : (hasMarketplaceFreeBenefit() || partnerVoucher ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`)}
                     </span>
                   </div>
                   {formData.mediaBoostEnabled && (

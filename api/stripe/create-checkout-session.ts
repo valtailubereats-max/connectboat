@@ -9,6 +9,7 @@ import sharp from 'sharp';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { getBrokerState, brokerMoney } from '../../src/server/brokerProgram.js';
 import brokerHandler from '../../src/server/brokerHandler.js';
+import { normalisePartnerCode, resolvePartnerPromotion } from '../../src/lib/partnerPromotion.js';
 
 let stripeClient: Stripe | null = null;
 
@@ -21,6 +22,53 @@ const MARKETPLACE_LISTING_CATEGORIES = new Set([
   'Marinas', 'Accessories', 'Wanted',
 ]);
 const SERVICE_LISTING_CATEGORY = 'Boat Services';
+
+type PartnerVoucher = {
+  code: string;
+  partnerName: string;
+  usageCount: number;
+  maxUses?: number;
+  allowedCategories?: string[];
+};
+
+async function getValidPartnerVoucher(db: FirebaseFirestore.Firestore, rawCode: unknown, category?: string): Promise<PartnerVoucher | null> {
+  const code = normalisePartnerCode(rawCode);
+  if (!code) return null;
+  const snapshot = await db.collection('partnerVouchers').doc(code).get();
+  if (!snapshot.exists) return null;
+  const data = snapshot.data() || {};
+  if (data.active !== true) return null;
+  const now = Date.now();
+  const startsAt = data.startsAt?.toMillis?.();
+  const expiresAt = data.expiresAt?.toMillis?.();
+  if ((startsAt && startsAt > now) || (expiresAt && expiresAt < now)) return null;
+  const usageCount = Math.max(0, Number(data.usageCount || 0));
+  const maxUses = Number(data.maxUses);
+  if (Number.isFinite(maxUses) && maxUses >= 0 && usageCount >= maxUses) return null;
+  const allowedCategories = Array.isArray(data.allowedCategories) ? data.allowedCategories.map(String) : undefined;
+  if (category && allowedCategories?.length && !allowedCategories.includes(category)) return null;
+  const partnerName = String(data.partnerName || data.name || '').trim();
+  if (!partnerName) return null;
+  return { code, partnerName, usageCount, maxUses, allowedCategories };
+}
+
+async function validatePartnerVoucher(req: Request, res: Response) {
+  getAdminDb();
+  const authHeader = req.headers.authorization || '';
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match) return res.status(401).json({ success: false, error: 'UNAUTHENTICATED' });
+  try {
+    await getAuth(getApp()).verifyIdToken(match[1]);
+  } catch {
+    return res.status(401).json({ success: false, error: 'INVALID_AUTH_TOKEN' });
+  }
+  const category = String(req.body?.category || '').trim();
+  const voucher = await getValidPartnerVoucher(getAdminDb(), req.body?.partnerCode, category);
+  if (!voucher) {
+    return res.status(404).json({ success: false, error: 'INVALID_PARTNER_VOUCHER', errorMessage: 'This partner voucher is invalid, expired or not available for this category.' });
+  }
+  return res.status(200).json({ success: true, partnerCode: voucher.code, partnerName: voucher.partnerName });
+}
 
 function normaliseListingPlan(plan: unknown): 'standard' | 'featured' | 'premium' {
   const value = String(plan || 'standard').toLowerCase();
@@ -76,6 +124,7 @@ async function handleListingSave(req: Request, res: Response) {
   if (String(adData.sellerId || '') !== uid) {
     return res.status(403).json({ success: false, error: 'SELLER_MISMATCH', errorMessage: 'You can only create listings for your own account.' });
   }
+  const requestedPartnerCode = normalisePartnerCode(adData.partnerVoucherCode);
   // This endpoint uses the Admin SDK, so browser payloads must not carry
   // payment, moderation or broker state into Firestore.
   for (const key of [
@@ -83,6 +132,8 @@ async function handleListingSave(req: Request, res: Response) {
     'stripeCheckoutSessionId', 'stripePaymentIntentId', 'brokerId',
     'brokerTier', 'brokerDiscountPercent', 'brokerNormalPrice',
     'brokerDiscountAmount', 'brokerFinalPlanPrice', 'brokerPaymentVerified',
+    'acquisitionSource', 'partnerCode', 'partnerName', 'promotionSource',
+    'partnerAttributionOnly', 'partnerFundedFreeStandard', 'partnerUsageRecorded',
   ]) delete adData[key];
 
   const db = getAdminDb();
@@ -93,6 +144,29 @@ async function handleListingSave(req: Request, res: Response) {
   const isBoat = PAID_BOAT_LISTING_CATEGORIES.has(category);
   const isMarketplace = MARKETPLACE_LISTING_CATEGORIES.has(category);
   const isService = category === SERVICE_LISTING_CATEGORY;
+  const partnerVoucher = requestedPartnerCode
+    ? await getValidPartnerVoucher(db, requestedPartnerCode, category)
+    : null;
+  if (requestedPartnerCode && !partnerVoucher) {
+    return res.status(409).json({ success: false, error: 'INVALID_PARTNER_VOUCHER', errorMessage: 'This partner voucher is no longer valid for this listing.' });
+  }
+  const firstMarketplaceFree = isMarketplace && String(adData.marketplaceListingType || '') === 'free_first';
+  const promotion = resolvePartnerPromotion({
+    hasValidPartnerVoucher: !!partnerVoucher,
+    isFirstMarketplaceListingFree: firstMarketplaceFree,
+    isPaidBoatListing: isBoat,
+    isPaidMarketplaceListing: isMarketplace && !firstMarketplaceFree,
+    plan: adData.plan,
+  });
+  delete adData.partnerVoucherCode;
+  if (partnerVoucher) {
+    adData.acquisitionSource = 'partner';
+    adData.partnerCode = partnerVoucher.code;
+    adData.partnerName = partnerVoucher.partnerName;
+    adData.partnerAttributionOnly = promotion.partnerAttributionOnly;
+    adData.partnerFundedFreeStandard = promotion.partnerFundsStandard;
+  }
+  if (promotion.promotionSource) adData.promotionSource = promotion.promotionSource;
 
   if (isBoat) {
     const plan = normaliseListingPlan(adData.plan);
@@ -165,6 +239,8 @@ async function handleListingSave(req: Request, res: Response) {
           marketplaceListingType: 'free_first',
           marketplaceFreeBenefitConsumed: true,
           marketplaceListingFee: 0,
+          promotionSource: 'first_free_listing',
+          ...(partnerVoucher ? { partnerUsageRecorded: true } : {}),
         }, { merge: true });
         tx.set(userRef, {
           marketplaceFreeListingUsed: true,
@@ -172,6 +248,21 @@ async function handleListingSave(req: Request, res: Response) {
         }, { merge: true });
         tx.set(phoneRef, { uid, createdAt: FieldValue.serverTimestamp() }, { merge: false });
         tx.set(emailRef, { uid, createdAt: FieldValue.serverTimestamp() }, { merge: false });
+        if (partnerVoucher && adSnap.data()?.partnerUsageRecorded !== true) {
+          const voucherRef = db.collection('partnerVouchers').doc(partnerVoucher.code);
+          const usageRef = db.collection('partnerVoucherUsages').doc(`${partnerVoucher.code}_${adId}`);
+          tx.update(voucherRef, {
+            usageCount: FieldValue.increment(1),
+            attributedListingsCount: FieldValue.increment(1),
+            firstFreeAttributedCount: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+          tx.set(usageRef, {
+            partnerCode: partnerVoucher.code, partnerName: partnerVoucher.partnerName,
+            adId, userId: uid, category, promotionSource: 'first_free_listing',
+            attributionOnly: true, createdAt: FieldValue.serverTimestamp(),
+          }, { merge: false });
+        }
       });
     } catch (error: any) {
       const code = String(error?.message || '');
@@ -202,7 +293,32 @@ async function handleListingSave(req: Request, res: Response) {
     adData.marketplaceListingFee = Number(settings?.planPrices?.marketplaceAdditional ?? 1.99);
   }
 
-  await adRef.set(adData, { merge: true });
+  if (partnerVoucher) {
+    await db.runTransaction(async (tx) => {
+      const currentAd = await tx.get(adRef);
+      const alreadyRecorded = currentAd.data()?.partnerUsageRecorded === true;
+      tx.set(adRef, { ...adData, partnerUsageRecorded: true }, { merge: true });
+      if (!alreadyRecorded) {
+        const voucherRef = db.collection('partnerVouchers').doc(partnerVoucher.code);
+        const usageRef = db.collection('partnerVoucherUsages').doc(`${partnerVoucher.code}_${adId}`);
+        tx.update(voucherRef, {
+          usageCount: FieldValue.increment(1),
+          attributedListingsCount: FieldValue.increment(1),
+          ...(promotion.partnerFundsStandard ? { fundedFreeStandardCount: FieldValue.increment(1) } : {}),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        tx.set(usageRef, {
+          partnerCode: partnerVoucher.code, partnerName: partnerVoucher.partnerName,
+          adId, userId: uid, category, promotionSource: promotion.promotionSource,
+          attributionOnly: promotion.partnerAttributionOnly,
+          partnerFundedFreeStandard: promotion.partnerFundsStandard,
+          createdAt: FieldValue.serverTimestamp(),
+        }, { merge: false });
+      }
+    });
+  } else {
+    await adRef.set(adData, { merge: true });
+  }
   return res.status(200).json({ success: true, adId, marketplaceListingType: adData.marketplaceListingType || null });
 }
 
@@ -1288,6 +1404,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       if (advertisingAction === 'listing_save') {
         return await handleListingSave(req, res);
       }
+      if (advertisingAction === 'partner_voucher_validate') {
+        return await validatePartnerVoucher(req, res);
+      }
       if (advertisingAction === 'marine_event_create_checkout') {
         return await marineEventCreateCheckout(req, res);
       }
@@ -1467,6 +1586,10 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const marketplaceCategories = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Accessories', 'Wanted']);
     const isMarketplaceListing = itemType === 'ad_listing' && marketplaceCategories.has(savedListingCategory);
     const isServiceListing = itemType === 'ad_listing' && savedListingCategory === 'Boat Services';
+    const isPartnerFundedStandard = (isPaidBoatListing || isMarketplaceListing) &&
+      authenticatedAdData?.partnerFundedFreeStandard === true &&
+      authenticatedAdData?.promotionSource === 'partner_promotion' &&
+      ['standard', 'free'].includes(activePlan);
     const savedImages = Array.isArray(authenticatedAdData?.images) ? authenticatedAdData.images : [];
     const marketplaceFreeBenefitConsumed = authenticatedAdData?.marketplaceFreeBenefitConsumed === true;
     const accountFreeBenefitUsed = authenticatedUserData?.marketplaceFreeListingUsed === true;
@@ -1563,7 +1686,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const chargedPlanCents = brokerPrice?.finalPriceCents ?? amountCents;
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
-    if (isMarketplaceListing && trustedMarketplaceListingType === 'paid_additional') {
+    if (isMarketplaceListing && trustedMarketplaceListingType === 'paid_additional' && !isPartnerFundedStandard) {
       lineItems.push({
         price_data: {
           currency: 'gbp',
@@ -1584,7 +1707,7 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
         },
         quantity: 1,
       });
-    } else if (itemType !== 'ad_listing' || isPaidBoatListing) {
+    } else if (itemType !== 'ad_listing' || (isPaidBoatListing && !isPartnerFundedStandard)) {
       lineItems.push({
         price_data: {
           currency,
@@ -1635,6 +1758,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
         ? (trustedMarketplaceListingType === 'paid_additional' ? 'marketplace_additional' : 'marketplace_free')
         : (isServiceListing ? 'boat_service_listing' : (isPaidBoatListing ? 'boat_listing' : String(itemType))),
       mediaBoostEnabled: hasMediaBoost ? 'true' : 'false',
+      promotionSource: String(authenticatedAdData?.promotionSource || ''),
+      partnerCode: String(authenticatedAdData?.partnerCode || ''),
+      partnerFundedFreeStandard: isPartnerFundedStandard ? 'true' : 'false',
       planDurationDays: String(planDurationDays),
     };
     if (brokerPrice && isPaidBoatListing) {

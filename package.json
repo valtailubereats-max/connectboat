@@ -9,7 +9,8 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test:event-contacts": "node --import tsx --test tests/eventContactsSync.test.ts"
+    "test:event-contacts": "node --import tsx --test tests/eventContactsSync.test.ts",
+    "test:partner-promotions": "node --import tsx --test tests/partnerPromotion.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.7.0",

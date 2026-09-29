@@ -206,6 +206,13 @@ export const PRICING_UNITS = [
 export type PricingUnit = typeof PRICING_UNITS[number];
 
 export interface Ad {
+  acquisitionSource?: 'partner' | string;
+  partnerCode?: string;
+  partnerName?: string;
+  promotionSource?: 'first_free_listing' | 'partner_promotion' | string;
+  partnerAttributionOnly?: boolean;
+  partnerFundedFreeStandard?: boolean;
+  partnerUsageRecorded?: boolean;
   id: string;
   title: string;
   description: string;

@@ -1141,9 +1141,11 @@ const AdminAds = () => {
       const city = (ad.city || '').toLowerCase();
       const country = (ad.country || '').toLowerCase();
       const id = (ad.id || '').toLowerCase();
+      const partner = `${ad.partnerName || ''} ${ad.partnerCode || ''}`.toLowerCase();
 
       matchesSearch = title.includes(term) ||
                       description.includes(term) ||
+                      partner.includes(term) ||
                       seller.includes(term) ||
                       city.includes(term) ||
                       country.includes(term) ||
@@ -1974,6 +1976,11 @@ const AdminAds = () => {
                             <div className="mt-1 flex flex-wrap items-center gap-1">
                               <span className="text-[8px] font-black uppercase tracking-wide text-indigo-500 leading-none">{ad.category || 'No category'}</span>
                               {ad.isDuplicate && <span className="text-[8px] font-black text-amber-700">⚠ Duplicate</span>}
+                              {ad.partnerCode && (
+                                <span className="text-[8px] font-black text-emerald-700" title={`${ad.partnerName || 'Partner'} — ${ad.promotionSource || 'attribution'}`}>
+                                  🤝 {ad.partnerName || ad.partnerCode} · {ad.promotionSource === 'partner_promotion' ? 'partner-funded' : ad.promotionSource === 'first_free_listing' ? 'first-free attributed' : 'attributed'}
+                                </span>
+                              )}
                             </div>
                             <div className="mt-1 text-[7px] text-slate-300 font-mono truncate" title={ad.id}>ID: {ad.id}</div>
                           </div>
