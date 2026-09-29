@@ -409,7 +409,8 @@ const CreateAd = () => {
     videoDurationSeconds: null as number | null,
     videoFileSize: null as number | null,
     videoMimeType: null as string | null,
-    videoPaid: false
+    videoPaid: false,
+    externalPromotionConsent: false
   });
 
   useEffect(() => {
@@ -1330,7 +1331,8 @@ const CreateAd = () => {
           videoDurationSeconds: data.videoDurationSeconds || null,
           videoFileSize: data.videoFileSize || null,
           videoMimeType: data.videoMimeType || null,
-          videoPaid: !!data.videoPaid
+          videoPaid: !!data.videoPaid,
+          externalPromotionConsent: !!data.externalPromotionConsent
         });
         const loadedFraming = getAdFraming(data);
         setImagePositionX(loadedFraming.x);
@@ -1990,7 +1992,14 @@ const CreateAd = () => {
         videoFileSize: formData.mediaBoostEnabled ? (formData.videoFileSize || null) : null,
         videoMimeType: formData.mediaBoostEnabled ? (formData.videoMimeType || null) : null,
         videoPaid: isStaff ? true : (originalAd?.videoPaid ? true : false),
-        mediaBoostPrice: 2.00
+        mediaBoostPrice: 2.00,
+        // Optional, explicit permission for ConnectBoat to promote this listing outside the platform.
+        externalPromotionConsent: !!formData.externalPromotionConsent,
+        externalPromotionConsentAt: formData.externalPromotionConsent
+          ? ((originalAd as any)?.externalPromotionConsent && (originalAd as any)?.externalPromotionConsentAt
+              ? (originalAd as any).externalPromotionConsentAt
+              : serverTimestamp())
+          : null
       };
 
       adData.planType = normalizeListingPlan(formData.plan);
@@ -4405,6 +4414,32 @@ const CreateAd = () => {
               </div>
 
               )}
+
+              {/* Optional external promotion permission */}
+              <div className="p-5 bg-cyan-50/70 border-2 border-cyan-200 rounded-3xl">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!formData.externalPromotionConsent}
+                    onChange={(event) => setFormData(prev => ({
+                      ...prev,
+                      externalPromotionConsent: event.target.checked
+                    }))}
+                    className="mt-1 h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-black text-slate-900">
+                      Promote my listing outside ConnectBoat
+                    </span>
+                    <span className="mt-1 block text-xs font-medium leading-relaxed text-slate-600">
+                      Allow ConnectBoat to promote this listing on social media, boating groups and other marketing channels, using the listing photos and information, to help reach more potential buyers.
+                    </span>
+                    <span className="mt-1.5 block text-[11px] font-bold text-cyan-800">
+                      Optional — you can leave this unticked.
+                    </span>
+                  </span>
+                </label>
+              </div>
 
               {/* Order Summary Breakdown */}
               <div className="p-6 bg-slate-50/80 border-2 border-slate-200/80 rounded-3xl space-y-3">

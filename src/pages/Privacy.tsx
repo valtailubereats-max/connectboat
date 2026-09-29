@@ -71,7 +71,7 @@ const Privacy = () => {
 
         <div className="prose prose-slate max-w-none space-y-8">
           <p className="text-sm font-semibold text-indigo-600">
-            Last updated: 3 September 2026
+            Last updated: 28 September 2026
           </p>
 
           <section>
@@ -134,6 +134,20 @@ const Privacy = () => {
                   equipment specifications, hire or charter information, seller or operator details,
                   photographs, videos, Media Boost content and other information submitted when
                   creating or editing a listing.
+                </p>
+              </div>
+
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <p className="font-bold text-slate-800 text-sm mb-1">
+                  External listing promotion choices
+                </p>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  If you choose the optional “Promote my listing outside ConnectBoat” setting, we
+                  record your promotion choice and the date of that choice. Where enabled, we may use
+                  the listing title, description, specifications, photographs, videos and other
+                  listing information to promote that listing through relevant social media, boating
+                  groups and other marketing channels, and may link people back to the ConnectBoat
+                  listing. External promotion is optional and is not required to publish a listing.
                 </p>
               </div>
 
@@ -262,8 +276,9 @@ const Privacy = () => {
               </li>
               <li>
                 <strong>Consent:</strong> where the law requires consent, for example for certain
-                optional cookies or similar technologies, or another activity that specifically
-                asks for your consent.
+                optional cookies or similar technologies, external listing promotion where you
+                actively choose that option, or another activity that specifically asks for your
+                consent. Where processing relies on consent, you may withdraw it for future use.
               </li>
             </ul>
           </section>
@@ -345,7 +360,7 @@ const Privacy = () => {
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <Cookie size={20} />
-              <h2 className="text-xl font-bold m-0">8. Cookies, Browser Storage and Google Analytics</h2>
+              <h2 className="text-xl font-bold m-0">8. Cookies, Browser Storage, Google Analytics and Google Ads</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -355,9 +370,13 @@ const Privacy = () => {
             </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">
-              ConnectBoat also uses Google Analytics 4 to help understand how visitors use the
-              website, including page visits and general interaction patterns. Google Analytics may
-              use cookies, browser storage, device information and related technical identifiers.
+              ConnectBoat uses Google Analytics 4 to help understand how visitors use the website,
+              including page visits and general interaction patterns. After a visitor expressly
+              accepts Analytics, the same Google tag may also configure Google Ads measurement and
+              send limited conversion events, such as a completed new-user registration. These
+              services may use cookies, browser storage, device information and related technical
+              identifiers. ConnectBoat does not intentionally enable this optional measurement when
+              the visitor has selected Essential Only.
             </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">
@@ -465,7 +484,7 @@ const Privacy = () => {
               ConnectBoat may use trusted service providers to operate the platform, including
               providers of cloud hosting and database services, authentication, payment processing,
               email delivery, analytics, security and technical infrastructure. Current examples
-              include Google/Firebase, Stripe, Resend and Google Analytics.
+              include Google/Firebase, Stripe, Resend, Google Analytics and Google Ads measurement.
             </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">

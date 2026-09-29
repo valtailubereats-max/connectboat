@@ -391,12 +391,20 @@ const Terms = () => {
               ConnectBoat and its branding, software, interface and original platform content are
               protected by applicable intellectual property laws. Users retain ownership of content
               they submit. By uploading content, you grant ConnectBoat a non-exclusive, worldwide,
-              royalty-free licence to host, reproduce, resize, display and promote that content as
-              reasonably necessary to operate and market the relevant listing and the platform.
+              royalty-free licence to host, reproduce, resize and display that content as reasonably
+              necessary to operate the relevant listing and the platform. Where you actively select
+              the optional “Promote my listing outside ConnectBoat” setting, you also authorise
+              ConnectBoat to use the relevant listing content to promote that listing through
+              social media, boating groups and other marketing channels, including by linking people
+              back to the listing. External promotion is optional and is not required to publish a
+              listing.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               By uploading content, you confirm that you have the necessary rights and permissions to
-              use it and to allow ConnectBoat to display and process it for these purposes.
+              use it and to allow ConnectBoat to display and process it for these purposes. If you
+              withdraw an external-promotion permission, ConnectBoat will stop new promotional use
+              based on that permission where reasonably practicable; copies or shares already made on
+              third-party services may remain subject to those services and their users.
             </p>
           </section>
 
@@ -509,7 +517,7 @@ const Terms = () => {
               terms agreed directly between buyers, sellers, owners, charter operators or service
               providers remain the responsibility of those parties.
             </p>
-            <p className="text-sm text-slate-400 mt-2">Last updated: 3 September 2026.</p>
+            <p className="text-sm text-slate-400 mt-2">Last updated: 28 September 2026.</p>
           </section>
 
           <div className="pt-6 border-t border-slate-100 flex justify-center">

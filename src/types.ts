@@ -333,6 +333,10 @@ export interface Ad {
   videoPaid?: boolean;
   mediaBoostPrice?: number;
 
+  // Optional permission to promote the listing outside ConnectBoat
+  externalPromotionConsent?: boolean;
+  externalPromotionConsentAt?: any; // Firestore Timestamp
+
   // Rental / Hire Specific Fields
   listingIntent?: 'sale' | 'hire';
   pricingUnit?: 'Per Hour' | 'Per Half Day' | 'Per Day' | 'Per Week' | string;

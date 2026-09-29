@@ -1075,6 +1075,8 @@ const AdminAds = () => {
           ? ad.isDuplicate === true 
           : adFilter === 'paid'
             ? isPaidAd(ad)
+            : adFilter === 'external_promotion_allowed'
+              ? (ad as any).externalPromotionConsent === true
             : adFilter === 'awaiting_activation'
               ? (
                   isPaidAd(ad) &&
@@ -1277,6 +1279,7 @@ const AdminAds = () => {
                 { id: 'approved', label: 'Active' },
                 { id: 'hidden', label: 'Standby / Ocultos 👁️‍🗨️' },
                 { id: 'paid', label: 'Paid listings' },
+                { id: 'external_promotion_allowed', label: `External Promotion ✓ (${ads.filter(a => (a as any).externalPromotionConsent === true).length})` },
                 { id: 'awaiting_activation', label: `Awaiting Activation (${stats.awaitingActivation})` },
                 { id: 'expired', label: 'Expired' },
                 { id: 'rejected', label: 'Rejected' },
@@ -1596,6 +1599,15 @@ const AdminAds = () => {
                     {ad.isHidden && (
                       <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-amber-500 text-white shadow-xs">
                         🙈 Standby (Oculto)
+                      </span>
+                    )}
+                    {(ad as any).externalPromotionConsent === true ? (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200" title="Seller authorised ConnectBoat to promote this listing outside ConnectBoat">
+                        ✓ External Promotion: Allowed
+                      </span>
+                    ) : (
+                      <span className="inline-block text-[9px] font-bold px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-100 text-slate-500 border border-slate-200" title="No external promotion authorisation recorded">
+                        External Promotion: Not allowed
                       </span>
                     )}
                     {/* Paid Status & Plan Badges */}
@@ -2010,6 +2022,11 @@ const AdminAds = () => {
                               <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase bg-indigo-50 text-indigo-600 border border-indigo-100">{ad.adStatus}</span>
                             )}
                             {ad.isHidden && <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase bg-amber-100 text-amber-800">Standby</span>}
+                            {(ad as any).externalPromotionConsent === true ? (
+                              <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase bg-emerald-50 text-emerald-700 border border-emerald-100" title="External promotion authorised">✓ Promo allowed</span>
+                            ) : (
+                              <span className="text-[7px] font-bold px-1.5 py-0.5 rounded uppercase bg-slate-100 text-slate-500" title="No external promotion authorisation recorded">Promo not allowed</span>
+                            )}
                             <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${
                               ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent
                                 ? 'bg-emerald-50 text-emerald-700'
