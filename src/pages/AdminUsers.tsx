@@ -1370,7 +1370,7 @@ const AdminUsers = () => {
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-bold text-rose-900 leading-relaxed">
-                    Ao confirmar, a conta no Firebase Authentication e o perfil em <span className="font-mono">users/{deletePreview.uid}</span> serão excluídos. Nenhum anúncio, pagamento ou outro registo será apagado.
+                    Ao confirmar, a conta no Firebase Authentication e os perfis em <span className="font-mono">users/{deletePreview.uid}</span> e <span className="font-mono">sellerPublicProfiles/{deletePreview.uid}</span> serão excluídos. Nenhum anúncio, pagamento ou outro registo será apagado.
                   </div>
                 )}
 

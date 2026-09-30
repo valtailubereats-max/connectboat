@@ -85,7 +85,6 @@ type Association = {
 };
 
 const ASSOCIATIONS: Association[] = [
-  { collection: 'sellerPublicProfiles', label: 'Perfil público / vitrine', documentId: true },
   { collection: 'brokerApplications', label: 'Candidatura de broker', documentId: true },
   { collection: 'brokerProfiles', label: 'Perfil de broker', documentId: true },
   { collection: 'ads', label: 'Anúncios', field: 'sellerId', sensitive: true },
@@ -130,11 +129,23 @@ async function countAssociation(db: any, association: Association, uid: string) 
 }
 
 async function inspectAssociations(db: any, uid: string) {
-  const results = await Promise.all(ASSOCIATIONS.map(async (association) => ({
-    ...association,
-    count: await countAssociation(db, association, uid),
-  })));
-  return results.filter((item) => item.count > 0);
+  const [results, showcaseProductsAggregate] = await Promise.all([
+    Promise.all(ASSOCIATIONS.map(async (association) => ({
+      ...association,
+      count: await countAssociation(db, association, uid),
+    }))),
+    db.collection('sellerPublicProfiles').doc(uid).collection('products').count().get(),
+  ]);
+  const associations = results.filter((item) => item.count > 0);
+  const showcaseProductsCount = Number(showcaseProductsAggregate.data().count || 0);
+  if (showcaseProductsCount > 0) {
+    associations.push({
+      collection: 'sellerPublicProfiles/{uid}/products',
+      label: 'Produtos da vitrine',
+      count: showcaseProductsCount,
+    });
+  }
+  return associations;
 }
 
 export default async function deleteUserHandler(req: Request, res: Response) {
@@ -223,11 +234,14 @@ export default async function deleteUserHandler(req: Request, res: Response) {
       await auth.deleteUser(userId);
       logStage('delete-auth-complete');
     }
+    logStage('delete-firestore-profiles');
+    const deleteBatch = db.batch();
     if (profileSnapshot.exists) {
-      logStage('delete-firestore-profile');
-      await db.collection('users').doc(userId).delete();
-      logStage('delete-firestore-profile-complete');
+      deleteBatch.delete(db.collection('users').doc(userId));
     }
+    deleteBatch.delete(db.collection('sellerPublicProfiles').doc(userId));
+    await deleteBatch.commit();
+    logStage('delete-firestore-profiles-complete');
 
     logStage('delete-complete');
     return res.status(200).json({ success: true, deletedUserId: userId, traceId });
