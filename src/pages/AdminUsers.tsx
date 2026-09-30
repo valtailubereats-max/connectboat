@@ -23,7 +23,8 @@ import {
   Phone,
   LayoutGrid,
   Table,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { pt } from 'date-fns/locale';
@@ -44,6 +45,22 @@ const ALL_COLUMNS = [
   { id: 'vitrineAtiva', label: 'Vitrine Ativa', mandatory: false },
   { id: 'acoes', label: 'Ações', mandatory: true },
 ];
+
+type DeleteAssociation = {
+  collection: string;
+  label: string;
+  count: number;
+  sensitive?: boolean;
+};
+
+type DeletePreview = {
+  uid: string;
+  name: string;
+  email: string;
+  hasAuthAccount: boolean;
+  hasFirestoreProfile: boolean;
+  associations: DeleteAssociation[];
+};
 
 const AdminUsers = () => {
   const [searchParams] = useSearchParams();
@@ -120,6 +137,10 @@ const AdminUsers = () => {
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletePreview, setDeletePreview] = useState<DeletePreview | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isCheckingDelete, setIsCheckingDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [editShowcaseActive, setEditShowcaseActive] = useState(false);
   const [editShowcaseApproved, setEditShowcaseApproved] = useState(false);
@@ -410,6 +431,71 @@ const AdminUsers = () => {
       handleFirestoreError(err, OperationType.UPDATE, `users/${targetUserId}`);
     } finally {
       setUpdatingUserId(null);
+    }
+  };
+
+  const callDeleteUserApi = async (action: 'preview' | 'delete', userId: string) => {
+    const idToken = await currentAuthUser?.getIdToken();
+    if (!idToken) throw new Error('A sessão de administrador expirou. Inicie sessão novamente.');
+
+    const response = await fetch('/api/admin/delete-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ action, userId }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error: any = new Error(payload.errorMessage || 'Não foi possível excluir o utilizador.');
+      error.payload = payload;
+      throw error;
+    }
+    return payload;
+  };
+
+  const handleOpenDeleteModal = async (targetUser: UserProfile) => {
+    const targetUserId = targetUser.id || targetUser.uid;
+    if (!isAdmin || !targetUserId) return;
+    if (targetUserId === currentAuthUser?.uid) {
+      setErrorMsg('Não pode excluir a sua própria conta de administrador.');
+      return;
+    }
+
+    setDeleteError(null);
+    setIsCheckingDelete(true);
+    setDeletePreview({
+      uid: targetUserId,
+      name: targetUser.name || 'Sem nome',
+      email: targetUser.email || 'Sem email',
+      hasAuthAccount: true,
+      hasFirestoreProfile: true,
+      associations: [],
+    });
+    try {
+      const payload = await callDeleteUserApi('preview', targetUserId);
+      setDeletePreview(payload.user);
+    } catch (error: any) {
+      setDeleteError(error.message || 'Falha ao verificar os dados associados.');
+    } finally {
+      setIsCheckingDelete(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletePreview || deletePreview.associations.length > 0 || !isAdmin) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await callDeleteUserApi('delete', deletePreview.uid);
+      setUsers(prev => prev.filter(user => (user.id || user.uid) !== deletePreview.uid));
+      setDeletePreview(null);
+    } catch (error: any) {
+      if (error.payload?.user) setDeletePreview(error.payload.user);
+      setDeleteError(error.message || 'Falha ao excluir o utilizador.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1013,6 +1099,14 @@ const AdminUsers = () => {
                                       Admin
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => handleOpenDeleteModal(user)}
+                                    disabled={uid === currentAuthUser?.uid}
+                                    className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[10px] rounded-lg border border-rose-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    title={uid === currentAuthUser?.uid ? 'Não pode excluir a própria conta' : 'Delete User'}
+                                  >
+                                    Delete User
+                                  </button>
                                 </div>
                               )}
                             </td>
@@ -1163,6 +1257,15 @@ const AdminUsers = () => {
                           Tornar Admin
                         </button>
                       )}
+                      <button
+                        onClick={() => handleOpenDeleteModal(user)}
+                        disabled={uid === currentAuthUser?.uid}
+                        className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-100 flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={uid === currentAuthUser?.uid ? 'Não pode excluir a própria conta' : 'Delete User'}
+                      >
+                        <Trash2 size={11} />
+                        Delete User
+                      </button>
                     </div>
                   </div>
                 );
@@ -1183,6 +1286,100 @@ const AdminUsers = () => {
           )}
         </div>
       )}
+
+      <AnimatePresence>
+        {deletePreview && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-3xl shadow-xl border border-rose-200 w-full max-w-lg overflow-hidden"
+            >
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-rose-50/60">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-100 text-rose-700 rounded-xl flex items-center justify-center">
+                    <Trash2 size={19} />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-slate-950">Confirmar exclusão do utilizador</h3>
+                    <p className="text-xs text-slate-600">Esta ação não pode ser desfeita.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDeletePreview(null)}
+                  disabled={isDeleting}
+                  className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-500 disabled:opacity-50"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="font-black text-slate-900">{deletePreview.name}</p>
+                  <p className="text-sm font-semibold text-slate-600">{deletePreview.email}</p>
+                  <p className="mt-1 text-[10px] font-mono text-slate-400 break-all">{deletePreview.uid}</p>
+                </div>
+
+                {isCheckingDelete ? (
+                  <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
+                    <div className="w-4 h-4 border-2 border-rose-600 border-b-transparent rounded-full animate-spin" />
+                    A verificar dados associados…
+                  </div>
+                ) : deletePreview.associations.length > 0 ? (
+                  <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 space-y-3">
+                    <div className="flex gap-2 text-amber-900">
+                      <AlertCircle size={18} className="shrink-0 mt-0.5" />
+                      <p className="text-xs font-bold leading-relaxed">
+                        Exclusão bloqueada. Estes dados não foram apagados e precisam de revisão para evitar registos órfãos:
+                      </p>
+                    </div>
+                    <ul className="space-y-1 text-xs font-semibold text-amber-950">
+                      {deletePreview.associations.map((item, index) => (
+                        <li key={`${item.collection}-${item.label}-${index}`}>
+                          • {item.label}: {item.count}{item.sensitive ? ' (dados comerciais/financeiros)' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-bold text-rose-900 leading-relaxed">
+                    Ao confirmar, a conta no Firebase Authentication e o perfil em <span className="font-mono">users/{deletePreview.uid}</span> serão excluídos. Nenhum anúncio, pagamento ou outro registo será apagado.
+                  </div>
+                )}
+
+                {deleteError && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">
+                    {deleteError}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setDeletePreview(null)}
+                    disabled={isDeleting}
+                    className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDelete}
+                    disabled={isCheckingDelete || isDeleting || !!deleteError || deletePreview.associations.length > 0}
+                    className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {isDeleting ? <div className="w-4 h-4 border-2 border-white border-b-transparent rounded-full animate-spin" /> : <Trash2 size={14} />}
+                    {isDeleting ? 'A excluir…' : 'Confirmar Delete User'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Edit User Profile Modal (Intact popup modal layout) */}
       <AnimatePresence>

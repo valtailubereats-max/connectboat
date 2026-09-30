@@ -18,6 +18,7 @@ import sitemapHandler from './api/sitemap.ts';
 import createCheckoutSessionHandler from './api/stripe/create-checkout-session.ts';
 import stripeWebhookHandler from './api/stripe/webhook.ts';
 import resendPaymentEmailHandler from './api/admin/resend-payment-email.ts';
+import deleteUserHandler from './api/admin/delete-user.ts';
 
 async function startServer() {
   const app = express();
@@ -61,6 +62,7 @@ async function startServer() {
 
   // Rotas de API Backend
   app.post('/api/admin/create-assisted-payment', (req, res) => createAssistedPaymentHandler(req, res));
+  app.post('/api/admin/delete-user', (req, res) => deleteUserHandler(req, res));
   app.all('/api/discover-listings', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     try {
