@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import deleteUserHandler from '../../src/server/adminDeleteUser.ts';
+import deleteUserHandler from '../../src/server/adminDeleteUser.js';
 import { handleEventContacts } from '../../src/server/eventContactsSync.js';
 import { findWebsiteContactDetails } from '../../src/server/websiteContact.js';
 import Stripe from 'stripe';
