@@ -1,45 +1,43 @@
 import type { Request, Response } from 'express';
-import * as admin from 'firebase-admin';
+import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const PROJECT_ID = 'navlink-489413';
 const DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
 
-let dbInstance: any = null;
-
 function getAdminServices() {
-  const firebaseAdmin = (admin as any).default || admin;
-
-  if (!(firebaseAdmin.apps || []).length) {
+  if (!getApps().length) {
     const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-    if (serviceAccountJson) {
-      let serviceAccount: any;
-      try {
-        serviceAccount = JSON.parse(serviceAccountJson);
-      } catch {
-        serviceAccount = JSON.parse(Buffer.from(serviceAccountJson, 'base64').toString('utf-8'));
-      }
-      firebaseAdmin.initializeApp({
-        credential: firebaseAdmin.credential.cert(serviceAccount),
-        projectId: PROJECT_ID,
-      });
-    } else {
-      firebaseAdmin.initializeApp({ projectId: PROJECT_ID });
+    if (!serviceAccountJson) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is missing.');
     }
-  }
 
-  if (!dbInstance) {
-    dbInstance = firebaseAdmin.firestore();
+    let serviceAccount: any;
     try {
-      dbInstance.settings({ databaseId: DATABASE_ID });
+      serviceAccount = JSON.parse(serviceAccountJson);
     } catch {
-      // Firestore settings may already be frozen by another request in the same process.
+      serviceAccount = JSON.parse(Buffer.from(serviceAccountJson, 'base64').toString('utf-8'));
     }
+
+    if (typeof serviceAccount.private_key === 'string') {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+
+    initializeApp({
+      credential: cert(serviceAccount),
+      projectId: PROJECT_ID,
+    });
   }
 
-  return { firebaseAdmin, db: dbInstance };
+  const app = getApp();
+  return {
+    auth: getAuth(app),
+    db: getFirestore(app, DATABASE_ID),
+  };
 }
 
-async function requireAdmin(req: Request, firebaseAdmin: any, db: any) {
+async function requireAdmin(req: Request, auth: any, db: any) {
   const authHeader = req.headers.authorization || '';
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
   if (!match) {
@@ -51,7 +49,7 @@ async function requireAdmin(req: Request, firebaseAdmin: any, db: any) {
 
   let decodedToken: any;
   try {
-    decodedToken = await firebaseAdmin.auth().verifyIdToken(match[1]);
+    decodedToken = await auth.verifyIdToken(match[1]);
   } catch {
     const error: any = new Error('Invalid or expired Firebase authentication token.');
     error.statusCode = 401;
@@ -147,8 +145,8 @@ export default async function deleteUserHandler(req: Request, res: Response) {
       return res.status(405).json({ success: false, error: 'METHOD_NOT_ALLOWED' });
     }
 
-    const { firebaseAdmin, db } = getAdminServices();
-    const actingAdmin = await requireAdmin(req, firebaseAdmin, db);
+    const { auth, db } = getAdminServices();
+    const actingAdmin = await requireAdmin(req, auth, db);
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const action = body.action === 'delete' ? 'delete' : 'preview';
     const userId = typeof body.userId === 'string' ? body.userId.trim() : '';
@@ -162,7 +160,7 @@ export default async function deleteUserHandler(req: Request, res: Response) {
 
     const [profileSnapshot, authResult] = await Promise.all([
       db.collection('users').doc(userId).get(),
-      firebaseAdmin.auth().getUser(userId).then((record: any) => ({ record })).catch((error: any) => {
+      auth.getUser(userId).then((record: any) => ({ record })).catch((error: any) => {
         if (error?.code === 'auth/user-not-found') return { record: null };
         throw error;
       }),
@@ -198,7 +196,7 @@ export default async function deleteUserHandler(req: Request, res: Response) {
     }
 
     if (authUser) {
-      await firebaseAdmin.auth().deleteUser(userId);
+      await auth.deleteUser(userId);
     }
     if (profileSnapshot.exists) {
       await db.collection('users').doc(userId).delete();
