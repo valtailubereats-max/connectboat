@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import deleteUserHandler from '../../src/server/adminDeleteUser.ts';
 import { handleEventContacts } from '../../src/server/eventContactsSync.js';
 import { findWebsiteContactDetails } from '../../src/server/websiteContact.js';
 import Stripe from 'stripe';
@@ -675,6 +676,12 @@ export default async function createAssistedPaymentHandler(
   res: Response
 ) {
   const mode = typeof req.query.mode === 'string' ? req.query.mode : '';
+
+  // Reuse this function for Admin user deletion so the Vercel Hobby project
+  // remains within its 12 Serverless Functions limit.
+  if (mode === 'deleteUser') {
+    return deleteUserHandler(req, res);
+  }
 
   if (mode === 'websiteContact') {
     res.setHeader('Cache-Control', 'no-store');

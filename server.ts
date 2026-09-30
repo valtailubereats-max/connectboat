@@ -18,7 +18,7 @@ import sitemapHandler from './api/sitemap.ts';
 import createCheckoutSessionHandler from './api/stripe/create-checkout-session.ts';
 import stripeWebhookHandler from './api/stripe/webhook.ts';
 import resendPaymentEmailHandler from './api/admin/resend-payment-email.ts';
-import deleteUserHandler from './api/admin/delete-user.ts';
+import deleteUserHandler from './src/server/adminDeleteUser.ts';
 
 async function startServer() {
   const app = express();

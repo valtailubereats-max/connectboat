@@ -21,6 +21,10 @@
       "destination": "/api/admin/create-assisted-payment?mode=analytics"
     },
     {
+      "source": "/api/admin/delete-user",
+      "destination": "/api/admin/create-assisted-payment?mode=deleteUser"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
