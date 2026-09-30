@@ -446,10 +446,34 @@ const AdminUsers = () => {
       },
       body: JSON.stringify({ action, userId }),
     });
-    const payload = await response.json().catch(() => ({}));
+    const responseText = await response.text();
+    let payload: any = {};
+    try {
+      payload = responseText ? JSON.parse(responseText) : {};
+    } catch {
+      payload = {};
+    }
     if (!response.ok) {
-      const error: any = new Error(payload.errorMessage || 'Não foi possível excluir o utilizador.');
+      const diagnosticParts = [
+        `HTTP ${response.status}`,
+        payload.error ? `código: ${payload.error}` : '',
+        payload.stage ? `etapa: ${payload.stage}` : '',
+        payload.traceId ? `referência: ${payload.traceId}` : '',
+      ].filter(Boolean);
+      const backendMessage = payload.errorMessage ||
+        (responseText && response.headers.get('content-type')?.includes('text/plain') ? responseText.slice(0, 300) : '') ||
+        'O backend não retornou uma mensagem JSON.';
+      const error: any = new Error(`${diagnosticParts.join(' · ')} — ${backendMessage}`);
       error.payload = payload;
+      error.httpStatus = response.status;
+      console.error('[Admin Delete User Request]', {
+        action,
+        httpStatus: response.status,
+        backendCode: payload.error || null,
+        stage: payload.stage || null,
+        traceId: payload.traceId || null,
+        message: backendMessage,
+      });
       throw error;
     }
     return payload;

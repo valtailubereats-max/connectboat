@@ -139,25 +139,39 @@ async function inspectAssociations(db: any, uid: string) {
 
 export default async function deleteUserHandler(req: Request, res: Response) {
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-store');
+
+  const traceId = `delete-user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  let stage = 'request-start';
+
+  const logStage = (nextStage: string, details: Record<string, unknown> = {}) => {
+    stage = nextStage;
+    console.info('[Admin Delete User]', { traceId, stage, ...details });
+  };
 
   try {
+    logStage('validate-method', { method: req.method });
     if (req.method !== 'POST') {
-      return res.status(405).json({ success: false, error: 'METHOD_NOT_ALLOWED' });
+      return res.status(405).json({ success: false, error: 'METHOD_NOT_ALLOWED', stage, traceId });
     }
 
+    logStage('initialize-admin-services');
     const { auth, db } = getAdminServices();
+    logStage('verify-admin');
     const actingAdmin = await requireAdmin(req, auth, db);
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const action = body.action === 'delete' ? 'delete' : 'preview';
     const userId = typeof body.userId === 'string' ? body.userId.trim() : '';
+    logStage('validate-request', { action });
 
     if (!userId) {
-      return res.status(400).json({ success: false, error: 'MISSING_USER_ID', errorMessage: 'User ID is required.' });
+      return res.status(400).json({ success: false, error: 'MISSING_USER_ID', errorMessage: 'User ID is required.', stage, traceId });
     }
     if (userId === actingAdmin.uid) {
-      return res.status(400).json({ success: false, error: 'SELF_DELETE_FORBIDDEN', errorMessage: 'Não pode excluir a sua própria conta.' });
+      return res.status(400).json({ success: false, error: 'SELF_DELETE_FORBIDDEN', errorMessage: 'Não pode excluir a sua própria conta.', stage, traceId });
     }
 
+    logStage('load-target-user');
     const [profileSnapshot, authResult] = await Promise.all([
       db.collection('users').doc(userId).get(),
       auth.getUser(userId).then((record: any) => ({ record })).catch((error: any) => {
@@ -169,9 +183,14 @@ export default async function deleteUserHandler(req: Request, res: Response) {
     const profile = profileSnapshot.exists ? profileSnapshot.data() || {} : {};
     const authUser = authResult.record;
     if (!profileSnapshot.exists && !authUser) {
-      return res.status(404).json({ success: false, error: 'USER_NOT_FOUND', errorMessage: 'Utilizador não encontrado no Authentication nem no Firestore.' });
+      return res.status(404).json({ success: false, error: 'USER_NOT_FOUND', errorMessage: 'Utilizador não encontrado no Authentication nem no Firestore.', stage, traceId });
     }
 
+    logStage('inspect-associations', {
+      action,
+      hasAuthAccount: Boolean(authUser),
+      hasFirestoreProfile: profileSnapshot.exists,
+    });
     const associations = await inspectAssociations(db, userId);
     const summary = {
       uid: userId,
@@ -183,32 +202,50 @@ export default async function deleteUserHandler(req: Request, res: Response) {
     };
 
     if (action === 'preview') {
-      return res.status(200).json({ success: true, canDelete: associations.length === 0, user: summary });
+      logStage('preview-complete', { associationGroups: associations.length });
+      return res.status(200).json({ success: true, canDelete: associations.length === 0, user: summary, traceId });
     }
 
     if (associations.length > 0) {
+      logStage('delete-blocked-associated-data', { associationGroups: associations.length });
       return res.status(409).json({
         success: false,
         error: 'ASSOCIATED_DATA_FOUND',
         errorMessage: 'A exclusão foi bloqueada porque existem dados associados que precisam de revisão.',
         user: summary,
+        stage,
+        traceId,
       });
     }
 
     if (authUser) {
+      logStage('delete-auth');
       await auth.deleteUser(userId);
+      logStage('delete-auth-complete');
     }
     if (profileSnapshot.exists) {
+      logStage('delete-firestore-profile');
       await db.collection('users').doc(userId).delete();
+      logStage('delete-firestore-profile-complete');
     }
 
-    return res.status(200).json({ success: true, deletedUserId: userId });
+    logStage('delete-complete');
+    return res.status(200).json({ success: true, deletedUserId: userId, traceId });
   } catch (error: any) {
-    console.error('[Admin Delete User]', error);
+    const errorCode = typeof error?.code === 'string' ? error.code : 'DELETE_USER_FAILED';
+    const errorMessage = error?.message || 'Não foi possível excluir o utilizador.';
+    console.error('[Admin Delete User]', {
+      traceId,
+      stage,
+      errorCode,
+      errorMessage,
+    });
     return res.status(error?.statusCode || 500).json({
       success: false,
-      error: error?.code || 'DELETE_USER_FAILED',
-      errorMessage: error?.message || 'Não foi possível excluir o utilizador.',
+      error: errorCode,
+      errorMessage,
+      stage,
+      traceId,
     });
   }
 }

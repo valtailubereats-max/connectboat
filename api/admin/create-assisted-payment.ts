@@ -680,6 +680,10 @@ export default async function createAssistedPaymentHandler(
   // Reuse this function for Admin user deletion so the Vercel Hobby project
   // remains within its 12 Serverless Functions limit.
   if (mode === 'deleteUser') {
+    console.info('[Admin Delete User Router]', {
+      method: req.method,
+      mode,
+    });
     return deleteUserHandler(req, res);
   }
 
