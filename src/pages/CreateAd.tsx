@@ -605,7 +605,7 @@ const CreateAd = () => {
     setVideoError(null);
   };
 
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
 
   const validateStep1 = () => {
     if (!formData.title || !formData.title.trim()) {
@@ -2503,7 +2503,7 @@ const CreateAd = () => {
                 {id ? 'Edit Listing' : 'New Listing'}
               </h1>
               <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
-                Step {currentStep} of 3
+                Step {currentStep} of 2 — {currentStep === 1 ? 'Listing' : 'Plan & Payment'}
               </span>
             </div>
 
@@ -2528,8 +2528,8 @@ const CreateAd = () => {
                   }`}>
                     {currentStep > 1 ? <Check size={16} strokeWidth={3} /> : '1'}
                   </div>
-                  <span className="hidden sm:inline">1. Basic Info</span>
-                  <span className="sm:hidden">Basic</span>
+                  <span className="hidden sm:inline">1. Listing</span>
+                  <span className="sm:hidden">Listing</span>
                 </button>
 
                 <div className={`flex-1 h-1 mx-2 sm:mx-3 rounded-full transition-all ${currentStep >= 2 ? 'bg-emerald-500' : 'bg-slate-100'}`} />
@@ -2537,48 +2537,21 @@ const CreateAd = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    if (currentStep > 2) setCurrentStep(2);
-                    else if (currentStep < 2) validateStep1AndProceed();
+                    if (currentStep < 2) validateStep1AndProceed();
                   }}
                   className={`flex items-center gap-2 text-xs sm:text-sm font-extrabold transition-all ${
                     currentStep === 2
                       ? 'text-indigo-600'
-                      : currentStep > 2
-                      ? 'text-slate-800 cursor-pointer hover:text-indigo-600'
                       : 'text-slate-400'
                   }`}
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
-                    currentStep === 2 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : currentStep > 2 ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'
+                    currentStep === 2 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-100 text-slate-400'
                   }`}>
-                    {currentStep > 2 ? <Check size={16} strokeWidth={3} /> : '2'}
+                    2
                   </div>
-                  <span className="hidden sm:inline">2. Details</span>
-                  <span className="sm:hidden">Details</span>
-                </button>
-
-                <div className={`flex-1 h-1 mx-2 sm:mx-3 rounded-full transition-all ${currentStep >= 3 ? 'bg-emerald-500' : 'bg-slate-100'}`} />
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (currentStep < 3) {
-                      if (validateStep1()) setCurrentStep(3);
-                    }
-                  }}
-                  className={`flex items-center gap-2 text-xs sm:text-sm font-extrabold transition-all ${
-                    currentStep === 3
-                      ? 'text-indigo-600'
-                      : 'text-slate-400'
-                  }`}
-                >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
-                    currentStep === 3 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-100 text-slate-400'
-                  }`}>
-                    3
-                  </div>
-                  <span className="hidden sm:inline">3. Plan & Publish</span>
-                  <span className="sm:hidden">Plan</span>
+                  <span className="hidden sm:inline">2. Plan & Payment</span>
+                  <span className="sm:hidden">Payment</span>
                 </button>
               </div>
             </div>
@@ -2686,7 +2659,7 @@ const CreateAd = () => {
             </div>
           )}
 
-          {/* STEP 1 OF 3: BASIC INFORMATION */}
+          {/* STEP 1 OF 2: LISTING */}
           {currentStep === 1 && (
             <motion.div
               key="step-1"
@@ -3131,47 +3104,6 @@ const CreateAd = () => {
                   * First photo is the cover photo. Use arrows or &quot;Set as Main&quot; to reorder photos. Max 5MB per file.
                 </p>
               </div>
-
-              {!id && (isPaidBoatListingCategory(formData.category) || isMarketplaceListingCategory(formData.category)) && (
-                <div className="p-5 bg-emerald-50/70 border-2 border-emerald-200 rounded-3xl space-y-3">
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900">Partner voucher</h3>
-                    <p className="text-xs text-slate-600 mt-1">
-                      Enter a partner code. On an eligible first free Marketplace listing it records the partner origin without replacing or extending that benefit.
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      value={partnerVoucherCode}
-                      onChange={(event) => {
-                        setPartnerVoucherCode(event.target.value.toUpperCase());
-                        setPartnerVoucher(null);
-                        setPartnerVoucherError('');
-                      }}
-                      placeholder="Partner code"
-                      className="min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-emerald-400"
-                    />
-                    <button
-                      type="button"
-                      onClick={validatePartnerVoucher}
-                      disabled={!partnerVoucherCode.trim() || validatingPartnerVoucher}
-                      className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-extrabold text-white disabled:opacity-50"
-                    >
-                      {validatingPartnerVoucher ? 'Checking…' : 'Apply'}
-                    </button>
-                  </div>
-                  {partnerVoucher && (
-                    <p className="text-xs font-bold text-emerald-800">
-                      ✓ {partnerVoucher.partnerName} ({partnerVoucher.partnerCode}) — partner origin will be recorded.
-                      {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'standard'
-                        ? ' Standard listing is free for 30 days.'
-                        : ''}
-                    </p>
-                  )}
-                  {partnerVoucherError && <p className="text-xs font-bold text-rose-700">{partnerVoucherError}</p>}
-                  <p className="text-[11px] font-semibold text-slate-500">Media Boost is always charged separately at £2.00.</p>
-                </div>
-              )}
 
               {/* Media Boost Optional Add-on Block */}
               <div className="p-6 bg-gradient-to-br from-indigo-50/80 via-white to-sky-50/60 border-2 border-indigo-200/90 rounded-3xl space-y-4 shadow-sm relative overflow-hidden">
@@ -3677,35 +3609,26 @@ const CreateAd = () => {
                 </div>
               )}
 
-              {/* Step 1 Actions */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-200 mt-5">
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="px-5 py-2.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer"
-                >
-                  ← Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={validateStep1AndProceed}
-                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-indigo-100 flex items-center gap-2 cursor-pointer"
-                >
-                  Continue →
-                </button>
-              </div>
             </motion.div>
           )}
 
-          {/* STEP 2 OF 3: BOAT DETAILS */}
-          {currentStep === 2 && (
+          {/* Optional details from the former second step, now part of Listing */}
+          {currentStep === 1 && (
             <motion.div
-              key="step-2"
+              key="additional-details"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               className="space-y-6"
             >
+              <details className="group rounded-3xl border-2 border-slate-200 bg-white overflow-hidden">
+                <summary className="cursor-pointer list-none p-5 sm:p-6 flex items-center justify-between gap-4 bg-slate-50 hover:bg-slate-100 transition-colors">
+                  <span>
+                    <span className="block text-sm font-black text-slate-900">Additional details (optional)</span>
+                    <span className="block mt-1 text-xs font-medium text-slate-600">Add more information about your boat to help buyers. You can skip this step.</span>
+                  </span>
+                  <span className="text-xl font-black text-indigo-600 transition-transform group-open:rotate-180" aria-hidden="true">⌄</span>
+                </summary>
+                <div className="p-5 sm:p-6 space-y-6 border-t border-slate-200">
               {/* Hire / Charter Specifications Block */}
               {(formData.listingIntent === 'hire' || formData.category === 'Boats for Hire') && (
                 <div className="p-6 bg-gradient-to-br from-sky-900 to-slate-900 text-white rounded-3xl space-y-5 shadow-xl border border-sky-800">
@@ -4126,26 +4049,22 @@ const CreateAd = () => {
                   </p>
                 </div>
               )}
+                </div>
+              </details>
 
-              {/* Step 2 Actions */}
+              {/* Step 1 Actions */}
               <div className="flex items-center justify-between pt-6 border-t border-slate-200 mt-8">
                 <button
                   type="button"
-                  onClick={() => {
-                    setCurrentStep(1);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
+                  onClick={() => navigate(-1)}
                   className="px-6 py-3.5 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer"
                 >
-                  ← Back
+                  ← Cancel
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setCurrentStep(3);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
+                  onClick={validateStep1AndProceed}
                   className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-indigo-100 flex items-center gap-2 cursor-pointer"
                 >
                   Continue →
@@ -4154,10 +4073,10 @@ const CreateAd = () => {
             </motion.div>
           )}
 
-          {/* STEP 3 OF 3: REVIEW & PLAN */}
-          {currentStep === 3 && (
+          {/* STEP 2 OF 2: PLAN & PAYMENT */}
+          {currentStep === 2 && (
             <motion.div
-              key="step-3"
+              key="step-2"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               className="space-y-6"
@@ -4224,7 +4143,7 @@ const CreateAd = () => {
                 </div>
               </div>
 
-              {/* Listing plan summary */}
+              {/* Selected plan summary */}
               {isBoatServiceCategory(formData.category) ? (
                 <div className="p-5 rounded-3xl border-2 border-sky-200 bg-sky-50/70">
                   <div className="flex items-center justify-between gap-4">
@@ -4236,9 +4155,12 @@ const CreateAd = () => {
                         {maxAllowed} photos • 30 days • {normalizeListingPlan(formData.plan) === 'standard' ? 'Standard placement' : normalizeListingPlan(formData.plan) === 'featured' ? 'Priority placement' : 'Top priority placement'}
                       </p>
                     </div>
-                    <span className="text-xl font-black text-sky-700">
-                      {getServicePlanPrice(formData.plan) === 0 ? 'FREE' : `£${getServicePlanPrice(formData.plan).toFixed(2)}`}
-                    </span>
+                    <div className="text-right">
+                      <span className="block text-xl font-black text-sky-700">
+                        {getServicePlanPrice(formData.plan) === 0 ? 'FREE' : `£${getServicePlanPrice(formData.plan).toFixed(2)}`}
+                      </span>
+                      <button type="button" onClick={() => setCurrentStep(1)} className="mt-1 text-xs font-black text-indigo-700 underline">Change plan</button>
+                    </div>
                   </div>
                 </div>
               ) : !isPaidBoatListingCategory(formData.category) ? (
@@ -4252,23 +4174,49 @@ const CreateAd = () => {
                         Up to 3 photos • Marketplace categories only • Not valid for Boats for Sale, Hire or Boat Services.
                       </p>
                     </div>
-                    <span className="text-xl font-black text-emerald-700">
-                      {hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`}
-                    </span>
+                    <div className="text-right">
+                      <span className="block text-xl font-black text-emerald-700">
+                        {hasMarketplaceFreeBenefit() ? '£0.00' : `£${getMarketplaceAdditionalPrice().toFixed(2)}`}
+                      </span>
+                      <button type="button" onClick={() => setCurrentStep(1)} className="mt-1 text-xs font-black text-indigo-700 underline">Change plan</button>
+                    </div>
                   </div>
                 </div>
               ) : (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="p-5 rounded-3xl border-2 border-indigo-200 bg-indigo-50/60 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600">Selected plan</p>
+                    <h3 className="mt-1 text-base font-black text-slate-900">
+                      {normalizeListingPlan(formData.plan) === 'premium'
+                        ? 'Premium'
+                        : normalizeListingPlan(formData.plan) === 'featured'
+                          ? 'Featured'
+                          : 'Standard'}
+                    </h3>
+                    <p className="mt-1 text-xs font-semibold text-slate-600">
+                      30 days • Up to {maxAllowed} photos • {normalizeListingPlan(formData.plan) === 'premium'
+                        ? 'Top priority placement and maximum exposure'
+                        : normalizeListingPlan(formData.plan) === 'featured'
+                          ? 'Homepage highlight and priority placement'
+                          : 'Standard search and category placement'}
+                    </p>
+                  </div>
+                  <span className="text-xl font-black text-indigo-700">
+                    £{getPlanPrice(formData.plan).toFixed(2)}
+                  </span>
+                </div>
+                <details className="group rounded-2xl border border-slate-200 bg-white p-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between">
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <span>⭐</span> Choose Listing Plan
+                    <span>⭐</span> Change plan
                   </h3>
                   <span className="text-[11px] font-bold text-slate-500">
                     {formData.listingIntent === 'hire' || formData.category === 'Boats for Hire' ? '⚓ Boat for Hire' : '🛥️ Boat for Sale'}
                   </span>
-                </div>
+                </summary>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                   {/* Standard Listing */}
                   <button
                     type="button"
@@ -4411,8 +4359,50 @@ const CreateAd = () => {
                     </div>
                   </div>
                 )}
+                </details>
               </div>
 
+              )}
+
+              {!id && (isPaidBoatListingCategory(formData.category) || isMarketplaceListingCategory(formData.category)) && (
+                <div className="p-5 bg-emerald-50/70 border-2 border-emerald-200 rounded-3xl space-y-3">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900">Partner Voucher</h3>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Enter a partner code. On an eligible first free Marketplace listing it records the partner origin without replacing or extending that benefit.
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={partnerVoucherCode}
+                      onChange={(event) => {
+                        setPartnerVoucherCode(event.target.value.toUpperCase());
+                        setPartnerVoucher(null);
+                        setPartnerVoucherError('');
+                      }}
+                      placeholder="Partner code"
+                      className="min-w-0 flex-1 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={validatePartnerVoucher}
+                      disabled={!partnerVoucherCode.trim() || validatingPartnerVoucher}
+                      className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-extrabold text-white disabled:opacity-50"
+                    >
+                      {validatingPartnerVoucher ? 'Checking…' : 'Apply'}
+                    </button>
+                  </div>
+                  {partnerVoucher && (
+                    <p className="text-xs font-bold text-emerald-800">
+                      ✓ {partnerVoucher.partnerName} ({partnerVoucher.partnerCode}) — partner origin will be recorded.
+                      {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'standard'
+                        ? ' Standard listing is free for 30 days.'
+                        : ''}
+                    </p>
+                  )}
+                  {partnerVoucherError && <p className="text-xs font-bold text-rose-700">{partnerVoucherError}</p>}
+                  <p className="text-[11px] font-semibold text-slate-500">Media Boost is always charged separately at £2.00.</p>
+                </div>
               )}
 
               {/* Optional external promotion permission */}
@@ -4465,6 +4455,17 @@ const CreateAd = () => {
                     </span>
                   </div>
 
+                  {partnerVoucher && (
+                    <div className="flex items-center justify-between font-bold text-emerald-700">
+                      <span>Partner Voucher — {partnerVoucher.partnerName}</span>
+                      <span>
+                        {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) !== 'standard'
+                          ? 'Partner attribution'
+                          : 'Applied'}
+                      </span>
+                    </div>
+                  )}
+
                   {formData.mediaBoostEnabled && (
                     <div className="flex items-center justify-between font-medium text-slate-700">
                       <span className="flex items-center gap-1.5 text-indigo-700 font-bold">
@@ -4494,12 +4495,12 @@ const CreateAd = () => {
                 </div>
               )}
 
-              {/* Step 3 Actions */}
+              {/* Step 2 Actions */}
               <div className="flex items-center justify-between pt-6 border-t border-slate-200 mt-8">
                 <button
                   type="button"
                   onClick={() => {
-                    setCurrentStep(2);
+                    setCurrentStep(1);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   className="px-6 py-3.5 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer"
