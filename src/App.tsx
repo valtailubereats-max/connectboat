@@ -1114,7 +1114,7 @@ export default function App() {
                       </li>
                       <li>
                         <a 
-                          href="https://wa.me/4407508309536" 
+                          href="https://wa.me/447508309536" 
                           target="_blank" 
                           rel="noopener noreferrer" 
                           className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-100 px-3.5 py-2 rounded-xl transition-all inline-flex items-center gap-1.5 shadow-2xs font-extrabold cursor-pointer"
