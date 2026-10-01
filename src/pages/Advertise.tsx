@@ -247,12 +247,25 @@ export default function Advertise() {
       <button type="button" onClick={submitPreparedBanner} disabled={!sourceFile || submitting} className="w-full rounded-xl bg-indigo-600 disabled:bg-slate-300 text-white px-6 py-3.5 font-black flex items-center justify-center gap-2"><CheckCircle2 size={18}/>{submitting ? 'Submitting...' : 'Submit for Approval'}</button></div>
         </div>}
 
-    <div className="mt-8">
-      <img
-        src="/connectboat-advertise-business-banner.png"
-        alt="Advertise your marine business on ConnectBoat"
-        className="block w-full h-auto rounded-2xl shadow-sm"
-      />
-    </div>
-  </div>;
-}
+    <div className="mt-8 space-y-6">
+  <img
+    src="/connectboat-advertise-direcionamento.png"
+    alt="ConnectBoat advertising information"
+    className="block w-full h-auto rounded-2xl shadow-sm"
+  />
+
+  <img
+    src="/connectboat-advertise-business-banner.png"
+    alt="Advertise your marine business on ConnectBoat"
+    className="block w-full h-auto rounded-2xl shadow-sm"
+  />
+
+  <div className="flex justify-center pt-2">
+    <a
+      href="mailto:contato@connectboat.co.uk?subject=Advertising%20enquiry%20-%20ConnectBoat"
+      className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-8 py-4 text-base font-black text-white shadow-sm transition hover:bg-indigo-700"
+    >
+      ✉️ Contact ConnectBoat
+    </a>
+  </div>
+</div>
