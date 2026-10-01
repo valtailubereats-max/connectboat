@@ -57,6 +57,7 @@ import Advertise from './pages/Advertise';
 import Unsubscribe from './pages/Unsubscribe';
 import Brokers from './pages/Brokers';
 import AdminBrokers from './pages/AdminBrokers';
+import AdminPartnerVouchers from './pages/AdminPartnerVouchers';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ShareModal } from './components/ShareModal';
 import { AnalyticsTracker } from './components/AnalyticsTracker';
@@ -1000,6 +1001,7 @@ export default function App() {
                 <Route path="/admin/settings" element={<AdminLayout><AdminSettings /></AdminLayout>} />
                 <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
                 <Route path="/admin/brokers" element={<AdminLayout><AdminBrokers /></AdminLayout>} />
+                <Route path="/admin/partner-vouchers" element={<AdminLayout><AdminPartnerVouchers /></AdminLayout>} />
                 <Route path="/admin/claims" element={<AdminLayout><AdminClaims /></AdminLayout>} />
                 <Route path="/admin/team" element={<AdminLayout><AdminTeam /></AdminLayout>} />
                 <Route path="/events" element={<Fotos />} />

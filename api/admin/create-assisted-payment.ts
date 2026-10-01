@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import deleteUserHandler from '../../src/server/adminDeleteUser.js';
 import { handleEventContacts } from '../../src/server/eventContactsSync.js';
 import { findWebsiteContactDetails } from '../../src/server/websiteContact.js';
+import { handleAdminPartnerVouchers } from '../../src/server/adminPartnerVouchers.js';
 import Stripe from 'stripe';
 import { timingSafeEqual } from 'node:crypto';
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
@@ -832,6 +833,24 @@ export default async function createAssistedPaymentHandler(
 
   try {
     const { action, adId, plan, successUrl, cancelUrl } = req.body || {};
+
+    if ([
+      'partnerVouchersList',
+      'partnerVoucherUsagesList',
+      'partnerVoucherCreate',
+      'partnerVoucherUpdate',
+    ].includes(action)) {
+      const db = getAdminDb();
+      const adminCheck = await verifyAdminRequest(req, db);
+      if (!adminCheck.ok) {
+        return res.status(adminCheck.status).json({
+          success: false,
+          error: adminCheck.code,
+          errorMessage: adminCheck.message,
+        });
+      }
+      return handleAdminPartnerVouchers(req, res, db, adminCheck);
+    }
 
     // Reuse this existing Serverless Function for the Finance password gate so
     // the Vercel Hobby project stays within its 12-function limit.

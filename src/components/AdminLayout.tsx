@@ -97,6 +97,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { icon: Tag, label: 'Manage Listings', path: '/admin/ads' },
     { icon: Users, label: 'Users', path: '/admin/users' },
     { icon: Anchor, label: 'Brokers', path: '/admin/brokers' },
+    { icon: Gift, label: 'Partner Vouchers', path: '/admin/partner-vouchers' },
     { icon: UserCheck, label: 'Claims', path: '/admin/claims' },
     { icon: Megaphone, label: 'Marketing', path: '/admin/marketing' },
     { icon: QrCode, label: 'Invites', path: '/admin/invitations' },
@@ -133,6 +134,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         { icon: Tag, label: 'Manage Listings', path: '/admin/ads' },
         { icon: Users, label: 'Users', path: '/admin/users' },
         { icon: Anchor, label: 'Brokers', path: '/admin/brokers' },
+        { icon: Gift, label: 'Partner Vouchers', path: '/admin/partner-vouchers' },
         { icon: UserCheck, label: 'Claims', path: '/admin/claims' },
       ]
     },
