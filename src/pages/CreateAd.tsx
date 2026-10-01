@@ -2317,63 +2317,47 @@ const CreateAd = () => {
         console.log('[Import Pipeline Stage 3] Response received successfully:', result.data);
         const { title, description, price, city, country, category, images } = result.data;
         
-        const isOlxPortugal = importUrl.toLowerCase().includes('olx.pt');
-        const isGumtreeUk = importUrl.toLowerCase().includes('gumtree.com') || importUrl.toLowerCase().includes('gumtree.co.uk');
-        
         // Match category case-insensitively. If no correspondence, set to empty string for manual selection
         const matchedCategory = categories.find(
           (c: string) => c.toLowerCase() === (category || '').toString().toLowerCase()
         ) || '';
 
         setFormData(prev => {
-          let matchedCity = prev.city;
-          let matchedCountry = prev.country;
-          
-          if (isOlxPortugal) {
-            matchedCountry = 'Portugal';
-            if (city) {
-              const matchedPortCity = PORTUGAL_CITIES.find(c => c.toLowerCase() === city.toString().toLowerCase());
-              if (matchedPortCity) {
-                matchedCity = matchedPortCity;
-              } else {
-                matchedCity = city.trim();
-              }
-            }
-          } else if (isGumtreeUk) {
-            matchedCountry = 'Reino Unido';
-            if (city) {
-              const matchedUkCity = UK_CITIES.find(c => c.toLowerCase() === city.toString().toLowerCase());
-              if (matchedUkCity) {
-                matchedCity = matchedUkCity;
-              } else {
-                matchedCity = city.trim();
-              }
-            } else {
-              matchedCity = UK_CITIES[0];
-            }
-          } else {
-            if (city) {
-              const matchedPortCity = PORTUGAL_CITIES.find(c => c.toLowerCase() === city.toString().toLowerCase());
-              const matchedUkCity = UK_CITIES.find(c => c.toLowerCase() === city.toString().toLowerCase());
-              
-              if (matchedPortCity) {
-                matchedCity = matchedPortCity;
-                matchedCountry = 'Portugal';
-              } else if (matchedUkCity) {
-                matchedCity = matchedUkCity;
-                matchedCountry = 'Reino Unido';
-              }
-            } else if (country) {
-              const normCountry = country.toString().toLowerCase();
-              if (normCountry === 'portugal') {
-                matchedCountry = 'Portugal';
-                matchedCity = PORTUGAL_CITIES[0];
-              } else if (normCountry === 'reino unido' || normCountry === 'uk' || normCountry === 'united kingdom') {
-                matchedCountry = 'Reino Unido';
-                matchedCity = UK_CITIES[0];
-              }
+          const importedCity = typeof city === 'string' ? city.trim() : '';
+          const normalizedCountry = typeof country === 'string' ? country.trim().toLowerCase() : '';
+          const importedCountryIsUk = ['united kingdom', 'uk', 'gb', 'great britain', 'reino unido'].includes(normalizedCountry);
+          const importedCountryIsPortugal = normalizedCountry === 'portugal' || normalizedCountry === 'pt';
+
+          // Country and city are independent import results. An unknown city must not
+          // prevent a valid country returned by the importer from being applied.
+          // In UK-only mode, stale profile/localStorage values can never leak Portugal
+          // into a newly imported listing.
+          let matchedCountry = !enablePortugal
+            ? 'United Kingdom'
+            : importedCountryIsUk
+              ? 'United Kingdom'
+              : importedCountryIsPortugal
+                ? 'Portugal'
+                : prev.country;
+
+          // URL hints are only a last resort when the importer did not identify a
+          // country. They never override an explicit country returned by the API.
+          if (enablePortugal && !importedCountryIsUk && !importedCountryIsPortugal) {
+            const normalizedUrl = importUrl.toLowerCase();
+            if (normalizedUrl.includes('olx.pt')) matchedCountry = 'Portugal';
+            if (normalizedUrl.includes('gumtree.com') || normalizedUrl.includes('gumtree.co.uk')) {
+              matchedCountry = 'United Kingdom';
             }
           }
+
+          const canonicalUkCity = importedCity
+            ? UK_CITIES.find(c => c.toLowerCase() === importedCity.toLowerCase())
+            : undefined;
+          const matchedCity = importedCity
+            ? (canonicalUkCity || importedCity)
+            : matchedCountry === 'Portugal'
+              ? PORTUGAL_CITIES[0]
+              : UK_CITIES[0];
 
           console.log('[Import Pipeline Stage 4] Pre-filling form with extracted nautical and listing data...');
 
