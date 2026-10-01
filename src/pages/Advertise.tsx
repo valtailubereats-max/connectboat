@@ -245,6 +245,14 @@ export default function Advertise() {
       {order?.adminIntervened && <div><label className="block text-xs font-black text-slate-700 mb-2">Message to ConnectBoat</label><textarea value={customerMessage} onChange={(e) => setCustomerMessage(e.target.value)} placeholder="Explain what you changed or what you want the admin to know." className="w-full min-h-24 rounded-xl border border-slate-300 p-3"/></div>}
       {designError && <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm font-bold text-rose-700">{designError}</div>}
       <button type="button" onClick={submitPreparedBanner} disabled={!sourceFile || submitting} className="w-full rounded-xl bg-indigo-600 disabled:bg-slate-300 text-white px-6 py-3.5 font-black flex items-center justify-center gap-2"><CheckCircle2 size={18}/>{submitting ? 'Submitting...' : 'Submit for Approval'}</button></div>
-    </div>}
+        </div>}
+
+    <div className="mt-8">
+      <img
+        src="/connectboat-advertise-business-banner.png"
+        alt="Advertise your marine business on ConnectBoat"
+        className="block w-full h-auto rounded-2xl shadow-sm"
+      />
+    </div>
   </div>;
 }
