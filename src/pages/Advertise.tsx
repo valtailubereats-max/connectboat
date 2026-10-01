@@ -468,14 +468,16 @@ export default function Advertise() {
               </h3>
 
               <p className="mt-2 text-sm text-slate-600 max-w-2xl mx-auto">
-                Contact ConnectBoat and tell us which advertising duration you would like. We will arrange your placement and artwork with you.
+                Contact ConnectBoat on WhatsApp and tell us which advertising duration you would like. We will arrange your placement and artwork with you.
               </p>
 
               <a
-                href="mailto:contato@connectboat.co.uk?subject=Fixed%20Advertising%20Enquiry%20-%20ConnectBoat"
+                href="https://wa.me/447508309536?text=Hello%20ConnectBoat%2C%20I%27m%20interested%20in%20Fixed%20Advertising%20on%20listing%20pages.%20I%20would%20like%20more%20information%20about%20the%20available%20advertising%20options."
+                target="_blank"
+                rel="noopener noreferrer"
                 className="mt-5 inline-flex items-center justify-center rounded-xl bg-indigo-600 px-8 py-4 text-base font-black text-white shadow-sm transition hover:bg-indigo-700"
               >
-                ✉️ Contact ConnectBoat
+                💬 Contact us on WhatsApp
               </a>
             </div>
           </div>
