@@ -267,5 +267,8 @@ export default function Advertise() {
     >
       ✉️ Contact ConnectBoat
     </a>
+           </div>
+    </div>
   </div>
-</div>
+</div>;
+}
