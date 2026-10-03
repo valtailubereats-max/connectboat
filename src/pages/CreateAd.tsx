@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { doc, getDoc, setDoc, updateDoc, collection, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, setDoc, updateDoc, collection, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage, handleFirestoreError, OperationType, getDocWithCacheFallback } from '../firebase';
+import { db, storage, handleFirestoreError, OperationType, getDocWithCacheFallback, withTimeout } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { clearHomeCache } from '../utils/cache';
@@ -12,6 +12,7 @@ import { SearchableCitySelect } from '../components/SearchableCitySelect';
 import { motion, AnimatePresence } from 'motion/react';
 import { Image as ImageIcon, Tag, MapPin, Euro, FileText, ChevronLeft, ChevronRight, Upload, X, Plus, RefreshCcw, Link, ExternalLink, Mail, Phone, MessageCircle, AlertCircle, Check, Camera, Anchor, Compass, Gauge, ShieldCheck, Ruler, Fuel, Sparkles, CreditCard } from 'lucide-react';
 import { compressImage } from '../lib/imageUtils';
+import { EditAdServerVerificationError, loadServerConfirmedEditableAd, type ServerAdSnapshot } from '../utils/editAdAccess';
 import { normalizeDescription } from '../utils/textFormatter';
 import { parsePrice, formatPrice } from '../utils';
 import { getSourceSiteFromUrl, getSupportedMarketplace, getSupportedMarketplacesMessage } from '../utils/marketplaces';
@@ -219,6 +220,7 @@ const CreateAd = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
+  const [editLoadError, setEditLoadError] = useState<string | null>(null);
   const [originalAd, setOriginalAd] = useState<Ad | null>(null);
   const [administrativeExpirationDate, setAdministrativeExpirationDate] = useState('');
   const [brokerDiscount, setBrokerDiscount] = useState(0);
@@ -1199,10 +1201,10 @@ const CreateAd = () => {
 
   useEffect(() => {
     fetchSettings();
-    if (id) {
+    if (id && !authLoading && user) {
       fetchAd();
     }
-  }, [id]);
+  }, [id, authLoading, user?.uid, isAdmin, isModerator]);
 
   const fetchSettings = async () => {
     try {
@@ -1246,15 +1248,29 @@ const CreateAd = () => {
 
   const fetchAd = async () => {
     setFetching(true);
+    setEditLoadError(null);
     try {
       const docRef = doc(db, 'ads', id!);
-      const docSnap = await getDocWithCacheFallback(docRef, `ads/${id}`);
-      if (docSnap.exists()) {
-        const data = docSnap.data() as Ad;
-        if (data.sellerId !== user?.uid && !isAdmin && !isModerator) {
-          navigate('/');
-          return;
-        }
+      const result = await loadServerConfirmedEditableAd<Ad>({
+        readFromServer: async () =>
+          await withTimeout(getDocFromServer(docRef), 10000) as unknown as ServerAdSnapshot<Ad>,
+        userId: user!.uid,
+        isAdmin,
+        isModerator,
+      });
+
+      if (result.status === 'forbidden') {
+        navigate('/');
+        return;
+      }
+
+      if (result.status === 'not-found') {
+        setEditLoadError('This listing could not be found. It may have been removed.');
+        return;
+      }
+
+      {
+        const data = result.data;
         setOriginalAd(data);
         setAdministrativeExpirationDate(formatDateInputValue((data as any).expirationDate));
         const fetchedImages = normalizeAndLimitImages(data.images || (data.imageUrl ? [data.imageUrl] : []), getPhotoLimit(data.category, data.plan || 'standard'));
@@ -1341,7 +1357,12 @@ const CreateAd = () => {
         setImageZoom(loadedFraming.zoom);
       }
     } catch (err) {
-      handleFirestoreError(err, OperationType.GET, `ads/${id}`);
+      if (err instanceof EditAdServerVerificationError) {
+        setEditLoadError('We could not confirm the latest listing data from the server. Check your connection and try again.');
+      } else {
+        setEditLoadError('We could not load this listing safely. Please try again.');
+      }
+      console.error(`[Edit Listing] Server verification failed for ads/${id}:`, err);
     } finally {
       setFetching(false);
     }
@@ -2497,6 +2518,34 @@ const CreateAd = () => {
   const isDonationCategory = formData.category === '💚 Doações & Solidariedade';
 
   if (fetching) return <div className="text-center py-20">Loading...</div>;
+
+  if (id && editLoadError) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-20 text-center">
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 shadow-sm" role="alert">
+          <AlertCircle className="mx-auto text-amber-600" size={36} />
+          <h1 className="mt-4 text-xl font-black text-slate-900">Unable to verify this listing</h1>
+          <p className="mt-2 text-sm font-medium text-slate-700">{editLoadError}</p>
+          <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">
+            <button
+              type="button"
+              onClick={fetchAd}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white hover:bg-indigo-700"
+            >
+              <RefreshCcw size={16} /> Try again
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              Go back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
