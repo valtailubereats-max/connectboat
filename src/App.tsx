@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
-import { LogOut, PlusCircle, Plus, User as UserIcon, ShieldCheck, Menu, X, Share2, Bell, AlertTriangle, QrCode, Copy, Check, Mail, Search } from 'lucide-react';
+import { LogOut, PlusCircle, Plus, User as UserIcon, ShieldCheck, Menu, X, Share2, Bell, AlertTriangle, QrCode, Copy, Check, Mail, Search, Instagram, Users } from 'lucide-react';
 import { ConnectBoatLogo } from './components/ConnectBoatLogo';
 import { QRCodeSVG } from 'qrcode.react';
 import { auth, db, getDocsWithCacheFallback } from './firebase';
@@ -1053,6 +1053,44 @@ export default function App() {
                       <p className="text-xs text-slate-500 leading-relaxed max-w-sm font-semibold">
                         The UK's dedicated marketplace for boat sales, boat hire, marine equipment, charters and nautical services.
                       </p>
+                    </div>
+
+                    <div className="pt-2">
+                      <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider select-none">
+                        Follow ConnectBoat
+                      </h4>
+                      <div className="mt-3 flex max-w-full flex-wrap items-center gap-3">
+                        <a
+                          href="https://www.instagram.com/connectboatuk/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="ConnectBoat on Instagram"
+                          title="Instagram"
+                          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-all hover:-translate-y-0.5 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 active:scale-95"
+                        >
+                          <Instagram size={21} aria-hidden="true" />
+                        </a>
+                        <a
+                          href="https://www.facebook.com/connectboatuk/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="ConnectBoat on Facebook"
+                          title="Facebook"
+                          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 active:scale-95"
+                        >
+                          <span className="text-[22px] font-black leading-none" aria-hidden="true">f</span>
+                        </a>
+                        <a
+                          href="https://www.facebook.com/groups/2278059906322671/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="ConnectBoat Facebook Community"
+                          title="Facebook Community"
+                          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-2xs transition-all hover:-translate-y-0.5 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 active:scale-95"
+                        >
+                          <Users size={21} aria-hidden="true" />
+                        </a>
+                      </div>
                     </div>
                   </div>
 
