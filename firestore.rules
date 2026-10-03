@@ -428,7 +428,10 @@ service cloud.firestore {
           resource.data.sellerId == request.auth.uid &&
           isValidAd(request.resource.data) &&
           isValidAdImagesAndPlan(request.resource.data) &&
-          request.resource.data.status == resource.data.status &&
+          (
+            request.resource.data.status == resource.data.status ||
+            (resource.data.status == 'approved' && request.resource.data.status == 'pending')
+          ) &&
           resource.data.status in ['pending', 'approved'] &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedAdFields())
         ) ||

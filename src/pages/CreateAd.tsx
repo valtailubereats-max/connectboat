@@ -20,6 +20,7 @@ import { getCardFramingStyle, getAdFraming, logFramingDiagnostic } from '../util
 import { evaluateListingDuplicates, DuplicateCheckResult } from '../utils/duplicateDetector';
 import { saveCustomCity } from '../utils/locationService';
 import { brokerRequest } from '../utils/brokers';
+import { shouldNotifyPendingModeration } from '../utils/pendingModeration';
 
 const PAID_BOAT_LISTING_CATEGORIES = new Set(['Boats for Sale', 'Boats for Hire']);
 const MARKETPLACE_LISTING_CATEGORIES = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Accessories', 'Wanted']);
@@ -1696,8 +1697,16 @@ const CreateAd = () => {
         return;
       }
 
-      // Notificação interna automática para admins e moderadores quando um novo anúncio for criado como pendente
-      if (!id && finalAdData.status === 'pending') {
+      const shouldNotifyModeration = shouldNotifyPendingModeration({
+        isExistingListing: Boolean(id),
+        previousStatus: originalAd?.status,
+        nextStatus: cleanPayload.status,
+        isStaffEdit: Boolean(isAdmin || isModerator),
+      });
+
+      // Notify staff for new Pending listings and for a real owner-driven
+      // transition back to Pending. Re-saving Pending and staff edits stay quiet.
+      if (shouldNotifyModeration) {
         console.log('[PENDING EMAIL] start');
         try {
           const staffQuery = query(
@@ -1940,7 +1949,9 @@ const CreateAd = () => {
         showEmail: isExternalListingForSave ? false : !!formData.showEmail,
         useProfilePhone: useProfilePhoneValue,
         sellerName: id && originalAd ? (originalAd.sellerName || profile.name || 'ConnectBoat') : (profile.name || 'ConnectBoat'),
-        status: id && originalAd ? originalAd.status : 'pending',
+        status: id && originalAd
+          ? ((isAdmin || isModerator) ? originalAd.status : 'pending')
+          : 'pending',
         adStatus: id && originalAd ? originalAd.adStatus : 'active',
         plan: isTieredListingCategory(formData.category) ? normalizeListingPlan(formData.plan) : 'free',
         partnerVoucherCode: partnerVoucher?.partnerCode || undefined,
