@@ -1472,7 +1472,7 @@ const CreateAd = () => {
       const uploadPromises = filesToProceed.map(async (file) => {
         const compressedBlob = await compressImage(file, 1200, 0.8);
         const fileName = `${Date.now()}_${file.name}`;
-        const imageRef = ref(storage, `ads/${fileName}`);
+        const imageRef = ref(storage, `ads/${user.uid}/${fileName}`);
         
         // Upload directly to Firebase Storage
         const uploadResult = await uploadBytes(imageRef, compressedBlob);
@@ -1526,7 +1526,6 @@ const CreateAd = () => {
     processFiles(files);
   };
   const removeImage = async (index: number) => {
-    if (isEditLocked && !isAdmin) return;
     setFormData(prev => {
       const imageUrl = prev.images[index];
       const newImages = prev.images.filter((_, i) => i !== index);
@@ -1544,7 +1543,6 @@ const CreateAd = () => {
   };
 
   const moveImage = (index: number, direction: 'left' | 'right') => {
-    if (isEditLocked && !isAdmin) return;
     if (index <= 0) return; // Main photo cannot be moved via arrows
     const targetIndex = direction === 'left' ? index - 1 : index + 1;
     // Arrows only reorder among secondary photos (index >= 1)
@@ -1559,7 +1557,6 @@ const CreateAd = () => {
   };
 
   const setAsMainImage = (index: number) => {
-    if (isEditLocked && !isAdmin) return;
     if (index <= 0 || index >= formData.images.length) return;
 
     const updated = [...formData.images];
@@ -1606,7 +1603,36 @@ const CreateAd = () => {
           'sellerEmail',
           'userEmail',
           'tempVideoPath',
-          'tempVideoUrl'
+          'tempVideoUrl',
+          // Security-sensitive listing/payment fields are server or staff owned.
+          // A normal edit must reproduce their exact value and field shape.
+          'sellerId',
+          'adStatus',
+          'plan',
+          'planType',
+          'isFeatured',
+          'featuredLevel',
+          'featuredReason',
+          'featuredActivatedAt',
+          'featuredUntil',
+          'isPermanentFeatured',
+          'expirationDate',
+          'paymentStatus',
+          'paidAt',
+          'paymentCompletedAt',
+          'stripeCheckoutSessionId',
+          'stripePaymentIntentId',
+          'videoPaid',
+          'mediaBoostEnabled',
+          'mediaBoostPrice',
+          'isClaimableBusiness',
+          'claimStatus',
+          'claimedBy',
+          'claimedAt',
+          'invitationStatus',
+          'invitationSentAt',
+          'invitationLastMessage',
+          'invitationCount'
         ];
 
         preserveOptionalFieldShape.forEach((key) => {
@@ -1909,7 +1935,7 @@ const CreateAd = () => {
         showEmail: isExternalListingForSave ? false : !!formData.showEmail,
         useProfilePhone: useProfilePhoneValue,
         sellerName: id && originalAd ? (originalAd.sellerName || profile.name || 'ConnectBoat') : (profile.name || 'ConnectBoat'),
-        status: isStaff && id ? (originalAd?.status || 'approved') : 'pending',
+        status: id && originalAd ? originalAd.status : 'pending',
         adStatus: id && originalAd ? originalAd.adStatus : 'active',
         plan: isTieredListingCategory(formData.category) ? normalizeListingPlan(formData.plan) : 'free',
         partnerVoucherCode: partnerVoucher?.partnerCode || undefined,
@@ -2107,13 +2133,12 @@ const CreateAd = () => {
       if (!isAdmin && !isModerator && isEditLocked && originalAd) {
         if (
           formData.title !== originalAd.title ||
-          JSON.stringify(formData.images) !== JSON.stringify(originalAd.images) ||
           formData.category !== originalAd.category ||
           formData.country !== originalAd.country ||
           formData.city !== originalAd.city ||
           formData.plan !== originalAd.plan
         ) {
-          showValidationError('Não é permitido alterar título, imagens, categoria, comunidade ou plano em anúncios em destaque após 24h.');
+          showValidationError('Não é permitido alterar título, categoria, comunidade ou plano em anúncios em destaque após 24h. As fotos continuam editáveis dentro do limite do plano.');
           return;
         }
       }
@@ -2964,20 +2989,18 @@ const CreateAd = () => {
                           />
 
                           {/* Compact Delete Button */}
-                          {!(isEditLocked && !isAdmin) && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeImage(index);
-                              }}
-                              className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md z-20 cursor-pointer active:scale-90 transition-transform"
-                              title="Remove photo"
-                              aria-label="Remove photo"
-                            >
-                              <X size={12} strokeWidth={3} />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeImage(index);
+                            }}
+                            className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md z-20 cursor-pointer active:scale-90 transition-transform"
+                            title="Remove photo"
+                            aria-label="Remove photo"
+                          >
+                            <X size={12} strokeWidth={3} />
+                          </button>
 
                           {/* Compact Main Badge / Secondary Photo Controls */}
                           {index === 0 ? (
@@ -2986,8 +3009,7 @@ const CreateAd = () => {
                               <span>Main</span>
                             </div>
                           ) : (
-                            !(isEditLocked && !isAdmin) && (
-                              <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10">
+                            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10">
                                 {index > 1 && (
                                   <button
                                     type="button"
@@ -3031,14 +3053,13 @@ const CreateAd = () => {
                                   </button>
                                 )}
                               </div>
-                            )
                           )}
                         </motion.div>
                       )
                     ))}
                   </AnimatePresence>
 
-                  {formData.images.length < maxAllowed && !(isEditLocked && !isAdmin) && (
+                  {formData.images.length < maxAllowed && (
                     <button
                       type="button"
                       onClick={() => setShowPhotoSourceMenu(true)}

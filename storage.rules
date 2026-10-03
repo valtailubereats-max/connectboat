@@ -16,9 +16,22 @@ service firebase.storage {
       );
     }
 
-    match /ads/{allPaths=**} {
+    // New listing images are namespaced by owner. Firestore remains the source
+    // of truth for the plan's photo-count limit; Storage validates each object.
+    match /ads/{userId}/{allPaths=**} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow create, update: if isAuthenticated() &&
+                            request.auth.uid == userId &&
+                            request.resource.size <= 5 * 1024 * 1024 &&
+                            request.resource.contentType.matches('image/.*');
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Existing flat-path images remain publicly readable. They are immutable
+    // from clients because their object names contain no trustworthy owner id.
+    match /ads/{legacyFileName} {
+      allow read: if true;
+      allow write: if false;
     }
 
     match /temporary-listing-videos/{userId}/{allPaths=**} {

@@ -89,10 +89,58 @@ service cloud.firestore {
     }
 
     function isValidAdImagesAndPlan(data) {
-      let isFeaturedAd = data.get('isFeatured', false) == true || data.get('plan', 'free') in ['featured', 'highlight', 'local', 'national', 'intermediate', 'premium'];
+      let plan = data.get('plan', 'free');
+      let category = data.get('category', '');
       let imagesList = data.get('images', []);
+      let isBoatListing = category in ['Boats for Sale', 'Boats for Hire'];
+      let isBoatService = category == 'Boat Services';
       return imagesList is list &&
-             (isFeaturedAd ? (imagesList.size() <= 10) : (imagesList.size() <= 6));
+             (
+               (isBoatListing && (
+                 (plan in ['premium', 'national'] && imagesList.size() <= 25) ||
+                 (plan in ['featured', 'highlight', 'local', 'intermediate'] && imagesList.size() <= 15) ||
+                 (plan in ['standard', 'free'] && imagesList.size() <= 8)
+               )) ||
+               (isBoatService && (
+                 (plan in ['premium', 'national'] && imagesList.size() <= 10) ||
+                 (plan in ['featured', 'highlight', 'local', 'intermediate'] && imagesList.size() <= 6) ||
+                 (plan in ['standard', 'free'] && imagesList.size() <= 3)
+               )) ||
+               (!isBoatListing && !isBoatService && imagesList.size() <= 3)
+             );
+    }
+
+    function protectedAdFields() {
+      return [
+        'sellerId',
+        'adStatus',
+        'plan',
+        'planType',
+        'isFeatured',
+        'featuredLevel',
+        'featuredReason',
+        'featuredActivatedAt',
+        'featuredUntil',
+        'isPermanentFeatured',
+        'expirationDate',
+        'paymentStatus',
+        'paidAt',
+        'paymentCompletedAt',
+        'stripeCheckoutSessionId',
+        'stripePaymentIntentId',
+        'videoPaid',
+        'mediaBoostEnabled',
+        'mediaBoostPrice',
+        'isClaimableBusiness',
+        'claimStatus',
+        'claimedBy',
+        'claimedAt',
+        'sellerEmail',
+        'invitationStatus',
+        'invitationSentAt',
+        'invitationLastMessage',
+        'invitationCount'
+      ];
     }
 
     function isValidSettings(data) {
@@ -380,36 +428,9 @@ service cloud.firestore {
           resource.data.sellerId == request.auth.uid &&
           isValidAd(request.resource.data) &&
           isValidAdImagesAndPlan(request.resource.data) &&
-          request.resource.data.status == 'pending' &&
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-            'sellerId',
-            'adStatus',
-            'plan',
-            'isFeatured',
-            'featuredLevel',
-            'featuredReason',
-            'featuredActivatedAt',
-            'featuredUntil',
-            'isPermanentFeatured',
-            'expirationDate',
-            'paymentStatus',
-            'paidAt',
-            'paymentCompletedAt',
-            'stripeCheckoutSessionId',
-            'stripePaymentIntentId',
-            'videoPaid',
-            'mediaBoostEnabled',
-            'mediaBoostPrice',
-            'isClaimableBusiness',
-            'claimStatus',
-            'claimedBy',
-            'claimedAt',
-            'sellerEmail',
-            'invitationStatus',
-            'invitationSentAt',
-            'invitationLastMessage',
-            'invitationCount'
-          ])
+          request.resource.data.status == resource.data.status &&
+          resource.data.status in ['pending', 'approved'] &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(protectedAdFields())
         ) ||
 
         (resource.data.status == 'approved' && isValidAdCounterUpdate()) ||
