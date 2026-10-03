@@ -50,3 +50,13 @@ test('new Storage uploads are owner-scoped images with the same 5 MB client limi
   assert.match(storageRules, /request\.resource\.contentType\.matches\('image\/\.\*'\)/);
   assert.match(createAd, /`ads\/\$\{user\.uid\}\/\$\{fileName\}`/);
 });
+
+test('iPad extensionless photos send explicit image metadata to Storage', () => {
+  assert.match(createAd, /compressedBlob\.type, file\.type/);
+  assert.match(createAd, /startsWith\('image\/'\)/);
+  assert.match(createAd, /\|\| 'image\/jpeg'/);
+  assert.match(
+    createAd,
+    /uploadBytes\(imageRef, compressedBlob, \{ contentType \}\)/
+  );
+});

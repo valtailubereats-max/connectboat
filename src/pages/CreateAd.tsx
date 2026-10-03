@@ -1473,9 +1473,14 @@ const CreateAd = () => {
         const compressedBlob = await compressImage(file, 1200, 0.8);
         const fileName = `${Date.now()}_${file.name}`;
         const imageRef = ref(storage, `ads/${user.uid}/${fileName}`);
+        // Safari/iPad may provide extensionless photos with an empty MIME type.
+        // Storage Rules require image/*, so send explicit image metadata instead
+        // of relying on automatic inference from the filename or Blob.
+        const contentType = [compressedBlob.type, file.type]
+          .find(type => type?.startsWith('image/')) || 'image/jpeg';
         
         // Upload directly to Firebase Storage
-        const uploadResult = await uploadBytes(imageRef, compressedBlob);
+        const uploadResult = await uploadBytes(imageRef, compressedBlob, { contentType });
         const downloadUrl = await getDownloadURL(uploadResult.ref);
         return downloadUrl;
       });
