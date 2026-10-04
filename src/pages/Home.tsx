@@ -891,7 +891,7 @@ const Home = () => {
         const rows = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() } as Ad))
           .filter(ad => {
-            if (ad.isHidden) return false;
+            if (ad.isHidden || ad.isArchived) return false;
 
             const isActive =
               ad.status === 'approved' &&
@@ -1022,7 +1022,7 @@ const Home = () => {
       ...saleSectionAds,
       ...hireSectionAds,
     ]
-      .filter((ad) => !ad.isHidden && ad.status === 'approved' && Boolean(ad.city?.trim()))
+      .filter((ad) => !ad.isHidden && !ad.isArchived && ad.status === 'approved' && Boolean(ad.city?.trim()))
       .map((ad) => ({
         id: `ad-${ad.id || ad.city}`,
         name: ad.city!.trim(),
@@ -1041,7 +1041,7 @@ const Home = () => {
     const now = new Date();
     
     let result = featuredAds.filter(ad => {
-      if (ad.isHidden) return false;
+      if (ad.isHidden || ad.isArchived) return false;
       if (ad.category === 'Trabalho/Empregos') return false;
       const isActiveAdminCourtesy = Boolean(
         ad.isCourtesy &&
@@ -1239,7 +1239,7 @@ const Home = () => {
     const sourceAds = hasActiveDiscoveryFilter ? ads : saleSectionAds;
 
     let result = sourceAds.filter(ad => {
-      if (ad.isHidden) return false;
+      if (ad.isHidden || ad.isArchived) return false;
       if (ad.category === 'Trabalho/Empregos') return false;
 
       // HOME RULE: without an active search/filter/category, only Boats for Sale

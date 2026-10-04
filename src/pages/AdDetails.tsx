@@ -486,7 +486,7 @@ const AdDetails = () => {
 
         const adData = { id: adSnap.id, ...adSnap.data() } as Ad;
 
-        if (adData.isHidden && user?.email !== 'valtailubereats@gmail.com' && user?.uid !== adData.sellerId) {
+        if ((adData.isHidden || adData.isArchived) && user?.email !== 'valtailubereats@gmail.com' && user?.uid !== adData.sellerId) {
           setErrorMsg('Este anúncio encontra-se temporariamente em standby / oculto pela administração.');
           setLoading(false);
           return;
@@ -1059,7 +1059,7 @@ const AdDetails = () => {
         const items = snap.docs
           .map(d => ({ id: d.id, ...d.data() } as Ad))
           .filter((item: any) => {
-            if (item.id === ad.id || item.isHidden) return false;
+            if (item.id === ad.id || item.isHidden || item.isArchived) return false;
 
             const isActive =
               item.adStatus === 'active' ||

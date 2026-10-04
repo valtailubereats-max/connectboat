@@ -144,7 +144,12 @@ service cloud.firestore {
         'invitationStatus',
         'invitationSentAt',
         'invitationLastMessage',
-        'invitationCount'
+        'invitationCount',
+        'isArchived',
+        'archivedAt',
+        'archivedBy',
+        'archivedPreviousStatus',
+        'archivedPreviousAdStatus'
       ];
     }
 
@@ -433,6 +438,33 @@ service cloud.firestore {
         (
           isAuthenticated() &&
           resource.data.sellerId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'isArchived', 'archivedAt', 'archivedBy', 'archivedPreviousStatus',
+            'archivedPreviousAdStatus', 'updatedAt'
+          ]) &&
+          request.resource.data.updatedAt == request.time &&
+          (
+            (
+              resource.data.get('isArchived', false) == false &&
+              request.resource.data.isArchived == true &&
+              request.resource.data.archivedAt == request.time &&
+              request.resource.data.archivedBy == request.auth.uid &&
+              request.resource.data.archivedPreviousStatus == resource.data.status &&
+              request.resource.data.archivedPreviousAdStatus == resource.data.get('adStatus', null)
+            ) ||
+            (
+              resource.data.get('isArchived', false) == true &&
+              request.resource.data.isArchived == false &&
+              request.resource.data.archivedAt == null &&
+              request.resource.data.archivedBy == null &&
+              request.resource.data.archivedPreviousStatus == null &&
+              request.resource.data.archivedPreviousAdStatus == null
+            )
+          )
+        ) ||
+        (
+          isAuthenticated() &&
+          resource.data.sellerId == request.auth.uid &&
           isValidAd(request.resource.data) &&
           isValidAdImagesAndPlan(request.resource.data) &&
           (
@@ -508,12 +540,7 @@ service cloud.firestore {
         isModerator()
       );
 
-      allow delete: if isAuthenticated() &&
-                    (
-                      (resource.data.get('sellerId', '') is string && resource.data.get('sellerId', '').trim() == request.auth.uid) ||
-                      isAdmin() ||
-                      isModerator()
-                    );
+      allow delete: if isAdmin();
     }
 
     match /courtesyListingCredits/{userId} {
@@ -521,6 +548,17 @@ service cloud.firestore {
       match /history/{creditId} {
         allow read, write: if false;
       }
+    }
+
+    // Immutable financial/moderation snapshot written before an administrator
+    // permanently removes a listing. It is never exposed to sellers or public UI.
+    match /deletedListingAudits/{adId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() &&
+                    request.resource.data.listingId == adId &&
+                    request.resource.data.deletedBy == request.auth.uid &&
+                    request.resource.data.deletedAt == request.time;
+      allow update, delete: if false;
     }
 
     match /brokerApplications/{uid} {

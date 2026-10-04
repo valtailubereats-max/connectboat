@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { collection, query, orderBy, limit, updateDoc, doc, serverTimestamp, setDoc, deleteDoc, getDoc, getDocs, where } from 'firebase/firestore';
+import { collection, query, orderBy, limit, updateDoc, doc, serverTimestamp, setDoc, getDoc, getDocs, where, writeBatch } from 'firebase/firestore';
+import { deleteObject, ref } from 'firebase/storage';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { db, handleFirestoreError, OperationType, getDocsWithCacheFallback } from '../firebase';
+import { db, storage, handleFirestoreError, OperationType, getDocsWithCacheFallback } from '../firebase';
 import { Ad, UserProfile } from '../types';
 import { clearHomeCache } from '../utils/cache';
 import { motion, AnimatePresence } from 'motion/react';
@@ -724,10 +725,35 @@ const AdminAds = () => {
     }
   };
 
+  const deleteListingMedia = async (ad: Ad) => {
+    const candidates = [ad.imageUrl, ...(Array.isArray(ad.images) ? ad.images : []), ad.videoUrl, ad.tempVideoUrl]
+      .filter((value): value is string => typeof value === 'string' && /^(gs:\/\/|https:\/\/firebasestorage\.googleapis\.com\/|https:\/\/storage\.googleapis\.com\/)/i.test(value));
+    const uniqueUrls = Array.from(new Set(candidates));
+    await Promise.allSettled(uniqueUrls.map(url => deleteObject(ref(storage, url))));
+  };
+
+  const permanentlyDeleteListing = async (ad: Ad) => {
+    if (!user) throw new Error('Administrator session unavailable.');
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'deletedListingAudits', ad.id), {
+      listingId: ad.id,
+      sellerId: ad.sellerId || null,
+      deletedAt: serverTimestamp(),
+      deletedBy: user.uid,
+      deletionSource: 'admin_manage_listings',
+      listingSnapshot: ad
+    });
+    batch.delete(doc(db, 'ads', ad.id));
+    await batch.commit();
+    await deleteListingMedia(ad);
+  };
+
   const handleDeleteAd = async (adId: string) => {
     if (!window.confirm('Are you sure you want to permanently delete this listing? This action is irreversible.')) return;
     try {
-      await deleteDoc(doc(db, 'ads', adId));
+      const ad = ads.find(item => item.id === adId);
+      if (!ad) throw new Error('Listing not found in the current administrative view.');
+      await permanentlyDeleteListing(ad);
       clearHomeCache();
       setAds(prevAds => prevAds.filter(ad => ad.id !== adId));
       setSelectedAdIds(prev => prev.filter(id => id !== adId));
@@ -858,7 +884,9 @@ const AdminAds = () => {
 
     const promises = selectedAdIds.map(async (id) => {
       try {
-        await deleteDoc(doc(db, 'ads', id));
+        const ad = ads.find(item => item.id === id);
+        if (!ad) throw new Error('Listing not found in the current administrative view.');
+        await permanentlyDeleteListing(ad);
         successCount++;
       } catch (err) {
         console.error(`Error deleting listing ${id}:`, err);
@@ -1066,6 +1094,20 @@ const AdminAds = () => {
     'Wanted',
   ];
 
+  const getAdminCategoryLabel = (category: unknown): string => {
+    const storedCategory = String(category ?? '').trim();
+    if (!storedCategory) return 'Uncategorised';
+
+    // These are the same legacy hire aliases already recognised by the
+    // ConnectBoat listing-type filters. Unknown legacy values remain visible
+    // exactly as stored instead of being silently rewritten.
+    const legacyCategoryLabels: Record<string, string> = {
+      'Aluguer de Barcos': 'Boats for Hire',
+      'Boat Hire & Charters': 'Boats for Hire',
+    };
+    return legacyCategoryLabels[storedCategory] || storedCategory;
+  };
+
   const categoryFilterOptions = Array.from(
     new Set([
       ...(categories || []),
@@ -1094,6 +1136,8 @@ const AdminAds = () => {
           ? ad.isDuplicate === true 
           : adFilter === 'paid'
             ? isPaidAd(ad)
+            : adFilter === 'archived'
+              ? ad.isArchived === true || ad.status === 'archived'
             : adFilter === 'external_promotion_allowed'
               ? (ad as any).externalPromotionConsent === true
             : adFilter === 'awaiting_activation'
@@ -1201,6 +1245,7 @@ const AdminAds = () => {
         (a as any).awaitingAdminActivation === true
     ).length,
     expired: ads.filter(a => a.status === 'expired' || a.adStatus === 'expired').length,
+    archived: ads.filter(a => a.isArchived === true || a.status === 'archived').length,
   };
 
   return (
@@ -1304,7 +1349,7 @@ const AdminAds = () => {
                 { id: 'awaiting_activation', label: `Awaiting Activation (${stats.awaitingActivation})` },
                 { id: 'expired', label: 'Expired' },
                 { id: 'rejected', label: 'Rejected' },
-                { id: 'archived', label: 'Archived' }
+                { id: 'archived', label: `Archived (${stats.archived})` }
               ].map((filter) => (
                 <button
                   key={filter.id}
@@ -1606,7 +1651,7 @@ const AdminAds = () => {
                       ad.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 
                       'bg-red-50 text-red-600 border border-red-100'
                     }`}>
-                      {ad.status}
+                      {ad.isArchived ? 'archived' : ad.status}
                     </span>
                     {ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
                       <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider ${
@@ -1667,6 +1712,10 @@ const AdminAds = () => {
                         Paid / Awaiting Admin Activation
                       </span>
                     )}
+
+                    <span className="inline-block max-w-full truncate text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-sky-50 text-sky-800 border border-sky-200" title={`Stored category: ${String(ad.category ?? '').trim() || 'Uncategorised'}`}>
+                      Category: {getAdminCategoryLabel(ad.category)}
+                    </span>
 
                     <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider border ${getAdPlanLabel(ad).color}`}>
                       Plan: {getAdPlanLabel(ad).label}
@@ -2045,7 +2094,7 @@ const AdminAds = () => {
                               ad.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
                               ad.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                               'bg-red-50 text-red-700 border border-red-100'
-                            }`}>{ad.status}</span>
+                            }`}>{ad.isArchived ? 'archived' : ad.status}</span>
                             {ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
                               <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase bg-indigo-50 text-indigo-600 border border-indigo-100">{ad.adStatus}</span>
                             )}
@@ -2195,7 +2244,7 @@ const AdminAds = () => {
                         ad.status === 'pending' ? 'bg-amber-50 text-amber-600 animate-pulse' : 
                         'bg-red-50 text-red-650'
                       }`}>
-                        {ad.status}
+                        {ad.isArchived ? 'archived' : ad.status}
                       </span>
                     </div>
                   </div>
@@ -2589,6 +2638,16 @@ const AdminAds = () => {
                           {selectedAd.stripeCheckoutSessionId}
                         </span>
                       </div>
+                    )}
+                    {selectedAd.isArchived && (
+                      <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-800 text-white" title={`Archived ${formatSellerDate(selectedAd.archivedAt)}`}>
+                        Archived{(() => {
+                          const archivedDate = selectedAd.archivedAt?.toDate ? selectedAd.archivedAt.toDate() : selectedAd.archivedAt ? new Date(selectedAd.archivedAt) : null;
+                          if (!archivedDate || Number.isNaN(archivedDate.getTime())) return '';
+                          const months = Math.floor((Date.now() - archivedDate.getTime()) / (30.4375 * 24 * 60 * 60 * 1000));
+                          return months >= 3 ? ` • ${months} months` : '';
+                        })()}
+                      </span>
                     )}
                     {getAdPaymentClassification(selectedAd).type === 'courtesy' && (
                       <div className="sm:col-span-2 rounded-lg bg-violet-50 p-3 text-violet-950">

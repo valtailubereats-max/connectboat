@@ -229,6 +229,11 @@ export interface Ad {
   status: AdStatus;
   adStatus?: AdLifecycleStatus;
   isHidden?: boolean;
+  isArchived?: boolean;
+  archivedAt?: any; // Firestore Timestamp
+  archivedBy?: string;
+  archivedPreviousStatus?: AdStatus;
+  archivedPreviousAdStatus?: AdLifecycleStatus | null;
   plan?: AdPlan;
   planType?: AdPlan;
   planStartedAt?: any; // Firestore Timestamp
