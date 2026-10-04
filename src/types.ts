@@ -231,6 +231,7 @@ export interface Ad {
   isHidden?: boolean;
   isArchived?: boolean;
   archivedAt?: any; // Firestore Timestamp
+  restoredAt?: any; // Firestore Timestamp; archivedAt remains as history
   archivedBy?: string;
   archivedPreviousStatus?: AdStatus;
   archivedPreviousAdStatus?: AdLifecycleStatus | null;

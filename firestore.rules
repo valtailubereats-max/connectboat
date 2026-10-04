@@ -147,6 +147,7 @@ service cloud.firestore {
         'invitationCount',
         'isArchived',
         'archivedAt',
+        'restoredAt',
         'archivedBy',
         'archivedPreviousStatus',
         'archivedPreviousAdStatus'
@@ -440,7 +441,7 @@ service cloud.firestore {
           resource.data.sellerId == request.auth.uid &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'isArchived', 'archivedAt', 'archivedBy', 'archivedPreviousStatus',
-            'archivedPreviousAdStatus', 'updatedAt'
+            'archivedPreviousAdStatus', 'restoredAt', 'updatedAt'
           ]) &&
           request.resource.data.updatedAt == request.time &&
           (
@@ -455,10 +456,11 @@ service cloud.firestore {
             (
               resource.data.get('isArchived', false) == true &&
               request.resource.data.isArchived == false &&
-              request.resource.data.archivedAt == null &&
-              request.resource.data.archivedBy == null &&
-              request.resource.data.archivedPreviousStatus == null &&
-              request.resource.data.archivedPreviousAdStatus == null
+              request.resource.data.get('archivedAt', null) == resource.data.get('archivedAt', null) &&
+              request.resource.data.get('archivedBy', null) == resource.data.get('archivedBy', null) &&
+              request.resource.data.get('archivedPreviousStatus', null) == resource.data.get('archivedPreviousStatus', null) &&
+              request.resource.data.get('archivedPreviousAdStatus', null) == resource.data.get('archivedPreviousAdStatus', null) &&
+              request.resource.data.restoredAt == request.time
             )
           )
         ) ||

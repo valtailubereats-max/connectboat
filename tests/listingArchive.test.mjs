@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { isCurrentlyArchived } from '../src/utils/listingArchive.ts';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -11,6 +12,8 @@ test('My Listings archives and restores without changing commercial or expiry fi
   assert.match(archiveBlock, /archivedAt:\s*serverTimestamp\(\)/);
   assert.match(archiveBlock, /archivedBy:\s*user\.uid/);
   assert.match(archiveBlock, /const handleRestoreAd/);
+  assert.match(archiveBlock, /restoredAt:\s*serverTimestamp\(\)/);
+  assert.doesNotMatch(archiveBlock, /archivedAt:\s*null/);
   assert.doesNotMatch(archiveBlock, /deleteDoc\(doc\(db, 'ads'/);
   assert.doesNotMatch(archiveBlock, /expirationDate\s*:/);
   assert.doesNotMatch(archiveBlock, /planExpiresAt\s*:/);
@@ -33,19 +36,47 @@ test('Firestore allows timestamp-bound owner archive updates but permanent delet
 
   assert.match(adsRules, /request\.resource\.data\.archivedAt == request\.time/);
   assert.match(adsRules, /request\.resource\.data\.archivedBy == request\.auth\.uid/);
+  assert.match(adsRules, /request\.resource\.data\.restoredAt == request\.time/);
+  assert.match(adsRules, /request\.resource\.data\.get\('archivedAt', null\) == resource\.data\.get\('archivedAt', null\)/);
   assert.match(adsRules, /allow delete: if isAdmin\(\);/);
   assert.doesNotMatch(adsRules, /allow delete:[\s\S]*resource\.data\.get\('sellerId'/);
 });
 
 test('admin archived filter recognises the new archive flag and keeps permanent delete explicit', () => {
   const admin = read('src/pages/AdminAds.tsx');
-  assert.match(admin, /adFilter === 'archived'[\s\S]*ad\.isArchived === true/);
+  assert.match(admin, /adFilter === 'archived'[\s\S]*isCurrentlyArchived\(ad\)/);
   assert.match(admin, /permanently delete this listing/i);
   assert.match(admin, /Archived \(\$\{stats\.archived\}\)/);
   assert.match(admin, /deletedListingAudits/);
   assert.match(admin, /listingSnapshot:\s*ad/);
   assert.match(admin, /deleteListingMedia/);
   assert.match(admin, /deleteObject\(ref\(storage, url\)\)/);
+});
+
+test('current archive state overrides historical archivedAt and legacy status fallback', () => {
+  assert.equal(isCurrentlyArchived({ isArchived: true, status: 'approved', adStatus: 'active' }), true);
+  assert.equal(isCurrentlyArchived({ isArchived: false, archivedAt: new Date(), status: 'archived' }), false);
+  assert.equal(isCurrentlyArchived({ status: 'archived' }), true);
+  assert.equal(isCurrentlyArchived({ status: 'approved', adStatus: 'active' }), false);
+});
+
+test('Admin restore preserves archive history and does not extend expiry or alter payment', () => {
+  const admin = read('src/pages/AdminAds.tsx');
+  const restoreBlock = admin.slice(admin.indexOf('const handleRestoreArchivedAd'), admin.indexOf('const categoryFilterOptions'));
+  assert.match(restoreBlock, /isArchived:\s*false/);
+  assert.match(restoreBlock, /restoredAt:\s*serverTimestamp\(\)/);
+  assert.doesNotMatch(restoreBlock, /archivedAt\s*:/);
+  assert.doesNotMatch(restoreBlock, /expirationDate\s*:/);
+  assert.doesNotMatch(restoreBlock, /planExpiresAt\s*:/);
+  assert.doesNotMatch(restoreBlock, /paymentStatus\s*:/);
+  assert.match(admin, /isCurrentlyArchived\(selectedAd\)[\s\S]*handleRestoreArchivedAd\(selectedAd\)[\s\S]*<span>Restore<\/span>/);
+});
+
+test('Archived count and ACTIVE badge use only the canonical current-state helper', () => {
+  const admin = read('src/pages/AdminAds.tsx');
+  assert.match(admin, /archived:\s*ads\.filter\(isCurrentlyArchived\)\.length/);
+  assert.match(admin, /!isCurrentlyArchived\(ad\) && ad\.adStatus/);
+  assert.match(admin, /Status:\s*\{isCurrentlyArchived\(selectedAd\) \? 'archived' : selectedAd\.status\}/);
 });
 
 test('Manage Listings cards show the stored category with existing legacy hire aliases', () => {

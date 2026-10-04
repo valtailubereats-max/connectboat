@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db, storage, handleFirestoreError, OperationType, getDocsWithCacheFallback } from '../firebase';
 import { Ad, UserProfile } from '../types';
 import { clearHomeCache } from '../utils/cache';
+import { isCurrentlyArchived } from '../utils/listingArchive';
 import { motion, AnimatePresence } from 'motion/react';
 import OptimizedImage from '../components/OptimizedImage';
 import { awardAdApprovalPoints } from '../utils/rewards';
@@ -139,6 +140,8 @@ const AdminAds = () => {
             ? ad.isDuplicate === true 
             : targetFilter === 'paid'
               ? isPaidAd(ad)
+              : targetFilter === 'archived'
+                ? isCurrentlyArchived(ad)
               : (ad.status === targetFilter || ad.adStatus === targetFilter);
         return matchesFilter;
       });
@@ -1108,6 +1111,25 @@ const AdminAds = () => {
     return legacyCategoryLabels[storedCategory] || storedCategory;
   };
 
+  const handleRestoreArchivedAd = async (ad: Ad) => {
+    if (!window.confirm('Restore this listing? Its original plan, payment and expiry date will be preserved.')) return;
+    try {
+      await updateDoc(doc(db, 'ads', ad.id), {
+        isArchived: false,
+        restoredAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      clearHomeCache();
+      const localUpdates = { isArchived: false, restoredAt: new Date() };
+      setAds(prev => prev.map(item => item.id === ad.id ? ({ ...item, ...localUpdates } as Ad) : item));
+      setSelectedAd(prev => prev?.id === ad.id ? ({ ...prev, ...localUpdates } as Ad) : prev);
+      alert('Listing restored without changing its plan, payment or expiry date.');
+    } catch (err) {
+      console.error('Error restoring archived listing:', err);
+      handleFirestoreError(err, OperationType.UPDATE, `ads/${ad.id}`);
+    }
+  };
+
   const categoryFilterOptions = Array.from(
     new Set([
       ...(categories || []),
@@ -1137,7 +1159,7 @@ const AdminAds = () => {
           : adFilter === 'paid'
             ? isPaidAd(ad)
             : adFilter === 'archived'
-              ? ad.isArchived === true || ad.status === 'archived'
+              ? isCurrentlyArchived(ad)
             : adFilter === 'external_promotion_allowed'
               ? (ad as any).externalPromotionConsent === true
             : adFilter === 'awaiting_activation'
@@ -1236,7 +1258,7 @@ const AdminAds = () => {
   const stats = {
     total: ads.length,
     pending: ads.filter(a => a.status === 'pending').length,
-    approved: ads.filter(a => a.status === 'approved' || a.adStatus === 'active').length,
+    approved: ads.filter(a => !isCurrentlyArchived(a) && (a.status === 'approved' || a.adStatus === 'active')).length,
     paid: ads.filter(a => isPaidAd(a)).length,
     awaitingActivation: ads.filter(
       a =>
@@ -1245,7 +1267,7 @@ const AdminAds = () => {
         (a as any).awaitingAdminActivation === true
     ).length,
     expired: ads.filter(a => a.status === 'expired' || a.adStatus === 'expired').length,
-    archived: ads.filter(a => a.isArchived === true || a.status === 'archived').length,
+    archived: ads.filter(isCurrentlyArchived).length,
   };
 
   return (
@@ -1651,9 +1673,9 @@ const AdminAds = () => {
                       ad.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 
                       'bg-red-50 text-red-600 border border-red-100'
                     }`}>
-                      {ad.isArchived ? 'archived' : ad.status}
+                      {isCurrentlyArchived(ad) ? 'archived' : ad.status}
                     </span>
-                    {ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
+                    {!isCurrentlyArchived(ad) && ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
                       <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider ${
                         ad.adStatus === 'active' ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 
                         ad.adStatus === 'expired' ? 'bg-red-50 text-red-600 border border-red-100' : 
@@ -2094,8 +2116,8 @@ const AdminAds = () => {
                               ad.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
                               ad.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
                               'bg-red-50 text-red-700 border border-red-100'
-                            }`}>{ad.isArchived ? 'archived' : ad.status}</span>
-                            {ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
+                            }`}>{isCurrentlyArchived(ad) ? 'archived' : ad.status}</span>
+                            {!isCurrentlyArchived(ad) && ad.adStatus && ad.adStatus !== ad.status && !(ad.status === 'pending' && ad.adStatus === 'active') && (
                               <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase bg-indigo-50 text-indigo-600 border border-indigo-100">{ad.adStatus}</span>
                             )}
                             {ad.isHidden && <span className="text-[7px] font-black px-1.5 py-0.5 rounded uppercase bg-amber-100 text-amber-800">Standby</span>}
@@ -2244,7 +2266,7 @@ const AdminAds = () => {
                         ad.status === 'pending' ? 'bg-amber-50 text-amber-600 animate-pulse' : 
                         'bg-red-50 text-red-650'
                       }`}>
-                        {ad.isArchived ? 'archived' : ad.status}
+                        {isCurrentlyArchived(ad) ? 'archived' : ad.status}
                       </span>
                     </div>
                   </div>
@@ -2503,9 +2525,9 @@ const AdminAds = () => {
                     selectedAd.status === 'pending' ? 'bg-amber-50 text-amber-600' : 
                     'bg-red-50 text-red-600'
                   }`}>
-                    Status: {selectedAd.status}
+                    Status: {isCurrentlyArchived(selectedAd) ? 'archived' : selectedAd.status}
                   </span>
-                  {selectedAd.adStatus && selectedAd.adStatus !== selectedAd.status && !(selectedAd.status === 'pending' && selectedAd.adStatus === 'active') && (
+                  {!isCurrentlyArchived(selectedAd) && selectedAd.adStatus && selectedAd.adStatus !== selectedAd.status && !(selectedAd.status === 'pending' && selectedAd.adStatus === 'active') && (
                     <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-indigo-50 text-indigo-600 font-sans">
                       Cycle: {selectedAd.adStatus}
                     </span>
@@ -2639,7 +2661,7 @@ const AdminAds = () => {
                         </span>
                       </div>
                     )}
-                    {selectedAd.isArchived && (
+                    {isCurrentlyArchived(selectedAd) && (
                       <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-slate-800 text-white" title={`Archived ${formatSellerDate(selectedAd.archivedAt)}`}>
                         Archived{(() => {
                           const archivedDate = selectedAd.archivedAt?.toDate ? selectedAd.archivedAt.toDate() : selectedAd.archivedAt ? new Date(selectedAd.archivedAt) : null;
@@ -2855,6 +2877,16 @@ const AdminAds = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
+                  {isCurrentlyArchived(selectedAd) && (
+                    <button
+                      onClick={() => handleRestoreArchivedAd(selectedAd)}
+                      className="h-10 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2"
+                      title="Restore without changing plan, payment or expiry"
+                    >
+                      <RefreshCcw size={16} />
+                      <span>Restore</span>
+                    </button>
+                  )}
                   {getAdPaymentClassification(selectedAd).type !== 'courtesy' && <button
                     onClick={() => handleResendPaymentEmail(selectedAd.id)}
                     disabled={resendingEmailId === selectedAd.id}

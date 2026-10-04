@@ -14,6 +14,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 import { formatPrice, parsePrice } from '../utils';
 import { getAdPaymentClassification } from '../utils/paymentUtils';
+import { isCurrentlyArchived } from '../utils/listingArchive';
 import OptimizedImage from '../components/OptimizedImage';
 import { getCardFramingStyle } from '../utils/imageFraming';
 import ReviewModal from '../components/ReviewModal';
@@ -1165,14 +1166,11 @@ const Profile = () => {
     try {
       await updateDoc(doc(db, 'ads', ad.id), {
         isArchived: false,
-        archivedAt: null,
-        archivedBy: null,
-        archivedPreviousStatus: null,
-        archivedPreviousAdStatus: null,
+        restoredAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
       clearHomeCache();
-      setAds(prev => prev.map(item => item.id === ad.id ? ({ ...item, isArchived: false, archivedAt: null, archivedBy: undefined, archivedPreviousStatus: undefined, archivedPreviousAdStatus: undefined } as Ad) : item));
+      setAds(prev => prev.map(item => item.id === ad.id ? ({ ...item, isArchived: false, restoredAt: new Date() } as Ad) : item));
       alert('Listing restored with its original plan and expiry date.');
     } catch (err) {
       console.error('Error restoring listing:', err);
@@ -1546,7 +1544,7 @@ const Profile = () => {
 
         <div className="flex flex-wrap gap-2" role="group" aria-label="Listing view">
           {(['active', 'archived', 'all'] as const).map(view => {
-            const count = view === 'all' ? ads.length : ads.filter(ad => view === 'archived' ? ad.isArchived === true : ad.isArchived !== true).length;
+            const count = view === 'all' ? ads.length : ads.filter(ad => view === 'archived' ? isCurrentlyArchived(ad) : !isCurrentlyArchived(ad)).length;
             return (
               <button key={view} type="button" onClick={() => setListingView(view)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${listingView === view ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                 {view === 'active' ? 'Active' : view === 'archived' ? 'Archived' : 'All'} ({count})
@@ -1571,7 +1569,8 @@ const Profile = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {ads.filter(ad => listingView === 'all' || (listingView === 'archived' ? ad.isArchived === true : ad.isArchived !== true)).map((ad, idx) => {
+            {ads.filter(ad => listingView === 'all' || (listingView === 'archived' ? isCurrentlyArchived(ad) : !isCurrentlyArchived(ad))).map((ad, idx) => {
+              const currentlyArchived = isCurrentlyArchived(ad);
               const benefitExpiresAt = ad.planExpiresAt || ad.featuredUntil;
               const isAdFeatured = ad.isFeatured && benefitExpiresAt && (
                 benefitExpiresAt.seconds
@@ -1624,7 +1623,7 @@ const Profile = () => {
                     <div className="flex justify-between items-start">
                       <h3 className="font-bold text-slate-900 truncate">{ad.title}</h3>
                       <div className="flex gap-2">
-                        {!ad.isArchived && <button
+                        {!currentlyArchived && <button
                           onClick={() => {
                             if (ad.status === 'approved') {
                               alert('Notice: Any changes will send the listing back to the administrator review queue.');
@@ -1635,7 +1634,7 @@ const Profile = () => {
                         >
                           <Edit size={18} />
                         </button>}
-                        {ad.isArchived ? (
+                        {currentlyArchived ? (
                           <button onClick={() => handleRestoreAd(ad)} title="Restore listing" className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all">
                             <RefreshCcw size={18} />
                           </button>
@@ -1682,7 +1681,7 @@ const Profile = () => {
                           <XCircle size={14} /> Expired
                         </span>
                       )}
-                      {(ad.isArchived || ad.status === 'archived') && (
+                      {currentlyArchived && (
                         <span className="flex items-center gap-1 text-xs font-bold text-slate-600 bg-slate-50 px-2 py-1 rounded-lg">
                           <Archive size={14} /> Archived
                         </span>
@@ -1761,7 +1760,7 @@ const Profile = () => {
                       <span className="flex items-center gap-1"><MessageSquare size={12} /> {ad.whatsappClicks || 0}</span>
                     </div>
 
-                    {!ad.isArchived && (ad.status === 'approved' || ad.adStatus === 'active' || ad.adStatus === 'near_expiration') && ad.adStatus !== 'sold' && ad.category !== 'Imigração' && ad.price !== undefined && Number(ad.price) > 0 && (
+                    {!currentlyArchived && (ad.status === 'approved' || ad.adStatus === 'active' || ad.adStatus === 'near_expiration') && ad.adStatus !== 'sold' && ad.category !== 'Imigração' && ad.price !== undefined && Number(ad.price) > 0 && (
                       <div className="flex flex-col gap-2 mt-3 text-center">
                         <button
                           onClick={() => {
@@ -1782,7 +1781,7 @@ const Profile = () => {
                       </div>
                     )}
 
-                    {!ad.isArchived && ((ad.status === 'approved' || !ad.status) && (ad.adStatus === 'active' || !ad.adStatus) && ad.adStatus !== 'sold' && ad.adStatus !== 'expired') && !isAdFeatured && (
+                    {!currentlyArchived && ((ad.status === 'approved' || !ad.status) && (ad.adStatus === 'active' || !ad.adStatus) && ad.adStatus !== 'sold' && ad.adStatus !== 'expired') && !isAdFeatured && (
                       <button
                         onClick={() => handleFeatureAd(ad)}
                         className={`mt-2 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
@@ -1805,7 +1804,7 @@ const Profile = () => {
                     </button>
                   )}
 
-                  {!ad.isArchived && (ad.status === 'expired' || ad.adStatus === 'expired' || ad.status === 'archived' || ad.adStatus === 'near_expiration') && (
+                  {!currentlyArchived && (ad.status === 'expired' || ad.adStatus === 'expired' || ad.status === 'archived' || ad.adStatus === 'near_expiration') && (
                     <button
                       onClick={() => handleRelistAd(ad)}
                       className={`mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold transition-all ${
