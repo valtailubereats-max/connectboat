@@ -6,6 +6,8 @@ const api = readFileSync(new URL('../api/stripe/create-checkout-session.ts', imp
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
 const createAd = readFileSync(new URL('../src/pages/CreateAd.tsx', import.meta.url), 'utf8');
 const adminAds = readFileSync(new URL('../src/pages/AdminAds.tsx', import.meta.url), 'utf8');
+const profile = readFileSync(new URL('../src/pages/Profile.tsx', import.meta.url), 'utf8');
+const paymentUtils = readFileSync(new URL('../src/utils/paymentUtils.ts', import.meta.url), 'utf8');
 
 test('courtesy lifecycle reuses the consolidated checkout endpoint', () => {
   for (const action of ['grant', 'get', 'consume', 'revoke', 'approve']) {
@@ -42,4 +44,18 @@ test('eligible users bypass Stripe only for a Premium listing without Media Boos
   assert.match(createAd, /normalizeListingPlan\(formData\.plan\) === 'premium'/);
   assert.match(createAd, /!formData\.mediaBoostEnabled/);
   assert.match(createAd, /executeSaveAd\(adData, adId, true\)/);
+});
+
+test('courtesy presentation never offers pending payment actions', () => {
+  assert.match(paymentUtils, /type: 'courtesy'/);
+  assert.match(profile, /paymentInfo\.type === 'courtesy'/);
+  assert.match(profile, /paymentInfo\.type !== 'courtesy'/);
+  assert.match(adminAds, /getAdPaymentClassification\(ad\)\.type !== 'courtesy'/);
+  assert.match(adminAds, /getAdPaymentClassification\(selectedAd\)\.type !== 'courtesy'/);
+});
+
+test('live preview and order summary reflect Premium courtesy at zero total', () => {
+  assert.match(createAd, /normalizeListingPlan\(formData\.plan\) === 'premium'[\s\S]*?'Premium 👑'/);
+  assert.match(createAd, /Courtesy Listing Credit/);
+  assert.match(createAd, /hasCourtesyForSelectedPlan\(\)[\s\S]*?'0\.00'/);
 });

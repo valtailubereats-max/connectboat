@@ -1656,7 +1656,13 @@ const Profile = () => {
 
                     {/* Payment Information Badge */}
                     <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
-                      {paymentInfo.isPaid ? (
+                      {paymentInfo.type === 'courtesy' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-violet-50 text-violet-800 border border-violet-200/80 shadow-2xs">
+                          <Tag size={13} className="text-violet-600 shrink-0" />
+                          <span>Courtesy</span>
+                          <span className="text-violet-700 font-bold">• {paymentInfo.planLabel} • £0</span>
+                        </span>
+                      ) : paymentInfo.isPaid ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-2xs">
                           <CreditCard size={13} className="text-emerald-600 shrink-0" />
                           <span>Paid</span>
@@ -1680,7 +1686,7 @@ const Profile = () => {
                       )}
                     </div>
 
-                    {ad.status === 'pending' && !paymentInfo.isPaid && getPendingPaymentAmount(ad) !== null && (
+                    {ad.status === 'pending' && !paymentInfo.isPaid && paymentInfo.type !== 'courtesy' && getPendingPaymentAmount(ad) !== null && (
                       <button
                         onClick={() => handleResumeListingPayment(ad)}
                         disabled={resumePaymentAdId === ad.id}

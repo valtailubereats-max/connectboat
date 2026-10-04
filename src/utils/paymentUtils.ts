@@ -86,7 +86,7 @@ export const getAdPlanLabel = (ad: Ad): { label: string; color: string } => {
   return { label: 'Standard', color: 'bg-slate-100 text-slate-700 border-slate-200' };
 };
 
-export type PaymentStatusType = 'paid' | 'legacy_free' | 'unavailable';
+export type PaymentStatusType = 'paid' | 'courtesy' | 'legacy_free' | 'unavailable';
 
 export interface PaymentClassification {
   isPaid: boolean;
@@ -106,6 +106,21 @@ export const getAdPaymentClassification = (ad: Ad): PaymentClassification => {
   const isPaid = isPaidAd(ad);
   const planObj = getAdPlanLabel(ad);
   const formattedDate = formatUKDate(ad.paidAt || (ad as any).paymentCompletedAt);
+
+  const isCourtesyListingCredit =
+    (ad as any).paymentStatus === 'courtesy' ||
+    (ad as any).paymentFlow === 'courtesy_listing_credit' ||
+    Boolean(ad.courtesyCreditId);
+
+  if (isCourtesyListingCredit) {
+    return {
+      isPaid: false,
+      type: 'courtesy',
+      badgeLabel: 'Courtesy',
+      planLabel: planObj.label,
+      formattedDate: formatUKDate((ad as any).courtesyUsedAt),
+    };
+  }
 
   if (isPaid) {
     return {

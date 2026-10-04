@@ -798,7 +798,14 @@ const CreateAd = () => {
   const isFirstMarketplaceListingFree = (): boolean =>
     isMarketplaceListingCategory(formData.category) && hasMarketplaceFreeBenefit();
 
+  const hasCourtesyForSelectedPlan = (): boolean =>
+    !id && courtesyCredit?.status === 'available' &&
+    normalizeListingPlan(formData.plan) === 'premium' &&
+    isTieredListingCategory(formData.category) &&
+    !formData.mediaBoostEnabled;
+
   const getCheckoutTotalAmountFormatted = () => {
+    if (hasCourtesyForSelectedPlan()) return '0.00';
     if (!checkRequiresPayment()) return '0.00';
     const activePlan = (formData.plan || 'standard').toLowerCase();
     const partnerFundsStandard = !!partnerVoucher && isPaidBoatListingCategory(formData.category) && normalizeListingPlan(activePlan) === 'standard';
@@ -4532,6 +4539,13 @@ const CreateAd = () => {
                         : ''}
                     </p>
                   )}
+
+                  {hasCourtesyForSelectedPlan() && (
+                    <div className="flex items-center justify-between font-bold text-violet-700">
+                      <span>Courtesy Listing Credit</span>
+                      <span>-£{(isBoatServiceCategory(formData.category) ? getServicePlanPrice('premium') : getPlanPrice('premium')).toFixed(2)}</span>
+                    </div>
+                  )}
                   {partnerVoucherError && <p className="text-xs font-bold text-rose-700">{partnerVoucherError}</p>}
                   <p className="text-[11px] font-semibold text-slate-500">Media Boost is always charged separately at £2.00.</p>
                 </div>
@@ -4610,7 +4624,7 @@ const CreateAd = () => {
                   )}
 
                   <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-sm font-black text-slate-900">
-                    <span>Total Payment</span>
+                    <span>{hasCourtesyForSelectedPlan() ? 'Total' : 'Total Payment'}</span>
                     <span className="text-indigo-600 text-lg">
                       £{getCheckoutTotalAmountFormatted()}
                     </span>
@@ -4701,7 +4715,15 @@ const CreateAd = () => {
             {/* Badge Overlay */}
             <div className="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1 shadow-md">
               <span>
-                {formData.plan === 'national' ? 'National ⭐⭐⭐' : formData.plan === 'local' ? 'Local ⭐' : 'Standard'}
+                {normalizeListingPlan(formData.plan) === 'premium'
+                  ? 'Premium 👑'
+                  : normalizeListingPlan(formData.plan) === 'featured'
+                    ? 'Featured ⭐'
+                    : isMarketplaceListingCategory(formData.category)
+                      ? 'Marketplace'
+                      : isBoatServiceCategory(formData.category)
+                        ? 'Basic'
+                        : 'Standard'}
               </span>
             </div>
 

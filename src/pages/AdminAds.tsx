@@ -1634,6 +1634,13 @@ const AdminAds = () => {
                     {/* Paid Status & Plan Badges */}
                     {(() => {
                       const pInfo = getAdPaymentClassification(ad);
+                      if (pInfo.type === 'courtesy') {
+                        return (
+                          <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-violet-100 text-violet-800 border border-violet-200" title="Premium Courtesy Listing • £0">
+                            Courtesy • £0
+                          </span>
+                        );
+                      }
                       if (pInfo.isPaid) {
                         return (
                           <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200" title={`Paid on ${pInfo.formattedDate || 'N/A'}`}>
@@ -1671,7 +1678,7 @@ const AdminAds = () => {
                       </span>
                     )}
 
-                    {ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? (
+                    {getAdPaymentClassification(ad).type === 'courtesy' ? null : ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? (
                       <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase whitespace-nowrap tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200" title="E-mail de recibo enviado ao anunciante">
                         ✉️ Email: Sent
                       </span>
@@ -1718,7 +1725,7 @@ const AdminAds = () => {
                 </div>
                 <div className="flex items-center gap-1" title="Payment Date">
                   <CreditCard size={13} className="text-emerald-500" />
-                  <span>Payment Date: {isPaidAd(ad) && (formatUKDate(ad.paidAt) || formatUKDate((ad as any).paymentCompletedAt)) ? <strong className="text-emerald-700">{formatUKDate(ad.paidAt) || formatUKDate((ad as any).paymentCompletedAt)}</strong> : <span className="text-slate-400 italic">Payment data unavailable</span>}</span>
+                  <span>{getAdPaymentClassification(ad).type === 'courtesy' ? <strong className="text-violet-700">Courtesy • £0</strong> : <>Payment Date: {isPaidAd(ad) && (formatUKDate(ad.paidAt) || formatUKDate((ad as any).paymentCompletedAt)) ? <strong className="text-emerald-700">{formatUKDate(ad.paidAt) || formatUKDate((ad as any).paymentCompletedAt)}</strong> : <span className="text-slate-400 italic">Payment data unavailable</span>}</>}</span>
                 </div>
                 {(ad.planExpiresAt || ad.featuredUntil || ad.expirationDate) && (
                   <div className="flex items-center gap-1" title="Expiration Date">
@@ -1823,7 +1830,7 @@ const AdminAds = () => {
                   )}
                 </div>
 
-                {!isPaidAd(ad) && ad.status === 'pending' && (
+                {!isPaidAd(ad) && getAdPaymentClassification(ad).type !== 'courtesy' && ad.status === 'pending' && (
                   <button
                     onClick={() => openAssistedPayment(ad)}
                     className="h-9 px-3.5 flex items-center gap-1.5 text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 rounded-xl transition-all font-bold text-[11px]"
@@ -2048,7 +2055,7 @@ const AdminAds = () => {
                             ) : (
                               <span className="text-[7px] font-bold px-1.5 py-0.5 rounded uppercase bg-slate-100 text-slate-500" title="No external promotion authorisation recorded">Promo not allowed</span>
                             )}
-                            <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${
+                            {getAdPaymentClassification(ad).type !== 'courtesy' && <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase ${
                               ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent
                                 ? 'bg-emerald-50 text-emerald-700'
                                 : ad.paymentConfirmationEmailStatus === 'failed'
@@ -2056,7 +2063,7 @@ const AdminAds = () => {
                                   : 'bg-slate-100 text-slate-600'
                             }`}>
                               ✉ {ad.paymentConfirmationEmailStatus === 'sent' || ad.paymentConfirmationEmailSent ? 'Sent' : ad.paymentConfirmationEmailStatus === 'failed' ? 'Failed' : 'Not sent'}
-                            </span>
+                            </span>}
                           </div>
                         ) : '—'}
                       </td>
@@ -2067,11 +2074,11 @@ const AdminAds = () => {
                             const pInfo = getAdPaymentClassification(ad);
                             return (
                               <div className="flex flex-col items-center gap-0.5">
-                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase border ${pInfo.isPaid ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                                  {pInfo.isPaid ? 'Paid' : pInfo.type === 'legacy_free' ? 'Legacy / Free' : 'Data N/A'}
+                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded uppercase border ${pInfo.isPaid ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : pInfo.type === 'courtesy' ? 'bg-violet-100 text-violet-800 border-violet-200' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                  {pInfo.isPaid ? 'Paid' : pInfo.type === 'courtesy' ? 'Courtesy • £0' : pInfo.type === 'legacy_free' ? 'Legacy / Free' : 'Data N/A'}
                                 </span>
                                 <span className={`text-[7px] font-black px-1 py-0.5 rounded uppercase border ${getAdPlanLabel(ad).color}`}>{getAdPlanLabel(ad).label}</span>
-                                <span className="text-[7px] text-slate-400">{isPaidAd(ad) && formatUKDate(ad.paidAt) ? formatUKDate(ad.paidAt) : 'N/A'}</span>
+                                <span className="text-[7px] text-slate-400">{pInfo.type === 'courtesy' ? '£0' : isPaidAd(ad) && formatUKDate(ad.paidAt) ? formatUKDate(ad.paidAt) : 'N/A'}</span>
                               </div>
                             );
                           })()}
@@ -2465,7 +2472,7 @@ const AdminAds = () => {
                     </span>
                   )}
                   {/* Payment Email Status Badge */}
-                  {selectedAd.paymentConfirmationEmailStatus === 'sent' || selectedAd.paymentConfirmationEmailSent ? (
+                  {getAdPaymentClassification(selectedAd).type === 'courtesy' ? null : selectedAd.paymentConfirmationEmailStatus === 'sent' || selectedAd.paymentConfirmationEmailSent ? (
                     <span className="inline-block text-xs font-black px-3 py-1.5 rounded-lg uppercase whitespace-nowrap bg-emerald-50 text-emerald-700 border border-emerald-200" title="E-mail de recibo enviado ao anunciante">
                       ✉️ Email: Sent
                     </span>
@@ -2524,7 +2531,7 @@ const AdminAds = () => {
                       <span>Payment & Plan Information</span>
                     </h4>
                     {(() => {
-                      if ((selectedAd as any).isCourtesy === true) {
+                      if (getAdPaymentClassification(selectedAd).type === 'courtesy') {
                         return (
                           <span className="px-2 py-0.5 bg-violet-100 text-violet-800 text-[10px] font-black uppercase rounded-md border border-violet-200">
                             Courtesy Credit
@@ -2566,7 +2573,7 @@ const AdminAds = () => {
                     <div>
                       <span className="text-slate-500 font-medium">Payment Date (UK):</span>{' '}
                       <span className="font-bold text-slate-900">
-                        {(selectedAd as any).isCourtesy ? (
+                        {getAdPaymentClassification(selectedAd).type === 'courtesy' ? (
                           formatUKDateTime((selectedAd as any).courtesyUsedAt) || formatUKDate((selectedAd as any).courtesyUsedAt) || 'Credit reserved'
                         ) : isPaidAd(selectedAd) && (formatUKDateTime(selectedAd.paidAt) || formatUKDate(selectedAd.paidAt)) ? (
                           formatUKDateTime(selectedAd.paidAt) || formatUKDate(selectedAd.paidAt)
@@ -2583,7 +2590,7 @@ const AdminAds = () => {
                         </span>
                       </div>
                     )}
-                    {(selectedAd as any).isCourtesy && (
+                    {getAdPaymentClassification(selectedAd).type === 'courtesy' && (
                       <div className="sm:col-span-2 rounded-lg bg-violet-50 p-3 text-violet-950">
                         <strong>Courtesy Listing Credit:</strong> {(selectedAd as any).courtesyReason || 'Other'}
                         <span className="mt-1 block break-all text-[11px]">Credit ID: {(selectedAd as any).courtesyCreditId || '—'}</span>
@@ -2789,7 +2796,7 @@ const AdminAds = () => {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <button
+                  {getAdPaymentClassification(selectedAd).type !== 'courtesy' && <button
                     onClick={() => handleResendPaymentEmail(selectedAd.id)}
                     disabled={resendingEmailId === selectedAd.id}
                     className="h-10 px-4 bg-sky-500 hover:bg-sky-600 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-sm shadow-sky-100 disabled:opacity-50"
@@ -2801,7 +2808,7 @@ const AdminAds = () => {
                       <MessageSquare size={16} />
                     )}
                     <span>Reenviar E-mail Pagamento</span>
-                  </button>
+                  </button>}
                   <button
                     onClick={() => {
                       setSelectedAd(null);
@@ -2813,7 +2820,7 @@ const AdminAds = () => {
                     <Edit size={16} />
                     <span>Edit</span>
                   </button>
-                  {!isPaidAd(selectedAd) && !(selectedAd as any).isCourtesy && selectedAd.status === 'pending' && (
+                  {!isPaidAd(selectedAd) && getAdPaymentClassification(selectedAd).type !== 'courtesy' && selectedAd.status === 'pending' && (
                     <button
                       onClick={() => openAssistedPayment(selectedAd)}
                       className="h-10 px-4 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border border-cyan-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2"
