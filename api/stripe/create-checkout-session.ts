@@ -136,6 +136,11 @@ async function handleListingSave(req: Request, res: Response) {
     'brokerDiscountAmount', 'brokerFinalPlanPrice', 'brokerPaymentVerified',
     'acquisitionSource', 'partnerCode', 'partnerName', 'promotionSource',
     'partnerAttributionOnly', 'partnerFundedFreeStandard', 'partnerUsageRecorded',
+    'isCourtesy', 'courtesyCreditId', 'courtesyGrantedBy', 'courtesyReason',
+    'courtesyGrantedAt', 'courtesyUsedAt', 'paymentSource', 'paymentFlow',
+    'awaitingAdminApproval', 'awaitingAdminActivation', 'planStartedAt',
+    'planExpiresAt', 'featuredActivatedAt', 'featuredUntil', 'activatedAt',
+    'expirationDate', 'isFeatured', 'featuredLevel',
   ]) delete adData[key];
 
   const db = getAdminDb();
@@ -346,6 +351,124 @@ async function handleListingSave(req: Request, res: Response) {
     await adRef.set(adData, { merge: true });
   }
   return res.status(200).json({ success: true, adId, marketplaceListingType: adData.marketplaceListingType || null });
+}
+
+async function authenticateCourtesyRequest(req: Request, requireAdmin = false) {
+  const authHeader = req.headers.authorization || '';
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match) throw Object.assign(new Error('Please sign in again.'), { statusCode: 401, code: 'UNAUTHENTICATED' });
+  getAdminDb();
+  let decoded: any;
+  try {
+    decoded = await getAuth(getApp()).verifyIdToken(match[1]);
+  } catch {
+    throw Object.assign(new Error('Your login session is invalid or expired.'), { statusCode: 401, code: 'INVALID_AUTH_TOKEN' });
+  }
+  const db = getAdminDb();
+  const userSnapshot = await db.collection('users').doc(decoded.uid).get();
+  const role = String(userSnapshot.data()?.role || decoded.role || 'user');
+  if (requireAdmin && role !== 'admin') {
+    throw Object.assign(new Error('Only administrators can manage Courtesy Listing Credits.'), { statusCode: 403, code: 'ADMIN_REQUIRED' });
+  }
+  return { db, decoded };
+}
+
+async function handleCourtesyCredit(req: Request, res: Response) {
+  const action = String(req.body?.action || '');
+  const adminAction = ['courtesy_credit_grant', 'courtesy_credit_revoke', 'courtesy_credit_admin_get', 'courtesy_credit_approve'].includes(action);
+  const { db, decoded } = await authenticateCourtesyRequest(req, adminAction);
+  const requestedUid = String(req.body?.userId || '').trim();
+  const targetUid = adminAction ? requestedUid : decoded.uid;
+  if (!targetUid) return res.status(400).json({ success: false, error: 'USER_ID_REQUIRED', errorMessage: 'A valid user UID is required.' });
+
+  const creditRef = db.collection('courtesyListingCredits').doc(targetUid);
+  if (action === 'courtesy_credit_get' || action === 'courtesy_credit_admin_get') {
+    const snapshot = await creditRef.get();
+    return res.status(200).json({ success: true, credit: snapshot.exists ? { id: snapshot.id, ...snapshot.data() } : null });
+  }
+
+  if (action === 'courtesy_credit_grant') {
+    const reason = String(req.body?.reason || '').trim().slice(0, 500);
+    const targetUser = await db.collection('users').doc(targetUid).get();
+    if (!targetUser.exists) return res.status(404).json({ success: false, error: 'USER_NOT_FOUND', errorMessage: 'The selected user no longer exists.' });
+    const creditId = randomUUID();
+    await db.runTransaction(async tx => {
+      const current = await tx.get(creditRef);
+      const currentData = current.data() || {};
+      if (current.exists && currentData.status === 'available') throw new Error('COURTESY_CREDIT_ALREADY_AVAILABLE');
+      if (current.exists && currentData.creditId) tx.set(creditRef.collection('history').doc(String(currentData.creditId)), currentData, { merge: false });
+      tx.set(creditRef, {
+        creditId, userId: targetUid, status: 'available', plan: 'premium', price: 0, durationDays: 30,
+        reason: reason || 'Other', grantedByAdminUid: decoded.uid, grantedByAdminEmail: String(decoded.email || ''),
+        grantedAt: FieldValue.serverTimestamp(), usedAt: null, listingId: null, activatedAt: null, expiresAt: null,
+        revokedAt: null, revokedByAdminUid: null,
+      }, { merge: false });
+    });
+    return res.status(200).json({ success: true, creditId });
+  }
+
+  if (action === 'courtesy_credit_revoke') {
+    await db.runTransaction(async tx => {
+      const current = await tx.get(creditRef);
+      if (!current.exists || current.data()?.status !== 'available') throw new Error('COURTESY_CREDIT_NOT_AVAILABLE');
+      tx.update(creditRef, { status: 'revoked', revokedAt: FieldValue.serverTimestamp(), revokedByAdminUid: decoded.uid });
+    });
+    return res.status(200).json({ success: true });
+  }
+
+  if (action === 'courtesy_credit_consume') {
+    const adId = String(req.body?.adId || '').trim();
+    if (!adId) return res.status(400).json({ success: false, error: 'AD_ID_REQUIRED' });
+    const adRef = db.collection('ads').doc(adId);
+    await db.runTransaction(async tx => {
+      const [credit, ad] = await Promise.all([tx.get(creditRef), tx.get(adRef)]);
+      const creditData = credit.data() || {};
+      const adData = ad.data() || {};
+      if (!credit.exists || creditData.status !== 'available') throw new Error('COURTESY_CREDIT_NOT_AVAILABLE');
+      if (!ad.exists || String(adData.sellerId || '') !== decoded.uid) throw new Error('AD_OWNERSHIP_MISMATCH');
+      if (adData.status !== 'pending') throw new Error('COURTESY_LISTING_MUST_BE_PENDING');
+      if (normaliseListingPlan(adData.plan) !== 'premium') throw new Error('COURTESY_REQUIRES_PREMIUM');
+      if (![...PAID_BOAT_LISTING_CATEGORIES, SERVICE_LISTING_CATEGORY].includes(String(adData.category || ''))) throw new Error('COURTESY_CATEGORY_NOT_ELIGIBLE');
+      if (adData.mediaBoostEnabled === true && adData.videoPaid !== true) throw new Error('COURTESY_MEDIA_BOOST_NOT_INCLUDED');
+      if (adData.paidAt || adData.paymentCompletedAt || ['paid', 'completed'].includes(String(adData.paymentStatus || ''))) throw new Error('LISTING_ALREADY_PAID');
+      tx.update(creditRef, { status: 'used', usedAt: FieldValue.serverTimestamp(), listingId: adId });
+      tx.set(adRef, {
+        plan: 'premium', planType: 'premium', status: 'pending', paymentStatus: 'courtesy',
+        paymentProductType: 'courtesy_listing_credit', paymentSource: 'admin_courtesy_credit',
+        paymentFlow: 'courtesy_listing_credit', amountPaid: 0, isCourtesy: true,
+        courtesyCreditId: creditData.creditId, courtesyGrantedBy: creditData.grantedByAdminUid,
+        courtesyReason: creditData.reason || 'Other', courtesyGrantedAt: creditData.grantedAt,
+        courtesyUsedAt: FieldValue.serverTimestamp(), awaitingAdminApproval: true,
+        awaitingAdminActivation: true, isFeatured: false, updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+    });
+    return res.status(200).json({ success: true, adId });
+  }
+
+  if (action === 'courtesy_credit_approve') {
+    const adId = String(req.body?.adId || '').trim();
+    if (!adId) return res.status(400).json({ success: false, error: 'AD_ID_REQUIRED' });
+    const adRef = db.collection('ads').doc(adId);
+    const expiresAt = Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await db.runTransaction(async tx => {
+      const [credit, ad] = await Promise.all([tx.get(creditRef), tx.get(adRef)]);
+      const creditData = credit.data() || {};
+      const adData = ad.data() || {};
+      if (!ad.exists || adData.status !== 'pending' || adData.isCourtesy !== true || adData.courtesyCreditId !== creditData.creditId) throw new Error('INVALID_COURTESY_LISTING');
+      if (!credit.exists || creditData.status !== 'used' || creditData.listingId !== adId) throw new Error('COURTESY_CREDIT_LISTING_MISMATCH');
+      tx.update(adRef, {
+        status: 'approved', adStatus: 'active', awaitingAdminApproval: false, awaitingAdminActivation: false,
+        activatedAt: FieldValue.serverTimestamp(), expirationDate: expiresAt, isFeatured: true,
+        featuredLevel: 'premium', featuredReason: 'admin_courtesy_listing_credit',
+        featuredActivatedAt: FieldValue.serverTimestamp(), featuredUntil: expiresAt,
+        plan: 'premium', planType: 'premium', planStartedAt: FieldValue.serverTimestamp(),
+        planExpiresAt: expiresAt, updatedAt: FieldValue.serverTimestamp(),
+      });
+      tx.update(creditRef, { activatedAt: FieldValue.serverTimestamp(), expiresAt });
+    });
+    return res.status(200).json({ success: true, expiresAt: expiresAt.toDate().toISOString() });
+  }
+  return res.status(400).json({ success: false, error: 'UNKNOWN_COURTESY_ACTION' });
 }
 
 function getStripe(): Stripe {
@@ -1430,6 +1553,9 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       if (advertisingAction === 'listing_save') {
         return await handleListingSave(req, res);
       }
+      if (advertisingAction.startsWith('courtesy_credit_')) {
+        return await handleCourtesyCredit(req, res);
+      }
       if (advertisingAction === 'partner_voucher_validate') {
         return await validatePartnerVoucher(req, res);
       }
@@ -1456,10 +1582,23 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       }
     } catch (advertisingError: any) {
       console.error('[Advertising consolidated endpoint]', advertisingError);
-      return res.status(500).json({
+      const courtesyErrors: Record<string, string> = {
+        COURTESY_CREDIT_ALREADY_AVAILABLE: 'This user already has an available Courtesy Listing Credit.',
+        COURTESY_CREDIT_NOT_AVAILABLE: 'No unused Courtesy Listing Credit is available.',
+        AD_OWNERSHIP_MISMATCH: 'This listing does not belong to the authenticated user.',
+        COURTESY_LISTING_MUST_BE_PENDING: 'Only a Pending listing can use this credit.',
+        COURTESY_REQUIRES_PREMIUM: 'The Courtesy Listing Credit can only be used for the Premium plan.',
+        COURTESY_CATEGORY_NOT_ELIGIBLE: 'This listing category is not eligible for a Premium Courtesy Listing.',
+        COURTESY_MEDIA_BOOST_NOT_INCLUDED: 'Media Boost is a separate paid extra. Turn it off to use the courtesy without Stripe.',
+        LISTING_ALREADY_PAID: 'This listing already has confirmed payment data.',
+        INVALID_COURTESY_LISTING: 'This is not a valid Pending courtesy listing.',
+        COURTESY_CREDIT_LISTING_MISMATCH: 'The courtesy credit is not linked to this listing.',
+      };
+      const code = advertisingError?.code || String(advertisingError?.message || '');
+      return res.status(advertisingError?.statusCode || (courtesyErrors[code] ? 409 : 500)).json({
         success: false,
-        error: 'ADVERTISING_ACTION_FAILED',
-        errorMessage: advertisingError?.message || 'Advertising request failed.',
+        error: code || 'ADVERTISING_ACTION_FAILED',
+        errorMessage: courtesyErrors[code] || advertisingError?.message || 'Advertising request failed.',
       });
     }
   }

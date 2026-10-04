@@ -141,10 +141,74 @@ const AdminUsers = () => {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isCheckingDelete, setIsCheckingDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [courtesyCredit, setCourtesyCredit] = useState<any>(null);
+  const [courtesyReason, setCourtesyReason] = useState('Customer support');
+  const [courtesyLoading, setCourtesyLoading] = useState(false);
 
   const [editShowcaseActive, setEditShowcaseActive] = useState(false);
   const [editShowcaseApproved, setEditShowcaseApproved] = useState(false);
   const [editShowcaseName, setEditShowcaseName] = useState('');
+
+  const courtesyRequest = async (action: string, userId: string, extra: Record<string, any> = {}) => {
+    if (!currentAuthUser) throw new Error('Authentication required.');
+    const idToken = await currentAuthUser.getIdToken();
+    const response = await fetch('/api/stripe/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ action, userId, ...extra }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result?.success !== true) throw new Error(result?.errorMessage || result?.error || 'Courtesy credit request failed.');
+    return result;
+  };
+
+  const loadCourtesyCredit = async (userId: string) => {
+    setCourtesyLoading(true);
+    try {
+      const result = await courtesyRequest('courtesy_credit_admin_get', userId);
+      setCourtesyCredit(result.credit || null);
+    } catch (error: any) {
+      setEditError(error?.message || 'Could not load Courtesy Listing Credit.');
+    } finally {
+      setCourtesyLoading(false);
+    }
+  };
+
+  const handleGrantCourtesy = async () => {
+    const uid = editingUser?.id || editingUser?.uid;
+    if (!uid) return;
+    setCourtesyLoading(true);
+    setEditError(null);
+    try {
+      await courtesyRequest('courtesy_credit_grant', uid, { reason: courtesyReason });
+      await loadCourtesyCredit(uid);
+      setEditSuccess('Courtesy Listing Credit granted successfully.');
+    } catch (error: any) {
+      setEditError(error?.message || 'Could not grant the Courtesy Listing Credit.');
+      setCourtesyLoading(false);
+    }
+  };
+
+  const handleRevokeCourtesy = async () => {
+    const uid = editingUser?.id || editingUser?.uid;
+    if (!uid || !window.confirm('Revoke this unused Courtesy Listing Credit?')) return;
+    setCourtesyLoading(true);
+    setEditError(null);
+    try {
+      await courtesyRequest('courtesy_credit_revoke', uid);
+      await loadCourtesyCredit(uid);
+      setEditSuccess('Unused Courtesy Listing Credit revoked.');
+    } catch (error: any) {
+      setEditError(error?.message || 'Could not revoke the Courtesy Listing Credit.');
+      setCourtesyLoading(false);
+    }
+  };
+
+  const formatCourtesyDate = (value: any) => {
+    if (!value) return '—';
+    const date = value?._seconds ? new Date(value._seconds * 1000) : value?.seconds ? new Date(value.seconds * 1000) : new Date(value);
+    return Number.isNaN(date.getTime()) ? '—' : format(date, 'dd/MM/yyyy HH:mm');
+  };
 
   const handleOpenEditModal = (user: UserProfile) => {
     setEditingUser(user);
@@ -162,6 +226,10 @@ const AdminUsers = () => {
     setEditShowcaseName(user.showcaseName || '');
     setEditError(null);
     setEditSuccess(null);
+    setCourtesyCredit(null);
+    setCourtesyReason('Customer support');
+    const uid = user.id || user.uid;
+    if (uid) void loadCourtesyCredit(uid);
   };
 
   const handleSaveUser = async (e: React.FormEvent) => {
@@ -1565,6 +1633,47 @@ const AdminUsers = () => {
                       onChange={(e) => setEditPointsFromAds(Math.max(0, parseInt(e.target.value) || 0))}
                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-sm"
                     />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-[11px] font-black uppercase tracking-wider text-violet-950">Courtesy Listing Credit</h4>
+                      <p className="text-[10px] font-medium text-violet-700">One Premium listing • £0 • 30 days from approval</p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
+                      courtesyCredit?.status === 'available' ? 'bg-emerald-100 text-emerald-800' :
+                      courtesyCredit?.status === 'used' ? 'bg-indigo-100 text-indigo-800' :
+                      courtesyCredit?.status === 'revoked' ? 'bg-slate-200 text-slate-700' : 'bg-white text-slate-500'
+                    }`}>
+                      {courtesyLoading ? 'Loading…' : courtesyCredit?.status || 'Not granted'}
+                    </span>
+                  </div>
+                  {courtesyCredit && (
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1 rounded-xl bg-white p-3 text-[10px] font-semibold text-slate-700 border border-violet-100">
+                      <span>Reason</span><span className="text-right font-bold">{courtesyCredit.reason || 'Other'}</span>
+                      <span>Granted</span><span className="text-right">{formatCourtesyDate(courtesyCredit.grantedAt)}</span>
+                      <span>Used</span><span className="text-right">{formatCourtesyDate(courtesyCredit.usedAt)}</span>
+                      <span>Listing</span><span className="text-right font-mono break-all">{courtesyCredit.listingId || '—'}</span>
+                      <span>Activated</span><span className="text-right">{formatCourtesyDate(courtesyCredit.activatedAt)}</span>
+                      <span>Expires</span><span className="text-right">{formatCourtesyDate(courtesyCredit.expiresAt)}</span>
+                    </div>
+                  )}
+                  {courtesyCredit?.status !== 'available' && (
+                    <select value={courtesyReason} onChange={event => setCourtesyReason(event.target.value)} className="w-full rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs font-bold text-slate-800">
+                      <option>Customer support</option>
+                      <option>Technical issue goodwill</option>
+                      <option>Commercial courtesy</option>
+                      <option>Other</option>
+                    </select>
+                  )}
+                  <div className="flex justify-end">
+                    {courtesyCredit?.status === 'available' ? (
+                      <button type="button" onClick={handleRevokeCourtesy} disabled={courtesyLoading} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 disabled:opacity-50">Revoke unused credit</button>
+                    ) : (
+                      <button type="button" onClick={handleGrantCourtesy} disabled={courtesyLoading} className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-black text-white disabled:opacity-50">Grant Courtesy Credit</button>
+                    )}
                   </div>
                 </div>
 

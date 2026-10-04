@@ -68,6 +68,11 @@ service cloud.firestore {
         'brokerDiscountAmount', 'brokerFinalPlanPrice', 'brokerPaymentVerified'];
     }
 
+    function courtesyAdFields() {
+      return ['isCourtesy', 'courtesyCreditId', 'courtesyGrantedBy',
+        'courtesyReason', 'courtesyGrantedAt', 'courtesyUsedAt'];
+    }
+
     function isValidAd(data) {
       return data.keys().hasAll(['id', 'title', 'description', 'imageUrl', 'city', 'category', 'sellerId', 'sellerPhone', 'sellerName', 'status', 'createdAt']) &&
              data.id is string &&
@@ -406,7 +411,8 @@ service cloud.firestore {
     match /ads/{adId} {
       allow read: if true;
 
-      allow create: if !request.resource.data.keys().hasAny(brokerAdFields()) && isAuthenticated() &&
+      allow create: if !request.resource.data.keys().hasAny(brokerAdFields()) &&
+                    !request.resource.data.keys().hasAny(courtesyAdFields()) && isAuthenticated() &&
                     (
                       isAdmin() ||
                       isModerator() ||
@@ -422,7 +428,8 @@ service cloud.firestore {
                       )
                     );
 
-      allow update: if !request.resource.data.diff(resource.data).affectedKeys().hasAny(brokerAdFields()) && (
+      allow update: if !request.resource.data.diff(resource.data).affectedKeys().hasAny(brokerAdFields()) &&
+                       (!request.resource.data.diff(resource.data).affectedKeys().hasAny(courtesyAdFields()) || isAdmin() || isModerator()) && (
         (
           isAuthenticated() &&
           resource.data.sellerId == request.auth.uid &&
@@ -507,6 +514,13 @@ service cloud.firestore {
                       isAdmin() ||
                       isModerator()
                     );
+    }
+
+    match /courtesyListingCredits/{userId} {
+      allow read, write: if false;
+      match /history/{creditId} {
+        allow read, write: if false;
+      }
     }
 
     match /brokerApplications/{uid} {

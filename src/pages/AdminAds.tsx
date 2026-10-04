@@ -532,6 +532,24 @@ const AdminAds = () => {
         adToUpdate.status === 'pending'
       );
 
+      const isCourtesyPendingApproval = Boolean(
+        status === 'approved' && adToUpdate?.status === 'pending' &&
+        (adToUpdate as any)?.isCourtesy === true && (adToUpdate as any)?.courtesyCreditId
+      );
+
+      if (isCourtesyPendingApproval && adToUpdate && user) {
+        const idToken = await user.getIdToken();
+        const response = await fetch('/api/stripe/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({ action: 'courtesy_credit_approve', userId: adToUpdate.sellerId, adId }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result?.success !== true) {
+          throw new Error(result?.errorMessage || result?.error || 'Could not activate the Courtesy Listing Credit.');
+        }
+      }
+
       if (isPaidPendingApproval && adToUpdate) {
         const plan = (adToUpdate.plan || 'standard').toLowerCase();
         const isFeatured = plan === 'featured' || plan === 'premium';
@@ -558,7 +576,7 @@ const AdminAds = () => {
         updatePayload.courtesyReason = null;
       }
 
-      await updateDoc(doc(db, 'ads', adId), updatePayload);
+      if (!isCourtesyPendingApproval) await updateDoc(doc(db, 'ads', adId), updatePayload);
       if (status === 'approved' && adToUpdate?.brokerPaymentVerified) {
         try { await brokerRequest('recordApproval', { adId }); }
         catch (error) { console.warn('[Broker Programme] Approval ledger will be reconciled on the next broker request.', error); }
@@ -668,7 +686,7 @@ const AdminAds = () => {
       setAds(prevAds => prevAds.map(ad => ad.id === adId ? {
         ...ad,
         status,
-        ...(isPaidPendingApproval ? {
+        ...((isPaidPendingApproval || isCourtesyPendingApproval) ? {
           awaitingAdminActivation: false,
           awaitingAdminApproval: false,
           adStatus: 'active',
@@ -678,7 +696,7 @@ const AdminAds = () => {
           planType: (ad.plan || 'standard') as any,
           planStartedAt: new Date(),
           planExpiresAt: addDays(new Date(), Number(settings?.planDurations?.[(ad.plan || 'standard') as 'standard' | 'featured' | 'premium'] ?? 30)),
-          isCourtesy: false,
+          isCourtesy: isCourtesyPendingApproval,
           isFeatured: (ad.plan || '').toLowerCase() === 'featured' || (ad.plan || '').toLowerCase() === 'premium',
           featuredLevel: (ad.plan || '').toLowerCase() === 'premium' ? 'premium' : (ad.plan || '').toLowerCase() === 'featured' ? 'featured' : 'standard'
         } : {})
@@ -686,7 +704,7 @@ const AdminAds = () => {
       setSelectedAd(prev => prev && prev.id === adId ? {
         ...prev,
         status: status as any,
-        ...(isPaidPendingApproval ? {
+        ...((isPaidPendingApproval || isCourtesyPendingApproval) ? {
           awaitingAdminActivation: false,
           awaitingAdminApproval: false,
           adStatus: 'active',
@@ -696,7 +714,7 @@ const AdminAds = () => {
           planType: (prev.plan || 'standard') as any,
           planStartedAt: new Date(),
           planExpiresAt: addDays(new Date(), Number(settings?.planDurations?.[(prev.plan || 'standard') as 'standard' | 'featured' | 'premium'] ?? 30)),
-          isCourtesy: false
+          isCourtesy: isCourtesyPendingApproval
         } : {})
       } as Ad : prev);
       return true;
@@ -2506,6 +2524,13 @@ const AdminAds = () => {
                       <span>Payment & Plan Information</span>
                     </h4>
                     {(() => {
+                      if ((selectedAd as any).isCourtesy === true) {
+                        return (
+                          <span className="px-2 py-0.5 bg-violet-100 text-violet-800 text-[10px] font-black uppercase rounded-md border border-violet-200">
+                            Courtesy Credit
+                          </span>
+                        );
+                      }
                       const pInfo = getAdPaymentClassification(selectedAd);
                       if (pInfo.isPaid) {
                         return (
@@ -2541,7 +2566,9 @@ const AdminAds = () => {
                     <div>
                       <span className="text-slate-500 font-medium">Payment Date (UK):</span>{' '}
                       <span className="font-bold text-slate-900">
-                        {isPaidAd(selectedAd) && (formatUKDateTime(selectedAd.paidAt) || formatUKDate(selectedAd.paidAt)) ? (
+                        {(selectedAd as any).isCourtesy ? (
+                          formatUKDateTime((selectedAd as any).courtesyUsedAt) || formatUKDate((selectedAd as any).courtesyUsedAt) || 'Credit reserved'
+                        ) : isPaidAd(selectedAd) && (formatUKDateTime(selectedAd.paidAt) || formatUKDate(selectedAd.paidAt)) ? (
                           formatUKDateTime(selectedAd.paidAt) || formatUKDate(selectedAd.paidAt)
                         ) : (
                           <span className="text-slate-400 italic font-normal">Payment data unavailable</span>
@@ -2554,6 +2581,12 @@ const AdminAds = () => {
                         <span className="font-mono text-[11px] text-slate-800 bg-emerald-100/50 px-1.5 py-0.5 rounded select-all break-all">
                           {selectedAd.stripeCheckoutSessionId}
                         </span>
+                      </div>
+                    )}
+                    {(selectedAd as any).isCourtesy && (
+                      <div className="sm:col-span-2 rounded-lg bg-violet-50 p-3 text-violet-950">
+                        <strong>Courtesy Listing Credit:</strong> {(selectedAd as any).courtesyReason || 'Other'}
+                        <span className="mt-1 block break-all text-[11px]">Credit ID: {(selectedAd as any).courtesyCreditId || '—'}</span>
                       </div>
                     )}
                     {selectedAd.brokerId && (
@@ -2780,7 +2813,7 @@ const AdminAds = () => {
                     <Edit size={16} />
                     <span>Edit</span>
                   </button>
-                  {!isPaidAd(selectedAd) && selectedAd.status === 'pending' && (
+                  {!isPaidAd(selectedAd) && !(selectedAd as any).isCourtesy && selectedAd.status === 'pending' && (
                     <button
                       onClick={() => openAssistedPayment(selectedAd)}
                       className="h-10 px-4 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border border-cyan-200 font-bold text-xs rounded-xl transition-all flex items-center gap-2"

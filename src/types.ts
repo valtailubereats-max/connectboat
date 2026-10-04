@@ -236,6 +236,9 @@ export interface Ad {
   isCourtesy?: boolean;
   courtesyGrantedBy?: string | null;
   courtesyReason?: string | null;
+  courtesyCreditId?: string | null;
+  courtesyGrantedAt?: any;
+  courtesyUsedAt?: any;
   paidAt?: any; // Firestore Timestamp
   stripeCheckoutSessionId?: string;
   brokerId?: string;

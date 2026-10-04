@@ -232,6 +232,7 @@ const CreateAd = () => {
   const [partnerVoucher, setPartnerVoucher] = useState<{ partnerCode: string; partnerName: string } | null>(null);
   const [partnerVoucherError, setPartnerVoucherError] = useState('');
   const [validatingPartnerVoucher, setValidatingPartnerVoucher] = useState(false);
+  const [courtesyCredit, setCourtesyCredit] = useState<any>(null);
   useEffect(() => {
     if (!user) return;
     brokerRequest('status').then(result => {
@@ -334,6 +335,23 @@ const CreateAd = () => {
       navigate('/login');
     }
   }, [user, authLoading]);
+
+  useEffect(() => {
+    if (!user || id || isAdmin || isModerator) {
+      setCourtesyCredit(null);
+      return;
+    }
+    let active = true;
+    user.getIdToken().then(idToken => fetch('/api/stripe/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ action: 'courtesy_credit_get' }),
+    })).then(async response => {
+      const result = await response.json().catch(() => ({}));
+      if (active && response.ok && result?.credit?.status === 'available') setCourtesyCredit(result.credit);
+    }).catch(error => console.warn('[Courtesy Credit] Availability check failed:', error));
+    return () => { active = false; };
+  }, [user?.uid, id, isAdmin, isModerator]);
 
   const [whatsappCountryIso, setWhatsappCountryIso] = useState(initialWhatsappContact.countryIso);
   const [phoneCountryIso, setPhoneCountryIso] = useState(initialPhoneContact.countryIso);
@@ -1621,7 +1639,7 @@ const CreateAd = () => {
     return ratio >= 0.7; // 70% of words in common
   };
 
-  const executeSaveAd = async (finalAdData: any, targetAdId: string) => {
+  const executeSaveAd = async (finalAdData: any, targetAdId: string, consumeCourtesy = false) => {
     setLoading(true);
     try {
       const cleanPayload = sanitizeFirestorePayload(finalAdData);
@@ -1711,6 +1729,18 @@ const CreateAd = () => {
           const result = await response.json().catch(() => ({}));
           if (!response.ok || result?.success !== true) {
             throw new Error(result?.errorMessage || result?.error || `Listing save failed (HTTP ${response.status}).`);
+          }
+          if (consumeCourtesy) {
+            const consumeResponse = await fetch('/api/stripe/create-checkout-session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+              body: JSON.stringify({ action: 'courtesy_credit_consume', adId: targetAdId }),
+            });
+            const consumeResult = await consumeResponse.json().catch(() => ({}));
+            if (!consumeResponse.ok || consumeResult?.success !== true) {
+              throw new Error(consumeResult?.errorMessage || consumeResult?.error || 'Unable to use the Courtesy Listing Credit.');
+            }
+            setCourtesyCredit(null);
           }
         } else {
           await setDoc(doc(db, 'ads', targetAdId), persistencePayload, { merge: true });
@@ -2234,6 +2264,13 @@ const CreateAd = () => {
       }
 
       // Se requerer pagamento (anúncio novo, upgrade de plano ou renovação), encaminhar para Stripe Checkout
+      const canUseCourtesy = !id && courtesyCredit?.status === 'available' &&
+        normalizeListingPlan(formData.plan) === 'premium' &&
+        isTieredListingCategory(formData.category) && !formData.mediaBoostEnabled;
+      if (canUseCourtesy) {
+        await executeSaveAd(adData, adId, true);
+        return;
+      }
       if (checkRequiresPayment()) {
         setPendingAdData(adData);
         setShowPaymentModal(true);
@@ -2795,6 +2832,20 @@ const CreateAd = () => {
                   </button>
                 </div>
               </div>
+              {courtesyCredit?.status === 'available' && !id && (
+                <div className="mb-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-indigo-950">
+                  <p className="text-sm font-black">Premium Courtesy Listing</p>
+                  <p className="mt-1 text-xs font-medium text-indigo-800">
+                    You have 1 complimentary Premium listing available. Select Premium to use it without Stripe.
+                  </p>
+                  {formData.mediaBoostEnabled && (
+                    <p className="mt-2 text-xs font-bold text-amber-700">
+                      Media Boost is a separate paid extra. Turn it off to use this courtesy without checkout.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Listing plans: three boat plans + one clearly separated Marketplace option */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-3">
@@ -4602,8 +4653,10 @@ const CreateAd = () => {
                     </>
                   ) : (
                     <span>
-                      {checkRequiresPayment() 
-                        ? 'Proceed to Payment →' 
+                      {!id && courtesyCredit?.status === 'available' && normalizeListingPlan(formData.plan) === 'premium' && isTieredListingCategory(formData.category) && !formData.mediaBoostEnabled
+                        ? 'Use Courtesy Credit →'
+                        : checkRequiresPayment()
+                        ? 'Proceed to Payment →'
                         : (id ? 'Save Changes' : 'Publish Listing')}
                     </span>
                   )}
@@ -4931,7 +4984,12 @@ const CreateAd = () => {
                       finalAdData.duplicateUserChoice = 'continued_different_boat';
                       setDuplicateWarning(null);
                       
-                      if (checkRequiresPayment()) {
+                      const canUseCourtesy = !id && courtesyCredit?.status === 'available' &&
+                        normalizeListingPlan(formData.plan) === 'premium' &&
+                        isTieredListingCategory(formData.category) && !formData.mediaBoostEnabled;
+                      if (canUseCourtesy) {
+                        await executeSaveAd(finalAdData, finalAdId, true);
+                      } else if (checkRequiresPayment()) {
                         setPendingAdData(finalAdData);
                         setShowPaymentModal(true);
                       } else {
