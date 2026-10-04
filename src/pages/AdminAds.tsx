@@ -45,6 +45,7 @@ import { formatPrice } from '../utils';
 import { sendEmailGeneric, getSellerEmail } from '../utils/emailService';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import AdminTimestampAudit from '../components/AdminTimestampAudit';
 import { 
   isPaidAd, 
   getAdPlanLabel, 
@@ -1190,6 +1191,8 @@ const AdminAds = () => {
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Manage Listings</h1>
         <p className="text-slate-500 font-medium">Approve, reject or moderate platform listings.</p>
       </div>
+
+      <AdminTimestampAudit />
 
       {/* Stats Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
