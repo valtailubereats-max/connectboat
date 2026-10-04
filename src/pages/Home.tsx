@@ -197,8 +197,8 @@ const Home = () => {
     return '';
   };
 
-  const { user, profile, isAdmin, loading: authLoading } = useAuth();
-  const isModeratorOrAdmin = isAdmin || profile?.role === 'admin' || profile?.role === 'moderator';
+  const { user, profile, isAdmin, isModerator, loading: authLoading } = useAuth();
+  const isModeratorOrAdmin = isAdmin || isModerator;
   // Só consideramos administrador confirmado para consultas restritas de contagem de users.
   const isConfirmedAdminOnly = !authLoading && profile?.role === 'admin';
   const [searchParams, setSearchParams] = useSearchParams();
@@ -538,6 +538,13 @@ const Home = () => {
   useEffect(() => {
     let active = true;
 
+    // A role já vem do AuthContext. Aguarde a resolução completa da autenticação
+    // e nunca execute esta contagem para visitantes ou utilizadores comuns.
+    if (authLoading || !user || !isModeratorOrAdmin) {
+      setTotalActiveListingsCount(null);
+      return;
+    }
+
     const fetchActiveListingsCount = async () => {
       try {
         const targetCountries = (country === 'Reino Unido' || country === 'United Kingdom')
@@ -564,7 +571,7 @@ const Home = () => {
 
     fetchActiveListingsCount();
     return () => { active = false; };
-  }, [country, reloadCounter]);
+  }, [country, reloadCounter, authLoading, user, isModeratorOrAdmin]);
 
   // Buscar total de utilizadores no banco de dados se permitido/configurado
   useEffect(() => {
