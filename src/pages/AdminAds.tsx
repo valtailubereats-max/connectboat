@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { collection, query, orderBy, limit, updateDoc, doc, serverTimestamp, setDoc, getDoc, getDocs, where, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, limit, updateDoc, doc, serverTimestamp, setDoc, deleteDoc, getDoc, getDocs, where, writeBatch } from 'firebase/firestore';
 import { deleteObject, ref } from 'firebase/storage';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { db, storage, handleFirestoreError, OperationType, getDocsWithCacheFallback } from '../firebase';
 import { Ad, UserProfile } from '../types';
 import { clearHomeCache } from '../utils/cache';
 import { isCurrentlyArchived } from '../utils/listingArchive';
+import { collectFirebaseStoragePaths, deleteFirebaseStoragePaths } from '../utils/firebaseStorageMedia';
 import { motion, AnimatePresence } from 'motion/react';
 import OptimizedImage from '../components/OptimizedImage';
 import { awardAdApprovalPoints } from '../utils/rewards';
@@ -729,26 +730,30 @@ const AdminAds = () => {
   };
 
   const deleteListingMedia = async (ad: Ad) => {
-    const candidates = [ad.imageUrl, ...(Array.isArray(ad.images) ? ad.images : []), ad.videoUrl, ad.tempVideoUrl]
-      .filter((value): value is string => typeof value === 'string' && /^(gs:\/\/|https:\/\/firebasestorage\.googleapis\.com\/|https:\/\/storage\.googleapis\.com\/)/i.test(value));
-    const uniqueUrls = Array.from(new Set(candidates));
-    await Promise.allSettled(uniqueUrls.map(url => deleteObject(ref(storage, url))));
+    const bucket = storage.app.options.storageBucket;
+    const paths = collectFirebaseStoragePaths(
+      [ad.imageUrl, ...(Array.isArray(ad.images) ? ad.images : []), ad.videoUrl, ad.tempVideoUrl],
+      bucket
+    );
+    await deleteFirebaseStoragePaths(paths, path => deleteObject(ref(storage, path)));
   };
 
   const permanentlyDeleteListing = async (ad: Ad) => {
     if (!user) throw new Error('Administrator session unavailable.');
-    const batch = writeBatch(db);
-    batch.set(doc(db, 'deletedListingAudits', ad.id), {
-      listingId: ad.id,
-      sellerId: ad.sellerId || null,
-      deletedAt: serverTimestamp(),
-      deletedBy: user.uid,
-      deletionSource: 'admin_manage_listings',
-      listingSnapshot: ad
-    });
-    batch.delete(doc(db, 'ads', ad.id));
-    await batch.commit();
+    const auditRef = doc(db, 'deletedListingAudits', ad.id);
+    const existingAudit = await getDoc(auditRef);
+    if (!existingAudit.exists()) {
+      await setDoc(auditRef, {
+        listingId: ad.id,
+        sellerId: ad.sellerId || null,
+        deletedAt: serverTimestamp(),
+        deletedBy: user.uid,
+        deletionSource: 'admin_manage_listings',
+        listingSnapshot: ad
+      });
+    }
     await deleteListingMedia(ad);
+    await deleteDoc(doc(db, 'ads', ad.id));
   };
 
   const handleDeleteAd = async (adId: string) => {
@@ -762,9 +767,9 @@ const AdminAds = () => {
       setSelectedAdIds(prev => prev.filter(id => id !== adId));
       if (selectedAd?.id === adId) setSelectedAd(null);
       alert('Listing permanently deleted successfully!');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting listing:', err);
-      handleFirestoreError(err, OperationType.DELETE, `ads/${adId}`);
+      alert(err?.message || 'Permanent Delete failed. The listing was kept so the cleanup can be retried safely.');
     }
   };
 
@@ -884,6 +889,8 @@ const AdminAds = () => {
     setBatchLoading(true);
     let successCount = 0;
     let failCount = 0;
+    const successfulIds: string[] = [];
+    const failureMessages: string[] = [];
 
     const promises = selectedAdIds.map(async (id) => {
       try {
@@ -891,19 +898,21 @@ const AdminAds = () => {
         if (!ad) throw new Error('Listing not found in the current administrative view.');
         await permanentlyDeleteListing(ad);
         successCount++;
-      } catch (err) {
+        successfulIds.push(id);
+      } catch (err: any) {
         console.error(`Error deleting listing ${id}:`, err);
         failCount++;
+        failureMessages.push(`${id}: ${err?.message || 'unknown error'}`);
       }
     });
 
     await Promise.all(promises);
     clearHomeCache();
-    setAds(prev => prev.filter(ad => !selectedAdIds.includes(ad.id)));
-    if (selectedAd && selectedAdIds.includes(selectedAd.id)) setSelectedAd(null);
+    setAds(prev => prev.filter(ad => !successfulIds.includes(ad.id)));
+    if (selectedAd && successfulIds.includes(selectedAd.id)) setSelectedAd(null);
     setSelectedAdIds([]);
     setBatchLoading(false);
-    alert(`Batch deletion completed: ${successCount} successfully deleted.${failCount > 0 ? ` Failures: ${failCount}` : ''}`);
+    alert(`Batch deletion completed: ${successCount} successfully deleted.${failCount > 0 ? ` Failures: ${failCount}.\n${failureMessages.join('\n')}` : ''}`);
   };
 
   const handleBatchAction = async (status: 'approved' | 'rejected') => {

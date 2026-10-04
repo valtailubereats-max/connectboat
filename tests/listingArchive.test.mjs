@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { isCurrentlyArchived } from '../src/utils/listingArchive.ts';
+import { collectFirebaseStoragePaths, deleteFirebaseStoragePaths, firebaseStoragePathFromUrl } from '../src/utils/firebaseStorageMedia.ts';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -50,7 +51,50 @@ test('admin archived filter recognises the new archive flag and keeps permanent 
   assert.match(admin, /deletedListingAudits/);
   assert.match(admin, /listingSnapshot:\s*ad/);
   assert.match(admin, /deleteListingMedia/);
-  assert.match(admin, /deleteObject\(ref\(storage, url\)\)/);
+  assert.match(admin, /deleteObject\(ref\(storage, path\)\)/);
+});
+
+test('Permanent Delete resolves encoded Firebase URLs, deduplicates media and excludes external URLs', () => {
+  const bucket = 'connectboat.firebasestorage.app';
+  const encoded = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/ads%2FMsvzgpwC2EYSQwYQMyWZ7DgspVm2%2F1791118904206_Mascote%20ConnectBoat.png?alt=media&token=test`;
+  const second = `https://storage.googleapis.com/${bucket}/ads/owner/second-image.jpg`;
+  const gumtree = 'https://img.gumtree.com/example/external.jpg';
+
+  assert.equal(
+    firebaseStoragePathFromUrl(encoded, bucket),
+    'ads/MsvzgpwC2EYSQwYQMyWZ7DgspVm2/1791118904206_Mascote ConnectBoat.png'
+  );
+  assert.deepEqual(
+    collectFirebaseStoragePaths([encoded, encoded, second, gumtree], bucket),
+    [
+      'ads/MsvzgpwC2EYSQwYQMyWZ7DgspVm2/1791118904206_Mascote ConnectBoat.png',
+      'ads/owner/second-image.jpg'
+    ]
+  );
+  assert.equal(firebaseStoragePathFromUrl(gumtree, bucket), null);
+});
+
+test('Permanent Delete does not silently accept Storage failures and deletes Firestore last', () => {
+  const admin = read('src/pages/AdminAds.tsx');
+  const flow = admin.slice(admin.indexOf('const deleteListingMedia'), admin.indexOf('const handleDeleteAd'));
+  assert.match(flow, /deleteFirebaseStoragePaths/);
+  assert.ok(flow.indexOf('await setDoc(auditRef') < flow.indexOf('await deleteListingMedia(ad)'));
+  assert.ok(flow.indexOf('await deleteListingMedia(ad)') < flow.indexOf("await deleteDoc(doc(db, 'ads', ad.id))"));
+
+  const storageRules = read('storage.rules');
+  assert.match(storageRules, /allow delete: if isAuthenticated\(\) && \(request\.auth\.uid == userId \|\| isAdmin\(\)\)/);
+});
+
+test('Storage deletion failure rejects instead of reporting Permanent Delete success', async () => {
+  await assert.rejects(
+    deleteFirebaseStoragePaths(
+      ['ads/owner/ok.jpg', 'ads/owner/fails.jpg'],
+      async path => {
+        if (path.endsWith('fails.jpg')) throw Object.assign(new Error('unauthorized'), { code: 'storage/unauthorized' });
+      }
+    ),
+    /listing was not deleted because 1 Storage file\(s\) could not be removed: ads\/owner\/fails\.jpg/
+  );
 });
 
 test('current archive state overrides historical archivedAt and legacy status fallback', () => {

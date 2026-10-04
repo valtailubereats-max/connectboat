@@ -24,7 +24,7 @@ service firebase.storage {
                             request.auth.uid == userId &&
                             request.resource.size <= 5 * 1024 * 1024 &&
                             request.resource.contentType.matches('image/.*');
-      allow delete: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
     // Existing flat-path images remain publicly readable. They are immutable
