@@ -256,6 +256,7 @@ export interface Ad {
   whatsappClicks?: number;
   userNotified?: boolean;
   createdAt: any; // Firestore Timestamp
+  updatedAt?: any; // Firestore Timestamp
   contactEmail?: string;
   contactWhatsapp?: string;
   contactPhone?: string;

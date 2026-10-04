@@ -420,6 +420,7 @@ const AdminDemoListings: React.FC = () => {
           views: 0,
           whatsappClicks: 0,
           createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
           externalListing: item.externalListing,
           demoListing: item.demoListing,
           sourceUrl: item.sourceUrl || undefined,

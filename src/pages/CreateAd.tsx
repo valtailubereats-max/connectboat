@@ -22,6 +22,10 @@ import { evaluateListingDuplicates, DuplicateCheckResult } from '../utils/duplic
 import { saveCustomCity } from '../utils/locationService';
 import { brokerRequest } from '../utils/brokers';
 import { shouldNotifyPendingModeration } from '../utils/pendingModeration';
+import {
+  prepareAdPayloadForClientWrite,
+  prepareAdPayloadForTransport,
+} from '../utils/adTimestampPersistence';
 
 const PAID_BOAT_LISTING_CATEGORIES = new Set(['Boats for Sale', 'Boats for Hire']);
 const MARKETPLACE_LISTING_CATEGORIES = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Accessories', 'Wanted']);
@@ -1671,13 +1675,23 @@ const CreateAd = () => {
         });
       }
 
+      const persistencePayload = id && originalAd
+        ? prepareAdPayloadForClientWrite(cleanPayload, {
+            isExisting: true,
+            existingCreatedAt: originalAd.createdAt,
+            existingExternalPromotionConsent: (originalAd as any).externalPromotionConsent === true,
+            existingExternalPromotionConsentAt: (originalAd as any).externalPromotionConsentAt,
+            serverTimestamp,
+          })
+        : prepareAdPayloadForTransport(cleanPayload, { isExisting: false });
+
       logFramingDiagnostic('CreateAd Save Payload', {
         targetAdId,
-        imageUrl: cleanPayload.imageUrl,
-        imagePositionX: cleanPayload.imagePositionX,
-        imagePositionY: cleanPayload.imagePositionY,
-        imageZoom: cleanPayload.imageZoom,
-        coverImageSettings: cleanPayload.coverImageSettings,
+        imageUrl: persistencePayload.imageUrl,
+        imagePositionX: persistencePayload.imagePositionX,
+        imagePositionY: persistencePayload.imagePositionY,
+        imageZoom: persistencePayload.imageZoom,
+        coverImageSettings: persistencePayload.coverImageSettings,
       });
       try {
         if (!id && user) {
@@ -1691,7 +1705,7 @@ const CreateAd = () => {
             body: JSON.stringify({
               action: 'listing_save',
               adId: targetAdId,
-              adData: cleanPayload,
+              adData: persistencePayload,
             }),
           });
           const result = await response.json().catch(() => ({}));
@@ -1699,7 +1713,7 @@ const CreateAd = () => {
             throw new Error(result?.errorMessage || result?.error || `Listing save failed (HTTP ${response.status}).`);
           }
         } else {
-          await setDoc(doc(db, 'ads', targetAdId), cleanPayload, { merge: true });
+          await setDoc(doc(db, 'ads', targetAdId), persistencePayload, { merge: true });
         }
         if (cleanPayload.city) {
           try {
@@ -1988,8 +2002,6 @@ const CreateAd = () => {
         userNotified: id && originalAd
           ? (Object.prototype.hasOwnProperty.call(originalAd, 'userNotified') ? originalAd.userNotified : false)
           : false,
-        createdAt: id && originalAd ? originalAd.createdAt : serverTimestamp(),
-        updatedAt: serverTimestamp(),
         externalUrl: (formData.category === 'Imigração' || isJob) ? (formData.externalUrl || '') : (originalAd?.externalUrl || ''),
         moreInfoUrl: isStaff
           ? normalizedMoreInfoUrl
@@ -2057,12 +2069,7 @@ const CreateAd = () => {
         videoPaid: isStaff ? true : (originalAd?.videoPaid ? true : false),
         mediaBoostPrice: 2.00,
         // Optional, explicit permission for ConnectBoat to promote this listing outside the platform.
-        externalPromotionConsent: !!formData.externalPromotionConsent,
-        externalPromotionConsentAt: formData.externalPromotionConsent
-          ? ((originalAd as any)?.externalPromotionConsent && (originalAd as any)?.externalPromotionConsentAt
-              ? (originalAd as any).externalPromotionConsentAt
-              : serverTimestamp())
-          : null
+        externalPromotionConsent: !!formData.externalPromotionConsent
       };
 
       adData.planType = normalizeListingPlan(formData.plan);
@@ -2249,6 +2256,10 @@ const CreateAd = () => {
     }
 
     const cleanPayload = sanitizeFirestorePayload(finalAdData);
+    const transportPayload = prepareAdPayloadForTransport(cleanPayload, {
+      isExisting: Boolean(id && originalAd),
+      existingCreatedAt: originalAd?.createdAt,
+    });
     const idToken = await user.getIdToken();
     const response = await fetch('/api/stripe/create-checkout-session', {
       method: 'POST',
@@ -2259,7 +2270,7 @@ const CreateAd = () => {
       body: JSON.stringify({
         action: 'listing_save',
         adId: targetAdId,
-        adData: cleanPayload,
+        adData: transportPayload,
       }),
     });
 

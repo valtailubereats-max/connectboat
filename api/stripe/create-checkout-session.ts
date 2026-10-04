@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import Stripe from 'stripe';
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { getStorage } from 'firebase-admin/storage';
 import { GoogleGenAI } from '@google/genai';
@@ -10,6 +10,7 @@ import { createHash, randomBytes, randomUUID } from 'crypto';
 import { getBrokerState, brokerMoney } from '../../src/server/brokerProgram.js';
 import brokerHandler from '../../src/server/brokerHandler.js';
 import { normalisePartnerCode, resolvePartnerPromotion } from '../../src/lib/partnerPromotion.js';
+import { prepareServerAdTimestampFields } from '../../src/server/adTimestampPersistence.js';
 
 let stripeClient: Stripe | null = null;
 
@@ -116,11 +117,12 @@ async function handleListingSave(req: Request, res: Response) {
 
   const uid = decoded.uid;
   const email = String(decoded.email || '').trim().toLowerCase();
-  const { adId, adData } = req.body || {};
+  const { adId, adData: rawAdData } = req.body || {};
 
-  if (!adId || typeof adId !== 'string' || !adData || typeof adData !== 'object') {
+  if (!adId || typeof adId !== 'string' || !rawAdData || typeof rawAdData !== 'object') {
     return res.status(400).json({ success: false, error: 'INVALID_LISTING_PAYLOAD', errorMessage: 'A valid listing is required.' });
   }
+  let adData = { ...rawAdData };
   if (String(adData.sellerId || '') !== uid) {
     return res.status(403).json({ success: false, error: 'SELLER_MISMATCH', errorMessage: 'You can only create listings for your own account.' });
   }
@@ -206,6 +208,30 @@ async function handleListingSave(req: Request, res: Response) {
   const existing = await adRef.get();
   if (existing.exists && existing.data()?.sellerId !== uid) {
     return res.status(403).json({ success: false, error: 'AD_OWNERSHIP_MISMATCH' });
+  }
+
+  try {
+    adData = prepareServerAdTimestampFields(adData, existing.exists ? (existing.data() || {}) : null, {
+      serverTimestamp: () => FieldValue.serverTimestamp(),
+      fromDate: (date) => Timestamp.fromDate(date),
+      isTimestamp: (value) => value instanceof Timestamp,
+    });
+  } catch (timestampError: any) {
+    if (timestampError?.code === 'INVALID_LEGACY_CREATED_AT') {
+      return res.status(409).json({
+        success: false,
+        error: timestampError.code,
+        errorMessage: timestampError.message,
+      });
+    }
+    if (String(timestampError?.message || '').startsWith('INVALID_AD_TIMESTAMP:')) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_AD_TIMESTAMP',
+        errorMessage: `Invalid timestamp value for ${String(timestampError.message).split(':')[1] || 'listing'}.`,
+      });
+    }
+    throw timestampError;
   }
   if (!existing.exists || existing.data()?.status !== 'approved') adData.status = 'pending';
 

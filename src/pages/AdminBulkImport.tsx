@@ -362,6 +362,7 @@ const AdminBulkImport: React.FC = () => {
           views: 0,
           whatsappClicks: 0,
           createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
           // Mode & Claim status
           listingMode: batchListingMode,
           isClaimableBusiness: batchListingMode === 'claimable',
