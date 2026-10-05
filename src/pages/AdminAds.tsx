@@ -96,7 +96,6 @@ const AdminAds = () => {
   // Synchronized horizontal scrollbars for the wide admin table.
   const topTableScrollRef = useRef<HTMLDivElement>(null);
   const mainTableScrollRef = useRef<HTMLDivElement>(null);
-  const detailModalScrollRef = useRef<HTMLDivElement>(null);
 
   const syncTableScroll = (source: 'top' | 'main') => {
     const top = topTableScrollRef.current;
@@ -119,11 +118,6 @@ const AdminAds = () => {
   const [adFilter, setAdFilter] = useState<string>(searchParams.get('status') || 'all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
-
-  useEffect(() => {
-    if (!selectedAd) return;
-    requestAnimationFrame(() => detailModalScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' }));
-  }, [selectedAd?.id]);
   const [sellerProfile, setSellerProfile] = useState<UserProfile | null>(null);
   const [sellerProfileLoading, setSellerProfileLoading] = useState(false);
   const [sellerProfileError, setSellerProfileError] = useState<string | null>(null);
@@ -2358,12 +2352,12 @@ const AdminAds = () => {
       {/* Detail Modal */}
       <AnimatePresence>
         {selectedAd && (
-          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-2 sm:p-4 overflow-hidden">
+          <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[9999] p-4 overflow-hidden">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-2xl w-full max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-hidden flex flex-col"
+              className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col"
             >
               {/* Header */}
               <div className="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
@@ -2385,7 +2379,7 @@ const AdminAds = () => {
               </div>
 
               {/* Content */}
-              <div ref={detailModalScrollRef} className="p-4 sm:p-6 space-y-6 flex-1 min-h-0 overflow-y-auto overscroll-contain">
+              <div className="p-6 space-y-6">
                 {/* Image Gallery */}
                 <div className="space-y-3">
                   <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center">
