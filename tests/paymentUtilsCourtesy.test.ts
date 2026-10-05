@@ -16,6 +16,21 @@ test('Premium courtesy is classified as Courtesy and keeps the Premium plan', ()
   assert.equal(result.planLabel, 'Premium');
 });
 
+test('paid Marketplace courtesy is labelled Marketplace even when the non-tiered stored plan is free', () => {
+  const result = getAdPaymentClassification({
+    ...baseAd,
+    category: 'Trailers',
+    plan: 'free',
+    marketplaceListingType: 'paid_additional',
+    paymentProductType: 'marketplace_additional',
+    paymentStatus: 'courtesy',
+    isCourtesy: true,
+    amountPaid: 0,
+  });
+  assert.equal(result.type, 'courtesy');
+  assert.equal(result.planLabel, 'Marketplace');
+});
+
 test('confirmed Stripe payment remains classified as paid', () => {
   const result = getAdPaymentClassification({ ...baseAd, paymentStatus: 'paid', paidAt: new Date() });
   assert.equal(result.type, 'paid');

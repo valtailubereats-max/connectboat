@@ -66,6 +66,12 @@ export const formatUKDateTime = (dateVal: any): string | null => {
  */
 export const getAdPlanLabel = (ad: Ad): { label: string; color: string } => {
   if (!ad) return { label: 'Standard', color: 'bg-slate-100 text-slate-700 border-slate-200' };
+  const isPaidMarketplaceListing =
+    (ad as any).marketplaceListingType === 'paid_additional' ||
+    (ad as any).paymentProductType === 'marketplace_additional';
+  if (isPaidMarketplaceListing) {
+    return { label: 'Marketplace', color: 'bg-cyan-100 text-cyan-800 border-cyan-200' };
+  }
   const plan = (ad.plan || '').toLowerCase();
   if (plan === 'premium') {
     return { label: 'Premium', color: 'bg-purple-100 text-purple-800 border-purple-200' };
