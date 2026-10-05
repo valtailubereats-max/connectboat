@@ -398,7 +398,7 @@ async function handleCourtesyCredit(req: Request, res: Response) {
       if (current.exists && currentData.status === 'available') throw new Error('COURTESY_CREDIT_ALREADY_AVAILABLE');
       if (current.exists && currentData.creditId) tx.set(creditRef.collection('history').doc(String(currentData.creditId)), currentData, { merge: false });
       tx.set(creditRef, {
-        creditId, userId: targetUid, status: 'available', plan: 'premium', price: 0, durationDays: 30,
+        creditId, userId: targetUid, status: 'available', scope: 'eligible_paid_listing', price: 0,
         reason: reason || 'Other', grantedByAdminUid: decoded.uid, grantedByAdminEmail: String(decoded.email || ''),
         grantedAt: FieldValue.serverTimestamp(), usedAt: null, listingId: null, activatedAt: null, expiresAt: null,
         revokedAt: null, revokedByAdminUid: null,
@@ -420,22 +420,61 @@ async function handleCourtesyCredit(req: Request, res: Response) {
     const adId = String(req.body?.adId || '').trim();
     if (!adId) return res.status(400).json({ success: false, error: 'AD_ID_REQUIRED' });
     const adRef = db.collection('ads').doc(adId);
+    const settingsRef = db.collection('settings').doc('global');
+    const userRef = db.collection('users').doc(decoded.uid);
     await db.runTransaction(async tx => {
-      const [credit, ad] = await Promise.all([tx.get(creditRef), tx.get(adRef)]);
+      const [credit, ad, settingsSnapshot, userSnapshot] = await Promise.all([
+        tx.get(creditRef), tx.get(adRef), tx.get(settingsRef), tx.get(userRef),
+      ]);
       const creditData = credit.data() || {};
       const adData = ad.data() || {};
+      const settingsData = settingsSnapshot.data() || {};
+      const userData = userSnapshot.data() || {};
       if (!credit.exists || creditData.status !== 'available') throw new Error('COURTESY_CREDIT_NOT_AVAILABLE');
       if (!ad.exists || String(adData.sellerId || '') !== decoded.uid) throw new Error('AD_OWNERSHIP_MISMATCH');
       if (adData.status !== 'pending') throw new Error('COURTESY_LISTING_MUST_BE_PENDING');
-      if (normaliseListingPlan(adData.plan) !== 'premium') throw new Error('COURTESY_REQUIRES_PREMIUM');
-      if (![...PAID_BOAT_LISTING_CATEGORIES, SERVICE_LISTING_CATEGORY].includes(String(adData.category || ''))) throw new Error('COURTESY_CATEGORY_NOT_ELIGIBLE');
       if (adData.mediaBoostEnabled === true && adData.videoPaid !== true) throw new Error('COURTESY_MEDIA_BOOST_NOT_INCLUDED');
       if (adData.paidAt || adData.paymentCompletedAt || ['paid', 'completed'].includes(String(adData.paymentStatus || ''))) throw new Error('LISTING_ALREADY_PAID');
+
+      const category = String(adData.category || '');
+      const plan = normaliseListingPlan(adData.plan);
+      const prices = settingsData.planPrices || {};
+      const isBoatListing = PAID_BOAT_LISTING_CATEGORIES.has(category);
+      const isServiceListing = category === SERVICE_LISTING_CATEGORY;
+      const isMarketplaceListing = MARKETPLACE_LISTING_CATEGORIES.has(category);
+      const isPartnerFunded = adData.partnerFundedFreeStandard === true && adData.promotionSource === 'partner_promotion';
+      let courtesyOriginalAmount = 0;
+      let paymentProductType = '';
+
+      if (isBoatListing && plan === 'premium') {
+        courtesyOriginalAmount = getValidConfiguredPrice(prices.premium, 12.99);
+        paymentProductType = 'boat_listing';
+      } else if (isServiceListing && plan === 'featured') {
+        courtesyOriginalAmount = getValidConfiguredPrice(prices.serviceFeatured, 7.99);
+        paymentProductType = 'boat_service_listing';
+      } else if (isServiceListing && plan === 'premium') {
+        courtesyOriginalAmount = getValidConfiguredPrice(prices.servicePremium, 14.99);
+        paymentProductType = 'boat_service_listing';
+      } else if (
+        isMarketplaceListing &&
+        userData.marketplaceFreeListingUsed === true &&
+        adData.marketplaceListingType === 'paid_additional' &&
+        adData.marketplaceFreeBenefitConsumed !== true &&
+        !isPartnerFunded
+      ) {
+        courtesyOriginalAmount = getValidConfiguredPrice(prices.marketplaceAdditional, 1.99);
+        paymentProductType = 'marketplace_additional';
+      } else {
+        throw new Error('COURTESY_CATEGORY_OR_PLAN_NOT_ELIGIBLE');
+      }
+
       tx.update(creditRef, { status: 'used', usedAt: FieldValue.serverTimestamp(), listingId: adId });
       tx.set(adRef, {
-        plan: 'premium', planType: 'premium', status: 'pending', paymentStatus: 'courtesy',
-        paymentProductType: 'courtesy_listing_credit', paymentSource: 'admin_courtesy_credit',
+        ...(isBoatListing ? { plan: 'premium', planType: 'premium' } : {}),
+        status: 'pending', paymentStatus: 'courtesy',
+        paymentProductType, paymentSource: 'admin_courtesy_credit',
         paymentFlow: 'courtesy_listing_credit', amountPaid: 0, isCourtesy: true,
+        courtesyOriginalAmount,
         courtesyCreditId: creditData.creditId, courtesyGrantedBy: creditData.grantedByAdminUid,
         courtesyReason: creditData.reason || 'Other', courtesyGrantedAt: creditData.grantedAt,
         courtesyUsedAt: FieldValue.serverTimestamp(), awaitingAdminApproval: true,
@@ -449,24 +488,40 @@ async function handleCourtesyCredit(req: Request, res: Response) {
     const adId = String(req.body?.adId || '').trim();
     if (!adId) return res.status(400).json({ success: false, error: 'AD_ID_REQUIRED' });
     const adRef = db.collection('ads').doc(adId);
-    const expiresAt = Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const settingsRef = db.collection('settings').doc('global');
+    let approvedExpiresAt = Timestamp.fromMillis(Date.now() + 30 * 24 * 60 * 60 * 1000);
     await db.runTransaction(async tx => {
-      const [credit, ad] = await Promise.all([tx.get(creditRef), tx.get(adRef)]);
+      const [credit, ad, settingsSnapshot] = await Promise.all([tx.get(creditRef), tx.get(adRef), tx.get(settingsRef)]);
       const creditData = credit.data() || {};
       const adData = ad.data() || {};
       if (!ad.exists || adData.status !== 'pending' || adData.isCourtesy !== true || adData.courtesyCreditId !== creditData.creditId) throw new Error('INVALID_COURTESY_LISTING');
       if (!credit.exists || creditData.status !== 'used' || creditData.listingId !== adId) throw new Error('COURTESY_CREDIT_LISTING_MISMATCH');
+      const category = String(adData.category || '');
+      const plan = normaliseListingPlan(adData.plan);
+      const isBoatListing = PAID_BOAT_LISTING_CATEGORIES.has(category);
+      const isServiceListing = category === SERVICE_LISTING_CATEGORY;
+      const isMarketplaceListing = MARKETPLACE_LISTING_CATEGORIES.has(category);
+      if (!isBoatListing && !isServiceListing && !isMarketplaceListing) throw new Error('COURTESY_CATEGORY_NOT_ELIGIBLE');
+      const configuredDuration = Number(settingsSnapshot.data()?.planDurations?.[plan]);
+      const durationDays = isBoatListing
+        ? 30
+        : (Number.isFinite(configuredDuration) && configuredDuration > 0 ? Math.round(configuredDuration) : 30);
+      const expiresAt = Timestamp.fromMillis(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+      approvedExpiresAt = expiresAt;
+      const isFeatured = isBoatListing || (isServiceListing && (plan === 'featured' || plan === 'premium'));
       tx.update(adRef, {
         status: 'approved', adStatus: 'active', awaitingAdminApproval: false, awaitingAdminActivation: false,
-        activatedAt: FieldValue.serverTimestamp(), expirationDate: expiresAt, isFeatured: true,
-        featuredLevel: 'premium', featuredReason: 'admin_courtesy_listing_credit',
-        featuredActivatedAt: FieldValue.serverTimestamp(), featuredUntil: expiresAt,
-        plan: 'premium', planType: 'premium', planStartedAt: FieldValue.serverTimestamp(),
+        activatedAt: FieldValue.serverTimestamp(), expirationDate: expiresAt, isFeatured,
+        featuredLevel: isBoatListing ? 'premium' : (isFeatured ? plan : 'standard'),
+        featuredReason: 'admin_courtesy_listing_credit',
+        ...(isFeatured ? { featuredActivatedAt: FieldValue.serverTimestamp(), featuredUntil: expiresAt } : {}),
+        ...(isBoatListing ? { plan: 'premium', planType: 'premium' } : { planType: plan }),
+        planStartedAt: FieldValue.serverTimestamp(),
         planExpiresAt: expiresAt, updatedAt: FieldValue.serverTimestamp(),
       });
       tx.update(creditRef, { activatedAt: FieldValue.serverTimestamp(), expiresAt });
     });
-    return res.status(200).json({ success: true, expiresAt: expiresAt.toDate().toISOString() });
+    return res.status(200).json({ success: true, expiresAt: approvedExpiresAt.toDate().toISOString() });
   }
   return res.status(400).json({ success: false, error: 'UNKNOWN_COURTESY_ACTION' });
 }

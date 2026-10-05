@@ -798,11 +798,27 @@ const CreateAd = () => {
   const isFirstMarketplaceListingFree = (): boolean =>
     isMarketplaceListingCategory(formData.category) && hasMarketplaceFreeBenefit();
 
-  const hasCourtesyForSelectedPlan = (): boolean =>
-    !id && courtesyCredit?.status === 'available' &&
-    normalizeListingPlan(formData.plan) === 'premium' &&
-    isTieredListingCategory(formData.category) &&
-    !formData.mediaBoostEnabled;
+  const getCourtesyEligibleAmount = (): number => {
+    if (id || isStaff || courtesyCredit?.status !== 'available' || formData.mediaBoostEnabled) return 0;
+
+    const activePlan = normalizeListingPlan(formData.plan);
+    if (isPaidBoatListingCategory(formData.category)) {
+      // The original boat-listing courtesy remains Premium-only.
+      return activePlan === 'premium' ? getPlanPrice('premium') : 0;
+    }
+    if (isBoatServiceCategory(formData.category)) {
+      return activePlan === 'featured' || activePlan === 'premium'
+        ? getServicePlanPrice(activePlan)
+        : 0;
+    }
+    if (isMarketplaceListingCategory(formData.category)) {
+      // First Marketplace listings and partner-funded listings are already free.
+      return !hasMarketplaceFreeBenefit() && !partnerVoucher ? getMarketplaceAdditionalPrice() : 0;
+    }
+    return 0;
+  };
+
+  const hasCourtesyForSelectedPlan = (): boolean => getCourtesyEligibleAmount() > 0;
 
   const getCheckoutTotalAmountFormatted = () => {
     if (hasCourtesyForSelectedPlan()) return '0.00';
@@ -2271,9 +2287,7 @@ const CreateAd = () => {
       }
 
       // Se requerer pagamento (anúncio novo, upgrade de plano ou renovação), encaminhar para Stripe Checkout
-      const canUseCourtesy = !id && courtesyCredit?.status === 'available' &&
-        normalizeListingPlan(formData.plan) === 'premium' &&
-        isTieredListingCategory(formData.category) && !formData.mediaBoostEnabled;
+      const canUseCourtesy = hasCourtesyForSelectedPlan();
       if (canUseCourtesy) {
         await executeSaveAd(adData, adId, true);
         return;
@@ -2841,9 +2855,9 @@ const CreateAd = () => {
               </div>
               {courtesyCredit?.status === 'available' && !id && (
                 <div className="mb-4 rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-indigo-950">
-                  <p className="text-sm font-black">Premium Courtesy Listing</p>
+                  <p className="text-sm font-black">Courtesy Listing Credit</p>
                   <p className="mt-1 text-xs font-medium text-indigo-800">
-                    You have 1 complimentary Premium listing available. Select Premium to use it without Stripe.
+                    You have 1 complimentary paid listing available. Boats use Premium; other eligible categories keep their selected paid plan or listing type.
                   </p>
                   {formData.mediaBoostEnabled && (
                     <p className="mt-2 text-xs font-bold text-amber-700">
@@ -4543,7 +4557,7 @@ const CreateAd = () => {
                   {hasCourtesyForSelectedPlan() && (
                     <div className="flex items-center justify-between font-bold text-violet-700">
                       <span>Courtesy Listing Credit</span>
-                      <span>-£{(isBoatServiceCategory(formData.category) ? getServicePlanPrice('premium') : getPlanPrice('premium')).toFixed(2)}</span>
+                      <span>-£{getCourtesyEligibleAmount().toFixed(2)}</span>
                     </div>
                   )}
                   {partnerVoucherError && <p className="text-xs font-bold text-rose-700">{partnerVoucherError}</p>}
@@ -4667,7 +4681,7 @@ const CreateAd = () => {
                     </>
                   ) : (
                     <span>
-                      {!id && courtesyCredit?.status === 'available' && normalizeListingPlan(formData.plan) === 'premium' && isTieredListingCategory(formData.category) && !formData.mediaBoostEnabled
+                      {hasCourtesyForSelectedPlan()
                         ? 'Use Courtesy Credit →'
                         : checkRequiresPayment()
                         ? 'Proceed to Payment →'
@@ -5006,9 +5020,7 @@ const CreateAd = () => {
                       finalAdData.duplicateUserChoice = 'continued_different_boat';
                       setDuplicateWarning(null);
                       
-                      const canUseCourtesy = !id && courtesyCredit?.status === 'available' &&
-                        normalizeListingPlan(formData.plan) === 'premium' &&
-                        isTieredListingCategory(formData.category) && !formData.mediaBoostEnabled;
+                      const canUseCourtesy = hasCourtesyForSelectedPlan();
                       if (canUseCourtesy) {
                         await executeSaveAd(finalAdData, finalAdId, true);
                       } else if (checkRequiresPayment()) {

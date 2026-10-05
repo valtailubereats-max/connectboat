@@ -1640,7 +1640,7 @@ const AdminUsers = () => {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <h4 className="text-[11px] font-black uppercase tracking-wider text-violet-950">Courtesy Listing Credit</h4>
-                      <p className="text-[10px] font-medium text-violet-700">One Premium listing • £0 • 30 days from approval</p>
+                      <p className="text-[10px] font-medium text-violet-700">One eligible paid listing • £0 • normal plan and duration preserved</p>
                     </div>
                     <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
                       courtesyCredit?.status === 'available' ? 'bg-emerald-100 text-emerald-800' :
