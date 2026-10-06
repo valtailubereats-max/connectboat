@@ -16,6 +16,7 @@ import {
   Edit3,
   ExternalLink,
   Loader2,
+  RefreshCw,
   MapPin,
   Plus,
   Search,
@@ -136,6 +137,7 @@ export default function AdminEventsFound() {
   const [filter, setFilter] = useState<ExternalEventReviewStatus | 'all'>('pending');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [checkingBritishMarine, setCheckingBritishMarine] = useState(false);
   const [actionId, setActionId] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ExternalEventCandidate | null>(null);
@@ -346,6 +348,43 @@ export default function AdminEventsFound() {
     }
   };
 
+  const checkBritishMarine = async () => {
+    if (!user || !isAdmin || checkingBritishMarine) return;
+
+    setCheckingBritishMarine(true);
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/admin/discover-british-marine-events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.success !== true) {
+        throw new Error(payload?.error || 'Could not check British Marine.');
+      }
+
+      const created = Number(payload.created || 0);
+      const existing = Number(payload.existing || 0);
+      const eligible = Number(payload.eligible || 0);
+      const skipped = Number(payload.skippedPast || 0)
+        + Number(payload.skippedNonUk || 0)
+        + Number(payload.skippedIrrelevant || 0)
+        + Number(payload.skippedIncomplete || 0);
+
+      toast(`British Marine checked: ${eligible} eligible event${eligible === 1 ? '' : 's'}, ${created} new candidate${created === 1 ? '' : 's'}, ${existing} already known${skipped ? `, ${skipped} skipped` : ''}.`);
+      await loadCandidates();
+    } catch (error) {
+      console.error('Error checking British Marine events:', error);
+      toast(error instanceof Error ? error.message : 'Could not check British Marine.', 'error');
+    } finally {
+      setCheckingBritishMarine(false);
+    }
+  };
+
   const approveCandidate = async (candidate: ExternalEventCandidate) => {
     if (!user || candidate.reviewStatus !== 'pending') return;
     if (!window.confirm(`Approve "${candidate.title}" and publish it in Marine Events?`)) return;
@@ -493,6 +532,17 @@ export default function AdminEventsFound() {
           </button>
           <button
             type="button"
+            onClick={checkBritishMarine}
+            disabled={checkingBritishMarine}
+            className="inline-flex items-center justify-center gap-2 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60 text-indigo-700 rounded-2xl px-5 py-3.5 text-sm font-black"
+          >
+            {checkingBritishMarine
+              ? <Loader2 size={18} className="animate-spin" />
+              : <RefreshCw size={18} />}
+            {checkingBritishMarine ? 'Checking British Marine...' : 'Check British Marine'}
+          </button>
+          <button
+            type="button"
             onClick={openNew}
             className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl px-5 py-3.5 text-sm font-black shadow-sm"
           >
@@ -508,7 +558,7 @@ export default function AdminEventsFound() {
           <div>
             <p className="font-black">Candidates are private and never publish automatically.</p>
             <p className="mt-1 font-medium text-amber-800">
-              Add Candidate is an admin-only Phase 1 test tool. Approval always creates a Standard event without Stripe or external images.
+              Check British Marine discovers UK candidates privately. Nothing is published until you approve it. Add Candidate remains available for manual testing.
             </p>
           </div>
         </div>
@@ -693,7 +743,7 @@ export default function AdminEventsFound() {
           <div className="py-16 px-6 text-center">
             <Search size={40} className="mx-auto text-slate-300" />
             <h2 className="mt-4 text-lg font-black text-slate-900">No {filter === 'all' ? '' : filter} candidates found</h2>
-            <p className="mt-2 text-sm text-slate-500">Use Add Candidate to test the Phase 1 review flow.</p>
+            <p className="mt-2 text-sm text-slate-500">Use Check British Marine to discover candidates, or Add Candidate for a manual test.</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
