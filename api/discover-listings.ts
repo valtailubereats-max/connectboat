@@ -473,19 +473,31 @@ async function discoverBritishMarineEvents(req: any, res: any) {
       });
     }
 
-    const [existingCandidates, approvedBritishMarineEvents] = await Promise.all([
+    const [existingCandidates, existingMarineEvents] = await Promise.all([
       db.collection(BRITISH_MARINE_COLLECTION).get(),
-      db.collection('marineEvents').where('sourceName', '==', 'British Marine').get(),
+      db.collection('marineEvents').get(),
     ]);
     const dedupeKeys = new Set<string>();
+    const titleDateKeys = new Set<string>();
     const sourceUrls = new Set<string>();
     const britishMarineExternalIds = new Set<string>();
 
+    const normalizeBritishMarineDedupeTitle = (value: string) => normalizeBritishMarineText(value)
+      .replace(/^british marine\s+/, '')
+      .replace(/\s+british marine$/, '')
+      .trim();
+
     const rememberKnownEvent = (event: any) => {
       if (event.dedupeKey) dedupeKeys.add(String(event.dedupeKey));
+      if (event.title && event.startDate) {
+        titleDateKeys.add([
+          normalizeBritishMarineDedupeTitle(String(event.title)),
+          String(event.startDate),
+        ].join('|'));
+      }
       if (event.title && event.startDate && event.city) {
         dedupeKeys.add([
-          normalizeBritishMarineText(String(event.title)),
+          normalizeBritishMarineDedupeTitle(String(event.title)),
           String(event.startDate),
           normalizeBritishMarineText(String(event.city)),
         ].join('|'));
@@ -499,7 +511,7 @@ async function discoverBritishMarineEvents(req: any, res: any) {
     };
 
     existingCandidates.docs.forEach((snapshot: any) => rememberKnownEvent(snapshot.data() || {}));
-    approvedBritishMarineEvents.docs.forEach((snapshot: any) => rememberKnownEvent(snapshot.data() || {}));
+    existingMarineEvents.docs.forEach((snapshot: any) => rememberKnownEvent(snapshot.data() || {}));
 
     const report = {
       checked: selectedLinks.length,
@@ -546,15 +558,21 @@ async function discoverBritishMarineEvents(req: any, res: any) {
         }
 
         report.eligible += 1;
+        const normalizedEventTitle = normalizeBritishMarineDedupeTitle(event.title);
+        const titleDateKey = [
+          normalizedEventTitle,
+          event.startDate,
+        ].join('|');
         const dedupeKey = [
-          normalizeBritishMarineText(event.title),
+          normalizedEventTitle,
           event.startDate,
           normalizeBritishMarineText(event.city),
         ].join('|');
         const sourceUrl = canonicalizeBritishMarineUrl(event.sourceUrl);
 
         if (
-          dedupeKeys.has(dedupeKey)
+          titleDateKeys.has(titleDateKey)
+          || dedupeKeys.has(dedupeKey)
           || sourceUrls.has(sourceUrl)
           || britishMarineExternalIds.has(event.externalId)
         ) {
@@ -609,6 +627,7 @@ async function discoverBritishMarineEvents(req: any, res: any) {
         } catch (error: any) {
           if (error?.code === 6 || error?.code === '6' || error?.code === 'already-exists') {
             report.existing += 1;
+            titleDateKeys.add(titleDateKey);
             dedupeKeys.add(dedupeKey);
             sourceUrls.add(sourceUrl);
             britishMarineExternalIds.add(event.externalId);
@@ -617,6 +636,7 @@ async function discoverBritishMarineEvents(req: any, res: any) {
           throw error;
         }
 
+        titleDateKeys.add(titleDateKey);
         dedupeKeys.add(dedupeKey);
         sourceUrls.add(sourceUrl);
         britishMarineExternalIds.add(event.externalId);
