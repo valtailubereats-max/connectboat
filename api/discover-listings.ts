@@ -96,7 +96,7 @@ const BRITISH_MARINE_UK_HINTS = [
   'Bristol', 'Liverpool', 'Manchester', 'Glasgow', 'Edinburgh', 'Cardiff',
   'Belfast', 'Brighton', 'Bournemouth', 'Hampshire', 'Dorset', 'Essex',
   'Kent', 'Suffolk', 'Norfolk', 'Cornwall', 'Devon', 'Solent', 'Argyll',
-  'Luss', 'York', 'Ipswich',
+  'Luss', 'Loch Lomond', 'Cranfield', 'Bedford', 'York', 'Ipswich',
 ];
 
 function decodeBritishMarineHtml(value: string) {
@@ -258,27 +258,29 @@ export function extractBritishMarineDates(text: string) {
 }
 
 export function extractBritishMarineLocation(text: string, title: string) {
-  const labelledLocation = text.match(
-    /(?:^|\n)(?:Where|Location|Venue)\s*:?\s*([^\n]{0,220})/i,
-  )?.[1] || '';
-  const postcodeMatch = text.match(
+  const labelledLocation = cleanBritishMarineText(
+    text.match(
+      /(?:^|\n)(?:Where|Location|Venue)\s*:?\s*([^\n]{0,220})/i,
+    )?.[1] || '',
+  );
+
+  // Trust only the event's labelled location. Searching the whole page can
+  // pick up British Marine's Southampton footer address and make overseas
+  // events look like UK events.
+  const postcodeMatch = labelledLocation.match(
     /\b(?:GIR ?0AA|(?:[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}))\b/i,
   );
-  const postcodeContext = postcodeMatch?.index == null
-    ? ''
-    : text.slice(Math.max(0, postcodeMatch.index - 180), postcodeMatch.index + 80);
-  const context = `${labelledLocation} ${postcodeContext} ${title}`;
   const city = BRITISH_MARINE_UK_HINTS.find(
-    (hint) => new RegExp(`\\b${hint}\\b`, 'i').test(context),
+    (hint) => new RegExp(`\\b${hint}\\b`, 'i').test(labelledLocation),
   ) || '';
   const isUk = Boolean(city)
-    || /\b(?:United Kingdom|Great Britain|England|Scotland|Wales|Northern Ireland|UK)\b/i.test(context)
+    || /\b(?:United Kingdom|Great Britain|England|Scotland|Wales|Northern Ireland|UK)\b/i.test(labelledLocation)
     || Boolean(postcodeMatch);
 
   return {
     isUk,
     city,
-    venue: cleanBritishMarineText(labelledLocation),
+    venue: labelledLocation,
     country: isUk ? 'United Kingdom' : '',
   };
 }
