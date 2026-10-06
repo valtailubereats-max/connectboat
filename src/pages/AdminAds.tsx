@@ -96,6 +96,7 @@ const AdminAds = () => {
   // Synchronized horizontal scrollbars for the wide admin table.
   const topTableScrollRef = useRef<HTMLDivElement>(null);
   const mainTableScrollRef = useRef<HTMLDivElement>(null);
+  const filtersSectionRef = useRef<HTMLDivElement>(null);
 
   const syncTableScroll = (source: 'top' | 'main') => {
     const top = topTableScrollRef.current;
@@ -1279,6 +1280,23 @@ const AdminAds = () => {
     archived: ads.filter(isCurrentlyArchived).length,
   };
 
+  const showPendingAds = () => {
+    if (stats.pending <= 0) return;
+
+    setAdFilter('pending');
+    setSearchTerm('');
+    setCountryFilter('all');
+    setListingTypeFilter('all');
+    setCategoryFilter('all');
+    setPeriodFilter('all');
+    setSelectedAdIds([]);
+    setCurrentPage(1);
+
+    window.requestAnimationFrame(() => {
+      filtersSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -1303,16 +1321,36 @@ const AdminAds = () => {
               : 'bg-cyan-50 text-cyan-600'
           },
           { label: 'Expired', value: stats.expired, color: 'bg-red-50 text-red-600' },
-        ].map((stat, idx) => (
-          <div key={idx} className={`p-4 rounded-2xl border border-slate-100 shadow-sm transition-all ${stat.color}`}>
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{stat.label}</p>
-            <p className="text-2xl font-black mt-1">{stat.value}</p>
-          </div>
-        ))}
+        ].map((stat, idx) => {
+          const cardContent = (
+            <>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{stat.label}</p>
+              <p className="text-2xl font-black mt-1">{stat.value}</p>
+            </>
+          );
+          const isClickablePending = stat.label === 'Pending' && stats.pending > 0;
+
+          return isClickablePending ? (
+            <button
+              key={idx}
+              type="button"
+              onClick={showPendingAds}
+              aria-label={`Show ${stats.pending} listings pending approval`}
+              title="Show listings pending approval"
+              className={`p-4 rounded-2xl border border-slate-100 shadow-sm transition-all text-left cursor-pointer hover:scale-[1.02] hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 ${stat.color}`}
+            >
+              {cardContent}
+            </button>
+          ) : (
+            <div key={idx} className={`p-4 rounded-2xl border border-slate-100 shadow-sm transition-all ${stat.color}`}>
+              {cardContent}
+            </div>
+          );
+        })}
       </div>
 
       {/* Advanced Filters & Search Toolbar */}
-      <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-4">
+      <div ref={filtersSectionRef} className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-4 scroll-mt-6">
         {/* Top Controls: Search Bar & View Mode Toggle */}
         <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
           {/* Expanded Global Search */}
