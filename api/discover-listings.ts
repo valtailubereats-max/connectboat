@@ -1,6 +1,6 @@
 ﻿import type { Request, Response } from 'express';
-import britishMarineDiscoveryHandler from './britishMarineDiscovery';
 import * as admin from 'firebase-admin';
+import { createHash } from 'node:crypto';
 
 console.log('[discover-listings] MODULE_LOAD: Module initialized successfully');
 
@@ -60,6 +60,288 @@ function getAdminDb() {
   }
 
   return adminDbInstance;
+}
+
+
+// British Marine discovery is intentionally kept inside this existing API file.
+// Every executable file under /api becomes a Vercel Function, and the Hobby
+// deployment is already at its 12-function limit.
+const BRITISH_MARINE_ROOT = 'https://www.britishmarine.co.uk';
+const BRITISH_MARINE_INDEXES = [
+  `${BRITISH_MARINE_ROOT}/membership/events`,
+  `${BRITISH_MARINE_ROOT}/membership/events-and-courses`,
+];
+const BRITISH_MARINE_COLLECTION = 'externalEventCandidates';
+const BRITISH_MARINE_MAX_EVENTS = 12;
+const BRITISH_MARINE_TIMEOUT_MS = 9000;
+
+const BRITISH_MARINE_MONTHS: Record<string, number> = {
+  january: 1,
+  february: 2,
+  march: 3,
+  april: 4,
+  may: 5,
+  june: 6,
+  july: 7,
+  august: 8,
+  september: 9,
+  october: 10,
+  november: 11,
+  december: 12,
+};
+
+const BRITISH_MARINE_UK_HINTS = [
+  'Southampton', 'Portsmouth', 'Plymouth', 'Poole', 'Cowes', 'London',
+  'Farnborough', 'Basingstoke', 'Lymington', 'Bedfordshire', 'Birmingham',
+  'Bristol', 'Liverpool', 'Manchester', 'Glasgow', 'Edinburgh', 'Cardiff',
+  'Belfast', 'Brighton', 'Bournemouth', 'Hampshire', 'Dorset', 'Essex',
+  'Kent', 'Suffolk', 'Norfolk', 'Cornwall', 'Devon', 'Solent', 'Argyll',
+  'Luss', 'York', 'Ipswich',
+];
+
+function decodeBritishMarineHtml(value: string) {
+  return value
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&ndash;|&#8211;/gi, '–')
+    .replace(/&mdash;|&#8212;/gi, '—')
+    .replace(/&#(\d+);/g, (_, number) => String.fromCharCode(Number(number)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, number) => String.fromCharCode(parseInt(number, 16)));
+}
+
+function britishMarineTextFromHtml(html: string) {
+  return decodeBritishMarineHtml(
+    html
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<br\s*\/?\s*>/gi, '\n')
+      .replace(/<\/p>|<\/div>|<\/li>|<\/h[1-6]>/gi, '\n')
+      .replace(/<[^>]+>/g, ' '),
+  )
+    .replace(/\r/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n+/g, '\n')
+    .trim();
+}
+
+function cleanBritishMarineText(value: unknown) {
+  return typeof value === 'string'
+    ? decodeBritishMarineHtml(value).replace(/\s+/g, ' ').trim()
+    : '';
+}
+
+function normalizeBritishMarineText(value: string) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function canonicalizeBritishMarineUrl(value: string) {
+  try {
+    const url = new URL(value, BRITISH_MARINE_ROOT);
+    url.protocol = 'https:';
+    url.hostname = url.hostname.toLowerCase().replace(/^www\./, '');
+    url.hash = '';
+
+    for (const key of [...url.searchParams.keys()]) {
+      const normalizedKey = key.toLowerCase();
+      if (
+        normalizedKey.startsWith('utm_')
+        || ['fbclid', 'gclid', 'mc_cid', 'mc_eid'].includes(normalizedKey)
+      ) {
+        url.searchParams.delete(key);
+      }
+    }
+
+    url.searchParams.sort();
+    url.pathname = url.pathname.replace(/\/{2,}/g, '/').replace(/\/$/, '') || '/';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return '';
+  }
+}
+
+async function fetchBritishMarineHtml(url: string) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), BRITISH_MARINE_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'ConnectBoat Events Discovery/1.0 (+https://connectboat.co.uk)',
+        Accept: 'text/html',
+      },
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.text();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function extractBritishMarineEventLinks(html: string) {
+  const links = new Set<string>();
+
+  for (const match of html.matchAll(/href\s*=\s*["']([^"']+)["']/gi)) {
+    const canonicalUrl = canonicalizeBritishMarineUrl(match[1]);
+    if (!canonicalUrl) continue;
+
+    const parsed = new URL(canonicalUrl);
+    if (parsed.hostname !== 'britishmarine.co.uk') continue;
+
+    const path = parsed.pathname.replace(/\/$/, '');
+    const prefix = ['/membership/events/', '/membership/events-and-courses/']
+      .find((candidate) => path.startsWith(candidate));
+    if (!prefix) continue;
+
+    const slug = path.slice(prefix.length);
+    if (!slug || slug.includes('/')) continue;
+
+    parsed.search = '';
+    links.add(parsed.toString().replace(/\/$/, ''));
+  }
+
+  return [...links];
+}
+
+function britishMarineIsoDate(day: number, month: string, year: number) {
+  const monthNumber = BRITISH_MARINE_MONTHS[month.toLowerCase()];
+  return monthNumber
+    ? `${year}-${String(monthNumber).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    : '';
+}
+
+export function extractBritishMarineDates(text: string) {
+  const monthPattern = 'January|February|March|April|May|June|July|August|September|October|November|December';
+  const fullRange = text.match(new RegExp(
+    `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\s+(20\\d{2})\\s*[–—-]\\s*(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\s+(20\\d{2})\\b`,
+    'i',
+  ));
+  if (fullRange) {
+    return {
+      startDate: britishMarineIsoDate(Number(fullRange[1]), fullRange[2], Number(fullRange[3])),
+      endDate: britishMarineIsoDate(Number(fullRange[4]), fullRange[5], Number(fullRange[6])),
+    };
+  }
+
+  const sameMonthRange = text.match(new RegExp(
+    `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s*[–—-]\\s*(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\s+(20\\d{2})\\b`,
+    'i',
+  ));
+  if (sameMonthRange) {
+    return {
+      startDate: britishMarineIsoDate(Number(sameMonthRange[1]), sameMonthRange[3], Number(sameMonthRange[4])),
+      endDate: britishMarineIsoDate(Number(sameMonthRange[2]), sameMonthRange[3], Number(sameMonthRange[4])),
+    };
+  }
+
+  const singleDate = text.match(new RegExp(
+    `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\s+(20\\d{2})\\b`,
+    'i',
+  ));
+  if (singleDate) {
+    const value = britishMarineIsoDate(Number(singleDate[1]), singleDate[2], Number(singleDate[3]));
+    return { startDate: value, endDate: value };
+  }
+
+  return { startDate: '', endDate: '' };
+}
+
+export function extractBritishMarineLocation(text: string, title: string) {
+  const labelledLocation = text.match(
+    /(?:^|\n)(?:Where|Location|Venue)\s*:?\s*([^\n]{0,220})/i,
+  )?.[1] || '';
+  const postcodeMatch = text.match(
+    /\b(?:GIR ?0AA|(?:[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}))\b/i,
+  );
+  const postcodeContext = postcodeMatch?.index == null
+    ? ''
+    : text.slice(Math.max(0, postcodeMatch.index - 180), postcodeMatch.index + 80);
+  const context = `${labelledLocation} ${postcodeContext} ${title}`;
+  const city = BRITISH_MARINE_UK_HINTS.find(
+    (hint) => new RegExp(`\\b${hint}\\b`, 'i').test(context),
+  ) || '';
+  const isUk = Boolean(city)
+    || /\b(?:United Kingdom|Great Britain|England|Scotland|Wales|Northern Ireland|UK)\b/i.test(context)
+    || Boolean(postcodeMatch);
+
+  return {
+    isUk,
+    city,
+    venue: cleanBritishMarineText(labelledLocation),
+    country: isUk ? 'United Kingdom' : '',
+  };
+}
+
+function isRelevantBritishMarineEvent(title: string) {
+  if (
+    /\b(committee|board meeting|council meeting|agm|webinar|course|training|workshop|christmas lunch|annual dinner|awards dinner|member drop-in|social media)\b/i.test(title)
+  ) {
+    return false;
+  }
+
+  return /\b(boat show|yacht show|trade show|seawork|regatta|marine|boating|marina|superyacht|watersports|sailing|passenger boat|exhibition|expo|festival|conference)\b/i.test(title);
+}
+
+function getBritishMarineCategory(title: string) {
+  if (/\b(regatta|race|racing|sailing championship)\b/i.test(title)) return 'Regattas';
+  if (/\bfestival\b/i.test(title)) return 'Festivals';
+  if (/\b(boat show|yacht show|trade show|exhibition|expo|seawork|metstrade)\b/i.test(title)) {
+    return 'Boat Shows';
+  }
+  return 'Marine Events';
+}
+
+function getBritishMarineTitle(html: string) {
+  const heading = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1]
+    || html.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/i)?.[1];
+  if (heading) return cleanBritishMarineText(britishMarineTextFromHtml(heading));
+
+  return cleanBritishMarineText(
+    britishMarineTextFromHtml(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ''),
+  ).replace(/\s*::\s*British Marine.*$/i, '');
+}
+
+async function parseBritishMarineEvent(url: string) {
+  const html = await fetchBritishMarineHtml(url);
+  const text = britishMarineTextFromHtml(html);
+  const title = getBritishMarineTitle(html);
+  const dateRange = extractBritishMarineDates(text);
+  const location = extractBritishMarineLocation(text, title);
+  const externalId = new URL(url).pathname.replace(/\/$/, '').split('/').pop() || '';
+
+  return {
+    title,
+    ...dateRange,
+    ...location,
+    category: getBritishMarineCategory(title),
+    website: url,
+    ticketUrl: '',
+    sourceUrl: url,
+    externalId,
+    isRelevant: isRelevantBritishMarineEvent(title),
+  };
+}
+
+export function getBritishMarineCandidateId(
+  externalId: string,
+  sourceUrl: string,
+  dedupeKey: string,
+) {
+  return `bm_${createHash('sha256')
+    .update(externalId || sourceUrl || dedupeKey)
+    .digest('hex')
+    .slice(0, 20)}`;
 }
 
 async function verifyDiscoveryStaff(req: any) {
@@ -126,6 +408,217 @@ async function verifyDiscoveryStaff(req: any) {
     email,
     role,
   };
+}
+
+
+async function discoverBritishMarineEvents(req: any, res: any) {
+  if (res && typeof res.setHeader === 'function' && !res.headersSent) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Type', 'application/json');
+  }
+
+  if (req?.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed.' });
+  }
+
+  try {
+    const staff = await verifyDiscoveryStaff(req);
+    if (staff.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Administrator access required.',
+      });
+    }
+
+    const db = getAdminDb();
+    const indexResults = await Promise.allSettled(
+      BRITISH_MARINE_INDEXES.map(fetchBritishMarineHtml),
+    );
+    const links = new Set<string>();
+    const errors: string[] = [];
+
+    indexResults.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        extractBritishMarineEventLinks(result.value).forEach((url) => links.add(url));
+      } else {
+        errors.push(
+          `${BRITISH_MARINE_INDEXES[index]}: ${result.reason instanceof Error ? result.reason.message : 'Source error'}`,
+        );
+      }
+    });
+
+    const selectedLinks = [...links].slice(0, BRITISH_MARINE_MAX_EVENTS);
+    if (!selectedLinks.length) {
+      return res.status(502).json({
+        success: false,
+        error: 'British Marine returned no event links. The source page structure may have changed.',
+      });
+    }
+
+    const [existingCandidates, approvedBritishMarineEvents] = await Promise.all([
+      db.collection(BRITISH_MARINE_COLLECTION).get(),
+      db.collection('marineEvents').where('sourceName', '==', 'British Marine').get(),
+    ]);
+    const dedupeKeys = new Set<string>();
+    const sourceUrls = new Set<string>();
+    const britishMarineExternalIds = new Set<string>();
+
+    const rememberKnownEvent = (event: any) => {
+      if (event.dedupeKey) dedupeKeys.add(String(event.dedupeKey));
+      if (event.title && event.startDate && event.city) {
+        dedupeKeys.add([
+          normalizeBritishMarineText(String(event.title)),
+          String(event.startDate),
+          normalizeBritishMarineText(String(event.city)),
+        ].join('|'));
+      }
+      if (event.sourceUrl) {
+        sourceUrls.add(canonicalizeBritishMarineUrl(String(event.sourceUrl)));
+      }
+      if (event.sourceName === 'British Marine' && event.externalId) {
+        britishMarineExternalIds.add(String(event.externalId));
+      }
+    };
+
+    existingCandidates.docs.forEach((snapshot: any) => rememberKnownEvent(snapshot.data() || {}));
+    approvedBritishMarineEvents.docs.forEach((snapshot: any) => rememberKnownEvent(snapshot.data() || {}));
+
+    const report = {
+      checked: selectedLinks.length,
+      eligible: 0,
+      created: 0,
+      existing: 0,
+      skippedPast: 0,
+      skippedNonUk: 0,
+      skippedIrrelevant: 0,
+      skippedIncomplete: 0,
+    };
+    const today = new Date().toISOString().slice(0, 10);
+    const firebaseAdmin = (admin as any).default || admin;
+
+    for (let index = 0; index < selectedLinks.length; index += 3) {
+      const batch = selectedLinks.slice(index, index + 3);
+      const results = await Promise.allSettled(batch.map(parseBritishMarineEvent));
+
+      for (let resultIndex = 0; resultIndex < results.length; resultIndex += 1) {
+        const result = results[resultIndex];
+        if (result.status === 'rejected') {
+          errors.push(
+            `${batch[resultIndex]}: ${result.reason instanceof Error ? result.reason.message : 'Detail error'}`,
+          );
+          continue;
+        }
+
+        const event = result.value;
+        if (!event.title || !event.startDate || !event.city) {
+          report.skippedIncomplete += 1;
+          continue;
+        }
+        if (!event.isUk) {
+          report.skippedNonUk += 1;
+          continue;
+        }
+        if (!event.isRelevant) {
+          report.skippedIrrelevant += 1;
+          continue;
+        }
+        if ((event.endDate || event.startDate) < today) {
+          report.skippedPast += 1;
+          continue;
+        }
+
+        report.eligible += 1;
+        const dedupeKey = [
+          normalizeBritishMarineText(event.title),
+          event.startDate,
+          normalizeBritishMarineText(event.city),
+        ].join('|');
+        const sourceUrl = canonicalizeBritishMarineUrl(event.sourceUrl);
+
+        if (
+          dedupeKeys.has(dedupeKey)
+          || sourceUrls.has(sourceUrl)
+          || britishMarineExternalIds.has(event.externalId)
+        ) {
+          report.existing += 1;
+          continue;
+        }
+
+        const candidateId = getBritishMarineCandidateId(
+          event.externalId,
+          sourceUrl,
+          dedupeKey,
+        );
+        const candidateRef = db.collection(BRITISH_MARINE_COLLECTION).doc(candidateId);
+        const now = firebaseAdmin.firestore.FieldValue.serverTimestamp();
+
+        try {
+          await candidateRef.create({
+            title: event.title,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            country: event.country,
+            city: event.city,
+            venue: event.venue,
+            category: event.category,
+            website: event.website,
+            ticketUrl: event.ticketUrl,
+            source: 'imported',
+            sourceName: 'British Marine',
+            sourceUrl: event.sourceUrl,
+            externalId: event.externalId,
+            externalSources: [{
+              sourceName: 'British Marine',
+              sourceUrl: event.sourceUrl,
+              externalId: event.externalId,
+            }],
+            reviewStatus: 'pending',
+            dedupeKey,
+            normalizedTitle: normalizeBritishMarineText(event.title),
+            normalizedCity: normalizeBritishMarineText(event.city),
+            normalizedVenue: normalizeBritishMarineText(event.venue),
+            canonicalWebsite: canonicalizeBritishMarineUrl(event.website),
+            possibleDuplicateOf: '',
+            duplicateConfidence: 0,
+            firstFoundAt: now,
+            lastCheckedAt: now,
+            lastSeenAt: now,
+            adminEditedFields: [],
+            createdBy: staff.uid,
+            createdAt: now,
+            updatedAt: now,
+          });
+        } catch (error: any) {
+          if (error?.code === 6 || error?.code === '6' || error?.code === 'already-exists') {
+            report.existing += 1;
+            dedupeKeys.add(dedupeKey);
+            sourceUrls.add(sourceUrl);
+            britishMarineExternalIds.add(event.externalId);
+            continue;
+          }
+          throw error;
+        }
+
+        dedupeKeys.add(dedupeKey);
+        sourceUrls.add(sourceUrl);
+        britishMarineExternalIds.add(event.externalId);
+        report.created += 1;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      source: 'British Marine',
+      ...report,
+      errors: errors.slice(0, 5),
+    });
+  } catch (error: any) {
+    console.error('[discover-british-marine-events]', error);
+    return res.status(error?.statusCode || 500).json({
+      success: false,
+      error: error?.message || 'Could not check British Marine events.',
+    });
+  }
 }
 
 
@@ -905,7 +1398,7 @@ export default async function discoverListingsHandler(req: any, res: any) {
     try { phase2aBody = JSON.parse(phase2aBody); } catch { phase2aBody = {}; }
   }
   if (phase2aBody?.action === 'discoverBritishMarineEvents') {
-    return britishMarineDiscoveryHandler(req, res);
+    return discoverBritishMarineEvents(req, res);
   }
 
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;

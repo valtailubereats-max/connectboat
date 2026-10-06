@@ -5,7 +5,11 @@ import {
 } from '../src/utils/urlNormalization.js';
 import {
   discoverApolloDuckListings,
-  discoverBoatsAndOutboardsListings
+  discoverBoatsAndOutboardsListings,
+  extractBritishMarineDates,
+  extractBritishMarineEventLinks,
+  extractBritishMarineLocation,
+  getBritishMarineCandidateId,
 } from '../api/discover-listings.js';
 
 function assert(condition: boolean, message: string) {
@@ -88,6 +92,49 @@ Markdown Content:
   assert(discoveredBoats[0].title.includes('Beneteau'), 'Boats and Outboards title extraction');
   assert(discoveredBoats[0].priceText === '£ 85,253', 'Boats and Outboards price extraction');
   assert(discoveredBoats[0].locationText === 'Salamina', 'Boats and Outboards location extraction');
+
+  // 6. British Marine Phase 2A parsing and idempotency primitives
+  const britishMarineLinks = extractBritishMarineEventLinks(`
+    <a href="/membership/events/inland-conference?utm_source=test">Inland Conference</a>
+    <a href="https://www.britishmarine.co.uk/membership/events/inland-conference">Duplicate</a>
+    <a href="https://example.com/membership/events/not-british-marine">External</a>
+  `);
+  assert(britishMarineLinks.length === 1, 'British Marine links are canonical and source-restricted');
+
+  const britishMarineDates = extractBritishMarineDates('12th November 2026');
+  assert(
+    britishMarineDates.startDate === '2026-11-12' && britishMarineDates.endDate === '2026-11-12',
+    'British Marine single-date parsing',
+  );
+
+  const britishMarineRange = extractBritishMarineDates('18th - 27th September 2026');
+  assert(
+    britishMarineRange.startDate === '2026-09-18' && britishMarineRange.endDate === '2026-09-27',
+    'British Marine date-range parsing',
+  );
+
+  const britishMarineLocation = extractBritishMarineLocation(
+    'Venue: Mayflower Park, Southampton SO15 1ST',
+    'Southampton International Boat Show',
+  );
+  assert(
+    britishMarineLocation.isUk && britishMarineLocation.city === 'Southampton',
+    'British Marine UK location detection',
+  );
+
+  const candidateId = getBritishMarineCandidateId(
+    'inland-conference',
+    britishMarineLinks[0],
+    'inland conference|2026-11-12|bedfordshire',
+  );
+  assert(
+    candidateId === getBritishMarineCandidateId(
+      'inland-conference',
+      britishMarineLinks[0],
+      'inland conference|2026-11-12|bedfordshire',
+    ),
+    'British Marine candidate IDs are deterministic',
+  );
 
   console.log('\nALL SEARCH PAGE DISCOVERY UNIT TESTS PASSED SUCCESSFULLY!');
 }
