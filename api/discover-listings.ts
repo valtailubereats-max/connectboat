@@ -802,9 +802,21 @@ function extractYachtsYachtingDates(text: string) {
 
 function parseYachtsYachtingEventHtml(html: string, sourceUrl: string): YachtsYachtingEventCandidateData {
   const text = britishMarineTextFromHtml(html);
-  const title =
-    cleanBritishMarineText(text.match(/(?:^|\n)\s*Event\s*:?\s*([^\n]{2,220})/i)?.[1] || '') ||
+  // Require the colon after "Event" so the "Event clashes" heading is never
+  // mistaken for the event title.
+  let title =
+    cleanBritishMarineText(text.match(/(?:^|\n)\s*Event\s*:\s*([^\n]{2,220})/i)?.[1] || '') ||
     cleanBritishMarineText(britishMarineTextFromHtml(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || ''));
+
+  // Y&Y sometimes calls a fixture only "Open Meeting" on the detail page.
+  // When the eligible class is explicitly present, keep the source wording
+  // but add the class so the ConnectBoat title is useful and unambiguous.
+  const eligibleClass = cleanBritishMarineText(
+    text.match(/(?:^|\n)\s*Eligible classes?\s*\n\s*([^\n]{2,120})/i)?.[1] || ''
+  );
+  if (/^Open Meeting$/i.test(title) && eligibleClass && !/^Open to /i.test(eligibleClass)) {
+    title = `${eligibleClass} Open Meeting`;
+  }
 
   const dates = extractYachtsYachtingDates(text);
   const venue = cleanBritishMarineText(
@@ -821,7 +833,9 @@ function parseYachtsYachtingEventHtml(html: string, sourceUrl: string): YachtsYa
     title,
     ...dates,
     country: isUk ? 'United Kingdom' : '',
-    city: isUk ? venue : '',
+    // The detail page gives the host club as venue, not a reliable city.
+    // Do not duplicate the club in both city and venue.
+    city: '',
     venue,
     category: /\b(?:championship|regatta|race|racing|open|trophy|tt)\b/i.test(title) ? 'Regattas' : 'Marine Events',
     website: source,
@@ -872,6 +886,18 @@ async function discoverYachtsYachtingEvents(req: any, res: any) {
     const titleDateKeys = new Set<string>();
     const sourceUrls = new Set<string>();
     const externalIds = new Set<string>();
+    const pendingYachtsYachtingByExternalId = new Map<string, any>();
+
+    candidateSnap.docs.forEach((snapshot: any) => {
+      const event = snapshot.data() || {};
+      if (
+        event.sourceName === 'Yachts & Yachting' &&
+        event.reviewStatus === 'pending' &&
+        event.externalId
+      ) {
+        pendingYachtsYachtingByExternalId.set(String(event.externalId), snapshot.ref);
+      }
+    });
 
     [...candidateSnap.docs, ...eventSnap.docs].forEach((snapshot: any) => {
       const event = snapshot.data() || {};
@@ -926,6 +952,34 @@ async function discoverYachtsYachtingEvents(req: any, res: any) {
         report.eligible += 1;
         const titleDateKey = `${normalizeYachtsYachtingTitle(event.title)}|${event.startDate}`;
         const sourceUrl = canonicalizeYachtsYachtingUrl(event.sourceUrl);
+
+        // Repair previously discovered pending Y&Y candidates in place. This
+        // fixes the first batch without deleting/recreating Firestore records.
+        const pendingRef = pendingYachtsYachtingByExternalId.get(event.externalId);
+        if (pendingRef) {
+          const repairedDedupeKey = `${normalizeYachtsYachtingTitle(event.title)}|${event.startDate}|${normalizeBritishMarineText(event.city)}`;
+          await pendingRef.update({
+            title: event.title,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            country: event.country,
+            city: event.city,
+            venue: event.venue,
+            category: event.category,
+            website: event.website,
+            sourceUrl: event.sourceUrl,
+            dedupeKey: repairedDedupeKey,
+            normalizedTitle: normalizeBritishMarineText(event.title),
+            normalizedCity: normalizeBritishMarineText(event.city),
+            normalizedVenue: normalizeBritishMarineText(event.venue),
+            canonicalWebsite: sourceUrl,
+            lastCheckedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+            lastSeenAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebaseAdmin.firestore.FieldValue.serverTimestamp(),
+          });
+          report.existing += 1;
+          continue;
+        }
 
         if (titleDateKeys.has(titleDateKey) || sourceUrls.has(sourceUrl) || externalIds.has(event.externalId)) {
           report.existing += 1;
