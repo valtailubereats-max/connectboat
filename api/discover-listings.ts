@@ -1,5 +1,5 @@
 ﻿import type { Request, Response } from 'express';
-import britishMarineDiscoveryHandler from '../src/server/britishMarineDiscovery';
+import britishMarineDiscoveryHandler from './britishMarineDiscovery';
 import * as admin from 'firebase-admin';
 
 console.log('[discover-listings] MODULE_LOAD: Module initialized successfully');
@@ -1214,4 +1214,5 @@ export default async function discoverListingsHandler(req: any, res: any) {
     );
   }
 }
+
 
