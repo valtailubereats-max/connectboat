@@ -715,6 +715,287 @@ export function getRyaCandidateId(externalId: string, sourceUrl: string, dedupeK
     .slice(0, 20)}`;
 }
 
+
+const YY_ROOT = 'https://www.yachtsandyachting.com';
+const YY_EVENTS_INDEX = `${YY_ROOT}/community/calendar/`;
+const YY_COLLECTION = 'externalEventCandidates';
+const YY_MAX_EVENTS = 12;
+const YY_TIMEOUT_MS = 9000;
+
+type YachtsYachtingEventCandidateData = {
+  title: string;
+  startDate: string;
+  endDate: string;
+  country: string;
+  city: string;
+  venue: string;
+  category: 'Boat Shows' | 'Regattas' | 'Marine Events' | 'Festivals';
+  website: string;
+  ticketUrl: string;
+  sourceUrl: string;
+  externalId: string;
+  isUk: boolean;
+};
+
+function canonicalizeYachtsYachtingUrl(value: string) {
+  try {
+    const url = new URL(value, YY_ROOT);
+    if (!/^https?:$/.test(url.protocol)) return '';
+    url.protocol = 'https:';
+    url.hostname = url.hostname.toLowerCase().replace(/^www\./, '');
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
+async function fetchYachtsYachtingHtml(url: string) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), YY_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'ConnectBoat Events Discovery/1.0 (+https://connectboat.co.uk)',
+        Accept: 'text/html',
+      },
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.text();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function extractYachtsYachtingEventLinks(html: string) {
+  const links = new Set<string>();
+  for (const match of html.matchAll(/href\s*=\s*["']([^"']+)["']/gi)) {
+    const canonical = canonicalizeYachtsYachtingUrl(decodeBritishMarineHtml(match[1]));
+    if (!canonical) continue;
+    const url = new URL(canonical);
+    if (url.hostname !== 'yachtsandyachting.com') continue;
+    if (!/^\/community\/calendar\/view\.asp$/i.test(url.pathname)) continue;
+    const id = url.searchParams.get('id');
+    if (!id || !/^\d+$/.test(id)) continue;
+    links.add(`${YY_ROOT}/community/calendar/view.asp?id=${id}`);
+  }
+  return [...links];
+}
+
+function extractYachtsYachtingDates(text: string) {
+  const monthPattern = 'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
+  const single = text.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\s+(20\\d{2})\\b`, 'i'));
+  if (!single) return { startDate: '', endDate: '' };
+  const month = RYA_MONTHS[single[2].toLowerCase()];
+  const date = month ? `${single[3]}-${String(month).padStart(2,'0')}-${String(Number(single[1])).padStart(2,'0')}` : '';
+  return { startDate: date, endDate: date };
+}
+
+function parseYachtsYachtingEventHtml(html: string, sourceUrl: string): YachtsYachtingEventCandidateData {
+  const text = britishMarineTextFromHtml(html);
+  const title =
+    cleanBritishMarineText(text.match(/(?:^|\n)\s*Event\s*:?\s*([^\n]{2,220})/i)?.[1] || '') ||
+    cleanBritishMarineText(britishMarineTextFromHtml(html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || ''));
+
+  const dates = extractYachtsYachtingDates(text);
+  const venue = cleanBritishMarineText(
+    text.match(/(?:^|\n)\s*(?:Hosted by|Venue)\s*:?\s*([^\n]{2,220})/i)?.[1] || ''
+  );
+
+  const overseas = /\b(?:USA|United States|Australia|Italy|Germany|France|Spain|Portugal|Netherlands|Belgium|Greece|Croatia|Switzerland|Austria|Denmark|Sweden|Norway|Finland|New Zealand|Canada|Ireland)\b/i.test(venue);
+  const ukHint = /\b(?:UK|United Kingdom|England|Scotland|Wales|Northern Ireland|Sailing Club|Yacht Club|Sailing Centre)\b/i.test(venue);
+  const isUk = Boolean(venue) && !overseas && ukHint;
+  const source = canonicalizeYachtsYachtingUrl(sourceUrl);
+  const externalId = source ? new URL(source).searchParams.get('id') || '' : '';
+
+  return {
+    title,
+    ...dates,
+    country: isUk ? 'United Kingdom' : '',
+    city: isUk ? venue : '',
+    venue,
+    category: /\b(?:championship|regatta|race|racing|open|trophy|tt)\b/i.test(title) ? 'Regattas' : 'Marine Events',
+    website: source,
+    ticketUrl: '',
+    sourceUrl: source,
+    externalId,
+    isUk,
+  };
+}
+
+function normalizeYachtsYachtingTitle(value: string) {
+  return normalizeBritishMarineText(value)
+    .replace(/^yachts\s*(?:&|and)\s*yachting\s+/, '')
+    .trim();
+}
+
+async function discoverYachtsYachtingEvents(req: any, res: any) {
+  if (res && typeof res.setHeader === 'function' && !res.headersSent) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Type', 'application/json');
+  }
+  if (req?.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed.' });
+  }
+
+  try {
+    const staff = await verifyDiscoveryStaff(req);
+    if (staff.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Administrator access required.' });
+    }
+
+    const db = getAdminDb();
+    const indexHtml = await fetchYachtsYachtingHtml(YY_EVENTS_INDEX);
+    const selectedLinks = extractYachtsYachtingEventLinks(indexHtml).slice(0, YY_MAX_EVENTS);
+
+    if (!selectedLinks.length) {
+      return res.status(502).json({
+        success: false,
+        error: 'Yachts & Yachting returned no event links. The source page structure may have changed.',
+      });
+    }
+
+    const [candidateSnap, eventSnap] = await Promise.all([
+      db.collection(YY_COLLECTION).get(),
+      db.collection('marineEvents').get(),
+    ]);
+
+    const titleDateKeys = new Set<string>();
+    const sourceUrls = new Set<string>();
+    const externalIds = new Set<string>();
+
+    [...candidateSnap.docs, ...eventSnap.docs].forEach((snapshot: any) => {
+      const event = snapshot.data() || {};
+      if (event.title && event.startDate) {
+        titleDateKeys.add(`${normalizeYachtsYachtingTitle(String(event.title))}|${String(event.startDate)}`);
+      }
+      if (event.sourceUrl) sourceUrls.add(canonicalizeYachtsYachtingUrl(String(event.sourceUrl)));
+      if (event.sourceName === 'Yachts & Yachting' && event.externalId) externalIds.add(String(event.externalId));
+    });
+
+    const report = {
+      checked: selectedLinks.length,
+      eligible: 0,
+      created: 0,
+      existing: 0,
+      skippedPast: 0,
+      skippedNonUk: 0,
+      skippedIrrelevant: 0,
+      skippedIncomplete: 0,
+    };
+    const errors: string[] = [];
+    const today = new Date().toISOString().slice(0, 10);
+    const firebaseAdmin = (admin as any).default || admin;
+
+    for (let i = 0; i < selectedLinks.length; i += 3) {
+      const batch = selectedLinks.slice(i, i + 3);
+      const results = await Promise.allSettled(
+        batch.map(async (url) => parseYachtsYachtingEventHtml(await fetchYachtsYachtingHtml(url), url))
+      );
+
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j];
+        if (result.status === 'rejected') {
+          errors.push(`${batch[j]}: ${result.reason instanceof Error ? result.reason.message : 'Detail error'}`);
+          continue;
+        }
+
+        const event = result.value;
+        if (!event.title || !event.startDate || !event.venue || !event.externalId) {
+          report.skippedIncomplete += 1;
+          continue;
+        }
+        if (!event.isUk) {
+          report.skippedNonUk += 1;
+          continue;
+        }
+        if ((event.endDate || event.startDate) < today) {
+          report.skippedPast += 1;
+          continue;
+        }
+
+        report.eligible += 1;
+        const titleDateKey = `${normalizeYachtsYachtingTitle(event.title)}|${event.startDate}`;
+        const sourceUrl = canonicalizeYachtsYachtingUrl(event.sourceUrl);
+
+        if (titleDateKeys.has(titleDateKey) || sourceUrls.has(sourceUrl) || externalIds.has(event.externalId)) {
+          report.existing += 1;
+          continue;
+        }
+
+        const dedupeKey = `${normalizeYachtsYachtingTitle(event.title)}|${event.startDate}|${normalizeBritishMarineText(event.city)}`;
+        const candidateId = `yy_${createHash('sha256').update(event.externalId || sourceUrl || dedupeKey).digest('hex').slice(0, 20)}`;
+        const now = firebaseAdmin.firestore.FieldValue.serverTimestamp();
+
+        try {
+          await db.collection(YY_COLLECTION).doc(candidateId).create({
+            title: event.title,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            country: event.country,
+            city: event.city,
+            venue: event.venue,
+            category: event.category,
+            website: event.website,
+            ticketUrl: event.ticketUrl,
+            source: 'imported',
+            sourceName: 'Yachts & Yachting',
+            sourceUrl: event.sourceUrl,
+            externalId: event.externalId,
+            externalSources: [{
+              sourceName: 'Yachts & Yachting',
+              sourceUrl: event.sourceUrl,
+              externalId: event.externalId,
+            }],
+            reviewStatus: 'pending',
+            dedupeKey,
+            normalizedTitle: normalizeBritishMarineText(event.title),
+            normalizedCity: normalizeBritishMarineText(event.city),
+            normalizedVenue: normalizeBritishMarineText(event.venue),
+            canonicalWebsite: sourceUrl,
+            possibleDuplicateOf: '',
+            duplicateConfidence: 0,
+            firstFoundAt: now,
+            lastCheckedAt: now,
+            lastSeenAt: now,
+            adminEditedFields: [],
+            createdBy: staff.uid,
+            createdAt: now,
+            updatedAt: now,
+          });
+        } catch (error: any) {
+          if (error?.code === 6 || error?.code === '6' || error?.code === 'already-exists') {
+            report.existing += 1;
+            continue;
+          }
+          throw error;
+        }
+
+        titleDateKeys.add(titleDateKey);
+        sourceUrls.add(sourceUrl);
+        externalIds.add(event.externalId);
+        report.created += 1;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      source: 'Yachts & Yachting',
+      ...report,
+      errors: errors.slice(0, 5),
+    });
+  } catch (error: any) {
+    console.error('[discover-yachts-yachting-events]', error);
+    return res.status(error?.statusCode || 500).json({
+      success: false,
+      error: error?.message || 'Could not check Yachts & Yachting events.',
+    });
+  }
+}
+
+
 async function verifyDiscoveryStaff(req: any) {
   const firebaseAdmin = (admin as any).default || admin;
   const authHeader = req.headers?.authorization || req.headers?.Authorization || '';
@@ -1950,6 +2231,9 @@ export default async function discoverListingsHandler(req: any, res: any) {
   }
   if (phase2aBody?.action === 'discoverRyaEvents') {
     return discoverRyaEvents(req, res);
+  }
+  if (phase2aBody?.action === 'discoverYachtsYachtingEvents') {
+    return discoverYachtsYachtingEvents(req, res);
   }
 
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
