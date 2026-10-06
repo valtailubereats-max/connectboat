@@ -260,7 +260,7 @@ export function extractBritishMarineDates(text: string) {
 export function extractBritishMarineLocation(text: string, title: string) {
   const labelledLocation = cleanBritishMarineText(
     text.match(
-      /(?:^|\n)(?:Where|Location|Venue)\s*:?\s*([^\n]{0,220})/i,
+      /(?:^|\n)\s*(?:Where|Location|Venue)\s*:?\s*([^\n]{0,220})/i,
     )?.[1] || '',
   );
 
