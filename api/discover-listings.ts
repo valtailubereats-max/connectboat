@@ -771,16 +771,23 @@ async function fetchYachtsYachtingHtml(url: string) {
 
 function extractYachtsYachtingEventLinks(html: string) {
   const links = new Set<string>();
-  for (const match of html.matchAll(/href\s*=\s*["']([^"']+)["']/gi)) {
-    const canonical = canonicalizeYachtsYachtingUrl(decodeBritishMarineHtml(match[1]));
-    if (!canonical) continue;
-    const url = new URL(canonical);
-    if (url.hostname !== 'yachtsandyachting.com') continue;
-    if (!/^\/community\/calendar\/view\.asp$/i.test(url.pathname)) continue;
-    const id = url.searchParams.get('id');
-    if (!id || !/^\d+$/.test(id)) continue;
-    links.add(`${YY_ROOT}/community/calendar/view.asp?id=${id}`);
+
+  // Y&Y's calendar uses classic ASP detail links. Extract the numeric id
+  // directly instead of depending on one exact href/URL representation.
+  // This accepts relative/absolute links, www/non-www, quoted/unquoted
+  // attributes, and HTML-encoded query separators.
+  const patterns = [
+    /(?:https?:\/\/(?:www\.)?yachtsandyachting\.com)?\/community\/calendar\/view\.asp(?:\?|&amp;|&)id=(\d+)/gi,
+    /(?:^|["'\s=])(?:\.\/)?view\.asp(?:\?|&amp;|&)id=(\d+)/gi,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of html.matchAll(pattern)) {
+      const id = match[1];
+      if (id) links.add(`${YY_ROOT}/community/calendar/view.asp?id=${id}`);
+    }
   }
+
   return [...links];
 }
 
