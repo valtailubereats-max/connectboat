@@ -290,7 +290,7 @@ function isRelevantBritishMarineEvent(title: string) {
     return false;
   }
 
-  return /\b(boat show|yacht show|trade show|seawork|regatta|marine|boating|marina|superyacht|watersports|sailing|passenger boat|exhibition|expo|festival|conference)\b/i.test(title);
+  return /\b(boat show|yacht show|trade show|seawork|metstrade|regatta|marine|boating|marina|superyacht|watersports|sailing|passenger boat|exhibition|expo|festival|conference)\b/i.test(title);
 }
 
 function getBritishMarineCategory(title: string) {
@@ -303,13 +303,29 @@ function getBritishMarineCategory(title: string) {
 }
 
 function getBritishMarineTitle(html: string) {
+  // British Marine detail pages can place promotional H2 headings before the
+  // actual event content. The document <title> is much more reliable and
+  // normally follows "Event Name :: British Marine".
+  const documentTitle = cleanBritishMarineText(
+    britishMarineTextFromHtml(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ''),
+  )
+    .replace(/\s*::\s*British Marine.*$/i, '')
+    .trim();
+
+  if (
+    documentTitle
+    && !/^British Marine$/i.test(documentTitle)
+    && !/^Events?(?: and Courses)?$/i.test(documentTitle)
+  ) {
+    return documentTitle;
+  }
+
   const heading = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1]
     || html.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/i)?.[1];
-  if (heading) return cleanBritishMarineText(britishMarineTextFromHtml(heading));
 
-  return cleanBritishMarineText(
-    britishMarineTextFromHtml(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ''),
-  ).replace(/\s*::\s*British Marine.*$/i, '');
+  return heading
+    ? cleanBritishMarineText(britishMarineTextFromHtml(heading))
+    : documentTitle;
 }
 
 async function parseBritishMarineEvent(url: string) {
