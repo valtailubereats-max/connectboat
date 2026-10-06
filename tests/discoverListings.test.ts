@@ -10,6 +10,13 @@ import {
   extractBritishMarineEventLinks,
   extractBritishMarineLocation,
   getBritishMarineCandidateId,
+  buildRyaKnownEventIndex,
+  evaluateRyaEvent,
+  extractRyaEventLinks,
+  getRyaCandidateId,
+  getRyaEventKeys,
+  isRyaKnownEvent,
+  parseRyaEventHtml,
 } from '../api/discover-listings.js';
 
 function assert(condition: boolean, message: string) {
@@ -134,6 +141,96 @@ Markdown Content:
       'inland conference|2026-11-12|bedfordshire',
     ),
     'British Marine candidate IDs are deterministic',
+  );
+
+  // 7. RYA Phase 2B parsing, filtering and deduplication
+  const ryaLinks = extractRyaEventLinks(`
+    <a href="/events/rya-east-cruising-conference-2026/?utm_source=test">Conference</a>
+    <a href="https://www.rya.org.uk/events/rya-east-cruising-conference-2026/">Duplicate</a>
+    <a href="https://example.com/events/not-an-rya-event/">External</a>
+    <a href="/events/?page=2">Pagination</a>
+  `);
+  assert(ryaLinks.length === 1, 'RYA event links are canonical and source-restricted');
+
+  const futureUkRyaEvent = parseRyaEventHtml(`
+    <html>
+      <head><title>RYA East Cruising Conference 2026 | Events | Home | RYA</title></head>
+      <body>
+        <h1>RYA East Cruising Conference 2026 | Events</h1>
+        <p>Venue:</p><p>Royal Hospital School, Ipswich. IP9 2RX</p>
+        <p>Date:</p><p>25 October 2026</p>
+        <a href="https://tickets.rya.org.uk/east-cruising?utm_source=events">Register</a>
+      </body>
+    </html>
+  `, ryaLinks[0]);
+  assert(
+    futureUkRyaEvent.startDate === '2026-10-25'
+      && futureUkRyaEvent.title === 'RYA East Cruising Conference 2026'
+      && futureUkRyaEvent.city === 'Ipswich'
+      && futureUkRyaEvent.isUk
+      && futureUkRyaEvent.ticketUrl === 'https://tickets.rya.org.uk/east-cruising',
+    'valid future UK RYA event parsing',
+  );
+  const ryaTitleFromDocument = parseRyaEventHtml(`
+    <title>RYA East Cruising Conference 2026 | Events | Home | RYA</title>
+    <p>Venue:</p><p>Royal Hospital School, Ipswich. IP9 2RX</p>
+    <p>Date:</p><p>25 October 2026</p>
+  `, ryaLinks[0]);
+  assert(
+    ryaTitleFromDocument.title === 'RYA East Cruising Conference 2026',
+    'RYA document-title suffix is removed',
+  );
+  assert(
+    evaluateRyaEvent(futureUkRyaEvent, '2026-10-06').eligible,
+    'future UK RYA event is eligible',
+  );
+
+  const nonUkRyaEvent = {
+    ...futureUkRyaEvent,
+    city: 'Monaco',
+    venue: 'Yacht Club de Monaco, Monaco',
+    country: 'Monaco',
+    isUk: false,
+  };
+  assert(
+    evaluateRyaEvent(nonUkRyaEvent, '2026-10-06').reason === 'nonUk',
+    'non-UK RYA event is skipped',
+  );
+
+  const pastRyaEvent = {
+    ...futureUkRyaEvent,
+    startDate: '2026-09-18',
+    endDate: '2026-09-27',
+  };
+  assert(
+    evaluateRyaEvent(pastRyaEvent, '2026-10-06').reason === 'past',
+    'past RYA event is skipped',
+  );
+
+  const knownRyaEvents = buildRyaKnownEventIndex([{
+    title: 'East Cruising Conference 2026',
+    startDate: '2026-10-25',
+    city: 'Ipswich',
+    source: 'manual',
+  }]);
+  assert(
+    isRyaKnownEvent(futureUkRyaEvent, knownRyaEvents),
+    'RYA event deduplicates against an existing manual marineEvent',
+  );
+
+  const ryaKeys = getRyaEventKeys(futureUkRyaEvent);
+  const ryaCandidateId = getRyaCandidateId(
+    futureUkRyaEvent.externalId,
+    ryaKeys.sourceUrl,
+    ryaKeys.dedupeKey,
+  );
+  assert(
+    ryaCandidateId === getRyaCandidateId(
+      futureUkRyaEvent.externalId,
+      ryaKeys.sourceUrl,
+      ryaKeys.dedupeKey,
+    ),
+    'RYA candidate IDs are deterministic',
   );
 
   console.log('\nALL SEARCH PAGE DISCOVERY UNIT TESTS PASSED SUCCESSFULLY!');

@@ -362,6 +362,359 @@ export function getBritishMarineCandidateId(
     .slice(0, 20)}`;
 }
 
+const RYA_ROOT = 'https://www.rya.org.uk';
+const RYA_EVENTS_INDEX = `${RYA_ROOT}/events/`;
+const RYA_COLLECTION = 'externalEventCandidates';
+const RYA_MAX_EVENTS = 12;
+const RYA_TIMEOUT_MS = 9000;
+
+const RYA_MONTHS: Record<string, number> = {
+  jan: 1,
+  january: 1,
+  feb: 2,
+  february: 2,
+  mar: 3,
+  march: 3,
+  apr: 4,
+  april: 4,
+  may: 5,
+  jun: 6,
+  june: 6,
+  jul: 7,
+  july: 7,
+  aug: 8,
+  august: 8,
+  sep: 9,
+  sept: 9,
+  september: 9,
+  oct: 10,
+  october: 10,
+  nov: 11,
+  november: 11,
+  dec: 12,
+  december: 12,
+};
+
+const RYA_UK_LOCATION_HINTS = [
+  'Southampton', 'Portsmouth', 'Plymouth', 'Poole', 'Cowes', 'London',
+  'Farnborough', 'Lymington', 'Birmingham', 'Bristol', 'Liverpool',
+  'Manchester', 'Glasgow', 'Edinburgh', 'Cardiff', 'Belfast', 'Brighton',
+  'Bournemouth', 'Ipswich', 'Oxford', 'Weymouth', 'Portland', 'Hayling Island',
+  'Rutland', 'Bedford', 'Norwich', 'Newhaven', 'Seaford', 'Maldon',
+  'Lowestoft', 'Carrickfergus', 'Lough Erne', 'Greencastle', 'Caernarfon',
+  'Gwynedd', 'Plas Menai', 'Hampshire', 'Dorset', 'Essex', 'Kent',
+  'Suffolk', 'Norfolk', 'Cornwall', 'Devon', 'Wales', 'Scotland',
+  'Northern Ireland',
+];
+
+export type RyaEventCandidateData = {
+  title: string;
+  startDate: string;
+  endDate: string;
+  country: string;
+  city: string;
+  venue: string;
+  category: 'Boat Shows' | 'Regattas' | 'Marine Events' | 'Festivals';
+  website: string;
+  ticketUrl: string;
+  sourceUrl: string;
+  externalId: string;
+  isUk: boolean;
+  isRelevant: boolean;
+};
+
+type RyaKnownEventIndex = {
+  titleDateKeys: Set<string>;
+  dedupeKeys: Set<string>;
+  sourceUrls: Set<string>;
+  externalIds: Set<string>;
+};
+
+function canonicalizeRyaUrl(value: string) {
+  try {
+    const url = new URL(value, RYA_ROOT);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+    url.protocol = 'https:';
+    url.hostname = url.hostname.toLowerCase().replace(/^www\./, '');
+    url.hash = '';
+
+    for (const key of [...url.searchParams.keys()]) {
+      const normalizedKey = key.toLowerCase();
+      if (
+        normalizedKey.startsWith('utm_')
+        || ['fbclid', 'gclid', 'mc_cid', 'mc_eid'].includes(normalizedKey)
+      ) {
+        url.searchParams.delete(key);
+      }
+    }
+
+    url.searchParams.sort();
+    url.pathname = url.pathname.replace(/\/{2,}/g, '/');
+    if (url.pathname !== '/') url.pathname = url.pathname.replace(/\/$/, '');
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return '';
+  }
+}
+
+async function fetchRyaHtml(url: string) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RYA_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'ConnectBoat Events Discovery/1.0 (+https://connectboat.co.uk)',
+        Accept: 'text/html',
+      },
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.text();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function extractRyaEventLinks(html: string) {
+  const links = new Set<string>();
+
+  for (const match of html.matchAll(/href\s*=\s*["']([^"']+)["']/gi)) {
+    const canonicalUrl = canonicalizeRyaUrl(match[1]);
+    if (!canonicalUrl) continue;
+
+    const parsed = new URL(canonicalUrl);
+    if (parsed.hostname !== 'rya.org.uk') continue;
+    if (!/^\/events\/[^/]+$/i.test(parsed.pathname)) continue;
+
+    parsed.search = '';
+    links.add(parsed.toString().replace(/\/$/, ''));
+  }
+
+  return [...links];
+}
+
+function ryaIsoDate(day: number, month: string, year: number) {
+  const monthNumber = RYA_MONTHS[month.toLowerCase()];
+  return monthNumber
+    ? `${year}-${String(monthNumber).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    : '';
+}
+
+export function extractRyaDates(text: string) {
+  const monthPattern = 'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
+  const fullRange = text.match(new RegExp(
+    `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\s+(20\\d{2})\\s*[–—-]\\s*(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\s+(20\\d{2})\\b`,
+    'i',
+  ));
+  if (fullRange) {
+    return {
+      startDate: ryaIsoDate(Number(fullRange[1]), fullRange[2], Number(fullRange[3])),
+      endDate: ryaIsoDate(Number(fullRange[4]), fullRange[5], Number(fullRange[6])),
+    };
+  }
+
+  const sameMonthRange = text.match(new RegExp(
+    `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s*[–—-]\\s*(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\s+(20\\d{2})\\b`,
+    'i',
+  ));
+  if (sameMonthRange) {
+    return {
+      startDate: ryaIsoDate(Number(sameMonthRange[1]), sameMonthRange[3], Number(sameMonthRange[4])),
+      endDate: ryaIsoDate(Number(sameMonthRange[2]), sameMonthRange[3], Number(sameMonthRange[4])),
+    };
+  }
+
+  const singleDate = text.match(new RegExp(
+    `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${monthPattern})\\s+(20\\d{2})\\b`,
+    'i',
+  ));
+  if (singleDate) {
+    const date = ryaIsoDate(Number(singleDate[1]), singleDate[2], Number(singleDate[3]));
+    return { startDate: date, endDate: date };
+  }
+
+  return { startDate: '', endDate: '' };
+}
+
+function extractRyaLocation(text: string) {
+  const venue = cleanBritishMarineText(
+    text.match(/(?:^|\n)\s*Venue\s*:?\s*([^\n]{1,220})/i)?.[1] || '',
+  );
+  const postcode = venue.match(
+    /\b(?:GIR ?0AA|(?:[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}))\b/i,
+  );
+  const city = RYA_UK_LOCATION_HINTS.find(
+    (hint) => new RegExp(`\\b${hint}\\b`, 'i').test(venue),
+  ) || '';
+  const isUk = Boolean(city)
+    || /\b(?:United Kingdom|Great Britain|England|Scotland|Wales|Northern Ireland|UK)\b/i.test(venue)
+    || Boolean(postcode);
+
+  return {
+    venue,
+    city,
+    country: isUk ? 'United Kingdom' : '',
+    isUk,
+  };
+}
+
+function getRyaEventTitle(html: string) {
+  const heading = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
+  if (heading) {
+    return cleanBritishMarineText(britishMarineTextFromHtml(heading))
+      .replace(/\s*\|\s*Events\s*$/i, '')
+      .trim();
+  }
+
+  return cleanBritishMarineText(
+    britishMarineTextFromHtml(html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ''),
+  )
+    .replace(/\s*\|\s*(?:Events\s*\|\s*)?Home\s*\|\s*RYA.*$/i, '')
+    .replace(/\s*\|\s*Events\s*$/i, '')
+    .trim();
+}
+
+function getRyaTicketUrl(html: string) {
+  for (const match of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const linkText = cleanBritishMarineText(britishMarineTextFromHtml(match[2]));
+    if (!/\b(register|book|tickets?)\b/i.test(linkText)) continue;
+    const url = canonicalizeRyaUrl(decodeBritishMarineHtml(match[1]));
+    if (url) return url;
+  }
+  return '';
+}
+
+function isRelevantRyaEvent(title: string) {
+  if (/\b(course|training|webinar|workshop|instructor development|race officer course|measurement course)\b/i.test(title)) {
+    return false;
+  }
+  return /\b(championship|regatta|race|racing|boat show|watersports show|sailing|cruising|marine|boating|festival|conference)\b/i.test(title);
+}
+
+function getRyaCategory(title: string): RyaEventCandidateData['category'] {
+  if (/\b(championship|regatta|race|racing)\b/i.test(title)) return 'Regattas';
+  if (/\b(boat show|watersports show|exhibition|expo)\b/i.test(title)) return 'Boat Shows';
+  if (/\bfestival\b/i.test(title)) return 'Festivals';
+  return 'Marine Events';
+}
+
+export function parseRyaEventHtml(html: string, sourceUrl: string): RyaEventCandidateData {
+  const canonicalSourceUrl = canonicalizeRyaUrl(sourceUrl);
+  const text = britishMarineTextFromHtml(html);
+  const title = getRyaEventTitle(html);
+  const dates = extractRyaDates(text);
+  const location = extractRyaLocation(text);
+  const externalId = canonicalSourceUrl
+    ? new URL(canonicalSourceUrl).pathname.replace(/\/$/, '').split('/').pop() || ''
+    : '';
+
+  return {
+    title,
+    ...dates,
+    ...location,
+    category: getRyaCategory(title),
+    website: canonicalSourceUrl,
+    ticketUrl: getRyaTicketUrl(html),
+    sourceUrl: canonicalSourceUrl,
+    externalId,
+    isRelevant: isRelevantRyaEvent(title),
+  };
+}
+
+async function parseRyaEvent(url: string) {
+  return parseRyaEventHtml(await fetchRyaHtml(url), url);
+}
+
+function normalizeRyaDedupeTitle(value: string) {
+  return normalizeBritishMarineText(value)
+    .replace(/^rya\s+/, '')
+    .replace(/\s+rya$/, '')
+    .trim();
+}
+
+export function evaluateRyaEvent(event: RyaEventCandidateData, today: string) {
+  if (!event.title || !event.startDate || !event.city || !event.venue || !event.externalId) {
+    return { eligible: false, reason: 'incomplete' as const };
+  }
+  if (!event.isUk) return { eligible: false, reason: 'nonUk' as const };
+  if (!event.isRelevant) return { eligible: false, reason: 'irrelevant' as const };
+  if ((event.endDate || event.startDate) < today) {
+    return { eligible: false, reason: 'past' as const };
+  }
+  return { eligible: true, reason: 'eligible' as const };
+}
+
+export function buildRyaKnownEventIndex(events: any[]): RyaKnownEventIndex {
+  const index: RyaKnownEventIndex = {
+    titleDateKeys: new Set<string>(),
+    dedupeKeys: new Set<string>(),
+    sourceUrls: new Set<string>(),
+    externalIds: new Set<string>(),
+  };
+
+  events.forEach((event) => {
+    if (event?.dedupeKey) index.dedupeKeys.add(String(event.dedupeKey));
+    if (event?.title && event?.startDate) {
+      const normalizedTitle = normalizeRyaDedupeTitle(String(event.title));
+      index.titleDateKeys.add(`${normalizedTitle}|${String(event.startDate)}`);
+      if (event.city) {
+        index.dedupeKeys.add([
+          normalizedTitle,
+          String(event.startDate),
+          normalizeBritishMarineText(String(event.city)),
+        ].join('|'));
+      }
+    }
+    if (event?.sourceUrl) {
+      index.sourceUrls.add(canonicalizeRyaUrl(String(event.sourceUrl)));
+    }
+    if (event?.sourceName === 'RYA' && event?.externalId) {
+      index.externalIds.add(String(event.externalId));
+    }
+  });
+
+  return index;
+}
+
+export function getRyaEventKeys(event: RyaEventCandidateData) {
+  const normalizedTitle = normalizeRyaDedupeTitle(event.title);
+  return {
+    titleDateKey: `${normalizedTitle}|${event.startDate}`,
+    dedupeKey: [
+      normalizedTitle,
+      event.startDate,
+      normalizeBritishMarineText(event.city),
+    ].join('|'),
+    sourceUrl: canonicalizeRyaUrl(event.sourceUrl),
+    externalId: event.externalId,
+  };
+}
+
+export function isRyaKnownEvent(event: RyaEventCandidateData, index: RyaKnownEventIndex) {
+  const keys = getRyaEventKeys(event);
+  return index.titleDateKeys.has(keys.titleDateKey)
+    || index.dedupeKeys.has(keys.dedupeKey)
+    || index.sourceUrls.has(keys.sourceUrl)
+    || index.externalIds.has(keys.externalId);
+}
+
+function rememberRyaEvent(event: RyaEventCandidateData, index: RyaKnownEventIndex) {
+  const keys = getRyaEventKeys(event);
+  index.titleDateKeys.add(keys.titleDateKey);
+  index.dedupeKeys.add(keys.dedupeKey);
+  index.sourceUrls.add(keys.sourceUrl);
+  index.externalIds.add(keys.externalId);
+}
+
+export function getRyaCandidateId(externalId: string, sourceUrl: string, dedupeKey: string) {
+  return `rya_${createHash('sha256')
+    .update(externalId || sourceUrl || dedupeKey)
+    .digest('hex')
+    .slice(0, 20)}`;
+}
+
 async function verifyDiscoveryStaff(req: any) {
   const firebaseAdmin = (admin as any).default || admin;
   const authHeader = req.headers?.authorization || req.headers?.Authorization || '';
@@ -655,6 +1008,163 @@ async function discoverBritishMarineEvents(req: any, res: any) {
     return res.status(error?.statusCode || 500).json({
       success: false,
       error: error?.message || 'Could not check British Marine events.',
+    });
+  }
+}
+
+
+async function discoverRyaEvents(req: any, res: any) {
+  if (res && typeof res.setHeader === 'function' && !res.headersSent) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Type', 'application/json');
+  }
+
+  if (req?.method !== 'POST') {
+    return res.status(405).json({ success: false, error: 'Method not allowed.' });
+  }
+
+  try {
+    const staff = await verifyDiscoveryStaff(req);
+    if (staff.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: 'Administrator access required.',
+      });
+    }
+
+    const db = getAdminDb();
+    const indexHtml = await fetchRyaHtml(RYA_EVENTS_INDEX);
+    const selectedLinks = extractRyaEventLinks(indexHtml).slice(0, RYA_MAX_EVENTS);
+
+    if (!selectedLinks.length) {
+      return res.status(502).json({
+        success: false,
+        error: 'RYA returned no event links. The source page structure may have changed.',
+      });
+    }
+
+    const [existingCandidates, existingMarineEvents] = await Promise.all([
+      db.collection(RYA_COLLECTION).get(),
+      db.collection('marineEvents').get(),
+    ]);
+    const knownEvents = [
+      ...existingCandidates.docs.map((snapshot: any) => snapshot.data() || {}),
+      ...existingMarineEvents.docs.map((snapshot: any) => snapshot.data() || {}),
+    ];
+    const knownIndex = buildRyaKnownEventIndex(knownEvents);
+    const report = {
+      checked: selectedLinks.length,
+      eligible: 0,
+      created: 0,
+      existing: 0,
+      skippedPast: 0,
+      skippedNonUk: 0,
+      skippedIrrelevant: 0,
+      skippedIncomplete: 0,
+    };
+    const errors: string[] = [];
+    const today = new Date().toISOString().slice(0, 10);
+    const firebaseAdmin = (admin as any).default || admin;
+
+    for (let index = 0; index < selectedLinks.length; index += 3) {
+      const batch = selectedLinks.slice(index, index + 3);
+      const results = await Promise.allSettled(batch.map(parseRyaEvent));
+
+      for (let resultIndex = 0; resultIndex < results.length; resultIndex += 1) {
+        const result = results[resultIndex];
+        if (result.status === 'rejected') {
+          errors.push(
+            `${batch[resultIndex]}: ${result.reason instanceof Error ? result.reason.message : 'Detail error'}`,
+          );
+          continue;
+        }
+
+        const event = result.value;
+        const evaluation = evaluateRyaEvent(event, today);
+        if (!evaluation.eligible) {
+          if (evaluation.reason === 'past') report.skippedPast += 1;
+          else if (evaluation.reason === 'nonUk') report.skippedNonUk += 1;
+          else if (evaluation.reason === 'irrelevant') report.skippedIrrelevant += 1;
+          else report.skippedIncomplete += 1;
+          continue;
+        }
+
+        report.eligible += 1;
+        if (isRyaKnownEvent(event, knownIndex)) {
+          report.existing += 1;
+          continue;
+        }
+
+        const keys = getRyaEventKeys(event);
+        const candidateId = getRyaCandidateId(
+          event.externalId,
+          keys.sourceUrl,
+          keys.dedupeKey,
+        );
+        const candidateRef = db.collection(RYA_COLLECTION).doc(candidateId);
+        const now = firebaseAdmin.firestore.FieldValue.serverTimestamp();
+
+        try {
+          await candidateRef.create({
+            title: event.title,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            country: event.country,
+            city: event.city,
+            venue: event.venue,
+            category: event.category,
+            website: event.website,
+            ticketUrl: event.ticketUrl,
+            source: 'imported',
+            sourceName: 'RYA',
+            sourceUrl: event.sourceUrl,
+            externalId: event.externalId,
+            externalSources: [{
+              sourceName: 'RYA',
+              sourceUrl: event.sourceUrl,
+              externalId: event.externalId,
+            }],
+            reviewStatus: 'pending',
+            dedupeKey: keys.dedupeKey,
+            normalizedTitle: normalizeBritishMarineText(event.title),
+            normalizedCity: normalizeBritishMarineText(event.city),
+            normalizedVenue: normalizeBritishMarineText(event.venue),
+            canonicalWebsite: canonicalizeRyaUrl(event.website),
+            possibleDuplicateOf: '',
+            duplicateConfidence: 0,
+            firstFoundAt: now,
+            lastCheckedAt: now,
+            lastSeenAt: now,
+            adminEditedFields: [],
+            createdBy: staff.uid,
+            createdAt: now,
+            updatedAt: now,
+          });
+        } catch (error: any) {
+          if (error?.code === 6 || error?.code === '6' || error?.code === 'already-exists') {
+            report.existing += 1;
+            rememberRyaEvent(event, knownIndex);
+            continue;
+          }
+          throw error;
+        }
+
+        rememberRyaEvent(event, knownIndex);
+        report.created += 1;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      source: 'RYA',
+      ...report,
+      errors: errors.slice(0, 5),
+    });
+  } catch (error: any) {
+    console.error('[discover-rya-events]', error);
+    return res.status(error?.statusCode || 500).json({
+      success: false,
+      error: error?.message || 'Could not check RYA events.',
     });
   }
 }
@@ -1437,6 +1947,9 @@ export default async function discoverListingsHandler(req: any, res: any) {
   }
   if (phase2aBody?.action === 'discoverBritishMarineEvents') {
     return discoverBritishMarineEvents(req, res);
+  }
+  if (phase2aBody?.action === 'discoverRyaEvents') {
+    return discoverRyaEvents(req, res);
   }
 
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
