@@ -1,4 +1,5 @@
-import type { Request, Response } from 'express';
+﻿import type { Request, Response } from 'express';
+import britishMarineDiscoveryHandler from '../src/server/britishMarineDiscovery';
 import * as admin from 'firebase-admin';
 
 console.log('[discover-listings] MODULE_LOAD: Module initialized successfully');
@@ -897,6 +898,16 @@ function sendJsonError(
  * Fully wrapped in a top-level try/catch to guarantee zero unhandled runtime exceptions escape to Vercel.
  */
 export default async function discoverListingsHandler(req: any, res: any) {
+  // Phase 2A: reuse this existing Serverless Function for British Marine event discovery.
+  // This keeps the Vercel Hobby deployment within the 12-function limit.
+  let phase2aBody: any = req?.body || {};
+  if (typeof phase2aBody === 'string') {
+    try { phase2aBody = JSON.parse(phase2aBody); } catch { phase2aBody = {}; }
+  }
+  if (phase2aBody?.action === 'discoverBritishMarineEvents') {
+    return britishMarineDiscoveryHandler(req, res);
+  }
+
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   let lastCompletedStage = 'REQUEST_RECEIVED';
   let targetPageUrl = '';
@@ -1203,3 +1214,4 @@ export default async function discoverListingsHandler(req: any, res: any) {
     );
   }
 }
+

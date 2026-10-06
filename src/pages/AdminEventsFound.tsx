@@ -354,12 +354,13 @@ export default function AdminEventsFound() {
     setCheckingBritishMarine(true);
     try {
       const token = await user.getIdToken();
-      const response = await fetch('/api/admin/discover-british-marine-events', {
+      const response = await fetch('/api/discover-listings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({ action: 'discoverBritishMarineEvents' }),
       });
 
       const payload = await response.json().catch(() => ({}));
