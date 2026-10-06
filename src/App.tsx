@@ -35,6 +35,7 @@ import AdminSuggestions from './pages/AdminSuggestions';
 import AdminClaims from './pages/AdminClaims';
 import Fotos from './pages/Fotos';
 import AdminFotos from './pages/AdminFotos';
+import AdminEventsFound from './pages/AdminEventsFound';
 import BoatShowMoments from './pages/BoatShowMoments';
 import AdminBoatShowMoments from './pages/AdminBoatShowMoments';
 import AdminSystemHealth from './pages/AdminSystemHealth';
@@ -1009,6 +1010,7 @@ export default function App() {
                 <Route path="/photos" element={<Navigate to="/events" replace />} />
                 <Route path="/fotos" element={<Navigate to="/events" replace />} />
                 <Route path="/admin/fotos" element={<AdminLayout><AdminFotos /></AdminLayout>} />
+                <Route path="/admin/events-found" element={<AdminLayout><AdminEventsFound /></AdminLayout>} />
                 <Route path="/admin/boat-show-moments" element={<AdminLayout><AdminBoatShowMoments /></AdminLayout>} />
                 <Route path="/boats-for-hire" element={<BoatsForHire />} />
                 <Route path="/cheap-boats" element={<CheapBoatsFinal />} />

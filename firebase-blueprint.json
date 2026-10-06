@@ -394,6 +394,44 @@
       },
       "required": ["id", "adId", "adTitle", "userId", "name", "phone", "email", "status", "createdAt"]
     },
+    "ExternalEventCandidate": {
+      "title": "ExternalEventCandidate",
+      "description": "Private staging record for a marine event discovered outside ConnectBoat",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "country": { "type": "string" },
+        "city": { "type": "string" },
+        "venue": { "type": "string" },
+        "category": { "type": "string", "enum": ["Boat Shows", "Regattas", "Marine Events", "Festivals", "Other"] },
+        "website": { "type": "string" },
+        "ticketUrl": { "type": "string" },
+        "source": { "type": "string", "enum": ["imported"] },
+        "sourceName": { "type": "string" },
+        "sourceUrl": { "type": "string" },
+        "externalId": { "type": "string" },
+        "externalSources": { "type": "array" },
+        "reviewStatus": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "dedupeKey": { "type": "string" },
+        "normalizedTitle": { "type": "string" },
+        "normalizedCity": { "type": "string" },
+        "normalizedVenue": { "type": "string" },
+        "canonicalWebsite": { "type": "string" },
+        "possibleDuplicateOf": { "type": "string" },
+        "duplicateConfidence": { "type": "number" },
+        "firstFoundAt": { "type": "string", "format": "date-time" },
+        "lastCheckedAt": { "type": "string", "format": "date-time" },
+        "lastSeenAt": { "type": "string", "format": "date-time" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "reviewedBy": { "type": "string" },
+        "rejectionReason": { "type": "string" },
+        "publishedEventId": { "type": "string" },
+        "adminEditedFields": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["title", "startDate", "city", "category", "source", "sourceName", "reviewStatus", "dedupeKey"]
+    },
     "CommunityVideo": {
       "title": "CommunityVideo",
       "description": "Video produced by the community",
@@ -512,6 +550,10 @@
     "/businessClaimRequests/{requestId}": {
       "schema": "BusinessClaimRequest",
       "description": "Requests to claim owner status on advertisements"
+    },
+    "/externalEventCandidates/{candidateId}": {
+      "schema": "ExternalEventCandidate",
+      "description": "Admin-only staging collection for Events Found"
     },
     "/videos/{videoId}": {
       "schema": "CommunityVideo",

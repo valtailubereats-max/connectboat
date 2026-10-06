@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db, storage, getDocsWithCacheFallback } from '../firebase';
 import {
@@ -10,6 +11,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import {
@@ -23,6 +25,7 @@ import {
   Loader2,
   MapPin,
   Plus,
+  Search,
   ShieldAlert,
   Sparkles,
   Star,
@@ -138,8 +141,10 @@ const emptyForm = {
 
 export default function AdminFotos() {
   const { isAdmin, user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
 
   const [events, setEvents] = useState<MarineEvent[]>([]);
+  const [foundPendingCount, setFoundPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -173,8 +178,28 @@ export default function AdminFotos() {
     }
   };
 
+  const loadFoundPendingCount = async () => {
+    try {
+      const pendingQuery = query(
+        collection(db, 'externalEventCandidates'),
+        where('reviewStatus', '==', 'pending'),
+      );
+      const snapshot = await getDocsWithCacheFallback(
+        pendingQuery,
+        'externalEventCandidates/pending-count',
+      );
+      setFoundPendingCount(snapshot.size);
+    } catch (error) {
+      console.error('Error loading Events Found pending count:', error);
+      setFoundPendingCount(0);
+    }
+  };
+
   useEffect(() => {
-    if (isAdmin) loadEvents();
+    if (isAdmin) {
+      loadEvents();
+      loadFoundPendingCount();
+    }
   }, [isAdmin]);
 
   const resetForm = () => {
@@ -526,13 +551,23 @@ export default function AdminFotos() {
           </p>
         </div>
 
-        <button
-          onClick={openNew}
-          className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl px-5 py-3.5 text-sm font-black shadow-sm"
-        >
-          <Plus size={18} />
-          Add Event
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            onClick={() => navigate('/admin/events-found')}
+            className="inline-flex items-center justify-center gap-2 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-2xl px-5 py-3.5 text-sm font-black"
+          >
+            <Search size={18} />
+            Events Found{foundPendingCount > 0 ? ` (${foundPendingCount})` : ''}
+          </button>
+          <button
+            onClick={openNew}
+            className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl px-5 py-3.5 text-sm font-black shadow-sm"
+          >
+            <Plus size={18} />
+            Add Event
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

@@ -756,6 +756,12 @@ match /marineEvents/{eventId} {
   allow update, delete: if isAdmin();
 }
 
+// Private staging area for externally discovered event candidates.
+// Candidates never become public until an administrator approves them into marineEvents.
+match /externalEventCandidates/{candidateId} {
+  allow read, create, update, delete: if isAdmin();
+}
+
 // Curated public photo gallery. Draft items remain private to administrators.
 match /boatShowMoments/{photoId} {
   allow get, list: if isAdmin() || resource.data.get('published', false) == true;

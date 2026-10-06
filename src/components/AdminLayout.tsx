@@ -26,7 +26,8 @@ import {
   UserCheck,
   Film,
   Sparkles,
-  Sliders
+  Sliders,
+  Search
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -104,6 +105,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { icon: UserCheck, label: 'Event Contacts', path: '/admin/event-contacts' },
     { icon: MessageSquare, label: 'Suggestions', path: '/admin/suggestions' },
     { icon: Camera, label: 'Marine Events', path: '/admin/fotos' },
+    { icon: Search, label: 'Events Found', path: '/admin/events-found' },
     { icon: Film, label: 'Boat Show Moments', path: '/admin/boat-show-moments' },
     { icon: Settings, label: 'Settings', path: '/admin/settings' },
     { icon: BookOpen, label: 'Technical Manual', path: '/admin/manual-tecnico' },
@@ -161,6 +163,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       items: [
         { icon: MessageSquare, label: 'Suggestions', path: '/admin/suggestions' },
         { icon: Camera, label: 'Marine Events', path: '/admin/fotos' },
+        { icon: Search, label: 'Events Found', path: '/admin/events-found' },
         { icon: Film, label: 'Boat Show Moments', path: '/admin/boat-show-moments' },
         { icon: UserCheck, label: 'Event Contacts', path: '/admin/event-contacts' },
         { icon: Settings, label: 'Settings / Definições', path: '/admin/settings' },
