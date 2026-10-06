@@ -838,7 +838,9 @@ function parseYachtsYachtingEventHtml(html: string, sourceUrl: string): YachtsYa
     city: '',
     venue,
     category: /\b(?:championship|regatta|race|racing|open|trophy|tt)\b/i.test(title) ? 'Regattas' : 'Marine Events',
-    website: source,
+    // Keep the individual detail URL internally for source identity/deduplication,
+    // but use the working Y&Y calendar as the public website destination.
+    website: YY_EVENTS_INDEX,
     ticketUrl: '',
     sourceUrl: source,
     externalId,
