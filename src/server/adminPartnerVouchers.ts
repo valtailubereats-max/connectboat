@@ -40,8 +40,13 @@ function readInput(body: any, creating: boolean) {
     maxUses = Number(body.maxUses);
     if (!Number.isInteger(maxUses) || maxUses < 1) throw new Error('INVALID_MAX_USES');
   }
+  let durationDays: number | null = null;
+  if (body.durationDays !== undefined && body.durationDays !== null && body.durationDays !== '') {
+    durationDays = Number(body.durationDays);
+    if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 365) throw new Error('INVALID_DURATION_DAYS');
+  }
   return {
-    code, partnerName, active: body.active === true, allowedCategories, maxUses,
+    code, partnerName, active: body.active === true, allowedCategories, maxUses, durationDays,
     startsAt: optionalTimestamp(body.startsAt), expiresAt: optionalTimestamp(body.expiresAt, true),
   };
 }
@@ -80,6 +85,7 @@ export async function handleAdminPartnerVouchers(
         createdAt: FieldValue.serverTimestamp(), createdByUid: admin.uid, createdByEmail: admin.email,
         updatedAt: FieldValue.serverTimestamp(),
       };
+      if (input.durationDays !== null) data.durationDays = input.durationDays;
       if (input.startsAt) data.startsAt = input.startsAt;
       if (input.expiresAt) data.expiresAt = input.expiresAt;
       if (input.maxUses !== null) data.maxUses = input.maxUses;
@@ -97,6 +103,7 @@ export async function handleAdminPartnerVouchers(
         partnerName: input.partnerName, active: input.active, allowedCategories: input.allowedCategories,
         startsAt: input.startsAt || FieldValue.delete(), expiresAt: input.expiresAt || FieldValue.delete(),
         maxUses: input.maxUses === null ? FieldValue.delete() : input.maxUses,
+        durationDays: input.durationDays === null ? FieldValue.delete() : input.durationDays,
         updatedAt: FieldValue.serverTimestamp(), updatedByUid: admin.uid, updatedByEmail: admin.email,
       };
       for (const counter of COUNTERS) delete updates[counter];
@@ -111,6 +118,7 @@ export async function handleAdminPartnerVouchers(
       INVALID_PARTNER_NAME: 'Partner Name is required.', INVALID_CATEGORIES: 'Allowed Categories are invalid.',
       INVALID_DATE: 'Starts At and Expires At must be valid dates.',
       INVALID_MAX_USES: 'Max Uses must be a positive whole number or left empty.',
+      INVALID_DURATION_DAYS: 'Listing duration must be a whole number from 1 to 365 days.',
     };
     console.error('[Admin Partner Vouchers]', error);
     return res.status(messages[code] ? 400 : 500).json({ success: false, error: code, errorMessage: messages[code] || 'Could not manage Partner Vouchers.' });
