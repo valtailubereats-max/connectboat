@@ -533,10 +533,8 @@ const AdminAds = () => {
 
       const isPartnerVoucherPendingApproval = Boolean(
         status === 'approved' && adToUpdate && adToUpdate.status === 'pending' &&
-        (adToUpdate as any).partnerFundedFreeStandard === true &&
-        Number((adToUpdate as any).partnerVoucherDurationDays) > 0 &&
-        ['Boats for Sale', 'Boats for Hire'].includes(String(adToUpdate.category || '')) &&
-        ['standard', 'free'].includes(String(adToUpdate.plan || 'standard').toLowerCase())
+        Boolean((adToUpdate as any).partnerCode) &&
+        Number((adToUpdate as any).partnerVoucherDurationDays) > 0
       );
 
       const isPaidPendingApproval = Boolean(
