@@ -334,7 +334,7 @@ const AdminPartnerVouchers: React.FC = () => {
               </div>
               <label className="block max-w-xs text-xs font-black uppercase tracking-wide text-slate-600">Free listing duration (days)
                 <input required type="number" min="1" max="365" step="1" value={form.durationDays} onChange={event => setForm(current => ({ ...current, durationDays: event.target.value }))} className="mt-2 w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-indigo-500" />
-                <span className="mt-1 block text-xs font-normal normal-case text-slate-500">Applies to each eligible boat listing when the voucher is used.</span>
+                <span className="mt-1 block text-xs font-normal normal-case text-slate-500">Applies to each listing in the voucher’s allowed categories. Standard listings are covered; paid upgrades and Media Boost are not.</span>
               </label>
             </div>
             <div className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-200 bg-white p-5 sm:p-6">
