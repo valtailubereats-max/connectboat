@@ -170,6 +170,7 @@ async function handleListingSave(req: Request, res: Response) {
     isPaidMarketplaceListing: isMarketplace && !firstMarketplaceFree,
     plan: adData.plan,
   });
+  const isBasicListingPlan = ['standard', 'free'].includes(String(adData.plan || 'standard').trim().toLowerCase());
   delete adData.partnerVoucherCode;
   if (partnerVoucher) {
     adData.acquisitionSource = 'partner';
@@ -177,7 +178,9 @@ async function handleListingSave(req: Request, res: Response) {
     adData.partnerName = partnerVoucher.partnerName;
     adData.partnerAttributionOnly = promotion.partnerAttributionOnly;
     adData.partnerFundedFreeStandard = promotion.partnerFundsStandard;
-    if (promotion.partnerFundsStandard && partnerVoucher.durationDays) {
+    if (partnerVoucher.durationDays && (
+      promotion.partnerFundsStandard || firstMarketplaceFree || (isService && isBasicListingPlan)
+    )) {
       adData.partnerVoucherDurationDays = partnerVoucher.durationDays;
     }
   }
