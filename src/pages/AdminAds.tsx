@@ -531,10 +531,18 @@ const AdminAds = () => {
         updatedAt: serverTimestamp()
       };
 
+      const isPartnerVoucherPendingApproval = Boolean(
+        status === 'approved' && adToUpdate && adToUpdate.status === 'pending' &&
+        (adToUpdate as any).partnerFundedFreeStandard === true &&
+        Number((adToUpdate as any).partnerVoucherDurationDays) > 0 &&
+        ['Boats for Sale', 'Boats for Hire'].includes(String(adToUpdate.category || '')) &&
+        ['standard', 'free'].includes(String(adToUpdate.plan || 'standard').toLowerCase())
+      );
+
       const isPaidPendingApproval = Boolean(
         status === 'approved' &&
         adToUpdate &&
-        isPaidAd(adToUpdate) &&
+        (isPaidAd(adToUpdate) || isPartnerVoucherPendingApproval) &&
         adToUpdate.status === 'pending'
       );
 
@@ -560,7 +568,8 @@ const AdminAds = () => {
         const plan = (adToUpdate.plan || 'standard').toLowerCase();
         const isFeatured = plan === 'featured' || plan === 'premium';
         const featuredLevel = plan === 'premium' ? 'premium' : plan === 'featured' ? 'featured' : 'standard';
-        const configuredDuration = Number(settings?.planDurations?.[plan as 'standard' | 'featured' | 'premium'] ?? 30);
+        const voucherDuration = Number(isPartnerVoucherPendingApproval ? (adToUpdate as any).partnerVoucherDurationDays : 0);
+        const configuredDuration = voucherDuration > 0 ? voucherDuration : Number(settings?.planDurations?.[plan as 'standard' | 'featured' | 'premium'] ?? 30);
         const expiresAt = addDays(new Date(), Number.isFinite(configuredDuration) && configuredDuration > 0 ? configuredDuration : 30);
 
         // Both normal customer payments and admin-assisted payments start
