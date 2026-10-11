@@ -15,6 +15,7 @@ type Voucher = {
   startsAt?: string;
   expiresAt?: string;
   maxUses?: number;
+  durationDays?: number;
 };
 
 type VoucherUsage = {
@@ -38,10 +39,11 @@ type FormState = {
   startsAt: string;
   expiresAt: string;
   maxUses: string;
+  durationDays: string;
 };
 
 const EMPTY_FORM: FormState = {
-  code: '', partnerName: '', active: true, allowedCategories: [], startsAt: '', expiresAt: '', maxUses: '',
+  code: '', partnerName: '', active: true, allowedCategories: [], startsAt: '', expiresAt: '', maxUses: '', durationDays: '30',
 };
 
 const isoDate = (value?: string) => value ? value.slice(0, 10) : '';
@@ -117,6 +119,7 @@ const AdminPartnerVouchers: React.FC = () => {
       startsAt: isoDate(voucher.startsAt),
       expiresAt: isoDate(voucher.expiresAt),
       maxUses: voucher.maxUses === undefined ? '' : String(voucher.maxUses),
+      durationDays: String(voucher.durationDays || 30),
     });
     setError('');
     setSuccess('');
@@ -138,6 +141,7 @@ const AdminPartnerVouchers: React.FC = () => {
         startsAt: form.startsAt || null,
         expiresAt: form.expiresAt || null,
         maxUses: form.maxUses === '' ? null : Number(form.maxUses),
+        durationDays: form.durationDays === '' ? null : Number(form.durationDays),
       });
       setShowForm(false);
       setSuccess(editing ? `${form.code} updated successfully.` : `${form.code.toUpperCase()} created successfully.`);
@@ -259,6 +263,7 @@ const AdminPartnerVouchers: React.FC = () => {
                   <p><strong>Starts:</strong> {formatDate(voucher.startsAt)}</p>
                   <p><strong>Expires:</strong> {formatDate(voucher.expiresAt)}</p>
                   <p><strong>Max Uses:</strong> {voucher.maxUses === undefined ? 'Unlimited' : voucher.maxUses}</p>
+                  <p><strong>Listing duration:</strong> {voucher.durationDays || 30} days</p>
                 </div>
               </div>
 
@@ -327,6 +332,10 @@ const AdminPartnerVouchers: React.FC = () => {
                 <label className="text-xs font-black uppercase tracking-wide text-slate-600">Expires At <span className="normal-case text-slate-400">(optional)</span><input type="date" min={form.startsAt || undefined} value={form.expiresAt} onChange={event => setForm(current => ({ ...current, expiresAt: event.target.value }))} className="mt-2 w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-indigo-500" /></label>
                 <label className="text-xs font-black uppercase tracking-wide text-slate-600">Max Uses <span className="normal-case text-slate-400">(optional)</span><input type="number" min="1" step="1" value={form.maxUses} onChange={event => setForm(current => ({ ...current, maxUses: event.target.value }))} placeholder="Unlimited" className="mt-2 w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-indigo-500" /></label>
               </div>
+              <label className="block max-w-xs text-xs font-black uppercase tracking-wide text-slate-600">Free listing duration (days)
+                <input required type="number" min="1" max="365" step="1" value={form.durationDays} onChange={event => setForm(current => ({ ...current, durationDays: event.target.value }))} className="mt-2 w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-3 py-3 text-sm outline-none focus:border-indigo-500" />
+                <span className="mt-1 block text-xs font-normal normal-case text-slate-500">Applies to each eligible boat listing when the voucher is used.</span>
+              </label>
             </div>
             <div className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-200 bg-white p-5 sm:p-6">
               <button type="button" onClick={() => setShowForm(false)} className="rounded-xl bg-slate-100 px-5 py-3 text-sm font-bold text-slate-600">Cancel</button>
