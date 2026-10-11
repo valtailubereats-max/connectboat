@@ -30,6 +30,7 @@ type PartnerVoucher = {
   usageCount: number;
   maxUses?: number;
   allowedCategories?: string[];
+  durationDays?: number;
 };
 
 async function getValidPartnerVoucher(db: FirebaseFirestore.Firestore, rawCode: unknown, category?: string): Promise<PartnerVoucher | null> {
@@ -50,7 +51,10 @@ async function getValidPartnerVoucher(db: FirebaseFirestore.Firestore, rawCode: 
   if (category && allowedCategories?.length && !allowedCategories.includes(category)) return null;
   const partnerName = String(data.partnerName || data.name || '').trim();
   if (!partnerName) return null;
-  return { code, partnerName, usageCount, maxUses, allowedCategories };
+  const durationDays = Number(data.durationDays);
+  return { code, partnerName, usageCount, maxUses, allowedCategories,
+    ...(Number.isInteger(durationDays) && durationDays > 0 && durationDays <= 365 ? { durationDays } : {}),
+  };
 }
 
 async function validatePartnerVoucher(req: Request, res: Response) {
@@ -136,6 +140,7 @@ async function handleListingSave(req: Request, res: Response) {
     'brokerDiscountAmount', 'brokerFinalPlanPrice', 'brokerPaymentVerified',
     'acquisitionSource', 'partnerCode', 'partnerName', 'promotionSource',
     'partnerAttributionOnly', 'partnerFundedFreeStandard', 'partnerUsageRecorded',
+    'partnerVoucherDurationDays',
     'isCourtesy', 'courtesyCreditId', 'courtesyGrantedBy', 'courtesyReason',
     'courtesyGrantedAt', 'courtesyUsedAt', 'paymentSource', 'paymentFlow',
     'awaitingAdminApproval', 'awaitingAdminActivation', 'planStartedAt',
@@ -172,6 +177,9 @@ async function handleListingSave(req: Request, res: Response) {
     adData.partnerName = partnerVoucher.partnerName;
     adData.partnerAttributionOnly = promotion.partnerAttributionOnly;
     adData.partnerFundedFreeStandard = promotion.partnerFundsStandard;
+    if (promotion.partnerFundsStandard && partnerVoucher.durationDays) {
+      adData.partnerVoucherDurationDays = partnerVoucher.durationDays;
+    }
   }
   if (promotion.promotionSource) adData.promotionSource = promotion.promotionSource;
 
