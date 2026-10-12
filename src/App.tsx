@@ -672,6 +672,19 @@ const Navbar = () => {
 
           {/* Mobile Menu */}
           <div className="md:hidden flex items-center gap-[4.4px] xs:gap-[11px] shrink-0">
+            {!loading && !user && (
+              <Link
+                to="/login"
+                onClick={() => setIsOpen(false)}
+                aria-label="Log in or sign up"
+                title="Log in or sign up"
+                className="flex shrink-0 flex-col items-center justify-center rounded-[13.2px] px-[2px] py-[4.4px] text-sky-300 transition-colors hover:bg-slate-800 hover:text-white xs:px-[4px] xs:py-[6.6px]"
+              >
+                <UserIcon size={19.8} className="xs:w-[22px] xs:h-[22px]" />
+                <span className="mt-[2.2px] whitespace-nowrap text-[8px] font-bold leading-none tracking-tight xs:text-[9px]">Log in / Sign up</span>
+              </Link>
+            )}
+
             <button 
               onClick={handlePublishClick} 
               title="List Boat / Item"
