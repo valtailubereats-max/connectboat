@@ -16,7 +16,7 @@ import { ShieldCheck, Mail, Lock, User as UserIcon, ArrowRight, ArrowDown, Githu
 import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-import { sendGoogleAdsSignupConversion } from '../utils/analytics';
+import { sendGoogleAdsSignupConversion, sendMetaCompleteRegistration } from '../utils/analytics';
 import marinaLoginBackground from '../assets/images/login-backgrounds/marina-login-background.png';
 
 const Login = () => {
@@ -111,10 +111,12 @@ const Login = () => {
       try {
         docSnap = await getDocWithCacheFallback(docRef, `users/${user.uid}`);
       } catch (err) {
+        // Never interpret a failed Firestore lookup as a missing/new profile.
         handleFirestoreError(err, OperationType.GET, `users/${user.uid}`);
+        return;
       }
 
-      if (!docSnap?.exists()) {
+      if (!docSnap.exists()) {
         const homeCountry = localStorage.getItem('selectedCountry') as 'Portugal' | 'Reino Unido' | null;
         const finalCountry = enablePortugal && (homeCountry === 'Portugal' || homeCountry === 'Reino Unido') ? homeCountry : 'Reino Unido';
         
@@ -143,7 +145,7 @@ const Login = () => {
               updatedAt: serverTimestamp()
             });
           } catch (syncErr) {
-            console.error('[Sync] Falha ao criar sellerPublicProfiles em Google Login:', syncErr);
+            handleFirestoreError(syncErr, OperationType.CREATE, `sellerPublicProfiles/${user.uid}`);
           }
 
           // Enviar email de boas-vindas
@@ -156,6 +158,7 @@ const Login = () => {
           handleFirestoreError(err, OperationType.CREATE, `users/${user.uid}`);
         }
         sendGoogleAdsSignupConversion();
+        sendMetaCompleteRegistration();
         await handleRedirectAfterAuth(true);
       } else {
         await handleRedirectAfterAuth(false);
@@ -230,7 +233,7 @@ const Login = () => {
               updatedAt: serverTimestamp()
             });
           } catch (syncErr) {
-            console.error('[Sync] Falha ao criar sellerPublicProfiles em Email register:', syncErr);
+            handleFirestoreError(syncErr, OperationType.CREATE, `sellerPublicProfiles/${user.uid}`);
           }
 
           // Enviar email de boas-vindas
@@ -245,6 +248,7 @@ const Login = () => {
           handleFirestoreError(err, OperationType.CREATE, `users/${user.uid}`);
         }
         sendGoogleAdsSignupConversion();
+        sendMetaCompleteRegistration();
         await handleRedirectAfterAuth(true);
       } else {
         await signInWithEmailAndPassword(auth, email, password);

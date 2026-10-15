@@ -16,8 +16,10 @@ import {
 import { Link } from 'react-router-dom';
 import {
   clearAnalyticsCookies,
+  disableMetaPixel,
   hasAnalyticsConsent,
   initGA,
+  initMetaPixel,
   saveCookieConsent,
 } from '../utils/analytics';
 
@@ -33,15 +35,17 @@ const Cookies = () => {
   const enableAnalytics = () => {
     saveCookieConsent('analytics');
     initGA();
+    initMetaPixel();
     setAnalyticsEnabled(true);
-    setPreferenceMessage('Analytics cookies are now enabled.');
+    setPreferenceMessage('Analytics and advertising measurement are now enabled.');
   };
 
   const useEssentialOnly = () => {
     saveCookieConsent('essential');
     clearAnalyticsCookies();
+    disableMetaPixel();
     setAnalyticsEnabled(false);
-    setPreferenceMessage('Your preference is now Essential Only. Google Analytics cookies have been removed where accessible to ConnectBoat.');
+    setPreferenceMessage('Your preference is now Essential Only. Accessible Google Analytics and Meta Pixel cookies have been removed.');
   };
 
   return (
@@ -57,7 +61,7 @@ const Cookies = () => {
         <meta property="og:title" content="Cookie Policy | ConnectBoat" />
         <meta
           property="og:description"
-          content="How ConnectBoat uses essential technologies, browser storage and Google Analytics 4 across the marine marketplace."
+          content="How ConnectBoat uses essential technologies, Google Analytics 4, Google Ads measurement and the Meta/Facebook Pixel."
         />
         <meta property="og:image" content="https://connectboat.co.uk/api/og-image" />
         <meta name="twitter:image" content="https://connectboat.co.uk/api/og-image" />
@@ -92,7 +96,7 @@ const Cookies = () => {
 
         <div className="prose prose-slate max-w-none space-y-8">
           <p className="text-sm font-semibold text-emerald-600">
-            Last updated: 28 September 2026
+            Last updated: 15 October 2026
           </p>
 
           <section>
@@ -176,7 +180,7 @@ const Cookies = () => {
           <section>
             <div className="flex items-center gap-2 text-emerald-600 mb-3">
               <BarChart3 size={20} />
-              <h2 className="text-xl font-bold m-0">3. Google Analytics 4 and Google Ads Measurement</h2>
+              <h2 className="text-xl font-bold m-0">3. Google Analytics, Google Ads and Meta Pixel</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -202,6 +206,13 @@ const Cookies = () => {
               accessible Google Analytics cookies set for this site. If an applicable legal
               exemption permits a storage or access technology to be used without consent,
               ConnectBoat may rely on that exemption only where its legal conditions are met.
+            </p>
+
+            <p className="text-slate-600 leading-relaxed mt-3">
+              After you select Accept Analytics, ConnectBoat also loads the Meta/Facebook Pixel to
+              measure page visits and completed new-user registrations for advertising attribution.
+              The Pixel may use identifiers such as <code>_fbp</code> and <code>_fbc</code>. It is
+              not loaded by ConnectBoat before that choice and is disabled when consent is withdrawn.
             </p>
           </section>
 
@@ -248,6 +259,10 @@ const Cookies = () => {
                 conversion reporting, such as completed registrations, after you accept Analytics.
               </li>
               <li>
+                <strong>Meta / Facebook Pixel:</strong> page-view and completed-registration
+                measurement for advertising attribution after you accept Analytics.
+              </li>
+              <li>
                 <strong>Stripe:</strong> payment processing for ConnectBoat listing plans and
                 optional paid platform services. Stripe may use its own security and fraud-prevention
                 technologies when you use Stripe Checkout.
@@ -261,7 +276,7 @@ const Cookies = () => {
             <p className="text-slate-600 leading-relaxed mt-3">
               ConnectBoat may display sponsored advertising without this, by itself, meaning that
               third-party behavioural-advertising technologies are placed on your device. ConnectBoat
-              currently uses Google Ads measurement only after the Analytics choice described above.
+              currently uses Google Ads and Meta Pixel measurement only after the Analytics choice described above.
               If ConnectBoat introduces additional non-essential advertising cookies, personalised
               advertising technologies or similar tracking in the future, this policy and the
               applicable consent controls will be updated before those technologies are used where
@@ -290,7 +305,7 @@ const Cookies = () => {
 
             <p className="text-slate-600 leading-relaxed">
               When the ConnectBoat cookie banner is shown, you can choose <strong>Accept Analytics</strong>
-              or <strong>Essential Only</strong>. Optional Google Analytics is disabled unless you
+              or <strong>Essential Only</strong>. Optional Google Analytics and Meta Pixel measurement are disabled unless you
               expressly choose to enable it. Choosing Essential Only does not prevent you from
               using the core marketplace.
             </p>
@@ -299,8 +314,8 @@ const Cookies = () => {
               Consent for optional analytics must be a clear positive choice. ConnectBoat does not
               treat continued browsing, silence or closing the banner as consent to Analytics. You
               can withdraw a previous Analytics choice at any time on this page; when you do, we stop
-              sending new ConnectBoat Analytics events and remove accessible <code>_ga</code> cookies
-              from this site.
+              sending new ConnectBoat measurement events and remove accessible <code>_ga</code>,
+              <code>_fbp</code> and <code>_fbc</code> cookies from this site.
             </p>
 
             <div className="mt-5 p-5 bg-emerald-50/60 rounded-2xl border border-emerald-100">
@@ -371,6 +386,11 @@ const Cookies = () => {
                     <td className="px-4 py-3 font-semibold text-slate-800">_ga and _ga_*</td>
                     <td className="px-4 py-3">Google Analytics 4 measurement after you accept Analytics.</td>
                     <td className="px-4 py-3">Optional analytics cookies; Google commonly sets these for up to 2 years, subject to configuration and browser controls.</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 font-semibold text-slate-800">_fbp and _fbc</td>
+                    <td className="px-4 py-3">Meta Pixel page-view and registration conversion measurement after you accept Analytics.</td>
+                    <td className="px-4 py-3">Optional advertising measurement cookies; duration is controlled by Meta, browser settings and applicable configuration.</td>
                   </tr>
                   <tr>
                     <td className="px-4 py-3 font-semibold text-slate-800">Firebase / browser storage</td>

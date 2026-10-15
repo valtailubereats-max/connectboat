@@ -4,9 +4,12 @@ import { Cookie, ShieldCheck, BarChart3, X } from 'lucide-react';
 import {
   ANALYTICS_CONSENT_STORAGE_KEY,
   clearAnalyticsCookies,
+  disableMetaPixel,
   initGA,
+  initMetaPixel,
   saveCookieConsent,
   sendGAPageView,
+  sendMetaPageView,
 } from '../utils/analytics';
 
 const CookieConsent: React.FC = () => {
@@ -31,6 +34,7 @@ const CookieConsent: React.FC = () => {
   const handleAcceptAnalytics = () => {
     saveCookieConsent('analytics');
     initGA();
+    initMetaPixel();
 
     // Register the current public page immediately after consent.
     window.setTimeout(() => {
@@ -38,6 +42,7 @@ const CookieConsent: React.FC = () => {
         window.location.pathname + window.location.search,
         document.title
       );
+      sendMetaPageView();
     }, 150);
 
     setIsVisible(false);
@@ -46,6 +51,7 @@ const CookieConsent: React.FC = () => {
   const handleEssentialOnly = () => {
     saveCookieConsent('essential');
     clearAnalyticsCookies();
+    disableMetaPixel();
     setIsVisible(false);
   };
 
@@ -72,8 +78,9 @@ const CookieConsent: React.FC = () => {
                   </h2>
                   <p className="mt-1 text-[11px] sm:text-xs leading-relaxed text-slate-600">
                     ConnectBoat uses essential technologies to keep the site working.
-                    With your permission, we also use Google Analytics to understand
-                    how the marketplace is used and improve the experience.
+                    With your permission, we also use Google Analytics, Google Ads
+                    measurement and the Meta/Facebook Pixel to understand usage and
+                    measure advertising performance.
                   </p>
                 </div>
 

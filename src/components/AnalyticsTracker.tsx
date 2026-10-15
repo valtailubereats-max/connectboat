@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { isExcludedPath, sendGAPageView, initGA } from '../utils/analytics';
+import { initGA, initMetaPixel, isExcludedPath, sendGAPageView, sendMetaPageView } from '../utils/analytics';
 
 export const AnalyticsTracker: React.FC = () => {
   const location = useLocation();
@@ -8,14 +8,11 @@ export const AnalyticsTracker: React.FC = () => {
 
   useEffect(() => {
     initGA();
+    initMetaPixel();
   }, []);
 
   useEffect(() => {
     const currentPath = location.pathname + location.search;
-
-    if (isExcludedPath(location.pathname)) {
-      return;
-    }
 
     if (lastPathRef.current === currentPath) {
       return;
@@ -25,7 +22,10 @@ export const AnalyticsTracker: React.FC = () => {
 
     // Small delay so react-helmet-async updates page title first
     const timer = setTimeout(() => {
-      sendGAPageView(currentPath, document.title);
+      sendMetaPageView();
+      if (!isExcludedPath(location.pathname)) {
+        sendGAPageView(currentPath, document.title);
+      }
     }, 120);
 
     return () => clearTimeout(timer);

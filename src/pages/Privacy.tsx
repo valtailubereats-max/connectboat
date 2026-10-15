@@ -71,7 +71,7 @@ const Privacy = () => {
 
         <div className="prose prose-slate max-w-none space-y-8">
           <p className="text-sm font-semibold text-indigo-600">
-            Last updated: 28 September 2026
+            Last updated: 15 October 2026
           </p>
 
           <section>
@@ -360,7 +360,7 @@ const Privacy = () => {
           <section>
             <div className="flex items-center gap-2 text-indigo-600 mb-3">
               <Cookie size={20} />
-              <h2 className="text-xl font-bold m-0">8. Cookies, Browser Storage, Google Analytics and Google Ads</h2>
+              <h2 className="text-xl font-bold m-0">8. Cookies, Google Analytics, Google Ads and Meta Pixel</h2>
             </div>
 
             <p className="text-slate-600 leading-relaxed">
@@ -377,6 +377,12 @@ const Privacy = () => {
               services may use cookies, browser storage, device information and related technical
               identifiers. ConnectBoat does not intentionally enable this optional measurement when
               the visitor has selected Essential Only.
+            </p>
+
+            <p className="text-slate-600 leading-relaxed mt-3">
+              After the same express choice, ConnectBoat may use the Meta/Facebook Pixel to measure
+              page visits and completed new-user registrations for advertising attribution. The
+              Pixel is not intentionally loaded before consent and is disabled when consent is withdrawn.
             </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">
@@ -484,7 +490,7 @@ const Privacy = () => {
               ConnectBoat may use trusted service providers to operate the platform, including
               providers of cloud hosting and database services, authentication, payment processing,
               email delivery, analytics, security and technical infrastructure. Current examples
-              include Google/Firebase, Stripe, Resend, Google Analytics and Google Ads measurement.
+              include Google/Firebase, Stripe, Resend, Google Analytics, Google Ads measurement and Meta/Facebook Pixel measurement.
             </p>
 
             <p className="text-slate-600 leading-relaxed mt-3">

@@ -1,6 +1,7 @@
 export const GA_MEASUREMENT_ID = 'G-B0BPV9R463';
 export const GOOGLE_ADS_ID = 'AW-18437934848';
 export const GOOGLE_ADS_SIGNUP_SEND_TO = 'AW-18437934848/iOpbCL2rmPEcEICe8tdE';
+export const META_PIXEL_ID = '938018453719754';
 
 export const ANALYTICS_CONSENT_STORAGE_KEY = 'connectboat_cookie_consent';
 
@@ -10,8 +11,17 @@ declare global {
   interface Window {
     dataLayer: any[];
     gtag?: (...args: any[]) => void;
+    fbq?: MetaPixelFunction;
+    _fbq?: MetaPixelFunction;
   }
 }
+
+type MetaPixelFunction = ((...args: any[]) => void) & {
+  callMethod?: (...args: any[]) => void;
+  queue?: any[][];
+  loaded?: boolean;
+  version?: string;
+};
 
 /**
  * Checks whether a given path should be excluded from Google Analytics tracking.
@@ -80,6 +90,73 @@ export const clearAnalyticsCookies = () => {
   cookieNames.forEach((name) => {
     document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
     document.cookie = `${name}=; Max-Age=0; path=/; domain=.${window.location.hostname}; SameSite=Lax`;
+  });
+};
+
+export const disableMetaPixel = () => {
+  if (typeof window === 'undefined') return;
+
+  window.fbq?.('consent', 'revoke');
+
+  if (typeof document === 'undefined') return;
+  ['_fbp', '_fbc'].forEach((name) => {
+    document.cookie = `${name}=; Max-Age=0; path=/; SameSite=Lax`;
+    document.cookie = `${name}=; Max-Age=0; path=/; domain=.${window.location.hostname}; SameSite=Lax`;
+  });
+};
+
+/** Loads Meta Pixel only after explicit consent. PageView is sent separately. */
+export const initMetaPixel = (): boolean => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+  if (!hasAnalyticsConsent()) return false;
+
+  const metaWindow = window as typeof window & Record<string, any>;
+
+  if (!window.fbq) {
+    const fbq: MetaPixelFunction = function (...args: any[]) {
+      if (fbq.callMethod) {
+        fbq.callMethod(...args);
+      } else {
+        fbq.queue = fbq.queue || [];
+        fbq.queue.push(args);
+      }
+    };
+    fbq.queue = [];
+    fbq.loaded = true;
+    fbq.version = '2.0';
+    window.fbq = fbq;
+    window._fbq = fbq;
+  }
+
+  if (!document.getElementById('meta-pixel-script')) {
+    const script = document.createElement('script');
+    script.id = 'meta-pixel-script';
+    script.async = true;
+    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+    document.head.appendChild(script);
+  }
+
+  const initializedFlag = '__connectboatMetaPixelInitialized';
+  if (!metaWindow[initializedFlag]) {
+    window.fbq('init', META_PIXEL_ID);
+    metaWindow[initializedFlag] = true;
+  }
+
+  window.fbq('consent', 'grant');
+
+  return true;
+};
+
+export const sendMetaPageView = () => {
+  if (!initMetaPixel()) return;
+  window.fbq?.('track', 'PageView');
+};
+
+export const sendMetaCompleteRegistration = () => {
+  if (!initMetaPixel()) return;
+  window.fbq?.('track', 'CompleteRegistration', {
+    content_name: 'ConnectBoat account',
+    status: true,
   });
 };
 
