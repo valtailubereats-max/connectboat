@@ -3173,7 +3173,7 @@ const AdDetails = () => {
                     <Mail size={22} />
                   </div>
                   <h3 className="text-xl font-black text-slate-950">
-                    {selectedContactMethod === 'enquiry' ? 'Send Enquiry' : 'Email Seller'}
+                    {selectedContactMethod === 'enquiry' ? 'Contact Seller' : 'Email Seller'}
                   </h3>
                   <p className="mt-1 text-sm text-slate-500">
                     {selectedContactMethod === 'enquiry'
@@ -3264,7 +3264,7 @@ const AdDetails = () => {
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-md transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Mail size={17} />
-                    {emailContactSending ? 'Sending...' : selectedContactMethod === 'enquiry' ? 'Send Enquiry' : 'Send Message'}
+                    {emailContactSending ? 'Sending...' : selectedContactMethod === 'enquiry' ? 'Contact Seller' : 'Send Message'}
                   </button>
                 </div>
               </form>
