@@ -377,6 +377,7 @@ const CreateAd = () => {
     showWhatsapp: prefill?.showWhatsapp !== undefined ? !!prefill.showWhatsapp : true,
     showPhone: prefill?.showPhone !== undefined ? !!prefill.showPhone : false,
     showEmail: prefill?.showEmail !== undefined ? !!prefill.showEmail : false,
+    showEnquiry: prefill?.showEnquiry !== undefined ? !!prefill.showEnquiry : false,
     externalUrl: '',
     moreInfoUrl: '',
     sellerPhone: prefill?.sellerPhone || '',
@@ -465,7 +466,8 @@ const CreateAd = () => {
         !prev.contactEmail &&
         !prev.showWhatsapp &&
         !prev.showPhone &&
-        !prev.showEmail;
+        !prev.showEmail &&
+        !prev.showEnquiry;
 
       if (alreadyClean) return prev;
 
@@ -478,6 +480,7 @@ const CreateAd = () => {
         showWhatsapp: false,
         showPhone: false,
         showEmail: false,
+        showEnquiry: false,
         useProfilePhone: false,
       };
     });
@@ -653,7 +656,8 @@ const CreateAd = () => {
       const selectedContactCount = [
         formData.showWhatsapp && !!formData.contactWhatsapp?.trim(),
         formData.showPhone && !!formData.contactPhone?.trim(),
-        formData.showEmail && !!formData.contactEmail?.trim()
+        formData.showEmail && !!formData.contactEmail?.trim(),
+        formData.showEnquiry
       ].filter(Boolean).length;
 
       if (selectedContactCount === 0) {
@@ -1339,6 +1343,7 @@ const CreateAd = () => {
           showWhatsapp: (data as any).showWhatsapp !== undefined ? !!(data as any).showWhatsapp : true,
           showPhone: (data as any).showPhone !== undefined ? !!(data as any).showPhone : false,
           showEmail: (data as any).showEmail !== undefined ? !!(data as any).showEmail : false,
+          showEnquiry: (data as any).showEnquiry !== undefined ? !!(data as any).showEnquiry : false,
           externalUrl: data.externalUrl || '',
           moreInfoUrl: (data as any).moreInfoUrl || '',
           sellerPhone: data.sellerPhone || '',
@@ -1920,7 +1925,8 @@ const CreateAd = () => {
       const selectedContactCount = [
         formData.showWhatsapp && !!formData.contactWhatsapp?.trim(),
         formData.showPhone && !!formData.contactPhone?.trim(),
-        formData.showEmail && !!formData.contactEmail?.trim()
+        formData.showEmail && !!formData.contactEmail?.trim(),
+        formData.showEnquiry
       ].filter(Boolean).length;
 
       if (selectedContactCount === 0) {
@@ -2035,6 +2041,7 @@ const CreateAd = () => {
         showWhatsapp: isExternalListingForSave ? false : !!formData.showWhatsapp,
         showPhone: isExternalListingForSave ? false : !!formData.showPhone,
         showEmail: isExternalListingForSave ? false : !!formData.showEmail,
+        showEnquiry: isExternalListingForSave ? false : !!formData.showEnquiry,
         useProfilePhone: useProfilePhoneValue,
         sellerName: id && originalAd ? (originalAd.sellerName || profile.name || 'ConnectBoat') : (profile.name || 'ConnectBoat'),
         status: id && originalAd
@@ -2509,6 +2516,7 @@ const CreateAd = () => {
             showWhatsapp: false,
             showPhone: false,
             showEmail: false,
+            showEnquiry: false,
             useProfilePhone: false,
             boatType: result.data.boatType !== undefined && result.data.boatType !== null ? result.data.boatType : (prev.boatType || ''),
             manufacturer: result.data.manufacturer ?? '',
@@ -3601,7 +3609,7 @@ const CreateAd = () => {
                   <div className="flex items-start gap-2.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2.5 text-xs font-semibold text-indigo-800">
                     <ExternalLink size={16} className="mt-0.5 shrink-0 text-indigo-600" />
                     <span>
-                      This is an external listing. WhatsApp, Phone and Email are disabled; visitors will be directed to the original listing.
+                      This is an external listing. WhatsApp, Phone, Email and ConnectBoat Enquiry are disabled; visitors will be directed to the original listing.
                     </span>
                   </div>
                 )}
@@ -3708,6 +3716,24 @@ const CreateAd = () => {
                       onChange={(e) => setFormData(prev => ({ ...prev, showEmail: e.target.checked }))}
                       disabled={isExternalSourceListing}
                       className="w-5 h-5 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[minmax(0,1fr)_28px] sm:grid-cols-[90px_minmax(0,1fr)_28px] items-center gap-2">
+                    <label className="col-span-2 sm:col-span-1 flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                      <Mail size={15} className="text-violet-600" />
+                      Enquiry
+                    </label>
+                    <div className="min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-600">
+                      Let signed-in users send a ConnectBoat Enquiry to your private account email.
+                    </div>
+                    <input
+                      aria-label="Enable ConnectBoat Enquiry"
+                      type="checkbox"
+                      checked={formData.showEnquiry}
+                      onChange={(e) => setFormData(prev => ({ ...prev, showEnquiry: e.target.checked }))}
+                      disabled={isExternalSourceListing}
+                      className="w-5 h-5 rounded text-violet-600 border-slate-300 focus:ring-violet-500 cursor-pointer"
                     />
                   </div>
                 </div>
@@ -4355,6 +4381,7 @@ const CreateAd = () => {
                           : 'Standard search and category placement'}
                     </p>
                   </div>
+
                   <span className="text-xl font-black text-indigo-700">
                     £{getPlanPrice(formData.plan).toFixed(2)}
                   </span>

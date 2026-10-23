@@ -595,6 +595,104 @@ async function getAdSellerEmails(adId: string): Promise<string[]> {
   return Array.from(emails);
 }
 
+async function prepareSellerEnquiry(decodedUser: any, data: any): Promise<{ recipient: string; data: any }> {
+  const db = getFirestore(getFirebaseAdminApp(), FIRESTORE_DATABASE_ID);
+  const adId = typeof data?.adId === 'string' ? data.adId.trim() : '';
+  const message = typeof data?.message === 'string' ? data.message.trim() : '';
+  const callerEmail = typeof decodedUser?.email === 'string' ? decodedUser.email.trim().toLowerCase() : '';
+
+  if (!decodedUser?.uid || !callerEmail) {
+    const error: any = new Error('A ConnectBoat account with an email address is required to send an enquiry.');
+    error.statusCode = 403;
+    throw error;
+  }
+  if (!adId || message.length < 10 || message.length > 3000) {
+    const error: any = new Error('Message must contain between 10 and 3000 characters.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (data?.website) {
+    const error: any = new Error('The enquiry could not be sent.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const adSnap = await db.collection('ads').doc(adId).get();
+  if (!adSnap.exists) {
+    const error: any = new Error('This listing is no longer available.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const ad = adSnap.data() || {};
+  const sellerId = typeof ad.sellerId === 'string' ? ad.sellerId.trim() : '';
+  const isExternal = typeof ad.sourceUrl === 'string' && /^https?:\/\//i.test(ad.sourceUrl.trim()) && ad.demoListing !== true;
+  const isUnclaimed = ad.isClaimableBusiness === true && ad.claimStatus !== 'claimed';
+  if (ad.showEnquiry !== true || !sellerId || isExternal || isUnclaimed || ad.status === 'sold' || ad.adStatus === 'sold') {
+    const error: any = new Error('ConnectBoat Enquiry is not available for this listing.');
+    error.statusCode = 403;
+    throw error;
+  }
+  if (sellerId === decodedUser.uid) {
+    const error: any = new Error('You cannot send an enquiry about your own listing.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const sellerUser = await db.collection('users').doc(sellerId).get();
+  let recipient = sellerUser.exists && typeof sellerUser.data()?.email === 'string'
+    ? sellerUser.data()!.email.trim().toLowerCase()
+    : '';
+  if (!recipient) {
+    try {
+      recipient = (await getAuth(getFirebaseAdminApp()).getUser(sellerId)).email?.trim().toLowerCase() || '';
+    } catch {
+      recipient = '';
+    }
+  }
+  if (!recipient) {
+    const error: any = new Error('The seller cannot receive enquiries at present.');
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const rateRef = db.collection('enquiryRateLimits').doc(createHash('sha256').update(`${decodedUser.uid}:${adId}`).digest('hex'));
+  const now = Date.now();
+  await db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(rateRef);
+    const stored = snap.exists ? snap.data() || {} : {};
+    const windowStartedAt = Number(stored.windowStartedAt || 0);
+    const withinWindow = now - windowStartedAt < 60 * 60 * 1000;
+    const count = withinWindow ? Number(stored.count || 0) : 0;
+    const lastSentAt = Number(stored.lastSentAt || 0);
+    if (now - lastSentAt < 60 * 1000 || count >= 3) {
+      const error: any = new Error('Too many enquiries. Please wait before trying again.');
+      error.statusCode = 429;
+      throw error;
+    }
+    transaction.set(rateRef, {
+      count: count + 1,
+      windowStartedAt: withinWindow ? windowStartedAt : now,
+      lastSentAt: now,
+      expiresAt: new Date(now + 24 * 60 * 60 * 1000),
+    });
+  });
+
+  const userSnap = await db.collection('users').doc(decodedUser.uid).get();
+  const accountName = String(userSnap.data()?.name || decodedUser.name || 'ConnectBoat User').trim().slice(0, 100);
+  return {
+    recipient,
+    data: {
+      adId,
+      adTitle: String(ad.title || 'ConnectBoat listing').slice(0, 200),
+      sellerName: String(ad.sellerName || sellerUser.data()?.name || 'Seller').slice(0, 100),
+      interestedName: accountName,
+      interestedEmail: callerEmail,
+      message,
+    },
+  };
+}
+
 async function authorizeEmailRequest(
   decodedUser: any,
   template: string,
@@ -655,7 +753,7 @@ async function authorizeEmailRequest(
     return;
   }
 
-  if (template === 'seller_message') {
+  if (template === 'seller_message' || template === 'seller_enquiry') {
     const suppliedBuyerEmail =
       typeof data?.interestedEmail === 'string'
         ? data.interestedEmail.trim().toLowerCase()
@@ -684,6 +782,8 @@ async function authorizeEmailRequest(
     }
     return;
   }
+
+  if (template === 'seller_enquiry') return;
 
   if (template === 'interesse_contacto' || template === 'seller_message' || template === 'review_recebida') {
     const adId = typeof data?.adId === 'string' ? data.adId : '';
@@ -971,10 +1071,15 @@ export function renderEmail(template: string, data: any): { subject: string; htm
       break;
 
     case 'seller_message':
-      subject = `✉️ New Message About: ${escapeHtml(data.adTitle || 'Your ConnectBoat Listing')}`;
+    case 'seller_enquiry':
+      subject = template === 'seller_enquiry'
+        ? `✉️ New ConnectBoat Enquiry About: ${escapeHtml(data.adTitle || 'Your Listing')}`
+        : `✉️ New Message About: ${escapeHtml(data.adTitle || 'Your ConnectBoat Listing')}`;
       bodyContent = `
         <p style="font-size: 16px; font-weight: bold; margin-top: 0;">Hello ${escapeHtml(data.sellerName || 'Seller')},</p>
-        <p>You have received a new message from a ConnectBoat user about your listing:</p>
+        <p>${template === 'seller_enquiry'
+          ? 'You have received a new ConnectBoat Enquiry about your listing:'
+          : 'You have received a new message from a ConnectBoat user about your listing:'}</p>
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 18px; margin: 20px 0;">
           <p style="margin: 0 0 8px 0;"><strong>Listing:</strong> ${escapeHtml(data.adTitle || '')}</p>
           <p style="margin: 0 0 8px 0;"><strong>From:</strong> ${escapeHtml(data.interestedName || 'ConnectBoat User')}</p>
@@ -1251,13 +1356,18 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { template, to, data, eventContactId } = req.body;
+    let { template, to, data, eventContactId } = req.body;
 
-    if (!to || !template) {
-      return res.status(400).json({ error: "Required parameters 'to' and 'template' are missing." });
+    if (!template || (!to && template !== 'seller_enquiry')) {
+      return res.status(400).json({ error: "Required email parameters are missing." });
     }
 
     try {
+      if (template === 'seller_enquiry') {
+        const prepared = await prepareSellerEnquiry(decodedUser, data);
+        to = prepared.recipient;
+        data = prepared.data;
+      }
       await authorizeEmailRequest(decodedUser, template, to, data);
       await assertEventContactCanReceiveInvitation(to, template);
     } catch (authorizationError: any) {
@@ -1284,7 +1394,7 @@ export default async function handler(req: any, res: any) {
         ? decodedUser.email.trim().toLowerCase()
         : '';
     const emailReplyTo =
-      template === 'seller_message' && authenticatedReplyEmail
+      (template === 'seller_message' || template === 'seller_enquiry') && authenticatedReplyEmail
         ? authenticatedReplyEmail
         : defaultReplyTo;
     const resendApiKey = process.env.RESEND_API_KEY;

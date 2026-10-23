@@ -348,7 +348,7 @@ const AdDetails = () => {
   // Segurança de Contacto WhatsApp
   const [showContactWarning, setShowContactWarning] = useState(false);
   const [showContactOptionsModal, setShowContactOptionsModal] = useState(false);
-  const [selectedContactMethod, setSelectedContactMethod] = useState<'whatsapp' | 'phone' | 'email' | 'source' | null>(null);
+  const [selectedContactMethod, setSelectedContactMethod] = useState<'whatsapp' | 'phone' | 'email' | 'enquiry' | 'source' | null>(null);
   const [showEmailContactModal, setShowEmailContactModal] = useState(false);
   const [emailContactName, setEmailContactName] = useState('');
   const [emailContactAddress, setEmailContactAddress] = useState('');
@@ -679,7 +679,7 @@ const AdDetails = () => {
   // "More From This Seller".
   const isExternalImportedListing = !!ad && hasSourceUrl && !ad.demoListing;
 
-  type ContactMethod = 'whatsapp' | 'phone' | 'email' | 'source';
+  type ContactMethod = 'whatsapp' | 'phone' | 'email' | 'enquiry' | 'source';
 
   const getContactMethods = (): ContactMethod[] => {
     if (!ad) return [];
@@ -695,7 +695,8 @@ const AdDetails = () => {
     const hasNewVisibilityFlags =
       typeof a.showWhatsapp === 'boolean' ||
       typeof a.showPhone === 'boolean' ||
-      typeof a.showEmail === 'boolean';
+      typeof a.showEmail === 'boolean' ||
+      typeof a.showEnquiry === 'boolean';
 
     const whatsappNumber = (a.contactWhatsapp || '').trim();
     const phoneNumber = (a.contactPhone || '').trim();
@@ -706,6 +707,7 @@ const AdDetails = () => {
       if (a.showWhatsapp === true && whatsappNumber) methods.push('whatsapp');
       if (a.showPhone === true && phoneNumber) methods.push('phone');
       if (a.showEmail === true && emailAddress) methods.push('email');
+      if (a.showEnquiry === true && a.sellerId) methods.push('enquiry');
       return methods;
     }
 
@@ -720,12 +722,13 @@ const AdDetails = () => {
     if (method === 'whatsapp') return 'WhatsApp';
     if (method === 'phone') return 'Call Seller';
     if (method === 'email') return 'Email Seller';
+    if (method === 'enquiry') return 'Send Enquiry';
     return 'Contact Seller';
   };
 
   const getContactMethodIcon = (method: ContactMethod) => {
     if (method === 'phone') return Phone;
-    if (method === 'email') return Mail;
+    if (method === 'email' || method === 'enquiry') return Mail;
     if (method === 'source') return ExternalLink;
     return MessageCircle;
   };
@@ -771,7 +774,11 @@ const AdDetails = () => {
   const openContactMethod = async (method: ContactMethod) => {
     if (!ad) return;
 
-    if (method === 'email') {
+    if (method === 'email' || method === 'enquiry') {
+      if (method === 'enquiry') {
+        setShowEmailContactModal(true);
+        return;
+      }
       const email = ((ad as any).contactEmail || '').trim();
       if (!email) {
         showToastMsg('error', 'Email contact is not available for this listing.');
@@ -845,7 +852,7 @@ const AdDetails = () => {
     }
 
     if (!user) {
-      navigate(`/login?message=${encodeURIComponent('To contact the seller, please log in or create a free account.')}`);
+      navigate(`/login?message=${encodeURIComponent('To contact the seller, please log in or create a free account.')}&redirect=${encodeURIComponent(location.pathname + location.search)}`);
       return;
     }
 
@@ -938,12 +945,13 @@ const AdDetails = () => {
     e.preventDefault();
     if (!ad || !user) return;
 
+    const isEnquiry = selectedContactMethod === 'enquiry';
     const recipient = ((ad as any).contactEmail || '').trim();
     const name = emailContactName.trim();
     const senderEmail = emailContactAddress.trim();
     const message = emailContactMessage.trim();
 
-    if (!recipient) {
+    if (!isEnquiry && !recipient) {
       showToastMsg('error', 'The seller email is not available.');
       return;
     }
@@ -974,8 +982,8 @@ const AdDetails = () => {
           'Authorization': `Bearer ${idToken}`
         },
         body: JSON.stringify({
-          template: 'seller_message',
-          to: recipient,
+          template: isEnquiry ? 'seller_enquiry' : 'seller_message',
+          ...(isEnquiry ? {} : { to: recipient }),
           data: {
             adId: ad.id,
             adTitle: ad.title,
@@ -983,7 +991,8 @@ const AdDetails = () => {
             interestedName: name,
             interestedEmail: senderEmail,
             message,
-            adUrl: `${window.location.origin}${location.pathname}`
+            adUrl: `${window.location.origin}${location.pathname}`,
+            website: ''
           }
         })
       });
@@ -993,12 +1002,12 @@ const AdDetails = () => {
         throw new Error(result?.error || 'Could not send the message.');
       }
 
-      await registerInterest('email');
+      await registerInterest(isEnquiry ? 'enquiry' : 'email');
 
       setShowEmailContactModal(false);
       setSelectedContactMethod(null);
       setEmailContactMessage('');
-      showToastMsg('success', 'Message sent to the seller successfully.', 4500);
+      showToastMsg('success', isEnquiry ? 'Your enquiry was sent successfully.' : 'Message sent to the seller successfully.', 4500);
     } catch (error: any) {
       console.error('[AdDetails] Email contact error:', error);
       showToastMsg('error', error?.message || 'Could not send the message. Please try again.');
@@ -3163,9 +3172,13 @@ const AdDetails = () => {
                   <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
                     <Mail size={22} />
                   </div>
-                  <h3 className="text-xl font-black text-slate-950">Email Seller</h3>
+                  <h3 className="text-xl font-black text-slate-950">
+                    {selectedContactMethod === 'enquiry' ? 'Send Enquiry' : 'Email Seller'}
+                  </h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    Your message will be sent securely by ConnectBoat.
+                    {selectedContactMethod === 'enquiry'
+                      ? 'Send a secure enquiry through ConnectBoat.'
+                      : 'Your message will be sent securely by ConnectBoat.'}
                   </p>
                 </div>
                 <button
@@ -3188,11 +3201,18 @@ const AdDetails = () => {
                     maxLength={100}
                     value={emailContactName}
                     onChange={(e) => setEmailContactName(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    readOnly={selectedContactMethod === 'enquiry'}
+                    className={`w-full rounded-xl border border-slate-200 px-3.5 py-3 text-sm outline-none transition ${selectedContactMethod === 'enquiry' ? 'cursor-not-allowed bg-slate-50 text-slate-600' : 'bg-white text-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100'}`}
                     placeholder="Your name"
                     required
                   />
                 </div>
+
+                {selectedContactMethod === 'enquiry' && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-relaxed text-amber-900">
+                    <strong>Please note:</strong> Your name, email address and message will be shared with the seller. If the seller is interested, they may contact you directly by email. ConnectBoat cannot guarantee a response.
+                  </div>
+                )}
 
                 <div>
                   <label className="mb-1.5 block text-xs font-black uppercase tracking-wider text-slate-500">
@@ -3218,6 +3238,7 @@ const AdDetails = () => {
                     value={emailContactMessage}
                     onChange={(e) => setEmailContactMessage(e.target.value)}
                     maxLength={3000}
+                    minLength={10}
                     rows={7}
                     className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm leading-relaxed text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
                     placeholder="Write your message to the seller..."
@@ -3243,7 +3264,7 @@ const AdDetails = () => {
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-black text-white shadow-md transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <Mail size={17} />
-                    {emailContactSending ? 'Sending...' : 'Send Message'}
+                    {emailContactSending ? 'Sending...' : selectedContactMethod === 'enquiry' ? 'Send Enquiry' : 'Send Message'}
                   </button>
                 </div>
               </form>
