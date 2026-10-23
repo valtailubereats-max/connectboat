@@ -827,7 +827,7 @@ function nl2brSafe(value: unknown): string {
 }
 
 // Helper to generate unified HTML email templates
-function generateConnectBoatTemplate(title: string, bodyContent: string, ctaLink?: string, ctaText?: string): string {
+function generateConnectBoatTemplate(title: string, bodyContent: string, ctaLink?: string, ctaText?: string, headerIconUrl?: string): string {
   const ctaButton = ctaLink && ctaText ? `
     <div style="margin: 25px 0; text-align: center;">
       <a href="${ctaLink}" target="_blank" style="background-color: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -854,7 +854,7 @@ function generateConnectBoatTemplate(title: string, bodyContent: string, ctaLink
               <tr style="background-color: #0f172a;">
                 <td style="padding: 24px; text-align: center;">
                   <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800; letter-spacing: -0.05em;">
-                    ⛵ ConnectBoat
+                    ${headerIconUrl ? `<img src="${headerIconUrl}" alt="ConnectBoat" width="42" height="42" style="display: inline-block; width: 42px; height: 42px; margin-right: 10px; border-radius: 10px; vertical-align: middle;">` : '⛵'} ConnectBoat
                   </h1>
                   <p style="margin: 4px 0 0 0; color: #38bdf8; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em;">
                     UK Boat & Marine Marketplace
@@ -1233,7 +1233,13 @@ export function renderEmail(template: string, data: any): { subject: string; htm
       `;
   }
 
-  const html = generateConnectBoatTemplate(subject, bodyContent, ctaLink, ctaText);
+  const html = generateConnectBoatTemplate(
+    subject,
+    bodyContent,
+    ctaLink,
+    ctaText,
+    template === 'seller_enquiry' ? `${baseUrl}/icons/icon-192.png` : undefined
+  );
   return { subject, html };
 }
 

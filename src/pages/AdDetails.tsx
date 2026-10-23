@@ -3293,7 +3293,7 @@ const AdDetails = () => {
               <AlertCircle className="mx-auto text-amber-500 mb-4" size={48} />
               <h3 className="text-xl font-black text-slate-950 mb-2">Safety Notice</h3>
               <p className="text-slate-600 text-sm leading-relaxed mb-6">
-                When contacting this seller, please note that ConnectBoat operates strictly as a free classifieds platform. Never send advance payments or deposits without inspecting the item and verifying the seller in person.
+                When contacting this seller, please note that ConnectBoat operates strictly as an online marine classifieds marketplace. Never send advance payments or deposits without inspecting the item and verifying the seller in person.
               </p>
               <div className="flex flex-col gap-4">
                 <label className="flex items-center gap-2 cursor-pointer text-left text-xs text-slate-500">
