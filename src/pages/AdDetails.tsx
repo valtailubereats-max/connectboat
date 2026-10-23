@@ -722,7 +722,7 @@ const AdDetails = () => {
     if (method === 'whatsapp') return 'WhatsApp';
     if (method === 'phone') return 'Call Seller';
     if (method === 'email') return 'Email Seller';
-    if (method === 'enquiry') return 'Send Enquiry';
+    if (method === 'enquiry') return 'Contact Seller';
     return 'Contact Seller';
   };
 
