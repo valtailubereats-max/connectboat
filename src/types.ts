@@ -272,6 +272,7 @@ export interface Ad {
   showWhatsapp?: boolean;
   showPhone?: boolean;
   showEmail?: boolean;
+  showEnquiry?: boolean;
   externalUrl?: string;
   isFeatured?: boolean;
   isPermanentFeatured?: boolean;
