@@ -292,6 +292,7 @@ const CreateAd = () => {
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formErrorFieldId, setFormErrorFieldId] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState<{
     show: boolean;
     level: 'confirmed' | 'possible';
@@ -308,21 +309,50 @@ const CreateAd = () => {
   const showValidationError = (message: string, fieldId?: string) => {
     console.error('[CreateAd Validation Error]', message, fieldId ? `(Field ID: ${fieldId})` : '');
     setFormError(message);
+    setFormErrorFieldId(fieldId || null);
     setLoading(false);
 
-    if (fieldId) {
-      setTimeout(() => {
-        const el = document.getElementById(fieldId);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          if ('focus' in el && typeof (el as any).focus === 'function') {
-            (el as HTMLElement).focus();
-          }
-        }
-      }, 50);
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToValidationError = (fieldId: string | null = formErrorFieldId) => {
+    if (!fieldId) {
+      const banner = document.getElementById('form-error-banner');
+      if (banner) {
+        window.scrollTo({
+          top: Math.max(0, banner.getBoundingClientRect().top + window.scrollY - 104),
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        });
+      }
+      return;
     }
+
+    const stepOneFields = new Set([
+      'txt-ad-title', 'txt-description', 'listing-category', 'city-location-section',
+      'contact-options-section', 'txt-contact-whatsapp', 'txt-contact-phone',
+      'txt-contact-email', 'sec-images-upload', 'media-boost-section',
+    ]);
+    const targetStep: 1 | 2 = stepOneFields.has(fieldId) ? 1 : 2;
+    setCurrentStep(targetStep);
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const target = document.getElementById(fieldId);
+        if (!target) return;
+
+        target.closest('details:not([open])')?.setAttribute('open', '');
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const targetTop = target.getBoundingClientRect().top + window.scrollY - 104;
+        window.scrollTo({ top: Math.max(0, targetTop), behavior: reducedMotion ? 'auto' : 'smooth' });
+
+        if (!target.matches('input, textarea, select, button, [tabindex]')) {
+          target.setAttribute('tabindex', '-1');
+        }
+        (target as HTMLElement).focus({ preventScroll: true });
+        target.classList.remove('validation-error-highlight');
+        window.requestAnimationFrame(() => target.classList.add('validation-error-highlight'));
+        window.setTimeout(() => target.classList.remove('validation-error-highlight'), 3000);
+      });
+    });
   };
 
   const prefill = location.state?.prefill;
@@ -641,7 +671,7 @@ const CreateAd = () => {
       return false;
     }
     if (!formData.category) {
-      showValidationError('Please select a category.');
+      showValidationError('Please select a category.', 'listing-category');
       return false;
     }
     if (!formData.description || !formData.description.trim()) {
@@ -649,7 +679,7 @@ const CreateAd = () => {
       return false;
     }
     if (!formData.city) {
-      showValidationError('Please select a city/region.');
+      showValidationError('Please select a city/region.', 'city-location-section');
       return false;
     }
     if (!isExternalSourceListing) {
@@ -682,11 +712,11 @@ const CreateAd = () => {
     }
     if (formData.mediaBoostEnabled) {
       if (videoUploading) {
-        showValidationError('Please wait for the video upload to finish before proceeding.');
+        showValidationError('Please wait for the video upload to finish before proceeding.', 'media-boost-section');
         return false;
       }
       if (!formData.videoUrl || videoError) {
-        showValidationError('Please upload a valid video to enable Media Boost, or untick the option to proceed.');
+        showValidationError('Please upload a valid video to enable Media Boost, or untick the option to proceed.', 'media-boost-section');
         return false;
       }
     }
@@ -1914,7 +1944,7 @@ const CreateAd = () => {
     }
 
     if (isMarketplaceListingCategory(formData.category) && looksLikeBoatSaleOrHire(formData.category, formData.title, formData.description)) {
-      showValidationError('This appears to be a complete boat or yacht offered for sale or hire. Boats must be listed under Boats for Sale or Boats for Hire and use a boat listing plan.', 'select-category');
+      showValidationError('This appears to be a complete boat or yacht offered for sale or hire. Boats must be listed under Boats for Sale or Boats for Hire and use a boat listing plan.', 'listing-category');
       return;
     }
 
@@ -2242,7 +2272,7 @@ const CreateAd = () => {
           formData.city !== originalAd.city ||
           formData.plan !== originalAd.plan
         ) {
-          showValidationError('Não é permitido alterar título, categoria, comunidade ou plano em anúncios em destaque após 24h. As fotos continuam editáveis dentro do limite do plano.');
+          showValidationError('You cannot change the title, category, location or plan on featured listings after 24 hours. Photos can still be edited within the plan limit.');
           return;
         }
       }
@@ -2256,7 +2286,7 @@ const CreateAd = () => {
         const snapSource = await getDocs(qSource);
         const dupSourceAd = snapSource.docs.find(docSnap => docSnap.id !== adId);
         if (dupSourceAd) {
-          showValidationError("Erro: Este link de importação já foi publicado ou importado em outro anúncio no ConnectBoat. Não são permitidos anúncios duplicados.");
+          showValidationError('This import link has already been published or imported in another ConnectBoat listing. Duplicate listings are not allowed.');
           return;
         }
       }
@@ -2786,10 +2816,15 @@ const CreateAd = () => {
             >
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-rose-600 shrink-0 mt-0.5" size={20} />
-                <div>
-                  <h4 className="text-sm font-bold text-rose-900">Aviso de Validação</h4>
+                <button
+                  type="button"
+                  onClick={() => navigateToValidationError()}
+                  className="text-left"
+                  aria-label={formErrorFieldId ? 'Go to the field with this validation error' : undefined}
+                >
+                  <h4 className="text-sm font-bold text-rose-900">Validation Notice</h4>
                   <p className="text-xs text-rose-700 mt-0.5 leading-relaxed font-medium">{formError}</p>
-                </div>
+                </button>
               </div>
               <button
                 type="button"
@@ -3097,7 +3132,7 @@ const CreateAd = () => {
               </div>
 
               {/* 1. Photos */}
-              <div className="space-y-3">
+              <div id="sec-images-upload" className="space-y-3 scroll-mt-28">
                 <div className="flex justify-between items-end">
                   <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">
                     Photos *
@@ -3267,7 +3302,7 @@ const CreateAd = () => {
               </div>
 
               {/* Media Boost Optional Add-on Block */}
-              <div className="p-6 bg-gradient-to-br from-indigo-50/80 via-white to-sky-50/60 border-2 border-indigo-200/90 rounded-3xl space-y-4 shadow-sm relative overflow-hidden">
+              <div id="media-boost-section" className="p-6 bg-gradient-to-br from-indigo-50/80 via-white to-sky-50/60 border-2 border-indigo-200/90 rounded-3xl space-y-4 shadow-sm relative overflow-hidden">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -3548,7 +3583,7 @@ const CreateAd = () => {
 
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div id="city-location-section" className="grid grid-cols-2 gap-2.5 scroll-mt-28">
               {/* Region */}
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Region *</label>
@@ -4674,8 +4709,8 @@ const CreateAd = () => {
               </div>
 
               {formError && (
-                <div className="p-4 bg-rose-50 border-2 border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between text-xs font-bold">
-                  <span>{formError}</span>
+                <div className="p-4 bg-rose-50 border-2 border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between gap-3 text-xs font-bold">
+                  <button type="button" onClick={() => navigateToValidationError()} className="text-left leading-relaxed">{formError}</button>
                   <button type="button" onClick={() => setFormError(null)}>
                     <X size={16} />
                   </button>
