@@ -2636,30 +2636,30 @@ const CreateAd = () => {
           </div>
         </div>
       )}
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="w-full max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-3 sm:py-6 overflow-x-hidden">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 mb-6 font-medium transition-colors cursor-pointer">
         <ChevronLeft size={20} /> Back
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8 items-start">
         {/* Left Column: Wizard Form */}
         <div className="lg:col-span-7 xl:col-span-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-100"
+            className="bg-white p-3.5 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100"
           >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-start sm:items-center justify-between gap-2 mb-4 sm:mb-6">
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                 {id ? 'Edit Listing' : 'New Listing'}
               </h1>
-              <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full uppercase tracking-wider">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-500 bg-slate-100 px-2 sm:px-3 py-1 rounded-full uppercase tracking-wide sm:tracking-wider text-right shrink-0">
                 Step {currentStep} of 2 — {currentStep === 1 ? 'Listing' : 'Plan & Payment'}
               </span>
             </div>
 
             {/* Step Wizard Navigation Header */}
-            <div className="mb-8 border-b border-slate-200/80 pb-6">
+            <div className="mb-5 sm:mb-8 border-b border-slate-200/80 pb-4 sm:pb-6">
               <div className="flex items-center justify-between max-w-xl mx-auto">
                 <button
                   type="button"
@@ -2888,12 +2888,12 @@ const CreateAd = () => {
                   </span>
                 </div>
 
-                <div className={`grid grid-cols-2 ${isBoatServiceCategory(formData.category) ? 'sm:grid-cols-3' : 'sm:grid-cols-4'} gap-2`}>
+                <div className={`grid grid-cols-1 ${isBoatServiceCategory(formData.category) ? 'sm:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4'} gap-3 sm:gap-2`}>
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => handleBoatPlanCardClick('standard')}
-                    className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
+                    className={`relative min-h-[132px] sm:min-h-[108px] p-3.5 sm:p-2.5 rounded-xl border-2 text-left transition-all ${
                       !isTieredListingCategory(formData.category)
                         ? 'border-slate-200 bg-slate-50 opacity-70 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/40'
                         : normalizeListingPlan(formData.plan) === 'standard'
@@ -2908,25 +2908,25 @@ const CreateAd = () => {
                       )}
                     </div>
                     <div className="mt-1">
-                      <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">{isBoatServiceCategory(formData.category) ? 'Basic' : 'Standard'}</p>
-                      <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
+                      <p className="font-black text-base sm:text-xs text-slate-900 leading-tight">{isBoatServiceCategory(formData.category) ? 'Basic' : 'Standard'}</p>
+                      <p className="text-xs sm:text-[10px] text-slate-600 mt-1 sm:mt-0.5">
                         {getPhotoLimit(formData.category || 'Boats for Sale', 'standard')} photos
                       </p>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
+                      <p className="text-xs sm:text-[10px] font-bold text-slate-600 mt-1 sm:mt-0.5">
                         30 days
                       </p>
                     </div>
-                    <p className="font-black text-emerald-700 text-xs sm:text-sm mt-1">
+                    <p className="font-black text-emerald-700 text-lg sm:text-sm mt-2 sm:mt-1">
                       {isBoatServiceCategory(formData.category) ? 'FREE' : `£${getPlanPrice('standard').toFixed(2)}`}
                     </p>
-                    <p className="text-[8px] text-slate-400 mt-1">{isBoatServiceCategory(formData.category) ? 'Boat Services' : 'Boats for Sale / Hire'}</p>
+                    <p className="text-[11px] sm:text-[8px] text-slate-500 mt-1">{isBoatServiceCategory(formData.category) ? 'Boat Services' : 'Boats for Sale / Hire'}</p>
                   </button>
 
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => handleBoatPlanCardClick('featured')}
-                    className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
+                    className={`relative min-h-[132px] sm:min-h-[108px] p-3.5 sm:p-2.5 rounded-xl border-2 text-left transition-all ${
                       !isTieredListingCategory(formData.category)
                         ? 'border-slate-200 bg-slate-50 opacity-70 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/40'
                         : normalizeListingPlan(formData.plan) === 'featured'
@@ -2944,25 +2944,25 @@ const CreateAd = () => {
                       )}
                     </div>
                     <div className="mt-1">
-                      <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Featured</p>
-                      <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
+                      <p className="font-black text-base sm:text-xs text-slate-900 leading-tight">Featured</p>
+                      <p className="text-xs sm:text-[10px] text-slate-600 mt-1 sm:mt-0.5">
                         {getPhotoLimit(formData.category || 'Boats for Sale', 'featured')} photos
                       </p>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
+                      <p className="text-xs sm:text-[10px] font-bold text-slate-600 mt-1 sm:mt-0.5">
                         30 days
                       </p>
                     </div>
-                    <p className="font-black text-amber-600 text-xs sm:text-sm mt-1">
+                    <p className="font-black text-amber-600 text-lg sm:text-sm mt-2 sm:mt-1">
                       £{(isBoatServiceCategory(formData.category) ? getServicePlanPrice('featured') : getPlanPrice('featured')).toFixed(2)}
                     </p>
-                    <p className="text-[8px] text-slate-400 mt-1">{isBoatServiceCategory(formData.category) ? 'Boat Services' : 'Boats for Sale / Hire'}</p>
+                    <p className="text-[11px] sm:text-[8px] text-slate-500 mt-1">{isBoatServiceCategory(formData.category) ? 'Boat Services' : 'Boats for Sale / Hire'}</p>
                   </button>
 
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => handleBoatPlanCardClick('premium')}
-                    className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all ${
+                    className={`relative min-h-[132px] sm:min-h-[108px] p-3.5 sm:p-2.5 rounded-xl border-2 text-left transition-all ${
                       !isTieredListingCategory(formData.category)
                         ? 'border-slate-200 bg-slate-50 opacity-70 cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/40'
                         : normalizeListingPlan(formData.plan) === 'premium'
@@ -2977,18 +2977,18 @@ const CreateAd = () => {
                       )}
                     </div>
                     <div className="mt-1">
-                      <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">Premium</p>
-                      <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">
+                      <p className="font-black text-base sm:text-xs text-slate-900 leading-tight">Premium</p>
+                      <p className="text-xs sm:text-[10px] text-slate-600 mt-1 sm:mt-0.5">
                         {getPhotoLimit(formData.category || 'Boats for Sale', 'premium')} photos
                       </p>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
+                      <p className="text-xs sm:text-[10px] font-bold text-slate-600 mt-1 sm:mt-0.5">
                         30 days
                       </p>
                     </div>
-                    <p className="font-black text-indigo-600 text-xs sm:text-sm mt-1">
+                    <p className="font-black text-indigo-600 text-lg sm:text-sm mt-2 sm:mt-1">
                       £{(isBoatServiceCategory(formData.category) ? getServicePlanPrice('premium') : getPlanPrice('premium')).toFixed(2)}
                     </p>
-                    <p className="text-[8px] text-slate-400 mt-1">{isBoatServiceCategory(formData.category) ? 'Boat Services' : 'Boats for Sale / Hire'}</p>
+                    <p className="text-[11px] sm:text-[8px] text-slate-500 mt-1">{isBoatServiceCategory(formData.category) ? 'Boat Services' : 'Boats for Sale / Hire'}</p>
                   </button>
 
                   {!isBoatServiceCategory(formData.category) && (
@@ -3012,7 +3012,7 @@ const CreateAd = () => {
                         );
                       }
                     }}
-                    className={`relative min-h-[108px] p-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                    className={`relative min-h-[132px] sm:min-h-[108px] p-3.5 sm:p-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
                       isMarketplaceListingCategory(formData.category) && formData.plan === 'free'
                         ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100'
                         : 'border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
@@ -3028,20 +3028,20 @@ const CreateAd = () => {
                       )}
                     </div>
                     <div className="mt-1">
-                      <p className="font-black text-[11px] sm:text-xs text-slate-900 leading-tight">
+                      <p className="font-black text-base sm:text-xs text-slate-900 leading-tight">
                         {hasMarketplaceFreeBenefit() ? 'Free Marketplace' : 'Marketplace'}
                       </p>
-                      <p className="text-[9px] sm:text-[10px] text-slate-500 mt-0.5">Up to 3 photos</p>
-                      <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 mt-0.5">
+                      <p className="text-xs sm:text-[10px] text-slate-600 mt-1 sm:mt-0.5">Up to 3 photos</p>
+                      <p className="text-xs sm:text-[10px] font-bold text-slate-600 mt-1 sm:mt-0.5">
                         30 days
                       </p>
                     </div>
-                    <p className="font-black text-xs sm:text-sm mt-1 text-emerald-700">
+                    <p className="font-black text-base sm:text-sm mt-2 sm:mt-1 text-emerald-700">
                       {hasMarketplaceFreeBenefit()
                         ? 'FREE — FIRST LISTING'
                         : `£${getMarketplaceAdditionalPrice().toFixed(2)} PER LISTING`}
                     </p>
-                    <p className="text-[8px] font-semibold text-slate-500 mt-1 leading-tight">
+                    <p className="text-[11px] sm:text-[8px] font-semibold text-slate-600 mt-1 leading-snug">
                       Parts, engines, electronics, trailers, accessories, marinas & wanted only
                     </p>
                   </button>
@@ -4396,13 +4396,13 @@ const CreateAd = () => {
                   </span>
                 </summary>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
                   {/* Standard Listing */}
                   <button
                     type="button"
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => handlePlanChange('standard')}
-                    className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
+                    className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
                       formData.plan === 'standard' || (!formData.plan || formData.plan === 'free')
                         ? 'border-emerald-600 bg-emerald-50/40 ring-4 ring-emerald-100'
                         : 'border-slate-200 bg-white hover:border-emerald-300'
@@ -4412,9 +4412,9 @@ const CreateAd = () => {
                       Standard
                     </div>
                     <p className="font-black text-slate-900 text-base">Standard Listing</p>
-                    <p className="text-xs text-slate-500 mt-0.5">30 days active listing in marketplace search</p>
+                    <p className="text-sm sm:text-xs text-slate-600 mt-1 sm:mt-0.5 leading-relaxed">30 days active listing in marketplace search</p>
 
-                    <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
+                    <ul className="text-sm sm:text-xs text-slate-700 space-y-2 sm:space-y-1.5 my-3 sm:my-4 font-medium leading-relaxed">
                       <li>📷 <strong>Up to {getMaxPhotosForPlan('standard')} Photos</strong></li>
                       <li>💬 Direct Contact Options</li>
                       <li>🔍 Standard Search & Category</li>
@@ -4433,7 +4433,7 @@ const CreateAd = () => {
                     type="button"
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => handlePlanChange('featured')}
-                    className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
+                    className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
                       formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'highlight'
                         ? 'border-amber-500 bg-amber-50/40 ring-4 ring-amber-100'
                         : 'border-slate-200 bg-white hover:border-amber-300'
@@ -4443,9 +4443,9 @@ const CreateAd = () => {
                       Featured ⭐
                     </div>
                     <p className="font-black text-slate-900 text-base">Featured Listing</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Homepage highlight & priority placement</p>
+                    <p className="text-sm sm:text-xs text-slate-600 mt-1 sm:mt-0.5 leading-relaxed">Homepage highlight & priority placement</p>
 
-                    <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
+                    <ul className="text-sm sm:text-xs text-slate-700 space-y-2 sm:space-y-1.5 my-3 sm:my-4 font-medium leading-relaxed">
                       <li>🌟 <strong>Includes Standard benefits</strong></li>
                       <li>📷 <strong>Up to {getMaxPhotosForPlan('featured')} Photos</strong></li>
                       <li>🌟 <strong>Homepage Highlight</strong></li>
@@ -4465,7 +4465,7 @@ const CreateAd = () => {
                     type="button"
                     disabled={!isAdmin && isEditLocked}
                     onClick={() => handlePlanChange('premium')}
-                    className={`p-5 rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
+                    className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl border-2 text-left transition-all relative overflow-hidden cursor-pointer ${
                       formData.plan === 'premium' || formData.plan === 'national'
                         ? 'border-indigo-600 bg-indigo-50/40 ring-4 ring-indigo-100'
                         : 'border-slate-200 bg-white hover:border-indigo-300'
@@ -4475,9 +4475,9 @@ const CreateAd = () => {
                       Premium 👑
                     </div>
                     <p className="font-black text-slate-900 text-base">Premium Featured</p>
-                    <p className="text-xs text-slate-500 mt-0.5">Top positions inside featured section & max reach</p>
+                    <p className="text-sm sm:text-xs text-slate-600 mt-1 sm:mt-0.5 leading-relaxed">Top positions inside featured section & max reach</p>
 
-                    <ul className="text-xs text-slate-600 space-y-1.5 my-4 font-medium">
+                    <ul className="text-sm sm:text-xs text-slate-700 space-y-2 sm:space-y-1.5 my-3 sm:my-4 font-medium leading-relaxed">
                       <li>👑 <strong>Includes Featured benefits</strong></li>
                       <li>📷 <strong>Up to {getMaxPhotosForPlan('premium')} Photos</strong></li>
                       <li>🚀 <strong>Top Spot Priority</strong></li>
