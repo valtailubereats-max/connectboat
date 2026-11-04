@@ -224,13 +224,22 @@ const Home = () => {
       return () => clearTimeout(timer);
     }
   }, []);
-  const [ads, setAds] = useState<Ad[]>([]);
-  const [featuredAds, setFeaturedAds] = useState<Ad[]>([]);
+  const [ads, setAds] = useState<Ad[]>(() => {
+    const initialCountry = new URLSearchParams(window.location.search).get('country') || localStorage.getItem('selectedCountry') || 'Reino Unido';
+    return getCachedAds(initialCountry);
+  });
+  const [featuredAds, setFeaturedAds] = useState<Ad[]>(() => {
+    const initialCountry = new URLSearchParams(window.location.search).get('country') || localStorage.getItem('selectedCountry') || 'Reino Unido';
+    return getCachedFeaturedAds(initialCountry);
+  });
   // Sale and hire listings are fetched independently so older boat ads are not
   // excluded by the 48-item general homepage discovery query.
   const [saleSectionAds, setSaleSectionAds] = useState<Ad[]>([]);
   const [hireSectionAds, setHireSectionAds] = useState<Ad[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const initialCountry = new URLSearchParams(window.location.search).get('country') || localStorage.getItem('selectedCountry') || 'Reino Unido';
+    return getCachedAds(initialCountry).length === 0;
+  });
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reloadCounter, setReloadCounter] = useState(0);
   const [category, setCategory] = useState('Todas');
@@ -409,6 +418,15 @@ const Home = () => {
     // Default launch experience is strictly United Kingdom
     return 'Reino Unido';
   });
+
+  const [previewAds, setPreviewAds] = useState<Ad[]>(() => {
+    const initialCountry = new URLSearchParams(window.location.search).get('country') || localStorage.getItem('selectedCountry') || 'Reino Unido';
+    return getCachedAds(initialCountry).slice(0, 30);
+  });
+
+  useEffect(() => {
+    setPreviewAds(getCachedAds(country).slice(0, 30));
+  }, [country]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [totalUsersCount, setTotalUsersCount] = useState<number | null>(null);
@@ -765,6 +783,11 @@ const Home = () => {
       const now = Date.now();
       const adsFromCache = getCachedAds(country);
       const lastFetch = getLastFetchTime(country);
+      if (adsFromCache.length > 0) {
+        setAds(adsFromCache);
+        setPreviewAds(adsFromCache.slice(0, 30));
+        setLoading(false);
+      }
       if (adsFromCache && adsFromCache.length >= dbLimit && (now - lastFetch < 5 * 60 * 1000)) {
         console.log(`[Cache HIT] Recuperou anúncios gerais da sessão (${country}). Total:`, adsFromCache.length);
         setAds(adsFromCache);
@@ -776,18 +799,12 @@ const Home = () => {
         return;
       }
 
-      const isLoadMore = dbLimit > 48 || ads.length > 0;
-      if (!isLoadMore) {
-        setLoading(true);
-      } else {
+      const isLoadMore = dbLimit > 48 || adsFromCache.length > 0 || ads.length > 0;
+      if (isLoadMore) {
         setIsFetchingMore(true);
       }
       setErrorMsg(null);
 
-      // Delay visual rápido e subtil de carregamento inicial apenas se não for load-more
-      if (!isLoadMore) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-      }
       if (!active) return;
 
       try {
@@ -1528,6 +1545,34 @@ const Home = () => {
     return filteredAds.slice(0, limitAmount);
   }, [filteredAds, limitAmount]);
 
+  const demoPreviewAds = useMemo<Ad[]>(() => {
+    const demoListings = [
+      { title: 'Coastal Cruiser — Ready for Summer', city: 'Southampton', category: 'Boats for Sale', price: 12500, imageUrl: '' },
+      { title: 'Reliable 4.5m Family Day Boat', city: 'Plymouth', category: 'Boats for Sale', price: 6800, imageUrl: '' },
+      { title: 'Outboard Engine, Recently Serviced', city: 'Brighton', category: 'Engines', price: 1450, imageUrl: '' },
+      { title: 'Sailing Yacht with Spacious Cabin', city: 'Portsmouth', category: 'Boats for Sale', price: 21900, imageUrl: '' },
+      { title: 'Marine Electronics and Navigation Kit', city: 'Bristol', category: 'Equipment', price: 320, imageUrl: '' },
+    ];
+    return demoListings.map((listing, index) => ({
+      id: `home-preview-${index}`,
+      ...listing,
+      description: 'Preview of the latest listings from the ConnectBoat marketplace.',
+      imageUrl: '',
+      images: [],
+      sellerId: '',
+      sellerPhone: '',
+      sellerName: 'ConnectBoat Seller',
+      country: country === 'Portugal' ? 'Portugal' : 'United Kingdom',
+      status: 'approved',
+      adStatus: 'active',
+      createdAt: new Date().toISOString(),
+    } as Ad));
+  }, [country]);
+
+  const isShowingAdPreview = loading && filteredAds.length === 0;
+  const previewListings = previewAds.length > 0 ? previewAds : demoPreviewAds;
+  const visiblePreviewListings = previewListings.slice(0, 5);
+
   const hasMore = useMemo(() => {
     return filteredAds.length > limitAmount;
   }, [filteredAds, limitAmount]);
@@ -2082,9 +2127,11 @@ const Home = () => {
 
           <div className="px-0">
             {loading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="bg-slate-100 dark:bg-slate-800 rounded-2xl h-64 animate-pulse" />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6" aria-label="Listing previews" aria-busy="true">
+                {visiblePreviewListings.map((ad, idx) => (
+                  <div key={`desktop-preview-${ad.id}`} className="opacity-75">
+                    <AdCard ad={ad} hideCategory hideActions preview />
+                  </div>
                 ))}
               </div>
             ) : errorMsg ? (
@@ -2516,9 +2563,11 @@ const Home = () => {
 
           <div ref={resultsSectionRef}>
             {loading ? (
-              <div className="grid grid-cols-2 gap-2">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="bg-slate-100 dark:bg-slate-850 rounded-xl h-44 animate-pulse" />
+              <div className="grid grid-cols-2 gap-2" aria-label="Listing previews" aria-busy="true">
+                {visiblePreviewListings.slice(0, 4).map((ad, idx) => (
+                  <div key={`mobile-preview-${ad.id}`} className="opacity-75">
+                    <AdCard ad={ad} hideCategory hideActions preview />
+                  </div>
                 ))}
               </div>
             ) : errorMsg ? (
