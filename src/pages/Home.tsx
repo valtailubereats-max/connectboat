@@ -22,6 +22,8 @@ import birchwoodPreviewImage from '../assets/images/home-listing-previews/birchw
 import glenLPreviewImage from '../assets/images/home-listing-previews/glen-l-zip.webp';
 import fairlinePreviewImage from '../assets/images/home-listing-previews/fairline-targa.webp';
 import liverpoolPreviewImage from '../assets/images/home-listing-previews/liverpool-boats.webp';
+import seaLinePreviewImage from '../assets/images/home-listing-previews/sea-line.webp';
+import colecraftPreviewImage from '../assets/images/home-listing-previews/colecraft.webp';
 import { 
   Search, Tag, MapPin, ArrowRight, AlertCircle, RefreshCcw, ArrowUp, Store,
   SlidersHorizontal, X, Filter, Check, ChevronDown, Anchor, Ship, Fuel, Compass, RotateCcw, ArrowUpDown, Globe
@@ -70,10 +72,30 @@ const HOME_LISTING_PREVIEWS: Ad[] = [
     city: 'Selby', country: 'Reino Unido', category: 'Boats for Sale', sellerId: '',
     sellerPhone: '', sellerName: '', status: 'approved', adStatus: 'active', createdAt: 0,
   },
+  {
+    id: 'home-preview-sea-line-23', title: 'Sea Line 23ft Boat',
+    description: '', price: 6000, imageUrl: seaLinePreviewImage, images: [seaLinePreviewImage],
+    city: 'Southampton', country: 'Reino Unido', category: 'Boats for Sale', sellerId: '',
+    sellerPhone: '', sellerName: '', status: 'approved', adStatus: 'active', createdAt: 0,
+  },
+  {
+    id: 'home-preview-colecraft-52', title: 'Colecraft 52 Traditional',
+    description: '', price: 28500, imageUrl: colecraftPreviewImage, images: [colecraftPreviewImage],
+    city: 'River Stort', country: 'Reino Unido', category: 'Boats for Sale', sellerId: '',
+    sellerPhone: '', sellerName: '', status: 'approved', adStatus: 'active', createdAt: 0,
+  },
 ];
 
-const HomeListingPreviewCard: React.FC<{ ad: Ad }> = ({ ad }) => (
-  <AdCard ad={ad} hideCategory hideActions imagePriority preview />
+const HOME_FEATURED_PREVIEWS = [
+  HOME_LISTING_PREVIEWS[2],
+  HOME_LISTING_PREVIEWS[1],
+  HOME_LISTING_PREVIEWS[3],
+  HOME_LISTING_PREVIEWS[5],
+  HOME_LISTING_PREVIEWS[6],
+];
+
+const HomeListingPreviewCard: React.FC<{ ad: Ad; variant?: 'normal' | 'featured' }> = ({ ad, variant = 'normal' }) => (
+  <AdCard ad={ad} variant={variant} hideCategory hideActions imagePriority preview />
 );
 
 const Home = () => {
@@ -1974,7 +1996,8 @@ const Home = () => {
         </section>
 
         {/* 3. ✨ ANÚNCIOS EM DESTAQUE */}
-        {filteredFeaturedAds.length > 0 && (() => {
+        {(filteredFeaturedAds.length > 0 || loading) && (() => {
+          const hasRealFeaturedListings = filteredFeaturedAds.length > 0;
           const salesTheme = getFeaturedSectionTheme(settings?.featuredSalesColor, '#0c223f');
           return (
             <section className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 md:p-6 my-3 shadow-xs">
@@ -2008,7 +2031,7 @@ const Home = () => {
                 </div>
                 
                 {/* Carrossel Horizontal Responsivo */}
-                <div className="relative w-full overflow-hidden py-1">
+                <div className={`relative w-full ${hasRealFeaturedListings ? 'overflow-hidden' : 'overflow-x-auto'} py-1`}>
                   <div 
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}
@@ -2016,18 +2039,24 @@ const Home = () => {
                     onTouchEnd={() => setIsHovered(false)}
                     className="carouselTrack flex gap-4 md:gap-6"
                     style={{
-                      animationName: (settings?.highlightSpeed !== 0) ? 'scrollCarousel' : 'none',
+                      animationName: hasRealFeaturedListings && settings?.highlightSpeed !== 0 ? 'scrollCarousel' : 'none',
                       animationDuration: marqueeData.duration,
                       animationTimingFunction: 'linear',
                       animationIterationCount: 'infinite',
-                      animationPlayState: (isHovered || settings?.highlightSpeed === 0) ? 'paused' : 'running',
+                      animationPlayState: !hasRealFeaturedListings || isHovered || settings?.highlightSpeed === 0 ? 'paused' : 'running',
                     }}
                   >
-                    {marqueeData.items.map((ad, idx) => (
-                      <div key={`${ad.id}-${idx}`} className="w-[140px] sm:w-[165px] md:w-[195px] shrink-0">
-                        <AdCard ad={ad} variant="featured" imagePriority={idx < 3} />
-                      </div>
-                    ))}
+                    {hasRealFeaturedListings
+                      ? marqueeData.items.map((ad, idx) => (
+                          <div key={`${ad.id}-${idx}`} className="w-[140px] sm:w-[165px] md:w-[195px] shrink-0">
+                            <AdCard ad={ad} variant="featured" imagePriority={idx < 3} />
+                          </div>
+                        ))
+                      : HOME_FEATURED_PREVIEWS.map((ad) => (
+                          <div key={ad.id} className="w-[140px] sm:w-[165px] md:w-[195px] shrink-0">
+                            <HomeListingPreviewCard ad={ad} variant="featured" />
+                          </div>
+                        ))}
                   </div>
                 </div>
               </div>
@@ -2125,7 +2154,7 @@ const Home = () => {
           <div className="px-0">
             {loading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-                {HOME_LISTING_PREVIEWS.map((ad) => (
+                {HOME_LISTING_PREVIEWS.slice(0, 5).map((ad) => (
                   <HomeListingPreviewCard key={ad.id} ad={ad} />
                 ))}
               </div>
@@ -2410,7 +2439,7 @@ const Home = () => {
         </section>
 
         {/* 4. ANÚNCIOS EM DESTAQUE (Carrossel Compacto) */}
-        {filteredFeaturedAds.length > 0 && (
+        {(filteredFeaturedAds.length > 0 || loading) && (
           <section className="relative w-full rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 my-1 shadow-2xs overflow-hidden" id="mobile-featured-section">
             {/* Soft 4-Edge Navy Vignette & Pure White Center Overlay */}
             <div 
@@ -2437,21 +2466,27 @@ const Home = () => {
               </div>
               
               {/* Esteira horizontal compacta */}
-              <div className="relative w-full overflow-hidden">
+              <div className={`relative w-full ${filteredFeaturedAds.length > 0 ? 'overflow-hidden' : 'overflow-x-auto'}`}>
                 <div 
                   className="carouselTrack flex gap-3"
                   style={{
-                    animationName: (settings?.highlightSpeed !== 0) ? 'scrollCarousel' : 'none',
+                    animationName: filteredFeaturedAds.length > 0 && settings?.highlightSpeed !== 0 ? 'scrollCarousel' : 'none',
                     animationDuration: marqueeData.duration,
                     animationTimingFunction: 'linear',
                     animationIterationCount: 'infinite',
                   }}
                 >
-                  {marqueeData.items.map((ad, idx) => (
-                    <div key={`${ad.id}-${idx}`} className="w-[125px] shrink-0">
-                      <AdCard ad={ad} variant="featured" imagePriority={idx < 2} />
-                    </div>
-                  ))}
+                  {filteredFeaturedAds.length > 0
+                    ? marqueeData.items.map((ad, idx) => (
+                        <div key={`${ad.id}-${idx}`} className="w-[125px] shrink-0">
+                          <AdCard ad={ad} variant="featured" imagePriority={idx < 2} />
+                        </div>
+                      ))
+                    : HOME_FEATURED_PREVIEWS.map((ad) => (
+                        <div key={ad.id} className="w-[125px] shrink-0">
+                          <HomeListingPreviewCard ad={ad} variant="featured" />
+                        </div>
+                      ))}
                 </div>
               </div>
             </div>
@@ -2559,7 +2594,7 @@ const Home = () => {
           <div ref={resultsSectionRef}>
             {loading ? (
               <div className="grid grid-cols-2 gap-2">
-                {HOME_LISTING_PREVIEWS.map((ad) => (
+                {HOME_LISTING_PREVIEWS.slice(0, 5).map((ad) => (
                   <HomeListingPreviewCard key={ad.id} ad={ad} />
                 ))}
               </div>
