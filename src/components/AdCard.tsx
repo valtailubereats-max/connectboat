@@ -27,6 +27,7 @@ interface AdCardProps {
   hideWhatsAppButton?: boolean;
   hideActions?: boolean;
   imagePriority?: boolean;
+  preview?: boolean;
 }
 
 const AdCard: React.FC<AdCardProps> = ({
@@ -38,6 +39,7 @@ const AdCard: React.FC<AdCardProps> = ({
   hideWhatsAppButton = false,
   hideActions = false,
   imagePriority = false,
+  preview = false,
 }) => {
   const { user, profile, favorites, toggleFavoriteGlobal } = useAuth();
   const { settings } = useSettings();
@@ -51,7 +53,7 @@ const AdCard: React.FC<AdCardProps> = ({
   const [reportDetails, setReportDetails] = useState('');
   const [reporting, setReporting] = useState(false);
   const [acceptedContactTerms, setAcceptedContactTerms] = useState(() => {
-    return localStorage.getItem('safety_terms_accepted') === 'true';
+    return preview ? false : localStorage.getItem('safety_terms_accepted') === 'true';
   });
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [sellerProfile, setSellerProfile] = useState<any>(null);
@@ -438,20 +440,22 @@ const AdCard: React.FC<AdCardProps> = ({
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.4 }}
+        aria-hidden={preview || undefined}
+        role={preview ? 'presentation' : undefined}
+        initial={preview ? false : { opacity: 0, y: 10 }}
+        whileInView={preview ? undefined : { opacity: 1, y: 0 }}
+        viewport={preview ? undefined : { once: true }}
+        transition={preview ? undefined : { duration: 0.4 }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onClick={() => {
+        onClick={preview ? undefined : () => {
           if (ad.listingType === 'informativo') {
             navigate(ad.targetUrl || '/links');
           } else {
             navigate(getAdUrl(ad));
           }
         }}
-        className={`card-flutuante overflow-hidden group flex flex-col h-full cursor-pointer relative transition-all duration-300 ${
+        className={`card-flutuante overflow-hidden group flex flex-col h-full ${preview ? 'pointer-events-none cursor-default' : 'cursor-pointer'} relative transition-all duration-300 ${
           isFeaturedVariant
             ? (ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation')
               ? '!bg-gradient-to-br !from-[#f0fdf4] !to-[#dcfce7]/60 !border-emerald-200 shadow-lg shadow-emerald-100/40 hover:!border-emerald-400 hover:shadow-xl hover:shadow-emerald-100/60'
