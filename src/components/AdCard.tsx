@@ -27,6 +27,7 @@ interface AdCardProps {
   hideWhatsAppButton?: boolean;
   hideActions?: boolean;
   imagePriority?: boolean;
+  preview?: boolean;
 }
 
 const AdCard: React.FC<AdCardProps> = ({
@@ -38,6 +39,7 @@ const AdCard: React.FC<AdCardProps> = ({
   hideWhatsAppButton = false,
   hideActions = false,
   imagePriority = false,
+  preview = false,
 }) => {
   const { user, profile, favorites, toggleFavoriteGlobal } = useAuth();
   const { settings } = useSettings();
@@ -438,20 +440,22 @@ const AdCard: React.FC<AdCardProps> = ({
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.4 }}
+        aria-hidden={preview || undefined}
+        role={preview ? 'presentation' : undefined}
+        initial={preview ? false : { opacity: 0, y: 10 }}
+        whileInView={preview ? undefined : { opacity: 1, y: 0 }}
+        viewport={preview ? undefined : { once: true }}
+        transition={preview ? undefined : { duration: 0.4 }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onClick={() => {
+        onClick={preview ? undefined : () => {
           if (ad.listingType === 'informativo') {
             navigate(ad.targetUrl || '/links');
           } else {
             navigate(getAdUrl(ad));
           }
         }}
-        className={`card-flutuante overflow-hidden group flex flex-col h-full cursor-pointer relative transition-all duration-300 ${
+        className={`card-flutuante overflow-hidden group flex flex-col h-full ${preview ? 'cursor-default' : 'cursor-pointer'} relative transition-all duration-300 ${
           isFeaturedVariant
             ? (ad.category === '💚 Doações & Solidariedade' || ad.donationBadge || ad.featuredReason === 'donation')
               ? '!bg-gradient-to-br !from-[#f0fdf4] !to-[#dcfce7]/60 !border-emerald-200 shadow-lg shadow-emerald-100/40 hover:!border-emerald-400 hover:shadow-xl hover:shadow-emerald-100/60'
@@ -695,7 +699,7 @@ const AdCard: React.FC<AdCardProps> = ({
       </motion.div>
 
       {/* Details Modal */}
-      <AnimatePresence>
+      {!preview && <AnimatePresence>
         {showDetails && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
@@ -953,9 +957,9 @@ const AdCard: React.FC<AdCardProps> = ({
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>}
 
-      {showReviewModal && (
+      {!preview && showReviewModal && (
         <ReviewModal
           isOpen={showReviewModal}
           onClose={() => setShowReviewModal(false)}
@@ -973,7 +977,7 @@ const AdCard: React.FC<AdCardProps> = ({
       )}
 
       {/* Contact Warning Modal */}
-      <AnimatePresence>
+      {!preview && <AnimatePresence>
         {showContactWarning && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <motion.div
@@ -1015,20 +1019,20 @@ const AdCard: React.FC<AdCardProps> = ({
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>}
 
       {/* Full Image Modal */}
-      <ImageLightboxModal
+      {!preview && <ImageLightboxModal
         isOpen={showFullImage}
         onClose={() => setShowFullImage(false)}
         images={images}
         currentIndex={currentImageIndex}
         onIndexChange={setCurrentImageIndex}
         title={ad?.title}
-      />
+      />}
 
       {/* Floating Toast Proof of Interest */}
-      {toast && toast.show && (
+      {!preview && toast && toast.show && (
         <div className="fixed top-24 right-4 z-[400] max-w-sm w-full bg-slate-900 border border-slate-800 text-white rounded-2xl shadow-2xl p-4 flex items-center gap-3 animate-bounce">
           {toast.type === 'loading' && (
             <div className="w-5 h-5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin shrink-0"></div>
