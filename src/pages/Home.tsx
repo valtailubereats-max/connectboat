@@ -34,6 +34,46 @@ import { parsePrice } from '../utils';
 
 const PAGE_SIZE = 30; 
 
+const HOME_LISTING_PLACEHOLDERS = [
+  { title: 'Coastal Cruiser', price: '£12,500', location: 'Southampton', category: 'Boat for sale', tone: 'from-sky-100 via-cyan-50 to-slate-100' },
+  { title: 'Family Day Boat', price: '£6,800', location: 'Plymouth', category: 'Boat for sale', tone: 'from-blue-100 via-sky-50 to-slate-100' },
+  { title: 'Sailing Yacht', price: '£21,900', location: 'Portsmouth', category: 'Boat for sale', tone: 'from-cyan-100 via-blue-50 to-slate-100' },
+  { title: 'Outboard Engine', price: '£1,450', location: 'Brighton', category: 'Marine equipment', tone: 'from-slate-200 via-sky-50 to-cyan-100' },
+  { title: 'Harbour Motorboat', price: '£8,250', location: 'Bristol', category: 'Boat for sale', tone: 'from-sky-100 via-slate-50 to-blue-100' },
+];
+
+const HomeListingPreviewCard: React.FC<{ index: number }> = ({ index }) => {
+  const listing = HOME_LISTING_PLACEHOLDERS[index % HOME_LISTING_PLACEHOLDERS.length];
+
+  return (
+    <div aria-hidden="true" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className={`relative aspect-[4/3] overflow-hidden bg-gradient-to-br ${listing.tone}`}>
+        <svg viewBox="0 0 320 220" className="absolute inset-0 h-full w-full" role="presentation">
+          <circle cx="255" cy="48" r="22" fill="#f8fafc" opacity=".8" />
+          <path d="M0 120 Q55 102 110 120 T220 120 T330 120 V220 H0Z" fill="#7dd3fc" opacity=".5" />
+          <path d="M0 148 Q55 130 110 148 T220 148 T330 148 V220 H0Z" fill="#0284c7" opacity=".45" />
+          <path d="M0 176 Q55 158 110 176 T220 176 T330 176 V220 H0Z" fill="#075985" opacity=".55" />
+          <path d="M75 127 L245 127 L218 158 L104 158Z" fill="#f8fafc" stroke="#334155" strokeWidth="4" strokeLinejoin="round" />
+          <path d="M144 61 L144 122 L205 122Z" fill="#fff" stroke="#334155" strokeWidth="4" strokeLinejoin="round" />
+          <path d="M137 122 L137 88 L111 122Z" fill="#e2e8f0" stroke="#334155" strokeWidth="4" strokeLinejoin="round" />
+          <path d="M69 165 H250" stroke="#e0f2fe" strokeWidth="4" strokeLinecap="round" opacity=".8" />
+        </svg>
+        <span className="absolute left-2 top-2 rounded-full border border-white/70 bg-white/85 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-slate-600">Preview</span>
+      </div>
+      <div className="space-y-2 p-3">
+        <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-wide text-slate-500">
+          <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />{listing.category}
+        </div>
+        <h3 className="truncate text-xs font-extrabold text-slate-800 sm:text-sm">{listing.title}</h3>
+        <p className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500">
+          <MapPin size={12} className="shrink-0 text-sky-700" />{listing.location}
+        </p>
+        <div className="border-t border-slate-100 pt-2 text-sm font-black text-slate-800">{listing.price}</div>
+      </div>
+    </div>
+  );
+};
+
 const Home = () => {
   const { settings, bannerConfig, categories } = useSettings();
   const resultsSectionRef = useRef<HTMLDivElement>(null);
@@ -2084,7 +2124,7 @@ const Home = () => {
             {loading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
                 {[...Array(5)].map((_, i) => (
-                  <div key={i} className="bg-slate-100 dark:bg-slate-800 rounded-2xl h-64 animate-pulse" />
+                  <HomeListingPreviewCard key={i} index={i} />
                 ))}
               </div>
             ) : errorMsg ? (
@@ -2518,7 +2558,7 @@ const Home = () => {
             {loading ? (
               <div className="grid grid-cols-2 gap-2">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="bg-slate-100 dark:bg-slate-850 rounded-xl h-44 animate-pulse" />
+                  <HomeListingPreviewCard key={i} index={i} />
                 ))}
               </div>
             ) : errorMsg ? (
