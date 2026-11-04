@@ -1686,8 +1686,8 @@ const Home = () => {
           {/* 3 Dropdowns na Primeira Linha */}
           <div className="grid grid-cols-3 gap-2 w-full" id="desktop-filters-section">
             {/* Categoria */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
-              <Tag size={14} className="text-slate-400 shrink-0 select-none" />
+            <div className="relative h-11 flex items-center gap-1.5 bg-slate-900 border border-slate-900 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
+              <Tag size={14} className="text-white shrink-0 select-none" />
               <select
                 value={category}
                 onChange={(e) => {
@@ -1701,7 +1701,7 @@ const Home = () => {
                   setFilterNational(false);
                   setFilterOnline(false);
                 }}
-                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
+                className="w-full bg-transparent text-xs sm:text-sm font-semibold text-white focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
               >
                 <option value="Todas" className="bg-white text-slate-900 font-medium">All Categories</option>
                 <option value="__cheap_boats__" className="bg-white text-slate-900 font-medium">🔥 Cheap & Free Boats UK</option>
@@ -1709,24 +1709,24 @@ const Home = () => {
                   <option key={i} value={c} className="bg-white text-slate-900 font-medium">{c}</option>
                 ))}
               </select>
-              <span className="text-[9px] text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
+              <span className="text-[9px] text-white absolute right-3 pointer-events-none select-none">▼</span>
             </div>
 
             {/* Cidade / Localização */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
-              <MapPin size={14} className="text-slate-400 shrink-0 select-none" />
+            <div className="relative h-11 flex items-center gap-1.5 bg-slate-900 border border-slate-900 rounded-2xl px-3 sm:px-3.5 transition-all min-w-0">
+              <MapPin size={14} className="text-white shrink-0 select-none" />
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 translate="no"
-                className="notranslate w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
+                className="notranslate w-full bg-transparent text-xs sm:text-sm font-semibold text-white focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate text-center [text-align-last:center]"
               >
                 <option value="Todas" className="bg-white text-slate-900 font-medium">All Locations</option>
                 {selectableCitiesOnHome.map((c, i) => (
                   <option key={i} value={c} className="bg-white text-slate-900 font-medium">{c}</option>
                 ))}
               </select>
-              <span className="text-[9px] text-slate-400 absolute right-3 pointer-events-none select-none">▼</span>
+              <span className="text-[9px] text-white absolute right-3 pointer-events-none select-none">▼</span>
             </div>
 
             {/* Botão de Filtros */}
@@ -1735,14 +1735,14 @@ const Home = () => {
               onClick={() => setFilterDrawerOpen(true)}
               className={`h-11 flex items-center justify-center gap-1.5 px-3 sm:px-3.5 rounded-2xl border text-xs sm:text-sm font-semibold transition-all cursor-pointer min-w-0 truncate ${
                 activeMarineFilterCount > 0
-                  ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
               }`}
             >
-              <SlidersHorizontal size={14} className="shrink-0 text-slate-500" />
+              <SlidersHorizontal size={14} className="shrink-0 text-white" />
               <span className="truncate">Filters</span>
               {activeMarineFilterCount > 0 && (
-                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
+                <span className="bg-white text-slate-900 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
                   {activeMarineFilterCount}
                 </span>
               )}
@@ -2240,8 +2240,8 @@ const Home = () => {
           {/* 3 Dropdowns na Mesma Linha */}
           <div className="grid grid-cols-3 gap-1.5 xs:gap-2 w-full" id="mobile-filters-section">
             {/* Categoria */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-2.5 transition-all min-w-0">
-              <Tag size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
+            <div className="relative h-11 flex items-center gap-1.5 bg-slate-900 border border-slate-900 rounded-2xl px-2.5 transition-all min-w-0">
+              <Tag size={14} className="text-white shrink-0 select-none" />
               <select
                 value={category}
                 onChange={(e) => {
@@ -2255,7 +2255,7 @@ const Home = () => {
                   setFilterNational(false);
                   setFilterOnline(false);
                 }}
-                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
+                className="w-full bg-transparent text-[11px] xs:text-xs font-semibold text-white focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
               >
                 <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Categories</option>
                 <option value="__cheap_boats__" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">🔥 Cheap & Free Boats UK</option>
@@ -2263,24 +2263,24 @@ const Home = () => {
                   <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
                 ))}
               </select>
-              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-2.5 pointer-events-none select-none">▼</span>
+              <span className="text-[9px] text-white absolute right-2.5 pointer-events-none select-none">▼</span>
             </div>
 
             {/* Cidade / Localização */}
-            <div className="relative h-11 flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-2.5 transition-all min-w-0">
-              <MapPin size={14} className="text-slate-400 dark:text-slate-400 shrink-0 select-none" />
+            <div className="relative h-11 flex items-center gap-1.5 bg-slate-900 border border-slate-900 rounded-2xl px-2.5 transition-all min-w-0">
+              <MapPin size={14} className="text-white shrink-0 select-none" />
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 translate="no"
-                className="notranslate w-full bg-transparent text-[11px] xs:text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
+                className="notranslate w-full bg-transparent text-[11px] xs:text-xs font-semibold text-white focus:outline-none appearance-none cursor-pointer pr-3 border-none py-0 pl-0 min-w-0 truncate"
               >
                 <option value="Todas" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">All Locations</option>
                 {selectableCitiesOnHome.map((c, i) => (
                   <option key={i} value={c} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">{c}</option>
                 ))}
               </select>
-              <span className="text-[9px] text-slate-400 dark:text-slate-400 absolute right-2.5 pointer-events-none select-none">▼</span>
+              <span className="text-[9px] text-white absolute right-2.5 pointer-events-none select-none">▼</span>
             </div>
 
             {/* Botão de Filtros */}
@@ -2289,14 +2289,14 @@ const Home = () => {
               onClick={() => setFilterDrawerOpen(true)}
               className={`h-11 flex items-center justify-center gap-1.5 px-2 xs:px-2.5 rounded-2xl border text-[11px] xs:text-xs font-semibold transition-all cursor-pointer min-w-0 truncate ${
                 activeMarineFilterCount > 0
-                  ? 'bg-sky-600 text-white border-sky-600'
-                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-slate-900 text-white border-slate-900 hover:bg-slate-800'
               }`}
             >
-              <SlidersHorizontal size={14} className="shrink-0 text-slate-500 dark:text-slate-400" />
+              <SlidersHorizontal size={14} className="shrink-0 text-white" />
               <span className="truncate">Filters</span>
               {activeMarineFilterCount > 0 && (
-                <span className="bg-white text-sky-700 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
+                <span className="bg-white text-slate-900 rounded-full px-1.5 py-0.2 text-[9px] font-bold shrink-0">
                   {activeMarineFilterCount}
                 </span>
               )}
