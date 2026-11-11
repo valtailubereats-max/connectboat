@@ -19,6 +19,15 @@ export const isValidGA4Context = (context: unknown): context is GA4MeasurementCo
     ));
 };
 
+/** Returns a Firestore-safe context, omitting an optional undefined session ID. */
+export const normalizeGA4Context = (context: unknown): GA4MeasurementContext | null => {
+  if (!isValidGA4Context(context)) return null;
+  return {
+    clientId: context.clientId,
+    ...(context.sessionId !== undefined ? { sessionId: context.sessionId } : {}),
+  };
+};
+
 export const isConfirmedGBPCheckout = (paymentStatus: unknown, amountTotal: unknown, currency: unknown) =>
   paymentStatus === 'paid' &&
   typeof amountTotal === 'number' && Number.isFinite(amountTotal) && amountTotal > 0 &&
