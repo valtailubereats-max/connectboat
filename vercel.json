@@ -25,6 +25,10 @@
       "destination": "/api/admin/create-assisted-payment?mode=deleteUser"
     },
     {
+      "source": "/api/analytics/ad-events",
+      "destination": "/api/email/send?channel=ad-analytics"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },

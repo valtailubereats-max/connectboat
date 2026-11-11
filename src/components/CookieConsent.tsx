@@ -1,12 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Cookie, ShieldCheck, BarChart3, X } from 'lucide-react';
+import { auth } from '../firebase';
 import {
   ANALYTICS_CONSENT_STORAGE_KEY,
   clearAnalyticsCookies,
   disableMetaPixel,
+  getAnalyticsConsentTimestamp,
   initGA,
   initMetaPixel,
+  isExcludedPath,
   saveCookieConsent,
   sendGAPageView,
   sendMetaPageView,
@@ -14,6 +17,16 @@ import {
 
 const CookieConsent: React.FC = () => {
   const [isVisible, setIsVisible] = React.useState(false);
+
+  const syncServerConsent = (consented: boolean) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    void user.getIdToken().then((token) => fetch('/api/analytics/ad-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'consent', consented, consentChangedAt: getAnalyticsConsentTimestamp() }),
+    })).catch(() => {});
+  };
 
   React.useEffect(() => {
     try {
@@ -33,16 +46,16 @@ const CookieConsent: React.FC = () => {
 
   const handleAcceptAnalytics = () => {
     saveCookieConsent('analytics');
+    syncServerConsent(true);
     initGA();
     initMetaPixel();
 
     // Register the current public page immediately after consent.
     window.setTimeout(() => {
-      sendGAPageView(
-        window.location.pathname + window.location.search,
-        document.title
-      );
-      sendMetaPageView();
+      if (!isExcludedPath(window.location.pathname)) {
+        sendGAPageView(window.location.pathname, document.title);
+        sendMetaPageView();
+      }
     }, 150);
 
     setIsVisible(false);
@@ -50,6 +63,7 @@ const CookieConsent: React.FC = () => {
 
   const handleEssentialOnly = () => {
     saveCookieConsent('essential');
+    syncServerConsent(false);
     clearAnalyticsCookies();
     disableMetaPixel();
     setIsVisible(false);

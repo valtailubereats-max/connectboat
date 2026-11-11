@@ -5,6 +5,7 @@ import {
   GoogleAuthProvider, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
+  getAdditionalUserInfo,
   updateProfile,
   sendPasswordResetEmail
 } from 'firebase/auth';
@@ -16,7 +17,7 @@ import { ShieldCheck, Mail, Lock, User as UserIcon, ArrowRight, Github, Eye, Eye
 import { ConnectBoatLogo } from '../components/ConnectBoatLogo';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-import { sendGoogleAdsSignupConversion, sendMetaCompleteRegistration } from '../utils/analytics';
+import { sendGA4SignUpOnce, sendGoogleAdsSignupConversion, sendMetaCompleteRegistration } from '../utils/analytics';
 import marinaLoginBackground from '../assets/images/login-backgrounds/marina-login-background.png';
 
 const Login = () => {
@@ -95,6 +96,7 @@ const Login = () => {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      const isFirebaseNewUser = getAdditionalUserInfo(result)?.isNewUser === true;
 
       // Check if profile exists
       const docRef = doc(db, 'users', user.uid);
@@ -148,8 +150,11 @@ const Login = () => {
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, `users/${user.uid}`);
         }
-        sendGoogleAdsSignupConversion();
-        sendMetaCompleteRegistration();
+        if (isFirebaseNewUser) {
+          sendGA4SignUpOnce(user.uid, 'google');
+          sendGoogleAdsSignupConversion();
+          sendMetaCompleteRegistration();
+        }
         await handleRedirectAfterAuth(true);
       } else {
         await handleRedirectAfterAuth(false);
@@ -234,6 +239,7 @@ const Login = () => {
         } catch (err) {
           handleFirestoreError(err, OperationType.CREATE, `users/${user.uid}`);
         }
+        sendGA4SignUpOnce(user.uid, 'email');
         sendGoogleAdsSignupConversion();
         sendMetaCompleteRegistration();
         await handleRedirectAfterAuth(true);

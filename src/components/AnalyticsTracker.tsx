@@ -12,7 +12,7 @@ export const AnalyticsTracker: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const currentPath = location.pathname + location.search;
+    const currentPath = location.pathname;
 
     if (lastPathRef.current === currentPath) {
       return;
@@ -22,14 +22,14 @@ export const AnalyticsTracker: React.FC = () => {
 
     // Small delay so react-helmet-async updates page title first
     const timer = setTimeout(() => {
-      sendMetaPageView();
       if (!isExcludedPath(location.pathname)) {
         sendGAPageView(currentPath, document.title);
+        sendMetaPageView();
       }
     }, 120);
 
     return () => clearTimeout(timer);
-  }, [location.pathname, location.search]);
+  }, [location.pathname]);
 
   return null;
 };

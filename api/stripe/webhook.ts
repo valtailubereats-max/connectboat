@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import Stripe from 'stripe';
 import * as admin from 'firebase-admin';
 import { sendEmailDirect } from '../email/send.js';
+import { isConfirmedGBPCheckout, isValidGA4Context, sendGA4MeasurementEventsOnce } from '../../src/server/ga4Measurement.js';
 
 export const config = {
   api: {
@@ -616,11 +617,16 @@ export default async function stripeWebhookHandler(
 
   if (
     event &&
-    event.type ===
-      'checkout.session.completed'
+    (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded')
   ) {
     const session =
       event.data.object as Stripe.Checkout.Session;
+
+    // A completed Checkout session can still be awaiting an asynchronous
+    // payment method. Wait for Stripe's success event before fulfilling it.
+    if (session.payment_status !== 'paid') {
+      return res.status(200).json({ received: true, awaitingPayment: true });
+    }
 
     const metadata =
       session.metadata || {};
@@ -979,6 +985,59 @@ export default async function stripeWebhookHandler(
                 merge: true,
               }
             );
+
+          if (
+            isConfirmedGBPCheckout(session.payment_status, session.amount_total, session.currency) &&
+            metadata.gaAnalyticsConsent === 'true' &&
+            metadata.userId &&
+            metadata.gaClientId
+          ) {
+            const gaContext = {
+              clientId: metadata.gaClientId,
+              sessionId: metadata.gaSessionId,
+            };
+            const consentSnapshot = await db.collection('ga4AnalyticsConsents').doc(metadata.userId).get();
+            if (isValidGA4Context(gaContext) && consentSnapshot.data()?.consented === true) {
+              if (itemType === 'ad_listing') {
+                await db.collection('ga4AdAttribution').doc(adId).set({
+                  ownerUid: metadata.userId,
+                  context: gaContext,
+                  consented: true,
+                  category: typeof metadata.category === 'string' ? metadata.category.slice(0, 60) : 'other',
+                  plan: typeof metadata.plan === 'string' ? metadata.plan.slice(0, 30) : 'standard',
+                  paymentType: 'paid',
+                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                }, { merge: true });
+              }
+              const purchaseEvents: Array<{ name: string; params: Record<string, string | number | boolean | undefined> }> = [{
+                name: 'purchase',
+                params: {
+                  transaction_id: session.id,
+                  value: session.amount_total / 100,
+                  currency: 'GBP',
+                  item_category: typeof metadata.category === 'string' ? metadata.category.slice(0, 60) : String(itemType),
+                  item_id: String(itemType),
+                },
+              }];
+              if (itemType === 'ad_listing') {
+                purchaseEvents.push({
+                  name: 'ad_submitted',
+                  params: {
+                    ad_category: typeof metadata.category === 'string' ? metadata.category.slice(0, 60) : 'other',
+                    listing_plan: typeof metadata.plan === 'string' ? metadata.plan.slice(0, 30) : 'standard',
+                    listing_payment_type: 'paid',
+                  },
+                });
+              }
+              await sendGA4MeasurementEventsOnce({
+                db,
+                eventKey: `PURCHASE_${session.id}`,
+                context: gaContext,
+                events: purchaseEvents,
+                timestampMicros: event.created * 1_000_000,
+              });
+            }
+          }
 
           if (isAdminAssisted) {
             console.log(
