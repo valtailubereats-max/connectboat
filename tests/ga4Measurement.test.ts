@@ -5,6 +5,7 @@ import {
   hasGA4MeasurementApiSecret,
   isConfirmedGBPCheckout,
   isValidGA4Context,
+  normalizeGA4Context,
   sendGA4MeasurementEventsOnce,
   updateGA4ConsentState,
 } from '../src/server/ga4Measurement.ts';
@@ -47,6 +48,15 @@ test('validates GA identifiers without accepting personal data as client IDs', (
   assert.equal(isValidGA4Context({ clientId: '12345.67890', sessionId: '123456' }), true);
   assert.equal(isValidGA4Context({ clientId: 'person@example.com' }), false);
   assert.equal(isValidGA4Context({ clientId: '12345.67890', sessionId: 'abc' }), false);
+});
+
+test('normalizes a missing session ID without leaving undefined in the saved context', () => {
+  const context = normalizeGA4Context({ clientId: '12345.67890', sessionId: undefined });
+  assert.deepEqual(context, { clientId: '12345.67890' });
+  assert.equal(Object.hasOwn(context || {}, 'sessionId'), false);
+
+  const withoutSessionId = normalizeGA4Context({ clientId: '12345.67890' });
+  assert.deepEqual(withoutSessionId, { clientId: '12345.67890' });
 });
 
 test('builds privacy-limited purchase payload with GBP transaction fields', () => {

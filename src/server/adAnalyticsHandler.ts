@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
-import { hasGA4MeasurementApiSecret, isValidGA4Context, sendGA4MeasurementEventsOnce, updateGA4ConsentState } from './ga4Measurement.js';
+import { hasGA4MeasurementApiSecret, isValidGA4Context, normalizeGA4Context, sendGA4MeasurementEventsOnce, updateGA4ConsentState } from './ga4Measurement.js';
 
 const DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
 const FIREBASE_PROJECT_ID = 'navlink-489413';
@@ -113,8 +113,11 @@ export default async function adAnalyticsHandler(req: Request, res: Response) {
     if (action === 'record_submission') {
       stage = 'submission_validation';
       const adId = req.body?.adId;
-      const context = { clientId: req.body?.clientId, sessionId: req.body?.sessionId };
-      if (!safeAdId(adId) || !isValidGA4Context(context)) {
+      const context = normalizeGA4Context({
+        clientId: req.body?.clientId,
+        sessionId: req.body?.sessionId,
+      });
+      if (!safeAdId(adId) || !context) {
         return res.status(400).json({ error: 'INVALID_ANALYTICS_CONTEXT' });
       }
       stage = 'listing_lookup';
