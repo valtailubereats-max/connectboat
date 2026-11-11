@@ -1829,24 +1829,39 @@ const CreateAd = () => {
       }
 
       if (!id && user && hasAnalyticsConsent()) {
-        void getGA4ClientContext().then(async (context) => {
-          if (!context || !hasAnalyticsConsent()) return;
-          const idToken = await user.getIdToken();
-          await fetch('/api/analytics/ad-events', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({
-              action: 'record_submission',
-              adId: targetAdId,
-              clientId: context.clientId,
-              sessionId: context.sessionId,
-              consentChangedAt: getAnalyticsConsentTimestamp(),
-            }),
-          });
-        }).catch((error) => console.warn('[Analytics] Listing submission tracking unavailable:', error));
+        try {
+          const context = await getGA4ClientContext();
+          if (context && hasAnalyticsConsent()) {
+            const idToken = await user.getIdToken();
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => controller.abort(), 8000);
+            try {
+              const response = await fetch('/api/analytics/ad-events', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({
+                  action: 'record_submission',
+                  adId: targetAdId,
+                  clientId: context.clientId,
+                  sessionId: context.sessionId,
+                  consentChangedAt: getAnalyticsConsentTimestamp(),
+                }),
+                signal: controller.signal,
+              });
+              if (!response.ok) {
+                console.warn('[Analytics] Submission event was not confirmed.', { status: response.status });
+              }
+            } finally {
+              window.clearTimeout(timeoutId);
+            }
+          }
+        } catch {
+          // Analytics is best-effort and must never undo a successfully saved listing.
+          console.warn('[Analytics] Submission tracking failed after the listing was saved.');
+        }
       }
 
       const shouldNotifyModeration = shouldNotifyPendingModeration({

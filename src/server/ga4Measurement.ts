@@ -24,6 +24,9 @@ export const isConfirmedGBPCheckout = (paymentStatus: unknown, amountTotal: unkn
   typeof amountTotal === 'number' && Number.isFinite(amountTotal) && amountTotal > 0 &&
   typeof currency === 'string' && currency.toLowerCase() === 'gbp';
 
+export const hasGA4MeasurementApiSecret = (apiSecret = process.env.GA4_API_SECRET): boolean =>
+  typeof apiSecret === 'string' && apiSecret.trim().length > 0;
+
 export const updateGA4ConsentState = async (
   db: any,
   uid: string,
@@ -81,8 +84,12 @@ export const sendGA4MeasurementEventsOnce = async (options: {
   fetcher?: typeof fetch;
 }): Promise<boolean> => {
   const measurementId = options.measurementId || process.env.GA4_MEASUREMENT_ID || 'G-B0BPV9R463';
-  const apiSecret = options.apiSecret || process.env.GA4_API_SECRET;
-  if (!apiSecret || !isValidGA4Context(options.context) || !options.events.length) return false;
+  const apiSecret = options.apiSecret ?? process.env.GA4_API_SECRET;
+  if (!hasGA4MeasurementApiSecret(apiSecret)) {
+    console.warn('[GA4 Measurement Protocol] Delivery is unavailable.', { reason: 'missing_api_secret' });
+    return false;
+  }
+  if (!isValidGA4Context(options.context) || !options.events.length) return false;
   if (!/^[A-Za-z0-9_-]{3,100}$/.test(options.eventKey)) return false;
 
   const eventRef = options.db.collection('ga4MeasurementEvents').doc(options.eventKey);
@@ -113,12 +120,16 @@ export const sendGA4MeasurementEventsOnce = async (options: {
         body: JSON.stringify(payload),
       }
     );
-    if (!response.ok) throw new Error(`GA4 Measurement Protocol returned HTTP ${response.status}`);
+    if (!response.ok) {
+      await eventRef.set({ status: 'failed', failedAt: new Date(), failureCode: `http_${response.status}` }, { merge: true });
+      console.warn('[GA4 Measurement Protocol] Delivery failed.', { httpStatus: response.status });
+      return false;
+    }
     await eventRef.set({ status: 'sent', sentAt: new Date() }, { merge: true });
     return true;
-  } catch (error) {
-    await eventRef.set({ status: 'failed', failedAt: new Date() }, { merge: true }).catch(() => {});
-    console.warn('[GA4 Measurement Protocol] Event delivery failed.');
+  } catch {
+    await eventRef.set({ status: 'failed', failedAt: new Date(), failureCode: 'network_error' }, { merge: true }).catch(() => {});
+    console.warn('[GA4 Measurement Protocol] Delivery failed.', { reason: 'network_error' });
     return false;
   }
 };

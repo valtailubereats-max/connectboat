@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildGA4MeasurementPayload,
+  hasGA4MeasurementApiSecret,
   isConfirmedGBPCheckout,
   isValidGA4Context,
   sendGA4MeasurementEventsOnce,
@@ -65,6 +66,29 @@ test('only confirmed, positive GBP payments qualify for purchase measurement', (
   assert.equal(isConfirmedGBPCheckout('unpaid', 799, 'gbp'), false);
   assert.equal(isConfirmedGBPCheckout('no_payment_required', 0, 'gbp'), false);
   assert.equal(isConfirmedGBPCheckout('paid', 799, 'usd'), false);
+});
+
+test('GA4 server secret is detected without exposing its value', () => {
+  assert.equal(hasGA4MeasurementApiSecret(''), false);
+  assert.equal(hasGA4MeasurementApiSecret('   '), false);
+  assert.equal(hasGA4MeasurementApiSecret('configured-secret'), true);
+});
+
+test('missing GA4 server secret prevents a Measurement Protocol request', async () => {
+  let requests = 0;
+  const sent = await sendGA4MeasurementEventsOnce({
+    db: new FakeFirestore(),
+    eventKey: 'SUBMITTED_ad_123',
+    context: { clientId: '12345.67890', sessionId: '123456' },
+    events: [{ name: 'ad_submitted', params: { listing_payment_type: 'free' } }],
+    apiSecret: '',
+    fetcher: async () => {
+      requests += 1;
+      return new Response(null, { status: 204 });
+    },
+  });
+  assert.equal(sent, false);
+  assert.equal(requests, 0);
 });
 
 test('a late consent request cannot overwrite a newer refusal', async () => {
