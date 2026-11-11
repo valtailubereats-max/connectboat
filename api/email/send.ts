@@ -3,6 +3,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { callContactSheet, syncSmsStatusToSheet } from '../../src/server/eventContactsSync.js';
+import adAnalyticsHandler from '../../src/server/adAnalyticsHandler.js';
 
 // Serverless Email Service for ConnectBoat
 
@@ -1315,6 +1316,13 @@ export default async function handler(req: any, res: any) {
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  // Keep analytics events on the existing email function so the project stays
+  // within Vercel Hobby's serverless function limit. The rewrite in vercel.json
+  // preserves the public /api/analytics/ad-events URL used by the app.
+  if (req.query?.channel === 'ad-analytics') {
+    return adAnalyticsHandler(req, res);
   }
 
   // This server-to-server automation deliberately has its own Vercel-only secret.

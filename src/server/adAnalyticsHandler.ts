@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { cert, getApp, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
-import { isValidGA4Context, sendGA4MeasurementEventsOnce, updateGA4ConsentState } from '../../src/server/ga4Measurement.js';
+import { isValidGA4Context, sendGA4MeasurementEventsOnce, updateGA4ConsentState } from './ga4Measurement.js';
 
 const DATABASE_ID = 'ai-studio-boatmarket-b1c69205-2a63-42a8-922c-14b64e4cb382';
 const ADMIN_EMAILS = new Set([
