@@ -4363,7 +4363,7 @@ const CreateAd = () => {
               </div>
 
               {/* Complete Listing Summary */}
-              <div className="p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-3">
+              <div className="lg:hidden p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-3">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <span>📋</span> Complete Listing Summary
                 </h3>
@@ -4899,6 +4899,52 @@ const CreateAd = () => {
           This live preview updates automatically as you fill in details across all 3 steps.
         </p>
       </div>
+
+      {currentStep === 2 && (
+              <div className="hidden lg:block p-5 bg-slate-50 border-2 border-slate-100 rounded-3xl space-y-3">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <span>📋</span> Complete Listing Summary
+                </h3>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-white p-4 rounded-2xl border border-slate-200">
+                  <div>
+                    <span className="text-slate-400 block font-semibold">Title</span>
+                    <span className="font-extrabold text-slate-800">{formData.title || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-semibold">Price</span>
+                    <span className="font-extrabold text-indigo-600">
+                      {formData.category === '💚 Doações & Solidariedade' ? 'Free' : formData.price ? (formData.country === 'Reino Unido' ? `£${formData.price}` : `€${formData.price}`) : 'On request'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-semibold">Category</span>
+                    <span className="font-bold text-slate-800">{formData.category || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-semibold">Region & City</span>
+                    <span className="font-bold text-slate-800">{formData.region ? `${formData.region} • ` : ''}{formData.city || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-semibold">
+                      {isExternalSourceListing ? 'Contact Destination' : 'Contact Phone'}
+                    </span>
+                    <span className="font-bold text-slate-800 break-all">
+                      {isExternalSourceListing
+                        ? 'Original listing'
+                        : (formData.useProfilePhone ? (profile?.phone || 'Profile Phone') : (formData.contactPhone || '—'))}
+                    </span>
+                  </div>
+                  {formData.year && (
+                    <div>
+                      <span className="text-slate-400 block font-semibold">Year / Specs</span>
+                      <span className="font-bold text-slate-800">{formData.year} {formData.length ? `• ${formData.length}` : ''}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+      )}
+
     </div>
   </div>
 
