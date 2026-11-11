@@ -4,8 +4,14 @@ export const GOOGLE_ADS_SIGNUP_SEND_TO = 'AW-18437934848/iOpbCL2rmPEcEICe8tdE';
 export const META_PIXEL_ID = '938018453719754';
 
 export const ANALYTICS_CONSENT_STORAGE_KEY = 'connectboat_cookie_consent';
+export const ANALYTICS_CONSENT_TIMESTAMP_KEY = 'connectboat_cookie_consent_changed_at';
 
 export type CookieConsentChoice = 'analytics' | 'essential';
+
+export interface GA4ClientContext {
+  clientId: string;
+  sessionId?: string;
+}
 
 declare global {
   interface Window {
@@ -13,6 +19,7 @@ declare global {
     gtag?: (...args: any[]) => void;
     fbq?: MetaPixelFunction;
     _fbq?: MetaPixelFunction;
+    __connectboatSentSignupIds?: Set<string>;
   }
 }
 
@@ -24,8 +31,7 @@ type MetaPixelFunction = ((...args: any[]) => void) & {
 };
 
 /**
- * Checks whether a given path should be excluded from Google Analytics tracking.
- * Excludes admin, login, profile, create-ad, edit-ad, campanhas, convite, and api routes.
+ * Keeps staff and private account areas out of analytics page-view collection.
  */
 export const isExcludedPath = (pathname: string): boolean => {
   if (!pathname) return false;
@@ -33,9 +39,7 @@ export const isExcludedPath = (pathname: string): boolean => {
 
   const excludedPrefixes = [
     '/admin',
-    '/login',
     '/profile',
-    '/create-ad',
     '/edit-ad',
     '/campanhas',
     '/convite',
@@ -70,8 +74,19 @@ export const saveCookieConsent = (choice: CookieConsentChoice) => {
 
   try {
     window.localStorage.setItem(ANALYTICS_CONSENT_STORAGE_KEY, choice);
+    window.localStorage.setItem(ANALYTICS_CONSENT_TIMESTAMP_KEY, String(Date.now()));
   } catch {
     // If browser storage is unavailable, keep Analytics disabled by default.
+  }
+};
+
+export const getAnalyticsConsentTimestamp = (): number => {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const value = Number(window.localStorage.getItem(ANALYTICS_CONSENT_TIMESTAMP_KEY));
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  } catch {
+    return 0;
   }
 };
 
@@ -221,12 +236,76 @@ export const sendGAPageView = (pagePath: string, pageTitle?: string) => {
 
   if (typeof window.gtag === 'function') {
     window.gtag('event', 'page_view', {
-      page_location: window.location.href,
-      page_path: pagePath,
+      // Avoid sending query parameters, which can contain referral codes or
+      // other values that should not be included in Analytics URLs.
+      page_location: `${window.location.origin}${pathWithoutQuery}`,
+      page_path: pathWithoutQuery,
       page_title: pageTitle || document.title,
       send_to: GA_MEASUREMENT_ID,
     });
   }
+};
+
+export const sendGA4Event = (
+  eventName: string,
+  params: Record<string, string | number | boolean | undefined> = {}
+) => {
+  if (typeof window === 'undefined' || !hasAnalyticsConsent()) return false;
+  initGA();
+  if (typeof window.gtag !== 'function') return false;
+
+  const safeParams = Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value !== undefined)
+  );
+  window.gtag('event', eventName, safeParams);
+  return true;
+};
+
+export const sendGA4SignUpOnce = (firebaseUid: string, method: 'google' | 'email') => {
+  if (typeof window === 'undefined' || !firebaseUid || !hasAnalyticsConsent()) return false;
+
+  const sentIds = window.__connectboatSentSignupIds || new Set<string>();
+  window.__connectboatSentSignupIds = sentIds;
+  if (sentIds.has(firebaseUid)) return false;
+
+  // The Firebase UID is only used as an in-memory deduplication key; it is
+  // never included in the Analytics event.
+  sentIds.add(firebaseUid);
+  return sendGA4Event('sign_up', { method });
+};
+
+/** Resolve GA identifiers only after Analytics consent. No user profile data is read. */
+export const getGA4ClientContext = async (): Promise<GA4ClientContext | null> => {
+  if (typeof window === 'undefined' || !hasAnalyticsConsent()) return null;
+  initGA();
+  if (typeof window.gtag !== 'function') return null;
+
+  return new Promise((resolve) => {
+    let clientId: string | undefined;
+    let sessionId: string | undefined;
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      resolve(clientId ? { clientId, ...(sessionId ? { sessionId } : {}) } : null);
+    };
+    const timeout = window.setTimeout(finish, 1500);
+
+    window.gtag?.('get', GA_MEASUREMENT_ID, 'client_id', (value: unknown) => {
+      if (typeof value === 'string' && value.length <= 100) clientId = value;
+      if (clientId) {
+        window.clearTimeout(timeout);
+        finish();
+      }
+    });
+    window.gtag?.('get', GA_MEASUREMENT_ID, 'session_id', (value: unknown) => {
+      if (typeof value === 'string' && /^\d{1,20}$/.test(value)) sessionId = value;
+      if (clientId) {
+        window.clearTimeout(timeout);
+        finish();
+      }
+    });
+  });
 };
 
 

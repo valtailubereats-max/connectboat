@@ -10,6 +10,7 @@ import { createHash, randomBytes, randomUUID } from 'crypto';
 import { getBrokerState, brokerMoney } from '../../src/server/brokerProgram.js';
 import brokerHandler from '../../src/server/brokerHandler.js';
 import { normalisePartnerCode, resolvePartnerPromotion } from '../../src/lib/partnerPromotion.js';
+import { isValidGA4Context, updateGA4ConsentState } from '../../src/server/ga4Measurement.js';
 import { prepareServerAdTimestampFields } from '../../src/server/adTimestampPersistence.js';
 
 let stripeClient: Stripe | null = null;
@@ -1994,6 +1995,23 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
       partnerFundedFreeStandard: isPartnerFundedStandard ? 'true' : 'false',
       planDurationDays: String(planDurationDays),
     };
+    const gaContext = {
+      clientId: req.body?.analyticsConsent === true ? req.body?.gaClientId : undefined,
+      sessionId: req.body?.analyticsConsent === true ? req.body?.gaSessionId : undefined,
+    };
+    if (req.body?.analyticsConsent === true && isValidGA4Context(gaContext)) {
+      const consentApplied = await updateGA4ConsentState(
+        db,
+        authenticatedUserId,
+        true,
+        req.body?.analyticsConsentChangedAt
+      );
+      if (consentApplied) {
+      metadata.gaAnalyticsConsent = 'true';
+      metadata.gaClientId = gaContext.clientId;
+      if (gaContext.sessionId) metadata.gaSessionId = gaContext.sessionId;
+      }
+    }
     if (brokerPrice && isPaidBoatListing) {
       metadata.brokerId = authenticatedUserId;
       metadata.brokerNormalPriceCents = String(brokerPrice.normalPriceCents);

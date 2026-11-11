@@ -590,6 +590,18 @@ const AdminAds = () => {
       }
 
       if (!isCourtesyPendingApproval) await updateDoc(doc(db, 'ads', adId), updatePayload);
+      if (status === 'approved' && adToUpdate?.status === 'pending' && user) {
+        try {
+          const idToken = await user.getIdToken();
+          await fetch('/api/analytics/ad-events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({ action: 'published', adId }),
+          });
+        } catch (error) {
+          console.warn('[Analytics] Listing publication tracking unavailable:', error);
+        }
+      }
       if (status === 'approved' && adToUpdate?.brokerPaymentVerified) {
         try { await brokerRequest('recordApproval', { adId }); }
         catch (error) { console.warn('[Broker Programme] Approval ledger will be reconciled on the next broker request.', error); }

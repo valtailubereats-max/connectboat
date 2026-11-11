@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { getAnalyticsConsentTimestamp, getGA4ClientContext, hasAnalyticsConsent, sendGA4Event } from '../utils/analytics';
 import { doc, getDoc, getDocFromServer, setDoc, updateDoc, collection, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType, getDocWithCacheFallback, withTimeout } from '../firebase';
@@ -535,6 +536,13 @@ const CreateAd = () => {
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoError, setVideoError] = useState<string | null>(null);
   const uploadTaskRef = useRef<any>(null);
+  const adCreationStartedRef = useRef(false);
+
+  const handleAdCreationChange = () => {
+    if (id || adCreationStartedRef.current) return;
+    adCreationStartedRef.current = true;
+    sendGA4Event('ad_creation_started', { listing_form: 'create' });
+  };
 
   const handleVideoFileSelect = (file: File) => {
     setVideoError(null);
@@ -1820,6 +1828,27 @@ const CreateAd = () => {
         return;
       }
 
+      if (!id && user && hasAnalyticsConsent()) {
+        void getGA4ClientContext().then(async (context) => {
+          if (!context || !hasAnalyticsConsent()) return;
+          const idToken = await user.getIdToken();
+          await fetch('/api/analytics/ad-events', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({
+              action: 'record_submission',
+              adId: targetAdId,
+              clientId: context.clientId,
+              sessionId: context.sessionId,
+              consentChangedAt: getAnalyticsConsentTimestamp(),
+            }),
+          });
+        }).catch((error) => console.warn('[Analytics] Listing submission tracking unavailable:', error));
+      }
+
       const shouldNotifyModeration = shouldNotifyPendingModeration({
         isExistingListing: Boolean(id),
         previousStatus: originalAd?.status,
@@ -2394,6 +2423,7 @@ const CreateAd = () => {
       }
 
       const idToken = await user.getIdToken();
+      const analyticsContext = await getGA4ClientContext();
 
       const res = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
@@ -2409,6 +2439,10 @@ const CreateAd = () => {
           adId: finalizedId,
           marketplaceListingType: pendingAdData.marketplaceListingType || null,
           mediaBoostEnabled: !!formData.mediaBoostEnabled && (!originalAd || !originalAd.videoPaid),
+          analyticsConsent: hasAnalyticsConsent() && !!analyticsContext,
+          analyticsConsentChangedAt: getAnalyticsConsentTimestamp(),
+          gaClientId: analyticsContext?.clientId || '',
+          gaSessionId: analyticsContext?.sessionId || '',
           successUrl: `${window.location.origin}/create-ad?stripe_success=true&ad_id=${finalizedId}&plan=${activePlan}`,
           cancelUrl: `${window.location.origin}/create-ad?stripe_cancel=true`
         })
@@ -2806,7 +2840,7 @@ const CreateAd = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} onChangeCapture={handleAdCreationChange} className="space-y-8">
           {formError && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
