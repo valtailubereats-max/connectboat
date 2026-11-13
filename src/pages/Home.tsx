@@ -2124,7 +2124,7 @@ const Home = () => {
                       List your yacht, powerboat or RIB for hire on ConnectBoat and connect directly with interested clients using your available contact options.
                     </p>
                     <Link
-                      to="/criar-anuncio"
+                      to="/create-ad"
                       className="mt-1 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5"
                     >
                       <span>List Boat for Hire</span>
@@ -2569,7 +2569,7 @@ const Home = () => {
                       List your boat or yacht for hire on ConnectBoat.
                     </p>
                     <Link
-                      to="/criar-anuncio"
+                      to="/create-ad"
                       className="mt-1 px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white font-bold text-[10px] rounded-lg transition-all shadow-2xs flex items-center gap-1"
                     >
                       <span>List Boat for Hire</span>
