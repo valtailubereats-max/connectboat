@@ -19,8 +19,7 @@ import {
   Star
 } from 'lucide-react';
 
-const hireHeroImage =
-  'https://images.unsplash.com/photo-1569263979104-865ab7cd8d13?auto=format&fit=crop&w=1600&q=85';
+const hireHeroImage = '/boats-for-hire-family-yacht.webp';
 
 const getCreatedAtSeconds = (ad: Ad) => {
   if (ad.createdAt?.seconds) return ad.createdAt.seconds;
@@ -53,7 +52,6 @@ const BoatsForHire = () => {
   const { country, settings } = useSettings();
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
-  const [heroImage, setHeroImage] = useState(hireHeroImage);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -269,41 +267,37 @@ const BoatsForHire = () => {
       {/* ============================================================ */}
       {/* HIRE HERO — same visual language as the ConnectBoat Home hero */}
       {/* ============================================================ */}
-      <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl bg-slate-950 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between">
+      <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl bg-slate-950 min-h-[300px] xs:min-h-[320px] sm:min-h-[350px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between">
         <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
           <img
-            src={heroImage}
-            alt="Boat and yacht hire across the United Kingdom"
-            className="w-full h-full object-cover object-center transition-all duration-700 ease-in-out"
-            onError={() => {
-              setHeroImage(
-                'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=1600&q=80'
-              );
-            }}
+            src={hireHeroImage}
+            alt="A family enjoying a sunny day aboard a yacht near tropical islands"
+            className="w-full h-full object-cover object-[64%_center] sm:object-[60%_center] lg:object-center transition-all duration-700 ease-in-out"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-950/25 to-transparent" />
         </div>
 
-        <div className="relative z-10 w-full h-full flex flex-col justify-between p-3.5 xs:p-4 sm:p-8 md:p-10 lg:p-12 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
+        <div className="relative z-10 w-full h-full flex flex-col justify-between p-4 xs:p-5 sm:p-8 md:p-10 lg:p-12 min-h-[300px] xs:min-h-[320px] sm:min-h-[350px] md:min-h-[400px] lg:min-h-[440px]">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-row items-start justify-between gap-3 sm:gap-4 w-full"
           >
-            <div className="max-w-[235px] xs:max-w-[285px] sm:max-w-md md:max-w-xl">
+            <div className="max-w-[85%] sm:max-w-md md:max-w-xl">
               <div className="inline-flex items-center gap-1.5 mb-2 bg-black/35 backdrop-blur-md border border-white/15 rounded-lg px-2.5 py-1 text-[9px] xs:text-[10px] sm:text-xs font-black uppercase tracking-wider text-sky-200">
                 <Anchor size={13} />
-                Boats for Hire & Charter
+                BOATS FOR HIRE &amp; CHARTER
               </div>
 
               <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-extrabold text-white tracking-tight leading-[1.12] drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)] text-left">
-                Your Next Day on the Water Starts Here
+                Your Next Day on the Water Starts Here.
               </h1>
             </div>
 
             <Link
               to="/"
-              className="hidden xs:inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-lg sm:rounded-xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white shadow-lg transition-all shrink-0"
+              className="hidden sm:inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-lg sm:rounded-xl px-2.5 py-1.5 sm:px-3.5 sm:py-2 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-white shadow-lg transition-all shrink-0"
             >
               Home
               <ArrowRight size={12} />
@@ -313,10 +307,10 @@ const BoatsForHire = () => {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-auto pt-2 sm:pt-4 w-full flex justify-end text-right"
+            className="mt-auto pt-4 sm:pt-4 w-full flex justify-start sm:justify-end text-left sm:text-right"
           >
-            <p className="text-[11px] xs:text-xs sm:text-sm md:text-base font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-w-[245px] xs:max-w-[300px] sm:max-w-[420px] md:max-w-[470px] text-right">
-              Hire boats, yachts and charters across the United Kingdom — connect directly with owners and operators.
+            <p className="text-xs xs:text-sm sm:text-sm md:text-base font-medium text-white/95 leading-snug tracking-wide drop-shadow-[0_2px_12px_rgba(0,0,0,0.95)] max-w-[85%] sm:max-w-[420px] md:max-w-[470px] text-left sm:text-right">
+              Hire boats and yachts across the UK. Connect directly with owners and operators.
             </p>
           </motion.div>
         </div>
