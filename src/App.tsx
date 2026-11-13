@@ -998,7 +998,7 @@ export default function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                 <Route path="/campanhas" element={<ProtectedRoute><Campanhas /></ProtectedRoute>} />
-                <Route path="/create-ad" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
+                <Route path="/create-ad" element={<CreateAd />} />
                 <Route path="/create-event" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
                 <Route path="/edit-ad/:id" element={<ProtectedRoute><CreateAd /></ProtectedRoute>} />
                 <Route path="/anuncio/:id" element={<AdDetails />} />

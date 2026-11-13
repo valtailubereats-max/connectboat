@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getAnalyticsConsentTimestamp, getGA4ClientContext, hasAnalyticsConsent, sendGA4Event } from '../utils/analytics';
+import { sendGA4SignUpOnce, sendGoogleAdsSignupConversion, sendMetaCompleteRegistration } from '../utils/analytics';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, getDoc, getDocFromServer, setDoc, updateDoc, collection, serverTimestamp, getDocs, query, where } from 'firebase/firestore';
 import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage, handleFirestoreError, OperationType, getDocWithCacheFallback, withTimeout } from '../firebase';
+import { auth, db, storage, handleFirestoreError, OperationType, getDocWithCacheFallback, withTimeout } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { clearHomeCache } from '../utils/cache';
@@ -224,6 +226,15 @@ const CreateAd = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
+  const [authMode, setAuthMode] = useState<'register' | 'login'>('register');
+  const [accountName, setAccountName] = useState('');
+  const [accountEmail, setAccountEmail] = useState('');
+  const [accountPassword, setAccountPassword] = useState('');
+  const [acceptedAccountTerms, setAcceptedAccountTerms] = useState(false);
+  const [accountError, setAccountError] = useState('');
+  const [accountSuccess, setAccountSuccess] = useState('');
+  const stagedImagesRef = useRef<Array<{ preview: string; file: File }>>([]);
+  const uploadedGuestImagesRef = useRef(new Map<string, string>());
   const [fetching, setFetching] = useState(false);
   const [editLoadError, setEditLoadError] = useState<string | null>(null);
   const [originalAd, setOriginalAd] = useState<Ad | null>(null);
@@ -361,11 +372,9 @@ const CreateAd = () => {
   const initialWhatsappContact = splitContactNumber(prefill?.contactWhatsapp || prefill?.sellerPhone || '', 'GB');
   const initialPhoneContact = splitContactNumber(prefill?.contactPhone || '', 'GB');
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/login');
-    }
-  }, [user, authLoading]);
+  useEffect(() => () => {
+    stagedImagesRef.current.forEach(({ preview }) => URL.revokeObjectURL(preview));
+  }, []);
 
   useEffect(() => {
     if (!user || id || isAdmin || isModerator) {
@@ -951,6 +960,70 @@ const CreateAd = () => {
     if (validateStep1()) {
       setCurrentStep(2);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleInlineAuthentication = async () => {
+    setAccountError('');
+    setAccountSuccess('');
+    if (!accountEmail.trim() || !accountPassword) {
+      setAccountError('Enter your email address and password.');
+      return;
+    }
+    if (authMode === 'register' && !accountName.trim()) {
+      setAccountError('Enter your full name.');
+      return;
+    }
+    if (authMode === 'register' && !acceptedAccountTerms) {
+      setAccountError('Please accept the Terms of Use to create your account.');
+      return;
+    }
+    setLoading(true);
+    try {
+      if (authMode === 'login') {
+        await signInWithEmailAndPassword(auth, accountEmail.trim(), accountPassword);
+        setAccountSuccess('You are signed in. Your listing is ready to continue.');
+        return;
+      }
+
+      const credential = await createUserWithEmailAndPassword(auth, accountEmail.trim(), accountPassword);
+      await updateProfile(credential.user, { displayName: accountName.trim() });
+      const targetCountry = enablePortugal && formData.country === 'Portugal' ? 'Portugal' : 'Reino Unido';
+      const userRef = doc(db, 'users', credential.user.uid);
+      await setDoc(userRef, {
+        uid: credential.user.uid,
+        name: accountName.trim(),
+        email: credential.user.email || accountEmail.trim(),
+        phone: '',
+        country: targetCountry,
+        role: 'user',
+        acceptedTerms: true,
+        acceptedTermsAt: serverTimestamp(),
+      });
+      await setDoc(doc(db, 'sellerPublicProfiles', credential.user.uid), {
+        displayName: accountName.trim(),
+        country: targetCountry,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      sendGA4SignUpOnce(credential.user.uid, 'email');
+      sendGoogleAdsSignupConversion();
+      sendMetaCompleteRegistration();
+      setAccountSuccess('Account created successfully! You can now continue with your listing.');
+    } catch (error: any) {
+      console.error('[CreateAd inline authentication]', error);
+      if (error?.code === 'auth/email-already-in-use') {
+        setAccountError('This email is already registered. Choose “Log in” below to continue.');
+        setAuthMode('login');
+      } else if (error?.code === 'auth/weak-password') {
+        setAccountError('Password must be at least 6 characters long.');
+      } else if (error?.code === 'auth/invalid-credential' || error?.code === 'auth/user-not-found' || error?.code === 'auth/wrong-password') {
+        setAccountError('Email or password is incorrect. Please try again.');
+      } else {
+        setAccountError(error?.message || 'We could not complete sign-in. Your listing details are still here.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1575,6 +1648,18 @@ const CreateAd = () => {
       return;
     }
 
+    if (!user) {
+      const staged = filesToProceed.map(file => ({ preview: URL.createObjectURL(file), file }));
+      stagedImagesRef.current = [...stagedImagesRef.current, ...staged];
+      setFormData(prev => ({
+        ...prev,
+        images: [...prev.images, ...staged.map(item => item.preview)].slice(0, maxAllowed),
+      }));
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
+      return;
+    }
+
     uploadRef.current = true;
     setUploading(true);
 
@@ -1644,6 +1729,11 @@ const CreateAd = () => {
     setFormData(prev => {
       const imageUrl = prev.images[index];
       const newImages = prev.images.filter((_, i) => i !== index);
+      const staged = stagedImagesRef.current.find(item => item.preview === imageUrl);
+      if (staged) {
+        URL.revokeObjectURL(staged.preview);
+        stagedImagesRef.current = stagedImagesRef.current.filter(item => item.preview !== imageUrl);
+      }
       
       // Optional: Delete from storage if it's a firebase storage URL
       if (imageUrl && imageUrl.includes('firebasestorage.googleapis.com')) {
@@ -1983,8 +2073,45 @@ const CreateAd = () => {
     setFormError(null);
 
     if (!user || !profile) {
-      showValidationError('Error loading user profile. Please reload the page.');
+      if (!user) {
+        setAccountError('Create an account or log in above before continuing. Your listing and selected photos are still here.');
+        return;
+      }
+      showValidationError('Your account is being prepared. Please wait a moment and try again.');
       return;
+    }
+
+    let imagesForSubmission = formData.images;
+    const stagedFiles = stagedImagesRef.current.filter(item => formData.images.includes(item.preview));
+    if (stagedFiles.length) {
+      setLoading(true);
+      try {
+        const resolved = new Map<string, string>();
+        for (const item of stagedFiles) {
+          const alreadyUploaded = uploadedGuestImagesRef.current.get(item.preview);
+          if (alreadyUploaded) {
+            resolved.set(item.preview, alreadyUploaded);
+            continue;
+          }
+          const compressedBlob = await compressImage(item.file, 1200, 0.8);
+          const safeName = item.file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const storageRef = ref(storage, `ads/${user.uid}/guest_${crypto.randomUUID()}_${safeName}`);
+          const contentType = [compressedBlob.type, item.file.type].find(type => type?.startsWith('image/')) || 'image/jpeg';
+          const uploaded = await uploadBytes(storageRef, compressedBlob, { contentType });
+          const downloadUrl = await getDownloadURL(uploaded.ref);
+          uploadedGuestImagesRef.current.set(item.preview, downloadUrl);
+          resolved.set(item.preview, downloadUrl);
+        }
+        imagesForSubmission = formData.images.map(image => resolved.get(image) || image);
+        setFormData(prev => ({ ...prev, images: imagesForSubmission }));
+        stagedImagesRef.current = stagedImagesRef.current.filter(item => !resolved.has(item.preview));
+        resolved.forEach((_downloadUrl, preview) => URL.revokeObjectURL(preview));
+      } catch (uploadError: any) {
+        showValidationError(uploadError?.message || 'We could not upload your photos. Please try again; your listing details are still here.', 'sec-images-upload');
+        return;
+      } finally {
+        setLoading(false);
+      }
     }
 
     if (isMarketplaceListingCategory(formData.category) && looksLikeBoatSaleOrHire(formData.category, formData.title, formData.description)) {
@@ -2035,7 +2162,7 @@ const CreateAd = () => {
     }
 
     const cleanFormImages = normalizeAndLimitImages(
-      formData.images,
+      imagesForSubmission,
       getPhotoLimit(formData.category, formData.plan)
     );
     if (cleanFormImages.length === 0) {
@@ -4348,6 +4475,39 @@ const CreateAd = () => {
               animate={{ opacity: 1, x: 0 }}
               className="space-y-6"
             >
+              {!user && (
+                <section aria-labelledby="listing-account-heading" className="p-5 sm:p-6 rounded-3xl border-2 border-indigo-100 bg-white shadow-sm space-y-4">
+                  <div>
+                    <h2 id="listing-account-heading" className="text-xl font-black text-slate-900">
+                      {authMode === 'register' ? 'Create your ConnectBoat account' : 'Log in to ConnectBoat'}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">Create your free account to continue with your listing and manage it anytime.</p>
+                  </div>
+                  {accountError && <div role="alert" className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm font-semibold text-rose-700">{accountError}</div>}
+                  {accountSuccess && <div role="status" className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-sm font-semibold text-emerald-700">{accountSuccess}</div>}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {authMode === 'register' && <input aria-label="Full name" autoComplete="name" value={accountName} onChange={event => setAccountName(event.target.value)} placeholder="Full name" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500" />}
+                    <input aria-label="Email address" type="email" autoComplete="email" value={accountEmail} onChange={event => setAccountEmail(event.target.value)} placeholder="Email address" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500" />
+                    <input aria-label="Password" type="password" autoComplete={authMode === 'register' ? 'new-password' : 'current-password'} value={accountPassword} onChange={event => setAccountPassword(event.target.value)} placeholder="Password" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-indigo-500" />
+                  </div>
+                  {authMode === 'register' && <label className="flex items-start gap-2 text-sm text-slate-600"><input type="checkbox" checked={acceptedAccountTerms} onChange={event => setAcceptedAccountTerms(event.target.checked)} className="mt-1" /><span>I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="font-semibold text-indigo-600 underline">Terms of Use</a>.</span></label>}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button type="button" disabled={loading || authLoading} onClick={() => { void handleInlineAuthentication(); }} className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold disabled:opacity-50">
+                      {loading ? 'Please wait…' : authMode === 'register' ? 'Create account' : 'Log in'}
+                    </button>
+                    <button type="button" onClick={() => { setAuthMode(mode => mode === 'register' ? 'login' : 'register'); setAccountError(''); setAccountSuccess(''); }} className="text-sm font-semibold text-indigo-700 hover:underline">
+                      {authMode === 'register' ? 'Already have an account? Log in' : 'New to ConnectBoat? Create an account'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">Your listing details and photos stay in this browser until you sign in. Refreshing this page before signing in will clear them.</p>
+                </section>
+              )}
+              {user && accountSuccess && (
+                <div role="status" className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-sm font-semibold text-emerald-800">
+                  {accountSuccess}
+                </div>
+              )}
+
               {/* Mobile Sticky Preview Header */}
               <div className="lg:hidden sticky top-16 z-30 bg-white/95 backdrop-blur-md border border-indigo-100 rounded-2xl p-3 shadow-lg mb-4 flex items-center gap-3">
                 {formData.images[0] ? (
