@@ -3041,38 +3041,42 @@ const CreateAd = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
+                    aria-pressed={formData.category === 'Boats for Sale'}
                     onClick={() => setFormData(prev => ({
                       ...prev,
                       listingIntent: 'sale',
                       category: 'Boats for Sale',
                       plan: prev.plan === 'free' ? 'standard' : prev.plan
                     }))}
-                    className={`p-2.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
+                    className={`relative p-2.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
                       formData.category === 'Boats for Sale'
-                        ? 'bg-sky-600 text-white border-sky-600 shadow-md'
+                        ? 'bg-sky-600 text-white border-sky-600 shadow-md listing-purpose-selected'
                         : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400'
                     }`}
                   >
                     <Tag size={18} />
                     <span>Boat for Sale</span>
+                    {formData.category === 'Boats for Sale' && <Check aria-hidden="true" className="absolute right-2 top-2 text-emerald-200" size={14} strokeWidth={3} />}
                   </button>
 
                   <button
                     type="button"
+                    aria-pressed={formData.listingIntent === 'hire'}
                     onClick={() => setFormData(prev => ({
                       ...prev,
                       listingIntent: 'hire',
                       category: 'Boats for Hire',
                       plan: prev.plan === 'free' ? 'standard' : prev.plan
                     }))}
-                    className={`p-2.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
+                    className={`relative p-2.5 rounded-xl border-2 flex items-center justify-center gap-2.5 transition-all cursor-pointer font-bold text-sm ${
                       formData.listingIntent === 'hire'
-                        ? 'bg-sky-600 text-white border-sky-600 shadow-md'
+                        ? 'bg-sky-600 text-white border-sky-600 shadow-md listing-purpose-selected'
                         : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400'
                     }`}
                   >
                     <Anchor size={18} />
                     <span>Boat for Hire</span>
+                    {formData.listingIntent === 'hire' && <Check aria-hidden="true" className="absolute right-2 top-2 text-emerald-200" size={14} strokeWidth={3} />}
                   </button>
                 </div>
               </div>

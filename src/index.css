@@ -23,6 +23,20 @@ html {
   }
 }
 
+@keyframes listingPurposeGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.55), 0 0 7px 1px rgba(74, 222, 128, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.95), 0 0 13px 2px rgba(74, 222, 128, 0.48);
+  }
+}
+
+.listing-purpose-selected {
+  border-color: #4ade80 !important;
+  animation: listingPurposeGlow 2.4s ease-in-out infinite;
+}
+
 .validation-error-highlight {
   position: relative;
   z-index: 1;
@@ -33,6 +47,11 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .listing-purpose-selected {
+    animation: none;
+    box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.65), 0 0 8px 1px rgba(74, 222, 128, 0.28);
+  }
+
   .validation-error-highlight {
     animation: none;
     outline-color: #dc2626 !important;
