@@ -26,7 +26,8 @@ import seaLinePreviewImage from '../assets/images/home-listing-previews/sea-line
 import colecraftPreviewImage from '../assets/images/home-listing-previews/colecraft.webp';
 import { 
   Search, Tag, MapPin, ArrowRight, AlertCircle, RefreshCcw, ArrowUp, Store,
-  SlidersHorizontal, X, Filter, Check, ChevronDown, Anchor, Ship, Fuel, Compass, RotateCcw, ArrowUpDown, Globe
+  SlidersHorizontal, X, Filter, Check, ChevronDown, Anchor, Ship, Fuel, Compass, RotateCcw, ArrowUpDown, Globe,
+  Heart, Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 // @ts-ignore
@@ -1660,8 +1661,9 @@ const Home = () => {
       {/* 💻 LAYOUT DESKTOP (Aparece apenas em ecrãs médios e superiores) */}
       {/* ============================================================== */}
       <div className="hidden md:flex flex-col gap-4 md:gap-5 max-w-full">
+        <div className="xl:grid xl:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] xl:gap-3 xl:items-stretch">
         {/* 1. HERO BANNER LUXURY (Título no topo esquerdo, stats à direita e subtítulo flutuante abaixo do casco) */}
-        <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl transition-all duration-500 max-w-full bg-slate-950 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] flex flex-col justify-between" id="desktop-banner-section">
+        <section className="relative overflow-hidden shadow-xl rounded-2xl sm:rounded-3xl transition-all duration-500 max-w-full xl:min-w-0 bg-slate-950 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] xl:h-[440px] xl:min-h-0 flex flex-col justify-between" id="desktop-banner-section">
           {/* Imagem de Fundo dinâmica */}
           <div className="absolute inset-0 z-0 overflow-hidden bg-slate-950">
             <img 
@@ -1678,7 +1680,7 @@ const Home = () => {
             <div className="absolute inset-0 bg-gradient-to-b from-slate-950/85 via-black/15 to-slate-950/90" />
           </div>
 
-          <div className="relative z-10 w-full h-full flex flex-col justify-between p-3.5 xs:p-4 sm:p-8 md:p-10 lg:p-12 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px]">
+          <div className="relative z-10 w-full h-full flex flex-col justify-between p-3.5 xs:p-4 sm:p-8 md:p-10 lg:p-12 min-h-[220px] xs:min-h-[260px] sm:min-h-[320px] md:min-h-[400px] lg:min-h-[440px] xl:min-h-0">
             {/* Topo do Banner: Título no Topo à Esquerda + Stats Badges à Direita */}
             <motion.div 
               initial={{ opacity: 0, y: -10 }} 
@@ -1744,8 +1746,110 @@ const Home = () => {
           </div>
         </section>
 
+        <aside
+          aria-label="Explore ConnectBoat"
+          className="hidden xl:flex h-[440px] min-w-0 flex-col gap-2 rounded-3xl border border-slate-700 bg-slate-950 p-3.5 shadow-xl"
+        >
+          <label className="relative flex h-10 w-full items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/80 px-3 text-white transition-colors hover:bg-slate-800">
+            <Tag size={17} className="shrink-0 text-sky-200" />
+            <span className="sr-only">All Categories</span>
+            <select
+              value={category}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '__cheap_boats__') {
+                  navigate('/cheap-boats');
+                  return;
+                }
+                setCategory(val);
+                setFilterRegion(false);
+                setFilterNational(false);
+                setFilterOnline(false);
+              }}
+              className="w-full min-w-0 appearance-none bg-transparent pr-5 text-sm font-semibold text-white outline-none"
+            >
+              <option value="Todas" className="bg-slate-900">All Categories</option>
+              <option value="__cheap_boats__" className="bg-slate-900">Cheap &amp; Free Boats UK</option>
+              {categories.map((c, i) => (
+                <option key={i} value={c} className="bg-slate-900">{c}</option>
+              ))}
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 shrink-0 text-slate-300" />
+          </label>
+
+          <label className="relative flex h-10 w-full items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/80 px-3 text-white transition-colors hover:bg-slate-800">
+            <MapPin size={17} className="shrink-0 text-sky-200" />
+            <span className="sr-only">All Locations</span>
+            <select
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              translate="no"
+              className="notranslate w-full min-w-0 appearance-none bg-transparent pr-5 text-sm font-semibold text-white outline-none"
+            >
+              <option value="Todas" className="bg-slate-900">All Locations</option>
+              {selectableCitiesOnHome.map((c, i) => (
+                <option key={i} value={c} className="bg-slate-900">{c}</option>
+              ))}
+            </select>
+            <ChevronDown size={16} className="pointer-events-none absolute right-3 shrink-0 text-slate-300" />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => setFilterDrawerOpen(true)}
+            className="flex h-10 w-full items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/80 px-3 text-left text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+          >
+            <SlidersHorizontal size={17} className="shrink-0 text-sky-200" />
+            <span className="flex-1">Filters</span>
+            {activeMarineFilterCount > 0 && (
+              <span className="rounded-full bg-sky-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
+                {activeMarineFilterCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setCategory('Boats for Sale');
+              setFilterRegion(false);
+              setFilterNational(false);
+              setFilterOnline(false);
+            }}
+            className="flex h-10 w-full items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/80 px-3 text-left text-sm font-semibold text-white transition-colors hover:border-sky-400 hover:bg-slate-800"
+          >
+            <Ship size={17} className="shrink-0 text-sky-200" />
+            <span>Boats for Sale</span>
+          </button>
+
+          <Link
+            to="/boats-for-hire"
+            className="flex h-10 w-full items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/80 px-3 text-sm font-semibold text-white transition-colors hover:border-sky-400 hover:bg-slate-800"
+          >
+            <Anchor size={17} className="shrink-0 text-sky-200" />
+            <span>Boats for Hire</span>
+          </Link>
+
+          <Link
+            to="/profile?tab=favorites"
+            className="flex h-10 w-full items-center gap-2 rounded-xl border border-slate-600 bg-slate-800/80 px-3 text-sm font-semibold text-white transition-colors hover:border-sky-400 hover:bg-slate-800"
+          >
+            <Heart size={17} className="shrink-0 text-sky-200" />
+            <span>Favourites</span>
+          </Link>
+
+          <Link
+            to="/create-ad"
+            className="mt-1 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-3 text-base font-black text-white shadow-lg shadow-sky-500/25 transition-all hover:from-sky-400 hover:to-blue-500"
+          >
+            <Plus size={22} strokeWidth={2.5} />
+            <span>List Boat</span>
+          </Link>
+        </aside>
+        </div>
+
         {/* 2. BARRA DE PESQUISA E DROPDOWNS DESKTOP (Abaixo do Banner, estilo Mobile) */}
-        <section className="w-full flex flex-col gap-2 bg-transparent" id="desktop-search-section">
+        <section className="w-full flex flex-col gap-2 bg-transparent xl:hidden" id="desktop-search-section">
           
           {/* 3 Dropdowns na Primeira Linha */}
           <div className="grid grid-cols-3 gap-2 w-full" id="desktop-filters-section">

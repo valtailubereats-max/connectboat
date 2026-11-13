@@ -339,7 +339,7 @@ const Navbar = () => {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex flex-1 min-w-0 items-center gap-3 lg:gap-5">
-            <div className="flex shrink-0 items-center gap-2 lg:gap-4">
+            <div className={`flex shrink-0 items-center gap-2 lg:gap-4 ${location.pathname === '/' ? 'xl:hidden' : ''}`}>
               <Link to="/" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Boats for Sale</Link>
               <Link to="/boats-for-hire" className="whitespace-nowrap text-xs font-bold text-slate-300 transition-colors hover:text-sky-400 lg:text-sm">Boats for Hire</Link>
             </div>
@@ -360,7 +360,7 @@ const Navbar = () => {
               <button
                 type="button"
                 onClick={handlePublishClick}
-                className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-3 py-2 text-xs font-bold text-white shadow-md shadow-sky-500/20 transition-all hover:from-sky-400 hover:to-blue-500 lg:px-4 lg:text-sm"
+                className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-3 py-2 text-xs font-bold text-white shadow-md shadow-sky-500/20 transition-all hover:from-sky-400 hover:to-blue-500 lg:px-4 lg:text-sm ${location.pathname === '/' ? 'xl:hidden' : ''}`}
               >
                 <PlusCircle size={17} />
                 <span>List Boat</span>
