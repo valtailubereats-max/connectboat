@@ -306,11 +306,7 @@ const Navbar = () => {
   };
 
   const handlePublishClick = () => {
-    if (user) {
-      navigate('/create-ad');
-    } else {
-      navigate('/login?mode=register');
-    }
+    navigate('/create-ad');
   };
 
   const handleDesktopSearch = (e: React.FormEvent<HTMLFormElement>) => {
