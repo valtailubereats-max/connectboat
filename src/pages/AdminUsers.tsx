@@ -51,6 +51,7 @@ type DeleteAssociation = {
   label: string;
   count: number;
   sensitive?: boolean;
+  documentIds?: string[];
 };
 
 type DeletePreview = {
@@ -1432,7 +1433,9 @@ const AdminUsers = () => {
                       {deletePreview.associations.map((item, index) => (
                         <li key={`${item.collection}-${item.label}-${index}`}>
                           • {item.label}: {item.count}{item.sensitive ? ' (dados comerciais/financeiros)' : ''}
-                        </li>
+                          {item.documentIds?.length ? (
+                            <div className="mt-1 pl-3 font-mono text-[10px] font-medium text-amber-800 break-all">
+                              IDs: {item.documentIds.join(', ')}`r`n                            </div>`r`n                          ) : null}`r`n                        </li>
                       ))}
                     </ul>
                   </div>

@@ -128,6 +128,11 @@ async function countAssociation(db: any, association: Association, uid: string) 
   return Number(aggregate.data().count || 0);
 }
 
+async function getNotificationDocumentIds(db: any, uid: string) {
+  const snapshot = await db.collection('notifications').where('userId', '==', uid).select().get();
+  return snapshot.docs.map((document: any) => document.id);
+}
+
 async function inspectAssociations(db: any, uid: string) {
   const [results, showcaseProductsAggregate] = await Promise.all([
     Promise.all(ASSOCIATIONS.map(async (association) => ({
@@ -137,6 +142,14 @@ async function inspectAssociations(db: any, uid: string) {
     db.collection('sellerPublicProfiles').doc(uid).collection('products').count().get(),
   ]);
   const associations = results.filter((item) => item.count > 0);
+  const notificationIds = associations.some((item) => item.collection === 'notifications')
+    ? await getNotificationDocumentIds(db, uid)
+    : [];
+  for (const association of associations) {
+    if (association.collection === 'notifications') {
+      (association as any).documentIds = notificationIds;
+    }
+  }
   const showcaseProductsCount = Number(showcaseProductsAggregate.data().count || 0);
   if (showcaseProductsCount > 0) {
     associations.push({
