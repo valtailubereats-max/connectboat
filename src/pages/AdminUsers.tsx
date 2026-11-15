@@ -1435,7 +1435,10 @@ const AdminUsers = () => {
                           • {item.label}: {item.count}{item.sensitive ? ' (dados comerciais/financeiros)' : ''}
                           {item.documentIds?.length ? (
                             <div className="mt-1 pl-3 font-mono text-[10px] font-medium text-amber-800 break-all">
-                              IDs: {item.documentIds.join(', ')}`r`n                            </div>`r`n                          ) : null}`r`n                        </li>
+                              IDs: {item.documentIds.join(', ')}
+                            </div>
+                          ) : null}
+                        </li>
                       ))}
                     </ul>
                   </div>
