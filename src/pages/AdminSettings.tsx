@@ -497,7 +497,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
               <h3 className="text-sm font-black text-sky-700 uppercase tracking-widest">Boat Services</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="rounded-xl bg-white border border-sky-100 p-3 text-xs text-slate-600 leading-relaxed">
-                  <strong>Basic: FREE</strong><br />3 photos • standard placement • 30 days
+                  <strong>Basic: FREE</strong><br />3 photos • standard placement • {settings.planDurations.service ?? 30} days
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500">Featured service price (£)</label>
@@ -507,7 +507,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                     onChange={(e) => setSettings({ ...settings, planPrices: { ...settings.planPrices, serviceFeatured: parseFloat(e.target.value) || 0 } })}
                     className="w-full px-4 py-2.5 bg-white border border-sky-200 rounded-xl focus:border-sky-500 outline-none transition-all font-bold text-sm"
                   />
-                  <p className="text-[10px] text-slate-500">6 photos • priority placement • 30 days</p>
+                  <p className="text-[10px] text-slate-500">6 photos • priority placement • {settings.planDurations.service ?? 30} days</p>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500">Premium service price (£)</label>
@@ -517,7 +517,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                     onChange={(e) => setSettings({ ...settings, planPrices: { ...settings.planPrices, servicePremium: parseFloat(e.target.value) || 0 } })}
                     className="w-full px-4 py-2.5 bg-white border border-sky-200 rounded-xl focus:border-sky-500 outline-none transition-all font-bold text-sm"
                   />
-                  <p className="text-[10px] text-slate-500">10 photos • top priority • 30 days</p>
+                  <p className="text-[10px] text-slate-500">10 photos • top priority • {settings.planDurations.service ?? 30} days</p>
                 </div>
               </div>
             </div>

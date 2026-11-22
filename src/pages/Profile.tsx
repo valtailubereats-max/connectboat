@@ -1595,8 +1595,9 @@ const Profile = () => {
                   ['standard', 'featured', 'premium', 'local', 'national', 'highlight', 'intermediate'].includes(ad.plan || '') ||
                   ad.isFeatured;
 
-                if (isPaidPlan) return 'Featured 30 days';
-                return 'Featured 30 days';
+                const duration = getPlanDurationDays(settings, ad.plan || ad.planType, ad.category, (ad as any).partnerVoucherDurationDays);
+                if (isPaidPlan) return `Featured ${duration} days`;
+                return `Featured ${duration} days`;
               };
 
               const paymentInfo = getAdPaymentClassification(ad);

@@ -1,7 +1,7 @@
 export type ListingPlan = 'standard' | 'featured' | 'premium';
 
 export type PlanDurationSettings = {
-  planDurations?: Partial<Record<ListingPlan | 'free' | 'local' | 'national' | 'intermediate', unknown>>;
+  planDurations?: Partial<Record<ListingPlan | 'free' | 'local' | 'national' | 'intermediate' | 'marketplace' | 'service', unknown>>;
 };
 
 export const DEFAULT_PLAN_DURATION_DAYS = 30;
@@ -28,6 +28,15 @@ export function getPlanDurationDays(
 
   const durations = settings?.planDurations;
   const normalizedPlan = normalizeListingPlan(plan);
+
+  // Boat Services has one Admin-controlled duration shared by Basic,
+  // Featured and Premium. Explicit benefit durations still take precedence.
+  if (category === 'Boat Services') {
+    const serviceDays = Number(durations?.service);
+    if (Number.isFinite(serviceDays) && serviceDays > 0) return Math.round(serviceDays);
+    return DEFAULT_PLAN_DURATION_DAYS;
+  }
+
   const categoryKey = MARKETPLACE_CATEGORIES.has(category || '') ? 'marketplace' : null;
 
   // Existing category-specific duration keys are honoured when present.
@@ -36,8 +45,6 @@ export function getPlanDurationDays(
     : NaN;
   if (Number.isFinite(categoryDuration) && categoryDuration > 0) return Math.round(categoryDuration);
 
-  const serviceDuration = category === 'Boat Services' ? Number((durations as Record<string, unknown> | undefined)?.service) : NaN;
-  if (Number.isFinite(serviceDuration) && serviceDuration > 0) return Math.round(serviceDuration);
 
   const aliases: Record<ListingPlan, string[]> = {
     standard: ['standard', 'free'],

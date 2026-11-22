@@ -3110,7 +3110,7 @@ const CreateAd = () => {
                         {getPhotoLimit(formData.category || 'Boats for Sale', 'standard')} photos
                       </p>
                       <p className="text-[11px] sm:text-[10px] font-bold text-slate-600 mt-1 sm:mt-0.5">
-                        30 days
+                        {getPlanDurationDays(settings, 'standard', formData.category)} days
                       </p>
                     </div>
                     <p className="font-black text-base sm:text-sm mt-2 sm:mt-1 text-emerald-700">
@@ -3146,7 +3146,7 @@ const CreateAd = () => {
                         {getPhotoLimit(formData.category || 'Boats for Sale', 'featured')} photos
                       </p>
                       <p className="text-[11px] sm:text-[10px] font-bold text-slate-600 mt-1 sm:mt-0.5">
-                        30 days
+                        {getPlanDurationDays(settings, 'featured', formData.category)} days
                       </p>
                     </div>
                     <p className="font-black text-base sm:text-sm mt-2 sm:mt-1 text-amber-600">
@@ -3179,7 +3179,7 @@ const CreateAd = () => {
                         {getPhotoLimit(formData.category || 'Boats for Sale', 'premium')} photos
                       </p>
                       <p className="text-[11px] sm:text-[10px] font-bold text-slate-600 mt-1 sm:mt-0.5">
-                        30 days
+                        {getPlanDurationDays(settings, 'premium', formData.category)} days
                       </p>
                     </div>
                     <p className="font-black text-base sm:text-sm mt-2 sm:mt-1 text-indigo-600">
@@ -3230,7 +3230,7 @@ const CreateAd = () => {
                       </p>
                       <p className="text-[11px] sm:text-[10px] text-slate-600 mt-1 sm:mt-0.5">Up to 3 photos</p>
                       <p className="text-[11px] sm:text-[10px] font-bold text-slate-600 mt-1 sm:mt-0.5">
-                        30 days
+                        {getPlanDurationDays(settings, 'standard', formData.category)} days
                       </p>
                     </div>
                     <p className="font-black text-sm sm:text-sm mt-2 sm:mt-1 text-emerald-700 leading-tight">
@@ -3254,7 +3254,7 @@ const CreateAd = () => {
                 ) : isBoatServiceCategory(formData.category) ? (
                   <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2">
                     <p className="text-[10px] sm:text-xs font-bold text-sky-800">
-                      ⚙️ Boat Services: Basic is FREE. Featured is £{getServicePlanPrice('featured').toFixed(2)} and Premium is £{getServicePlanPrice('premium').toFixed(2)} for 30 days.
+                      ⚙️ Boat Services: Basic is FREE. Featured is £{getServicePlanPrice('featured').toFixed(2)} and Premium is £{getServicePlanPrice('premium').toFixed(2)} for {getPlanDurationDays(settings, formData.plan, formData.category)} days.
                     </p>
                     <p className="text-[9px] sm:text-[10px] text-sky-700 mt-0.5">
                       Basic: 3 photos • Featured: 6 photos • Premium: 10 photos. Paid tiers receive higher priority in Boat Services results.
@@ -4561,7 +4561,7 @@ const CreateAd = () => {
                         ⚙️ Boat Services {normalizeListingPlan(formData.plan) === 'premium' ? 'Premium' : normalizeListingPlan(formData.plan) === 'featured' ? 'Featured' : 'Basic'}
                       </h3>
                       <p className="text-xs text-sky-700 mt-1 font-semibold">
-                        {maxAllowed} photos • 30 days • {normalizeListingPlan(formData.plan) === 'standard' ? 'Standard placement' : normalizeListingPlan(formData.plan) === 'featured' ? 'Priority placement' : 'Top priority placement'}
+                        {maxAllowed} photos • {getPlanDurationDays(settings, formData.plan, formData.category)} days • {normalizeListingPlan(formData.plan) === 'standard' ? 'Standard placement' : normalizeListingPlan(formData.plan) === 'featured' ? 'Priority placement' : 'Top priority placement'}
                       </p>
                     </div>
                     <div className="text-right">
@@ -4604,7 +4604,7 @@ const CreateAd = () => {
                           : 'Standard'}
                     </h3>
                     <p className="mt-1 text-xs font-semibold text-slate-600">
-                      30 days • Up to {maxAllowed} photos • {normalizeListingPlan(formData.plan) === 'premium'
+                      {getPlanDurationDays(settings, formData.plan, formData.category)} days • Up to {maxAllowed} photos • {normalizeListingPlan(formData.plan) === 'premium'
                         ? 'Top priority placement and maximum exposure'
                         : normalizeListingPlan(formData.plan) === 'featured'
                           ? 'Homepage highlight and priority placement'
@@ -4642,7 +4642,7 @@ const CreateAd = () => {
                       Standard
                     </div>
                     <p className="font-black text-slate-900 text-base">Standard Listing</p>
-                    <p className="text-sm sm:text-xs text-slate-600 mt-1 sm:mt-0.5 leading-relaxed">30 days active listing in marketplace search</p>
+                    <p className="text-sm sm:text-xs text-slate-600 mt-1 sm:mt-0.5 leading-relaxed">{getPlanDurationDays(settings, formData.plan, formData.category)} days active listing in marketplace search</p>
 
                     <ul className="text-sm sm:text-xs text-slate-700 space-y-2 sm:space-y-1.5 my-3 sm:my-4 font-medium leading-relaxed">
                       <li>📷 <strong>Up to {getMaxPhotosForPlan('standard')} Photos</strong></li>
@@ -4651,7 +4651,7 @@ const CreateAd = () => {
                     </ul>
 
                     <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-                      <span className="font-bold text-slate-500">Duration: 30 Days</span>
+                      <span className="font-bold text-slate-500">Duration: {getPlanDurationDays(settings, formData.plan, formData.category)} Days</span>
                       <span className="font-black text-emerald-700 text-base">
                         £{getPlanPrice('standard').toFixed(2)}
                       </span>
@@ -4683,7 +4683,7 @@ const CreateAd = () => {
                     </ul>
 
                     <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-                      <span className="font-bold text-slate-500">Duration: 30 Days</span>
+                      <span className="font-bold text-slate-500">Duration: {getPlanDurationDays(settings, formData.plan, formData.category)} Days</span>
                       <span className="font-black text-amber-600 text-base">
                         £{getPlanPrice('featured').toFixed(2)}
                       </span>
@@ -4715,7 +4715,7 @@ const CreateAd = () => {
                     </ul>
 
                     <div className="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-                      <span className="font-bold text-slate-500">Duration: 30 Days</span>
+                      <span className="font-bold text-slate-500">Duration: {getPlanDurationDays(settings, formData.plan, formData.category)} Days</span>
                       <span className="font-black text-indigo-600 text-base">
                         £{getPlanPrice('premium').toFixed(2)}
                       </span>
@@ -4806,7 +4806,7 @@ const CreateAd = () => {
                     <p className="text-xs font-bold text-emerald-800">
                       ✓ {partnerVoucher.partnerName} ({partnerVoucher.partnerCode}) — partner origin will be recorded.
                       {isPaidBoatListingCategory(formData.category) && normalizeListingPlan(formData.plan) === 'standard'
-                        ? ' Standard listing is free for 30 days.'
+                        ? ` Standard listing is free for ${getPlanDurationDays(settings, formData.plan, formData.category)} days.`
                         : ''}
                     </p>
                   )}
@@ -4858,9 +4858,9 @@ const CreateAd = () => {
                   <div className="flex items-center justify-between font-medium text-slate-700">
                     <span>
                       {isPaidBoatListingCategory(formData.category)
-                        ? `${formData.plan === 'premium' ? 'Premium Featured Listing' : formData.plan === 'featured' ? 'Featured Listing' : 'Standard Listing'} (30 Days)`
+                        ? `${formData.plan === 'premium' ? 'Premium Featured Listing' : formData.plan === 'featured' ? 'Featured Listing' : 'Standard Listing'} (${getPlanDurationDays(settings, formData.plan, formData.category)} Days)`
                         : isBoatServiceCategory(formData.category)
-                          ? `Boat Services ${normalizeListingPlan(formData.plan) === 'premium' ? 'Premium' : normalizeListingPlan(formData.plan) === 'featured' ? 'Featured' : 'Basic'} (30 Days)`
+                          ? `Boat Services ${normalizeListingPlan(formData.plan) === 'premium' ? 'Premium' : normalizeListingPlan(formData.plan) === 'featured' ? 'Featured' : 'Basic'} (${getPlanDurationDays(settings, formData.plan, formData.category)} Days)`
                           : (hasMarketplaceFreeBenefit() ? 'Free Marketplace Listing' : 'Marketplace Listing')}
                     </span>
                     <span className="font-bold text-slate-900">
@@ -5104,9 +5104,9 @@ const CreateAd = () => {
                   <div className="flex justify-between text-xs text-slate-600">
                     <span>
                       {isPaidBoatListingCategory(formData.category)
-                        ? (formData.plan === 'premium' ? 'Premium Featured Listing (30 days)' : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? 'Featured Listing (30 days)' : 'Standard Listing (30 days)')
+                        ? (formData.plan === 'premium' ? `Premium Featured Listing (${getPlanDurationDays(settings, formData.plan, formData.category)} days)` : formData.plan === 'featured' || formData.plan === 'local' || formData.plan === 'national' ? `Featured Listing (${getPlanDurationDays(settings, formData.plan, formData.category)} days)` : `Standard Listing (${getPlanDurationDays(settings, formData.plan, formData.category)} days)`)
                         : isBoatServiceCategory(formData.category)
-                          ? `Boat Services ${normalizeListingPlan(formData.plan) === 'premium' ? 'Premium' : normalizeListingPlan(formData.plan) === 'featured' ? 'Featured' : 'Basic'} (30 days)`
+                          ? `Boat Services ${normalizeListingPlan(formData.plan) === 'premium' ? 'Premium' : normalizeListingPlan(formData.plan) === 'featured' ? 'Featured' : 'Basic'} (${getPlanDurationDays(settings, formData.plan, formData.category)} days)`
                           : (hasMarketplaceFreeBenefit() ? 'Free Marketplace Listing' : 'Marketplace Listing')}
                     </span>
                     <span className="font-bold text-slate-900">

@@ -46,6 +46,12 @@ export default function Precos() {
     return Number.isFinite(value) && value > 0 ? value : 30;
   };
 
+  const getCategoryDuration = (category: 'marketplace' | 'service', plan: 'standard' | 'featured' | 'premium' = 'standard'): number => {
+    const value = Number(settings?.planDurations?.[category]);
+    if (Number.isFinite(value) && value > 0) return value;
+    return category === 'service' ? 30 : getPlanDuration(plan);
+  };
+
   const formatDurationLabel = (plan: 'standard' | 'featured' | 'premium'): string => {
     const days = getPlanDuration(plan);
     return `${days} ${days === 1 ? 'Day' : 'Days'}`;
@@ -280,9 +286,9 @@ export default function Precos() {
           <p className="text-[11px] font-black uppercase tracking-widest text-sky-700">Boat Services</p>
           <h2 className="mt-1 text-xl md:text-2xl font-black text-slate-900">Start free, pay only for more visibility</h2>
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-            <div className="rounded-2xl bg-white border border-sky-100 p-4"><strong>Basic — FREE</strong><br /><span className="text-slate-600">3 photos • standard placement • 30 days</span></div>
-            <div className="rounded-2xl bg-white border border-sky-100 p-4"><strong>Featured — £{Number(settings?.planPrices?.serviceFeatured ?? 7.99).toFixed(2)}</strong><br /><span className="text-slate-600">6 photos • priority placement • 30 days</span></div>
-            <div className="rounded-2xl bg-white border border-sky-100 p-4"><strong>Premium — £{Number(settings?.planPrices?.servicePremium ?? 14.99).toFixed(2)}</strong><br /><span className="text-slate-600">10 photos • top priority • 30 days</span></div>
+            <div className="rounded-2xl bg-white border border-sky-100 p-4"><strong>Basic — FREE</strong><br /><span className="text-slate-600">3 photos • standard placement • {getCategoryDuration('service')} days</span></div>
+            <div className="rounded-2xl bg-white border border-sky-100 p-4"><strong>Featured — £{Number(settings?.planPrices?.serviceFeatured ?? 7.99).toFixed(2)}</strong><br /><span className="text-slate-600">6 photos • priority placement • {getCategoryDuration('service', 'featured')} days</span></div>
+            <div className="rounded-2xl bg-white border border-sky-100 p-4"><strong>Premium — £{Number(settings?.planPrices?.servicePremium ?? 14.99).toFixed(2)}</strong><br /><span className="text-slate-600">10 photos • top priority • {getCategoryDuration('service', 'premium')} days</span></div>
           </div>
         </motion.div>
 
