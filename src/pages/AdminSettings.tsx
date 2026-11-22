@@ -127,6 +127,8 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
             standard: data.planDurations?.standard || 30,
             featured: data.planDurations?.featured || 30,
             premium: data.planDurations?.premium || 30,
+            marketplace: data.planDurations?.marketplace || 30,
+            service: data.planDurations?.service || 30,
             free: data.planDurations?.free || 30,
             local: data.planDurations?.local || 30,
             national: data.planDurations?.national || 30,
@@ -181,7 +183,7 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
       } else {
         const defaultSettings: MarketplaceSettings = {
           id: 'global',
-          planDurations: { standard: 30, featured: 30, premium: 30, free: 30, local: 30, national: 30, showcase: 30, intermediate: 180 },
+          planDurations: { standard: 30, featured: 30, premium: 30, marketplace: 30, service: 30, free: 30, local: 30, national: 30, showcase: 30, intermediate: 180 },
           planPrices: { standard: 4.99, featured: 7.99, premium: 12.99, marketplaceAdditional: 1.99, serviceFeatured: 7.99, servicePremium: 14.99, local: 4.99, national: 7.99, showcase: 8.99 },
           maxImages: { standard: 8, featured: 15, premium: 25, free: 3, local: 15, national: 25, showcase: 6, intermediate: 3 },
           maxShowcaseProducts: 6,
@@ -362,6 +364,22 @@ const AdminSettings = ({ onClose }: AdminSettingsProps) => {
                     className="w-full px-4 py-2.5 bg-white border border-emerald-200 rounded-xl focus:border-emerald-500 outline-none transition-all font-bold text-sm"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Category duration overrides for the non-tiered categories */}
+            <div className="grid grid-cols-1 gap-4 rounded-2xl border border-sky-100 bg-sky-50/30 p-5 md:grid-cols-2">
+              <div>
+                <label className="text-xs font-bold text-slate-600">Marketplace listing duration (days)</label>
+                <input type="number" min="1" value={settings.planDurations.marketplace ?? 30}
+                  onChange={(e) => setSettings({ ...settings, planDurations: { ...settings.planDurations, marketplace: parseInt(e.target.value) || 0 } })}
+                  className="mt-1 w-full rounded-xl border border-sky-200 bg-white px-4 py-2.5 text-sm font-bold" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-600">Boat Services listing duration (days)</label>
+                <input type="number" min="1" value={settings.planDurations.service ?? 30}
+                  onChange={(e) => setSettings({ ...settings, planDurations: { ...settings.planDurations, service: parseInt(e.target.value) || 0 } })}
+                  className="mt-1 w-full rounded-xl border border-sky-200 bg-white px-4 py-2.5 text-sm font-bold" />
               </div>
             </div>
 

@@ -5,6 +5,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType, getDocsWithCacheFallback, clearDocsCache } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import { addPlanDuration, getPlanDurationDays } from '../utils/planDuration';
 import { clearHomeCache } from '../utils/cache';
 import { Ad, UserProfile, COUNTRY_CODES, CITIES, UK_REGIONS, getRegionForCity } from '../types';
 import { SearchableCitySelect } from '../components/SearchableCitySelect';
@@ -1183,9 +1184,8 @@ const Profile = () => {
     try {
       const adRef = doc(db, 'ads', ad.id);
       
-      // Calculate new expiration date (default 30 days for relisting)
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 30);
+      // Re-listing is a fresh activation and uses the current Admin duration.
+      const expirationDate = addPlanDuration(new Date(), getPlanDurationDays(settings, ad.plan || ad.planType, ad.category, (ad as any).partnerVoucherDurationDays));
 
       // Track renewal after warning metric
       if (ad.adStatus === 'near_expiration' || ad.adStatus === 'expired') {
@@ -1206,6 +1206,9 @@ const Profile = () => {
         status: 'pending',
         adStatus: 'active',
         expirationDate: expirationDate,
+        planStartedAt: new Date(),
+        planExpiresAt: expirationDate,
+        ...(ad.isFeatured ? { featuredActivatedAt: new Date(), featuredUntil: expirationDate } : {}),
         userNotified: false,
         createdAt: new Date()
       }, { merge: true });

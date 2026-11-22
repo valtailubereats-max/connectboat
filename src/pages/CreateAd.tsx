@@ -8,6 +8,7 @@ import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } 
 import { auth, db, storage, handleFirestoreError, OperationType, getDocWithCacheFallback, withTimeout } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import { addPlanDuration, getPlanDurationDays } from '../utils/planDuration';
 import { clearHomeCache } from '../utils/cache';
 import { sendEmailGeneric } from '../utils/emailService';
 import { CITIES, Ad, MarketplaceSettings, PORTUGAL_CITIES, UK_CITIES, UK_REGIONS, CITIES_BY_REGION, getRegionForCity, BOAT_TYPES, BOAT_CONDITIONS, BOAT_FUEL_TYPES, BOAT_HULL_MATERIALS, PRICING_UNITS } from '../types';
@@ -1339,15 +1340,7 @@ const CreateAd = () => {
     if (!id || !originalAd || administrativeExpirationDate || (originalAd as any).expirationDate) return;
     if (!(isAdmin || isModerator || profile?.role === 'admin' || profile?.role === 'moderator')) return;
 
-    const plan = String(originalAd.plan || 'standard');
-    let days = 30;
-    if (settings?.planDurations) {
-      days = Number(settings.planDurations[plan as keyof typeof settings.planDurations]) || 30;
-    } else if (plan === 'intermediate') {
-      days = 180;
-    } else if (plan === 'premium') {
-      days = 365;
-    }
+    const days = getPlanDurationDays(settings, originalAd.plan, originalAd.category, (originalAd as any).partnerVoucherDurationDays);
     setAdministrativeExpirationDate(addCalendarDaysFromToday(days));
   }, [id, originalAd, administrativeExpirationDate, settings, isAdmin, isModerator, profile?.role]);
   const enablePortugal = (globalSettings?.enablePortugalMarket ?? settings?.enablePortugalMarket) === true;
@@ -2176,24 +2169,9 @@ const CreateAd = () => {
       const adId = id || doc(collection(db, 'ads')).id;
       
       // Calculate expiration date
-      let days = 30;
-      if (settings?.planDurations) {
-        if (formData.plan === 'free') {
-          days = formData.duration;
-        } else {
-          days = settings.planDurations[formData.plan as keyof typeof settings.planDurations] || 30;
-        }
-      } else {
-        // Fallback defaults
-        if (formData.plan === 'free') days = formData.duration;
-        // Fallback default duration for new designs
-        else if (formData.plan === 'local' || formData.plan === 'national') days = 30;
-        else if (formData.plan === 'intermediate') days = 180;
-        else if (formData.plan === 'premium') days = 365;
-      }
-
-      const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + days);
+      const durationOverride = formData.plan === 'free' ? formData.duration : undefined;
+      const days = getPlanDurationDays(settings, formData.plan, formData.category, durationOverride);
+      const expirationDate = addPlanDuration(new Date(), days);
       const administrativeDate = isStaff && id
         ? parseDateInputAtEndOfDay(administrativeExpirationDate)
         : null;

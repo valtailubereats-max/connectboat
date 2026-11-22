@@ -514,20 +514,26 @@ async function handleCourtesyCredit(req: Request, res: Response) {
       const isServiceListing = category === SERVICE_LISTING_CATEGORY;
       const isMarketplaceListing = MARKETPLACE_LISTING_CATEGORIES.has(category);
       if (!isBoatListing && !isServiceListing && !isMarketplaceListing) throw new Error('COURTESY_CATEGORY_NOT_ELIGIBLE');
-      const configuredDuration = Number(settingsSnapshot.data()?.planDurations?.[plan]);
-      const durationDays = isBoatListing
-        ? 30
-        : (Number.isFinite(configuredDuration) && configuredDuration > 0 ? Math.round(configuredDuration) : 30);
+      const configuredDurations = settingsSnapshot.data()?.planDurations || {};
+      const categoryDuration = Number(category === 'Boat Services' ? configuredDurations.service : MARKETPLACE_LISTING_CATEGORIES.has(category) ? configuredDurations.marketplace : NaN);
+      const configuredDuration = Number(configuredDurations[plan]);
+      const customCourtesyDays = Number(creditData.durationDays || creditData.customDurationDays || adData.courtesyDurationDays || adData.durationDays);
+      const durationDays = Number.isFinite(customCourtesyDays) && customCourtesyDays > 0
+        ? Math.round(customCourtesyDays)
+        : Number.isFinite(categoryDuration) && categoryDuration > 0
+          ? Math.round(categoryDuration)
+          : Number.isFinite(configuredDuration) && configuredDuration > 0 ? Math.round(configuredDuration) : 30;
       const expiresAt = Timestamp.fromMillis(Date.now() + durationDays * 24 * 60 * 60 * 1000);
       approvedExpiresAt = expiresAt;
-      const isFeatured = isBoatListing || (isServiceListing && (plan === 'featured' || plan === 'premium'));
+      const isFeatured = (isBoatListing && (plan === 'featured' || plan === 'premium')) || (isServiceListing && (plan === 'featured' || plan === 'premium'));
       tx.update(adRef, {
         status: 'approved', adStatus: 'active', awaitingAdminApproval: false, awaitingAdminActivation: false,
         activatedAt: FieldValue.serverTimestamp(), expirationDate: expiresAt, isFeatured,
-        featuredLevel: isBoatListing ? 'premium' : (isFeatured ? plan : 'standard'),
+        featuredLevel: isFeatured ? plan : 'standard',
         featuredReason: 'admin_courtesy_listing_credit',
         ...(isFeatured ? { featuredActivatedAt: FieldValue.serverTimestamp(), featuredUntil: expiresAt } : {}),
-        ...(isBoatListing ? { plan: 'premium', planType: 'premium' } : { planType: plan }),
+        planType: plan,
+        ...(isBoatListing ? { plan } : {}),
         planStartedAt: FieldValue.serverTimestamp(),
         planExpiresAt: expiresAt, updatedAt: FieldValue.serverTimestamp(),
       });
@@ -1810,7 +1816,6 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const activePlan = String((itemType === 'ad_listing' ? authenticatedAdData?.plan : plan) || 'standard').toLowerCase();
     const normalizedDurationPlan = activePlan === 'premium' ? 'premium' : activePlan === 'featured' ? 'featured' : 'standard';
     const configuredDurationDays = Number(configuredPlanDurations[normalizedDurationPlan]);
-    const planDurationDays = Number.isFinite(configuredDurationDays) && configuredDurationDays > 0 ? Math.round(configuredDurationDays) : 30;
     const savedListingCategory = String(authenticatedAdData?.category || category || '').trim();
     const isPaidBoatListing =
       itemType === 'ad_listing' &&
@@ -1818,6 +1823,10 @@ export default async function createCheckoutSessionHandler(req: Request, res: Re
     const marketplaceCategories = new Set(['Boat Parts', 'Boat Engines', 'Marine Electronics', 'Trailers', 'Marinas', 'Accessories', 'Wanted']);
     const isMarketplaceListing = itemType === 'ad_listing' && marketplaceCategories.has(savedListingCategory);
     const isServiceListing = itemType === 'ad_listing' && savedListingCategory === 'Boat Services';
+    const categoryDurationDays = Number(isServiceListing ? configuredPlanDurations.service : isMarketplaceListing ? configuredPlanDurations.marketplace : NaN);
+    const planDurationDays = Number.isFinite(categoryDurationDays) && categoryDurationDays > 0
+      ? Math.round(categoryDurationDays)
+      : Number.isFinite(configuredDurationDays) && configuredDurationDays > 0 ? Math.round(configuredDurationDays) : 30;
     const isPartnerFundedStandard = (isPaidBoatListing || isMarketplaceListing) &&
       authenticatedAdData?.partnerFundedFreeStandard === true &&
       authenticatedAdData?.promotionSource === 'partner_promotion' &&

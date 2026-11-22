@@ -42,6 +42,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               standard: data.planDurations?.standard || 30,
               featured: data.planDurations?.featured || 30,
               premium: data.planDurations?.premium || 30,
+              marketplace: data.planDurations?.marketplace || 30,
+              service: data.planDurations?.service || 30,
               free: data.planDurations?.free || 30,
               local: data.planDurations?.local || 30,
               national: data.planDurations?.national || 30,
@@ -79,7 +81,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           // Initialize local state if document doesn't exist in Firestore
           const defaultSettings: MarketplaceSettings = {
             id: 'global',
-            planDurations: { standard: 30, featured: 30, premium: 30 },
+            planDurations: { standard: 30, featured: 30, premium: 30, marketplace: 30, service: 30 },
             planPrices: { standard: 4.99, featured: 7.99, premium: 12.99, marketplaceAdditional: 1.99, serviceFeatured: 7.99, servicePremium: 14.99 },
             maxImages: { standard: 8, featured: 15, premium: 25 },
             maxShowcaseProducts: 6,

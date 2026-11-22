@@ -670,6 +670,8 @@ export default async function stripeWebhookHandler(
                   60 *
                   1000
             );
+          // A checkout can remain open while Admin settings change. Use the
+          // server-created session metadata as the duration snapshot.
 
           const activePlan =
             (

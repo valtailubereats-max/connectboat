@@ -48,6 +48,7 @@ import { formatPrice } from '../utils';
 import { sendEmailGeneric, getSellerEmail } from '../utils/emailService';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import { addPlanDuration, getPlanDurationDays, normalizeListingPlan } from '../utils/planDuration';
 import AdminTimestampAudit from '../components/AdminTimestampAudit';
 import { 
   isPaidAd, 
@@ -563,15 +564,14 @@ const AdminAds = () => {
       }
 
       if (isPaidPendingApproval && adToUpdate) {
-        const plan = (adToUpdate.plan || 'standard').toLowerCase();
+        const plan = normalizeListingPlan(adToUpdate.plan);
         const isFeatured = plan === 'featured' || plan === 'premium';
         const featuredLevel = plan === 'premium' ? 'premium' : plan === 'featured' ? 'featured' : 'standard';
         const voucherDuration = Number(isPartnerVoucherPendingApproval ? (adToUpdate as any).partnerVoucherDurationDays : 0);
-        const configuredDuration = voucherDuration > 0 ? voucherDuration : Number(settings?.planDurations?.[plan as 'standard' | 'featured' | 'premium'] ?? 30);
-        const expiresAt = addDays(new Date(), Number.isFinite(configuredDuration) && configuredDuration > 0 ? configuredDuration : 30);
+        const configuredDuration = getPlanDurationDays(settings, plan, adToUpdate.category, voucherDuration);
+        const expiresAt = addPlanDuration(new Date(), configuredDuration);
 
-        // Both normal customer payments and admin-assisted payments start
-        // their 30-day listing period only after moderation approval.
+        // Listing duration starts when moderation activates the paid plan.
         updatePayload.awaitingAdminActivation = false;
         updatePayload.awaitingAdminApproval = false;
         updatePayload.adStatus = 'active';
@@ -590,6 +590,24 @@ const AdminAds = () => {
       }
 
       if (!isCourtesyPendingApproval) await updateDoc(doc(db, 'ads', adId), updatePayload);
+      else if (adToUpdate) {
+        const duration = getPlanDurationDays(settings, adToUpdate.plan, adToUpdate.category, (adToUpdate as any).courtesyDurationDays || (adToUpdate as any).partnerVoucherDurationDays);
+        const expiresAt = addPlanDuration(new Date(), duration);
+        updatePayload.adStatus = 'active';
+        updatePayload.activatedAt = serverTimestamp();
+        updatePayload.expirationDate = expiresAt;
+        updatePayload.planType = normalizeListingPlan(adToUpdate.plan);
+        updatePayload.planStartedAt = serverTimestamp();
+        updatePayload.planExpiresAt = expiresAt;
+        updatePayload.isFeatured = ['featured', 'premium'].includes(normalizeListingPlan(adToUpdate.plan));
+        if (updatePayload.isFeatured) {
+          updatePayload.featuredActivatedAt = serverTimestamp();
+          updatePayload.featuredUntil = expiresAt;
+        }
+        updatePayload.isCourtesy = true;
+        updatePayload.courtesyGrantedBy = (adToUpdate as any).courtesyGrantedBy || user?.uid;
+        await updateDoc(doc(db, 'ads', adId), updatePayload);
+      }
       if (status === 'approved' && adToUpdate?.status === 'pending' && user) {
         try {
           const idToken = await user.getIdToken();
@@ -708,19 +726,21 @@ const AdminAds = () => {
         }
       }
 
+      const activatedAt = isPaidPendingApproval || isCourtesyPendingApproval ? new Date() : null;
+      const activatedAd = adToUpdate;
       setAds(prevAds => prevAds.map(ad => ad.id === adId ? {
         ...ad,
         status,
-        ...((isPaidPendingApproval || isCourtesyPendingApproval) ? {
+        ...((isPaidPendingApproval || isCourtesyPendingApproval) && activatedAt && activatedAd ? {
           awaitingAdminActivation: false,
           awaitingAdminApproval: false,
           adStatus: 'active',
-          activatedAt: new Date(),
-          expirationDate: addDays(new Date(), Number(settings?.planDurations?.[(ad.plan || 'standard') as 'standard' | 'featured' | 'premium'] ?? 30)),
-          featuredUntil: addDays(new Date(), Number(settings?.planDurations?.[(ad.plan || 'standard') as 'standard' | 'featured' | 'premium'] ?? 30)),
+          activatedAt,
+          expirationDate: addPlanDuration(activatedAt, getPlanDurationDays(settings, activatedAd.plan, activatedAd.category, (activatedAd as any).courtesyDurationDays || (activatedAd as any).partnerVoucherDurationDays)),
+          featuredUntil: addPlanDuration(activatedAt, getPlanDurationDays(settings, activatedAd.plan, activatedAd.category, (activatedAd as any).courtesyDurationDays || (activatedAd as any).partnerVoucherDurationDays)),
           planType: (ad.plan || 'standard') as any,
-          planStartedAt: new Date(),
-          planExpiresAt: addDays(new Date(), Number(settings?.planDurations?.[(ad.plan || 'standard') as 'standard' | 'featured' | 'premium'] ?? 30)),
+          planStartedAt: activatedAt,
+          planExpiresAt: addPlanDuration(activatedAt, getPlanDurationDays(settings, activatedAd.plan, activatedAd.category, (activatedAd as any).courtesyDurationDays || (activatedAd as any).partnerVoucherDurationDays)),
           isCourtesy: isCourtesyPendingApproval,
           isFeatured: (ad.plan || '').toLowerCase() === 'featured' || (ad.plan || '').toLowerCase() === 'premium',
           featuredLevel: (ad.plan || '').toLowerCase() === 'premium' ? 'premium' : (ad.plan || '').toLowerCase() === 'featured' ? 'featured' : 'standard'
@@ -729,16 +749,16 @@ const AdminAds = () => {
       setSelectedAd(prev => prev && prev.id === adId ? {
         ...prev,
         status: status as any,
-        ...((isPaidPendingApproval || isCourtesyPendingApproval) ? {
+        ...((isPaidPendingApproval || isCourtesyPendingApproval) && activatedAt && activatedAd ? {
           awaitingAdminActivation: false,
           awaitingAdminApproval: false,
           adStatus: 'active',
-          activatedAt: new Date(),
-          expirationDate: addDays(new Date(), 30),
-          featuredUntil: addDays(new Date(), 30),
+          activatedAt,
+          expirationDate: addPlanDuration(activatedAt, getPlanDurationDays(settings, activatedAd.plan, activatedAd.category, (activatedAd as any).courtesyDurationDays || (activatedAd as any).partnerVoucherDurationDays)),
+          featuredUntil: addPlanDuration(activatedAt, getPlanDurationDays(settings, activatedAd.plan, activatedAd.category, (activatedAd as any).courtesyDurationDays || (activatedAd as any).partnerVoucherDurationDays)),
           planType: (prev.plan || 'standard') as any,
-          planStartedAt: new Date(),
-          planExpiresAt: addDays(new Date(), Number(settings?.planDurations?.[(prev.plan || 'standard') as 'standard' | 'featured' | 'premium'] ?? 30)),
+          planStartedAt: activatedAt,
+          planExpiresAt: addPlanDuration(activatedAt, getPlanDurationDays(settings, activatedAd.plan, activatedAd.category, (activatedAd as any).courtesyDurationDays || (activatedAd as any).partnerVoucherDurationDays)),
           isCourtesy: isCourtesyPendingApproval
         } : {})
       } as Ad : prev);
@@ -963,11 +983,16 @@ const AdminAds = () => {
   const handleRenewAd = async (adId: string) => {
     setRenewingId(adId);
     try {
-      const newExpirationDate = addDays(new Date(), 30);
+      const adToRenew = ads.find(ad => ad.id === adId);
+      if (!adToRenew) throw new Error('Listing not found for renewal.');
+      const newExpirationDate = addPlanDuration(new Date(), getPlanDurationDays(settings, adToRenew.plan || adToRenew.planType, adToRenew.category, (adToRenew as any).partnerVoucherDurationDays));
       await updateDoc(doc(db, 'ads', adId), {
         status: 'approved',
         adStatus: 'active',
         expirationDate: newExpirationDate,
+        planStartedAt: new Date(),
+        planExpiresAt: newExpirationDate,
+        ...(adToRenew.isFeatured ? { featuredActivatedAt: new Date(), featuredUntil: newExpirationDate } : {}),
         updatedAt: serverTimestamp(),
         userNotified: true
       });
@@ -982,7 +1007,7 @@ const AdminAds = () => {
         expirationDate: mockTimestamp 
       } as Ad : ad));
       
-      alert('Listing successfully renewed for a further 30 days!');
+      alert(`Listing successfully renewed for ${getPlanDurationDays(settings, adToRenew.plan || adToRenew.planType, adToRenew.category, (adToRenew as any).partnerVoucherDurationDays)} days!`);
     } catch (err) {
       console.error('Renew error:', err);
       handleFirestoreError(err, OperationType.UPDATE, `ads/${adId}`);
@@ -1983,7 +2008,7 @@ const AdminAds = () => {
                   {(ad.status === 'expired' || ad.adStatus === 'expired') && (
                     <button
                       onClick={() => {
-                        if (window.confirm('Reactivate this listing for a further 30 days?')) {
+                        if (window.confirm(`Reactivate this listing for ${getPlanDurationDays(settings, ad.plan || ad.planType, ad.category, (ad as any).partnerVoucherDurationDays)} days?`)) {
                           handleRenewAd(ad.id);
                         }
                       }}
@@ -2007,7 +2032,7 @@ const AdminAds = () => {
                     <div className="flex gap-1.5 items-center">
                       <button
                         onClick={() => {
-                          if (window.confirm('Renew this listing for a further 30 days?')) {
+                          if (window.confirm(`Renew this listing for ${getPlanDurationDays(settings, ad.plan || ad.planType, ad.category, (ad as any).partnerVoucherDurationDays)} days?`)) {
                             handleRenewAd(ad.id);
                           }
                         }}
@@ -2015,7 +2040,7 @@ const AdminAds = () => {
                         className={`h-9 px-3.5 flex items-center gap-1.5 bg-white hover:bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl transition-all font-bold text-[11px] ${
                           renewingId === ad.id ? 'opacity-50' : ''
                         }`}
-                        title="Renew listing for 30 days"
+                        title={`Renew listing for ${getPlanDurationDays(settings, ad.plan || ad.planType, ad.category, (ad as any).partnerVoucherDurationDays)} days`}
                       >
                         {renewingId === ad.id ? (
                           <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-emerald-600 rounded-full animate-spin" />

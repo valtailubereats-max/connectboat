@@ -37,6 +37,8 @@ export interface MarketplaceSettings {
     national?: number;
     showcase?: number;
     intermediate?: number;
+    marketplace?: number;
+    service?: number;
   };
   planPrices: {
     standard: number;
